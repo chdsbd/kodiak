@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "kodiak"
+version = "0.1.0"
+description = ""
+authors = ["Christopher Dignam <chris@dignam.xyz>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+uvicorn = "^0.7.0"
+fastapi = {version = "^0.17.0",extras = ["all"]}
+
+[tool.poetry.dev-dependencies]
+pytest = "^4.4"
+black = "^19.3b0"
+mypy = "^0.701.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
