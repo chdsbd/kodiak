@@ -13,6 +13,7 @@ fastapi = {version = "^0.17.0",extras = ["all"]}
 pytest = "^4.4"
 black = "^19.3b0"
 mypy = "^0.701.0"
+ipdb = "^0.12.0"
 
 [build-system]
 requires = ["poetry>=0.12"]
