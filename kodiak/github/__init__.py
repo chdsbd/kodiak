@@ -5,11 +5,10 @@ from collections import defaultdict
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
 from kodiak.github import events
-from kodiak.github.events import ALL_EVENTS, UNION_EVENTS
 
 
 def valid_event(arg: typing.Any) -> bool:
-    return arg in ALL_EVENTS
+    return arg in events.event_registry.values()
 
 
 class UnsupportType(TypeError):
@@ -22,12 +21,10 @@ class UnsupportType(TypeError):
 @dataclass(init=False)
 class Webhook:
 
-    event_mapping: typing.Mapping[UNION_EVENTS, typing.List[typing.Callable]]
+    event_mapping: typing.Mapping[events.GithubEvent, typing.List[typing.Callable]]
 
     def __init__(self, app: FastAPI, path="/api/github/hook"):
-        self.event_mapping: typing.Mapping[
-            UNION_EVENTS, typing.List[typing.Callable]
-        ] = defaultdict(list)
+        self.event_mapping = defaultdict(list)
 
         app.add_api_route(path=path, endpoint=self._api_handler, methods=["POST"])
 
@@ -55,12 +52,14 @@ class Webhook:
             )
         listeners = self.event_mapping.get(handler)
         if listeners is None:
-            return {"msg": "no listeners"}
+            return {"listeners": 0}
         for listener in listeners:
             listener(handler.parse_obj(event))
-        return {"msg": "ok"}
+        return {"listeners": len(listeners)}
 
-    def register_events(self, func: typing.Callable, events: typing.List[UNION_EVENTS]):
+    def register_events(
+        self, func: typing.Callable, events: typing.List[events.GithubEvent]
+    ):
         for event in events:
             self.event_mapping[event].append(func)
 

@@ -9,11 +9,11 @@ from enum import Enum
 
 AnyDict = typing.Dict[typing.Any, typing.Any]
 
-event_registry: typing.Mapping[str, BaseModel] = dict()
+event_registry: typing.MutableMapping[str, "GithubEvent"] = dict()
 
 
 def register(header_name: str) -> typing.Callable:
-    def decorator(cls: BaseModel):
+    def decorator(cls: GithubEvent):
         event_registry[header_name] = cls
         return cls
 
@@ -40,8 +40,12 @@ class Hook(BaseModel):
     created_at: datetime
 
 
+class GithubEvent(BaseModel):
+    pass
+
+
 @register("ping")
-class Ping(BaseModel):
+class Ping(GithubEvent):
     zen: str
     hook_id: int
     hook: Hook
@@ -142,7 +146,7 @@ class PullRequestEventActions(Enum):
 
 
 @register("pull_request")
-class PullRequestEvent(BaseModel):
+class PullRequestEvent(GithubEvent):
     action: PullRequestEventActions
     number: int
     pull_request: PullRequest
@@ -171,7 +175,7 @@ class PullRequestShort(BasePullRequest):
 
 
 @register("pull_request_review")
-class PullRequestReviewEvent(BaseModel):
+class PullRequestReviewEvent(GithubEvent):
     action: PullRequestReviewAction
     review: PullRequestReview
     pull_request: PullRequestShort
@@ -211,7 +215,7 @@ class CheckRunEventAction(Enum):
 
 
 @register("check_run")
-class CheckRunEvent(BaseModel):
+class CheckRunEvent(GithubEvent):
     action: CheckRunEventAction
     check_run: CheckRun
     repository: Repo
@@ -259,7 +263,7 @@ class StatusEventState(Enum):
 
 
 @register("status")
-class StatusEvent(BaseModel):
+class StatusEvent(GithubEvent):
     id: int
     sha: str
     name: str
@@ -289,7 +293,7 @@ class PushEventCommit(BaseModel):
 
 
 @register("push")
-class PushEvent(BaseModel):
+class PushEvent(GithubEvent):
     # TODO: Is this more useful or the name in the decorator?
     _event_name = "push"
     ref: str
@@ -305,8 +309,3 @@ class PushEvent(BaseModel):
     repository: Repo
     pusher: PushEventCommitAuthor
     sender: User
-
-
-UNION_EVENTS = typing.Union[PullRequestEvent, PushEvent]
-
-ALL_EVENTS = [PullRequestEvent, PushEvent]
