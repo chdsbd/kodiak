@@ -35,9 +35,13 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
     Passing one arg with a valid type should be accepted
     """
 
+    hook_run = False
+
     @webhook()
     def push(data: events.PullRequestEvent):
-        pass
+        nonlocal hook_run
+        hook_run = True
+        assert isinstance(data, events.PullRequestEvent)
 
     assert webhook.event_mapping[events.PullRequestEvent] == [push]
     assert len(webhook.event_mapping) == 1
@@ -48,6 +52,7 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
         headers={"X-Github-Event": "pull_request"},
     )
     assert res.status_code == status.HTTP_200_OK
+    assert hook_run
 
 
 def test_union(webhook: Webhook):
