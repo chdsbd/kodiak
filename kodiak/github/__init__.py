@@ -1,7 +1,9 @@
 import typing
 from dataclasses import dataclass
 from collections import defaultdict
-from fastapi import FastAPI
+
+from fastapi import FastAPI, Header, HTTPException
+from starlette import status
 from kodiak.github import events
 from kodiak.github.events import ALL_EVENTS, UNION_EVENTS
 
@@ -19,20 +21,44 @@ class UnsupportType(TypeError):
 
 @dataclass(init=False)
 class Webhook:
-    app: FastAPI
 
     event_mapping: typing.Mapping[UNION_EVENTS, typing.List[typing.Callable]]
 
-    def __init__(self, app: FastAPI):
-        self.app = app
-        self.event_mapping = defaultdict(list)
+    def __init__(self, app: FastAPI, path="/api/github/hook"):
+        self.event_mapping: typing.Mapping[
+            UNION_EVENTS, typing.List[typing.Callable]
+        ] = defaultdict(list)
+
+        app.add_api_route(path=path, endpoint=self._api_handler, methods=["POST"])
+
+    async def _api_handler(self, event: dict, *, x_github_event: str = Header(None)):
+        """
+        Handler for all Github api payloads
+        
+        We run webhook events that hit this endpoint against events registered
+        in `event_mapping`.
+        """
+        github_event = typing.cast(typing.Optional[str], x_github_event)
+        if github_event is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required header: X-Github-Event",
+            )
+        handler = events.event_registry.get(github_event)
+        if handler is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Event '{github_event}' has no registered handler. Support likely doesn't exist for this kind of event.",
+            )
+        parsed = handler.parse_obj(event)
+        return {"msg": "ok"}
 
     def register_events(self, func: typing.Callable, events: typing.List[UNION_EVENTS]):
         for event in events:
             self.event_mapping[event].append(func)
 
     def __call__(self) -> typing.Callable:
-        def decorator(func: typing.Callable[[events.PullRequest], None]):
+        def decorator(func: typing.Callable[[events.PullRequestEvent], None]):
             arg_count = func.__code__.co_argcount
             annotations = typing.get_type_hints(func)
             if arg_count != 1 or len(annotations) != 1:
@@ -42,7 +68,6 @@ class Webhook:
             # we will only have one argument/annotation at this point
             typehints = list(annotations.values())[0]
 
-            # TODO: Move checks to register_events function
             # we have a union of types
             if getattr(typehints, "__origin__", None) == typing.Union:
                 for type in typehints.__args__:
