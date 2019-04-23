@@ -15,3 +15,12 @@ def test_event_count():
     assert len(fixtures.MAPPING) == len(
         events.event_registry
     ), "ensure we're checking all registered events"
+
+
+def test_event_docs():
+    """
+    All events should have docstrings
+    """
+    for doc, _ in fixtures.MAPPING:
+        assert doc.__doc__ is not None
+        assert "https://developer.github.com/v3/activity/events/types/#" in doc.__doc__
