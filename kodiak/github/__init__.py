@@ -38,6 +38,9 @@ class Webhook:
         We run webhook events that hit this endpoint against events registered
         in `event_mapping`.
         """
+        # FastAPI allows x_github_event to be nullable and we cannot type it as
+        # Optional in the function definition
+        # https://github.com/tiangolo/fastapi/issues/179
         github_event = typing.cast(typing.Optional[str], x_github_event)
         if github_event is None:
             raise HTTPException(
@@ -50,7 +53,11 @@ class Webhook:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Event '{github_event}' has no registered handler. Support likely doesn't exist for this kind of event.",
             )
-        parsed = handler.parse_obj(event)
+        listeners = self.event_mapping.get(handler)
+        if listeners is None:
+            return {"msg": "no listeners"}
+        for listener in listeners:
+            listener(handler.parse_obj(event))
         return {"msg": "ok"}
 
     def register_events(self, func: typing.Callable, events: typing.List[UNION_EVENTS]):
