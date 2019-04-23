@@ -12,12 +12,9 @@ AnyDict = typing.Dict[typing.Any, typing.Any]
 event_registry: typing.MutableMapping[str, typing.Type["GithubEvent"]] = dict()
 
 
-def register(header_name: str) -> typing.Callable:
-    def decorator(cls: typing.Type[GithubEvent]):
-        event_registry[header_name] = cls
-        return cls
-
-    return decorator
+def register(cls: typing.Type[GithubEvent]):
+    event_registry[cls._event_name] = cls
+    return cls
 
 
 class HookConfiguration(BaseModel):
@@ -45,7 +42,7 @@ class GithubEvent(BaseModel):
     pass
 
 
-@register("ping")
+@register
 class Ping(GithubEvent):
     _event_name = "ping"
     zen: str
@@ -147,7 +144,7 @@ class PullRequestEventActions(Enum):
     reopened = "reopened"
 
 
-@register("pull_request")
+@register
 class PullRequestEvent(GithubEvent):
     _event_name = "pull_request"
     action: PullRequestEventActions
@@ -177,7 +174,7 @@ class PullRequestShort(BasePullRequest):
     pass
 
 
-@register("pull_request_review")
+@register
 class PullRequestReviewEvent(GithubEvent):
     _event_name = "pull_request_review"
     action: PullRequestReviewAction
@@ -218,7 +215,7 @@ class CheckRunEventAction(Enum):
     requested_action = "requested_action"
 
 
-@register("check_run")
+@register
 class CheckRunEvent(GithubEvent):
     _event_name = "check_run"
     action: CheckRunEventAction
@@ -267,7 +264,7 @@ class StatusEventState(Enum):
     error = "error"
 
 
-@register("status")
+@register
 class StatusEvent(GithubEvent):
     _event_name = "status"
     id: int
@@ -298,7 +295,7 @@ class PushEventCommit(BaseModel):
     distinct: bool
 
 
-@register("push")
+@register
 class PushEvent(GithubEvent):
     # TODO: Is this more useful or the name in the decorator?
     _event_name = "push"
