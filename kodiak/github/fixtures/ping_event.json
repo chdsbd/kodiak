@@ -1,0 +1,27 @@
+{
+    "zen": "Responsive is better than fast.",
+    "hook_id": 100003060,
+    "hook": {
+        "type": "App",
+        "id": 103000160,
+        "name": "web",
+        "active": true,
+        "events": [
+            "commit_comment",
+            "issue_comment",
+            "pull_request",
+            "pull_request_review",
+            "pull_request_review_comment",
+            "push",
+            "status"
+        ],
+        "config": {
+            "content_type": "json",
+            "insecure_ssl": "0",
+            "url": "https://example.com/api/github/hook"
+        },
+        "updated_at": "2019-04-17T22:39:40Z",
+        "created_at": "2019-04-17T22:39:40Z",
+        "app_id": 29005
+    }
+}
