@@ -44,6 +44,10 @@ class GithubEvent(pydantic.BaseModel):
 
 @register
 class Ping(GithubEvent):
+    """
+    https://developer.github.com/webhooks/#ping-event
+    """
+
     _event_name = "ping"
     zen: str
     hook_id: int
@@ -146,6 +150,10 @@ class PullRequestEventActions(Enum):
 
 @register
 class PullRequestEvent(GithubEvent):
+    """
+    https://developer.github.com/v3/activity/events/types/#pullrequestevent
+    """
+
     _event_name = "pull_request"
     action: PullRequestEventActions
     number: int
@@ -176,6 +184,10 @@ class PullRequestShort(BasePullRequest):
 
 @register
 class PullRequestReviewEvent(GithubEvent):
+    """
+    https://developer.github.com/v3/activity/events/types/#pullrequestreviewevent
+    """
+
     _event_name = "pull_request_review"
     action: PullRequestReviewAction
     review: PullRequestReview
@@ -217,6 +229,10 @@ class CheckRunEventAction(Enum):
 
 @register
 class CheckRunEvent(GithubEvent):
+    """
+    https://developer.github.com/v3/activity/events/types/#checkrunevent
+    """
+
     _event_name = "check_run"
     action: CheckRunEventAction
     check_run: CheckRun
@@ -266,6 +282,10 @@ class StatusEventState(Enum):
 
 @register
 class StatusEvent(GithubEvent):
+    """
+    https://developer.github.com/v3/activity/events/types/#statusevent
+    """
+
     _event_name = "status"
     id: int
     sha: str
@@ -297,6 +317,10 @@ class PushEventCommit(pydantic.BaseModel):
 
 @register
 class PushEvent(GithubEvent):
+    """
+    https://developer.github.com/v3/activity/events/types/#pushevent
+    """
+
     _event_name = "push"
     ref: str
     before: str
