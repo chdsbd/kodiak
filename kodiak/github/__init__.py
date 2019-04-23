@@ -21,7 +21,9 @@ class UnsupportType(TypeError):
 @dataclass(init=False)
 class Webhook:
 
-    event_mapping: typing.Mapping[events.GithubEvent, typing.List[typing.Callable]]
+    event_mapping: typing.MutableMapping[
+        typing.Type[events.GithubEvent], typing.List[typing.Callable]
+    ]
 
     def __init__(self, app: FastAPI, path="/api/github/hook"):
         self.event_mapping = defaultdict(list)
@@ -58,13 +60,20 @@ class Webhook:
         return {"listeners": len(listeners)}
 
     def register_events(
-        self, func: typing.Callable, events: typing.List[events.GithubEvent]
+        self,
+        func: typing.Callable,
+        events: typing.List[typing.Type[events.GithubEvent]],
     ):
         for event in events:
             self.event_mapping[event].append(func)
 
     def __call__(self) -> typing.Callable:
-        def decorator(func: typing.Callable[[events.PullRequestEvent], None]):
+        def decorator(
+            func: typing.Union[
+                typing.Callable[[events.GithubEvent], None],
+                typing.Callable[[typing.Union[events.GithubEvent]], None],
+            ]
+        ):
             arg_count = func.__code__.co_argcount
             annotations = typing.get_type_hints(func)
             if arg_count != 1 or len(annotations) != 1:
