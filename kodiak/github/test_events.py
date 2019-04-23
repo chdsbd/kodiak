@@ -23,4 +23,4 @@ def test_event_docs():
     """
     for doc, _ in fixtures.MAPPING:
         assert doc.__doc__ is not None
-        assert "https://developer.github.com/v3/activity/events/types/#" in doc.__doc__
+        assert "https://developer.github.com/" in doc.__doc__
