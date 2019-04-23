@@ -15,7 +15,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            command -v poetry || python -m pip install --user poetry=^0.12.12
+            command -v poetry || python -m pip install --user poetry==0.12.12
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             # Use our new PATH so we can call poetry from bash
             source $BASH_ENV
@@ -43,7 +43,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            command -v poetry || python -m pip install --user poetry=^0.12.12
+            command -v poetry || python -m pip install --user poetry==0.12.12
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             # Use our new PATH so we can call poetry from bash
             source $BASH_ENV
