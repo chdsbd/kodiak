@@ -1,10 +1,14 @@
 import typing
 from dataclasses import dataclass
 from collections import defaultdict
+import logging
 
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
 from kodiak.github import events
+
+
+logger = logging.getLogger(__name__)
 
 
 def valid_event(arg: typing.Any) -> bool:
@@ -30,7 +34,9 @@ class Webhook:
 
         app.add_api_route(path=path, endpoint=self._api_handler, methods=["POST"])
 
-    async def _api_handler(self, event: dict, *, x_github_event: str = Header(None)):
+    async def _api_handler(
+        self, event: dict, *, x_github_event: str = Header(None)
+    ) -> None:
         """
         Handler for all Github api payloads
         
@@ -54,10 +60,14 @@ class Webhook:
             )
         listeners = self.event_mapping.get(handler)
         if listeners is None:
-            return {"listeners": 0}
+            logger.info("No listeners registered for event: %s", github_event)
+            return None
         for listener in listeners:
             listener(handler.parse_obj(event))
-        return {"listeners": len(listeners)}
+        logger.info(
+            "'%s' listeners registered for event: %s", len(listeners), github_event
+        )
+        return None
 
     def register_events(
         self,
