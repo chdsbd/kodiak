@@ -3,7 +3,8 @@ Schemas for Github webhook events. These models are incomplete.
 """
 from datetime import datetime
 import typing
-from pydantic import BaseModel, UrlStr
+import pydantic
+from pydantic import UrlStr
 from enum import Enum
 
 
@@ -17,13 +18,13 @@ def register(cls: typing.Type["GithubEvent"]):
     return cls
 
 
-class HookConfiguration(BaseModel):
+class HookConfiguration(pydantic.BaseModel):
     url: UrlStr
     content_type: str
     insecure_url: typing.Optional[str]
 
 
-class Hook(BaseModel):
+class Hook(pydantic.BaseModel):
     """
     https://developer.github.com/v3/repos/hooks/#get-single-hook
     """
@@ -37,9 +38,8 @@ class Hook(BaseModel):
     created_at: datetime
 
 
-class GithubEvent(BaseModel):
+class GithubEvent(pydantic.BaseModel):
     _event_name: str
-    pass
 
 
 @register
@@ -55,7 +55,7 @@ class UserType(Enum):
     organization = "Organization"
 
 
-class User(BaseModel):
+class User(pydantic.BaseModel):
     login: str
     id: int
     node_id: str
@@ -63,7 +63,7 @@ class User(BaseModel):
     type: UserType
 
 
-class Repo(BaseModel):
+class Repo(pydantic.BaseModel):
     id: int
     node_id: str
     name: str
@@ -80,7 +80,7 @@ class Repo(BaseModel):
     default_branch: str
 
 
-class CompareBranch(BaseModel):
+class CompareBranch(pydantic.BaseModel):
     label: str
     ref: str
     sha: str
@@ -88,7 +88,7 @@ class CompareBranch(BaseModel):
     repo: Repo
 
 
-class BasePullRequest(BaseModel):
+class BasePullRequest(pydantic.BaseModel):
     url: UrlStr
     id: int
     node_id: str
@@ -160,7 +160,7 @@ class PullRequestReviewAction(Enum):
     dismissed = "dismissed"
 
 
-class PullRequestReview(BaseModel):
+class PullRequestReview(pydantic.BaseModel):
     id: int
     node_id: str
     user: User
@@ -199,7 +199,7 @@ class CheckRunConclusion(Enum):
     action_required = "action_required"
 
 
-class CheckRun(BaseModel):
+class CheckRun(pydantic.BaseModel):
     id: int
     head_sha: str
     external_id: str
@@ -223,18 +223,18 @@ class CheckRunEvent(GithubEvent):
     repository: Repo
 
 
-class Commiter(BaseModel):
+class Commiter(pydantic.BaseModel):
     name: str
     email: str
     date: datetime
 
 
-class Tree(BaseModel):
+class Tree(pydantic.BaseModel):
     sha: str
     url: UrlStr
 
 
-class CommitDetails(BaseModel):
+class CommitDetails(pydantic.BaseModel):
     author: Commiter
     commiter: Commiter
     message: str
@@ -243,7 +243,7 @@ class CommitDetails(BaseModel):
     comment_count: int
 
 
-class Commit(BaseModel):
+class Commit(pydantic.BaseModel):
     sha: str
     node_id: str
     url: UrlStr
@@ -252,7 +252,7 @@ class Commit(BaseModel):
     parents: typing.List[Tree]
 
 
-class Branch(BaseModel):
+class Branch(pydantic.BaseModel):
     name: str
     commit: Tree
 
@@ -282,12 +282,12 @@ class StatusEvent(GithubEvent):
     sender: User
 
 
-class PushEventCommitAuthor(BaseModel):
+class PushEventCommitAuthor(pydantic.BaseModel):
     name: str
     email: str
 
 
-class PushEventCommit(BaseModel):
+class PushEventCommit(pydantic.BaseModel):
     sha: str
     message: str
     author: PushEventCommitAuthor
