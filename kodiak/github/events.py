@@ -41,11 +41,13 @@ class Hook(BaseModel):
 
 
 class GithubEvent(BaseModel):
+    _event_name: str
     pass
 
 
 @register("ping")
 class Ping(GithubEvent):
+    _event_name = "ping"
     zen: str
     hook_id: int
     hook: Hook
@@ -147,6 +149,7 @@ class PullRequestEventActions(Enum):
 
 @register("pull_request")
 class PullRequestEvent(GithubEvent):
+    _event_name = "pull_request"
     action: PullRequestEventActions
     number: int
     pull_request: PullRequest
@@ -176,6 +179,7 @@ class PullRequestShort(BasePullRequest):
 
 @register("pull_request_review")
 class PullRequestReviewEvent(GithubEvent):
+    _event_name = "pull_request_review"
     action: PullRequestReviewAction
     review: PullRequestReview
     pull_request: PullRequestShort
@@ -216,6 +220,7 @@ class CheckRunEventAction(Enum):
 
 @register("check_run")
 class CheckRunEvent(GithubEvent):
+    _event_name = "check_run"
     action: CheckRunEventAction
     check_run: CheckRun
     repository: Repo
@@ -264,6 +269,7 @@ class StatusEventState(Enum):
 
 @register("status")
 class StatusEvent(GithubEvent):
+    _event_name = "status"
     id: int
     sha: str
     name: str
