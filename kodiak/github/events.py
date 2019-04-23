@@ -297,7 +297,6 @@ class PushEventCommit(BaseModel):
 
 @register
 class PushEvent(GithubEvent):
-    # TODO: Is this more useful or the name in the decorator?
     _event_name = "push"
     ref: str
     before: str
