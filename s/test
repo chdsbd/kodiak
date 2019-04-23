@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eux
+
+# test code
+poetry run pytest
