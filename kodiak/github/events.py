@@ -9,7 +9,7 @@ from enum import Enum
 
 AnyDict = typing.Dict[typing.Any, typing.Any]
 
-event_registry: typing.MutableMapping[str, typing.Type[GithubEvent]] = dict()
+event_registry: typing.MutableMapping[str, typing.Type['GithubEvent']] = dict()
 
 
 def register(header_name: str) -> typing.Callable:
