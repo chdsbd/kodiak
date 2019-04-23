@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -eux
+
+# format code
+poetry run black --check .
+
+# type check code
+poetry run mypy .
