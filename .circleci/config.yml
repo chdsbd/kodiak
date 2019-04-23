@@ -1,0 +1,65 @@
+version: 2
+
+jobs:
+  test_api:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - api-v0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+            - api-v0-{{ .Branch }}-
+            - api-v0-
+      - run:
+          name: install dependencies
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./.mypy_cache
+            - /root/.cache/
+          key: api-v0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+      - run:
+          name: run tests
+          command: ./s/test
+
+  lint_api:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - api-v0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+            - api-v0-{{ .Branch }}-
+            - api-v0-
+      - run:
+          name: install dependencies
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./.mypy_cache
+            - /root/.cache/
+          key: api-v0-{{ .Branch }}-{{ checksum "poetry.lock" }}
+      - run:
+          name: run lints
+          command: ./s/lint
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test_api
+      - lint_api
