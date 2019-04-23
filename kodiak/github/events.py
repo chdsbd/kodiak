@@ -12,7 +12,7 @@ AnyDict = typing.Dict[typing.Any, typing.Any]
 event_registry: typing.MutableMapping[str, typing.Type["GithubEvent"]] = dict()
 
 
-def register(cls: typing.Type[GithubEvent]):
+def register(cls: typing.Type["GithubEvent"]):
     event_registry[cls._event_name] = cls
     return cls
 
