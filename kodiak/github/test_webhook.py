@@ -1,0 +1,160 @@
+import pytest
+import typing
+from pathlib import Path
+import json
+import inspect
+
+from kodiak.github import Webhook, events, fixtures
+from fastapi import FastAPI
+from starlette.testclient import TestClient
+from starlette import status
+
+
+@pytest.fixture
+def app():
+    return FastAPI()
+
+
+@pytest.fixture
+def webhook(app: FastAPI):
+    return Webhook(app)
+
+
+@pytest.fixture
+def client(app: FastAPI):
+    return TestClient(app)
+
+
+@pytest.fixture
+def pull_request_event():
+    file = Path(__file__).parent / "fixtures" / "pull_request_event.json"
+    return json.loads(file.read_bytes())
+
+
+def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
+    """
+    Passing one arg with a valid type should be accepted
+    """
+
+    hook_run = False
+
+    @webhook()
+    def push(data: events.PullRequestEvent):
+        nonlocal hook_run
+        hook_run = True
+        assert isinstance(data, events.PullRequestEvent)
+
+    assert webhook.event_mapping[events.PullRequestEvent] == [push]
+    assert len(webhook.event_mapping) == 1
+
+    res = client.post(
+        "/api/github/hook",
+        json=pull_request_event,
+        headers={"X-Github-Event": "pull_request"},
+    )
+    assert res.status_code == status.HTTP_200_OK
+    assert hook_run
+
+
+def test_union(webhook: Webhook):
+    """
+    We should be able to request a union of events
+    """
+
+    @webhook()
+    def push(data: typing.Union[events.PullRequestEvent, events.PushEvent]):
+        pass
+
+    for event in (events.PullRequestEvent, events.PushEvent):
+        assert webhook.event_mapping[event] == [push]
+    assert len(webhook.event_mapping) == 2
+
+
+def too_few_args(webhook: Webhook):
+    with pytest.raises(TypeError, match="invalid number of arguments"):
+
+        @webhook()
+        def push():
+            pass
+
+
+def test_too_many_args(webhook: Webhook):
+    with pytest.raises(TypeError, match="invalid number of arguments"):
+
+        @webhook()
+        def push(pull: events.PullRequestEvent, push: events.PushEvent):
+            pass
+
+
+def test_invalid_arg_type(webhook: Webhook):
+    with pytest.raises(
+        TypeError,
+        match="Invalid type annotation",
+        message="we only support `github.events` types in our annotation.",
+    ):
+
+        @webhook()
+        def push(event: dict):
+            pass
+
+
+def test_invalid_union(webhook: Webhook):
+    with pytest.raises(
+        TypeError,
+        match="Invalid type annotation",
+        message="we only support `github.events` types in our annotation.",
+    ):
+
+        @webhook()
+        def push(event: typing.Union[events.PullRequestEvent, int]):
+            pass
+
+
+@pytest.mark.parametrize("event, file_name", fixtures.MAPPING)
+def test_event_parsing(
+    client: TestClient,
+    webhook: Webhook,
+    event: typing.Type[events.GithubEvent],
+    file_name: str,
+):
+    """Test all of the events we have"""
+    data = json.loads((Path(__file__).parent / "fixtures" / file_name).read_bytes())
+
+    hook_run = False
+
+    def push(data: events.GithubEvent):
+        nonlocal hook_run
+        hook_run = True
+        assert isinstance(data, event)
+
+    push.__annotations__["data"] = event
+    webhook()(push)
+
+    assert webhook.event_mapping[event] == [push]
+    assert len(webhook.event_mapping) == 1
+
+    res = client.post(
+        "/api/github/hook", json=data, headers={"X-Github-Event": event._event_name}
+    )
+    assert res.status_code == status.HTTP_200_OK
+    assert hook_run
+
+
+def test_event_count():
+    """
+    Verify we are testing all of the events
+    
+    If this is failing, we probably forgot to register an event in events
+    """
+    all_events = []
+    for item in events.__dict__.values():
+        if (
+            inspect.isclass(item)
+            and issubclass(item, events.GithubEvent)
+            and item != events.GithubEvent
+        ):
+            all_events.append(item)
+
+    assert set(all_events) == set(
+        [event_class for event_class, _fixture_name in fixtures.MAPPING]
+    )
