@@ -39,7 +39,7 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
     hook_run = False
 
     @webhook()
-    def push(data: events.PullRequestEvent):
+    async def push(data: events.PullRequestEvent):
         nonlocal hook_run
         hook_run = True
         assert isinstance(data, events.PullRequestEvent)

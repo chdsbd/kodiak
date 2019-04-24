@@ -1,4 +1,5 @@
 import typing
+import asyncio
 from dataclasses import dataclass
 from collections import defaultdict
 import logging
@@ -63,7 +64,9 @@ class Webhook:
             logger.info("No listeners registered for event: %s", github_event)
             return None
         for listener in listeners:
-            listener(handler.parse_obj(event))
+            res = listener(handler.parse_obj(event))
+            if asyncio.iscoroutine(res):
+                await res
         logger.info(
             "'%s' listeners registered for event: %s", len(listeners), github_event
         )
