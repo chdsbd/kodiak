@@ -92,12 +92,17 @@ class CompareBranch(pydantic.BaseModel):
     repo: Repo
 
 
+class PullRequestState(Enum):
+    open = "open"
+    closed = "closed"
+
+
 class BasePullRequest(pydantic.BaseModel):
     url: UrlStr
     id: int
     node_id: str
     number: int
-    state: str
+    state: PullRequestState
     locked: bool
     title: str
     user: User
@@ -117,11 +122,20 @@ class BasePullRequest(pydantic.BaseModel):
     base: CompareBranch
 
 
+class MergeableState(Enum):
+    # The pull request can be merged.
+    clean = "clean"
+    # The pull request cannot be merged due to merge conflicts.
+    conflicting = "dirty"
+    # The mergeability of the pull request is still being calculated.
+    unknown = "unknown"
+
+
 class PullRequest(BasePullRequest):
     merged: bool
     mergeable: bool
     rebaseable: bool
-    mergeable_state: str
+    mergeable_state: MergeableState
     merged_by: typing.Optional[str]
     comments: int
     review_comments: int
