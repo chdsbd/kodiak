@@ -70,4 +70,3 @@ class V1(BaseModel):
         if v != 1:
             raise InvalidVersion("Version must be `1`")
         return v
-
