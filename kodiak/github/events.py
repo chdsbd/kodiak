@@ -6,6 +6,7 @@ import typing
 import pydantic
 from pydantic import UrlStr
 from enum import Enum
+from typing_extensions import Literal
 
 
 AnyDict = typing.Dict[typing.Any, typing.Any]
@@ -127,6 +128,8 @@ class MergeableState(Enum):
     clean = "clean"
     # The pull request cannot be merged due to merge conflicts.
     conflicting = "dirty"
+    # The pull request is behind target
+    behind = "behind"
     # The mergeability of the pull request is still being calculated.
     unknown = "unknown"
 
@@ -231,7 +234,15 @@ class CheckRun(pydantic.BaseModel):
     external_id: str
     url: UrlStr
     status: CheckRunStatus
+    name: str
     conclusion: typing.Optional[CheckRunConclusion]
+
+    def to_status(self) -> Literal["pending", "success", "failure"]:
+        if self.status is None:
+            return "pending"
+        if self.status in (CheckRunConclusion.success, CheckRunConclusion.neutral):
+            return "success"
+        return "failure"
 
 
 class CheckRunEventAction(Enum):
