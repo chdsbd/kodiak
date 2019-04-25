@@ -19,6 +19,7 @@ ipdb = "^0.12.0"
 toml = "^0.10.0"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "^1.10"
+rope = "^0.14.0"
 
 [build-system]
 requires = ["poetry>=0.12"]
