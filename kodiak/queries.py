@@ -30,7 +30,13 @@ class QueryError(BaseException):
 
 
 DEFAULT_BRANCH_NAME_QUERY = """
-query ($owner: String!, $repo: String!) {  repository(owner: $owner, name: $repo) {    defaultBranchRef {      name    }  }}
+query ($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    defaultBranchRef {
+      name
+    }
+  }
+}
 """
 
 
