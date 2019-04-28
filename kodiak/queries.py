@@ -82,9 +82,8 @@ class Client:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY, variables=dict(owner=owner, repo=repo)
         )
-        if res.get("errors") is not None:
-            raise BranchNameError(res=res)
         data = res.get("data")
-        if data is None:
+        errors = res.get("errors")
+        if errors is not None or data is None:
             raise BranchNameError(res=res)
         return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
