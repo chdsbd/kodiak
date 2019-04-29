@@ -1,0 +1,72 @@
+interactions:
+- request:
+    body: '{"query": "\nquery GetEventInfo($owner: String!, $repo: String!, $configFileExpression:
+      String!, $PRNumber: Int!) {\n  repository(owner: $owner, name: $repo) {\n    mergeCommitAllowed\n    rebaseMergeAllowed\n    squashMergeAllowed\n    pullRequest(number:
+      $PRNumber) {\n      mergeStateStatus\n      state\n      labels(first: 100)
+      {\n        nodes {\n          name\n        }\n        totalCount\n      }\n    }\n    object(expression:
+      $configFileExpression) {\n      ... on Blob {\n        text\n      }\n    }\n  }\n}\n\n",
+      "variables": {"owner": "chdsbd", "repo": "test_repo", "configFileExpression":
+      "master:.config.toml", "PRNumber": 2}}'
+    headers:
+      Accept:
+      - application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '645'
+      Content-Type:
+      - application/json
+      host:
+      - api.github.com
+    method: POST
+    uri: https://api.github.com/graphql
+  response:
+    body:
+      string: '{"data":{"repository":{"mergeCommitAllowed":true,"rebaseMergeAllowed":true,"squashMergeAllowed":true,"pullRequest":{"mergeStateStatus":"CLEAN","state":"OPEN","labels":{"nodes":[{"name":"duplicate"}],"totalCount":1}},"object":{"text":"version
+        = 1\n[merge]\nwhitelist = [\"automerge\"]\nblacklist = [\"wip\", \"block-merge\"]\nmethod
+        = \"squash\"\ndelete_branch_on_merge = false\n\n[merge.message]\ntitle = \"github_default\"\nbody
+        = \"github_default\"\n\n[update]\nblacklist = [\"no-update\"]\n"}}}}'
+    headers:
+    - - server
+      - GitHub.com
+    - - date
+      - Thu, 20 May 2010 12:30:20 GMT
+    - - content-type
+      - application/json; charset=utf-8
+    - - transfer-encoding
+      - chunked
+    - - status
+      - 200 OK
+    - - cache-control
+      - no-cache
+    - - x-oauth-scopes
+      - repo
+    - - x-accepted-oauth-scopes
+      - repo
+    - - x-github-media-type
+      - github.antiope-preview; format=json, github.merge-info-preview; format=json
+    - - access-control-expose-headers
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+    - - access-control-allow-origin
+      - '*'
+    - - strict-transport-security
+      - max-age=31536000; includeSubdomains; preload
+    - - x-frame-options
+      - deny
+    - - x-content-type-options
+      - nosniff
+    - - x-xss-protection
+      - 1; mode=block
+    - - referrer-policy
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+    - - content-security-policy
+      - default-src 'none'
+    status:
+      code: 200
+      message: OK
+    url: https://api.github.com/graphql
+version: 1

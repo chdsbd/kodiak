@@ -2,7 +2,6 @@ version = 1
 [merge]
 whitelist = ["automerge"]
 blacklist = ["wip", "block-merge"]
-extra_checks = ['circleci/api']
 method = "squash"
 delete_branch_on_merge = false
 

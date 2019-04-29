@@ -2,6 +2,7 @@ import typing
 from enum import Enum
 from dataclasses import field
 from pydantic import BaseModel, validator
+import toml
 
 
 class MergeMethod(Enum):
@@ -36,9 +37,6 @@ class Merge(BaseModel):
     whitelist: typing.List[str] = []
     # labels to block merging of pull request
     blacklist: typing.List[str] = []
-    # additional statuses or checks to pass before merging beyond those defined
-    # via branch protection
-    extra_checks: typing.List[str] = []
     # action to take when attempting to merge PR. An error will occur if method
     # is disabled for repository
     method: MergeMethod = MergeMethod.merge
@@ -70,3 +68,7 @@ class V1(BaseModel):
         if v != 1:
             raise InvalidVersion("Version must be `1`")
         return v
+
+    @classmethod
+    def parse_toml(cls, content: str) -> "V1":
+        return cls.parse_obj(typing.cast(dict, toml.loads(content)))
