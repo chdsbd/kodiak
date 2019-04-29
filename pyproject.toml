@@ -11,6 +11,8 @@ fastapi = {version = "^0.17.0",extras = ["all"]}
 PyGithub = "^1.43"
 requests-async = "^0.4.1"
 jsonpath-rw = "^1.4"
+PyJWT = "^1.7"
+cryptography = "^2.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"
