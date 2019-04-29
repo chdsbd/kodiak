@@ -1,7 +1,7 @@
-from typing import Union
-
 from fastapi import FastAPI
 from kodiak.github import Webhook, events
+
+from . import handlers
 
 app = FastAPI()
 
@@ -14,5 +14,5 @@ async def read_main():
 
 
 @webhook()
-def event_handler(data: Union[events.PullRequestEvent]):
-    raise NotImplementedError()
+def event_handler(data: events.PullRequestEvent):
+    handlers.pull_request(data)

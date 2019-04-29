@@ -70,5 +70,8 @@ class V1(BaseModel):
         return v
 
     @classmethod
-    def parse_toml(cls, content: str) -> "V1":
-        return cls.parse_obj(typing.cast(dict, toml.loads(content)))
+    def parse_toml(cls, content: str) -> typing.Union["V1", toml.TomlDecodeError]:
+        try:
+            return cls.parse_obj(typing.cast(dict, toml.loads(content)))
+        except toml.TomlDecodeError as e:
+            return e

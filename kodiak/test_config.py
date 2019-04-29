@@ -3,8 +3,9 @@ from pathlib import Path
 import typing
 import toml
 from pathlib import Path
+import toml
 
-from .config import V1
+from kodiak.config import V1
 
 
 def load_config_fixture(fixture_name: str) -> Path:
@@ -22,3 +23,8 @@ def test_config_parsing(config, fixtures: typing.List[str]):
     configs = [config.parse_obj(file) for file in files]
     for config in configs:
         assert config == configs[0], "all configs should be equal"
+
+
+def test_bad_file():
+    res = V1.parse_toml("something[invalid[")
+    assert isinstance(res, toml.TomlDecodeError)
