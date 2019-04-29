@@ -34,7 +34,7 @@ class MergeMessage(BaseModel):
 class Merge(BaseModel):
     # required labels to enable merging of pull request. An empty list indicates
     # no label is required to enable automerge. This is not recommended.
-    whitelist: typing.List[str] = []
+    whitelist: typing.List[str] = ["automerge"]
     # labels to block merging of pull request
     blacklist: typing.List[str] = []
     # action to take when attempting to merge PR. An error will occur if method

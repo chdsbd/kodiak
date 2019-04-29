@@ -98,6 +98,15 @@ class PullRequestState(Enum):
     closed = "closed"
 
 
+class Label(pydantic.BaseModel):
+    id: int
+    node_id: str
+    url: UrlStr
+    name: str
+    color: str
+    default: bool = False
+
+
 class BasePullRequest(pydantic.BaseModel):
     url: UrlStr
     id: int
@@ -112,26 +121,28 @@ class BasePullRequest(pydantic.BaseModel):
     updated_at: datetime
     closed_at: typing.Optional[datetime]
     merged_at: typing.Optional[datetime]
-    merge_commit_sha: str
+    merge_commit_sha: typing.Optional[str]
     assignee: typing.Optional[str]
     assignees: typing.List[str]
     requested_reviewers: typing.List[str]
     requested_teams: typing.List[str]
-    labels: typing.List[str]
+    labels: typing.List[Label]
     milestone: typing.Optional[str]
     head: CompareBranch
     base: CompareBranch
 
 
 class MergeableState(Enum):
+    # The pull request is behind target
+    behind = "behind"
+    blocked = "blocked"
     # The pull request can be merged.
     clean = "clean"
     # The pull request cannot be merged due to merge conflicts.
     conflicting = "dirty"
-    # The pull request is behind target
-    behind = "behind"
     # The mergeability of the pull request is still being calculated.
     unknown = "unknown"
+    unstable = "unstable"
 
 
 class PullRequest(BasePullRequest):
@@ -139,7 +150,7 @@ class PullRequest(BasePullRequest):
     mergeable: bool
     rebaseable: bool
     mergeable_state: MergeableState
-    merged_by: typing.Optional[str]
+    merged_by: typing.Optional[User]
     comments: int
     review_comments: int
     maintainer_can_modify: bool

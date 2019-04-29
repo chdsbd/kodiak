@@ -154,6 +154,16 @@ def get_value(expr: str, data: typing.Dict) -> typing.Optional[typing.Any]:
     return next(iter(get_values(expr, data)), None)
 
 
+MERGE_PR_MUTATION = """
+mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
+  mergePullRequest(input: {pullRequestId: $PRId, expectedHeadOid: $SHA, commitHeadline: $title, commitBody: $body}) {
+    clientMutationId
+  }
+}
+
+"""
+
+
 class Client:
     token: typing.Optional[str]
     session: http.Session
@@ -180,7 +190,7 @@ class Client:
         await self.session.close()
 
     async def send_query(
-        self, query: str, variables: typing.Mapping[str, typing.Union[str, int]]
+        self, query: str, variables: typing.Mapping[str, typing.Union[str, int, None]]
     ) -> GraphQLResponse:
         assert (
             self.entered
@@ -263,3 +273,21 @@ class Client:
         pr = PullRequest.parse_obj(pull_request)
 
         return EventInfoResponse(config_file=config, pull_request=pr, repo=repo_info)
+
+    async def merge_pr(
+        self,
+        pr_id: str,
+        sha: str,
+        title: typing.Optional[str] = None,
+        body: typing.Optional[str] = None,
+    ) -> None:
+        res = await self.send_query(
+            query=MERGE_PR_MUTATION,
+            variables=dict(PRId=pr_id, SHA=sha, title=title, body=body),
+        )
+        data = res.get("data")
+        errors = res.get("errors")
+        if errors is not None:
+            # TODO: Handle error responses from
+            raise NotImplementedError()
+        logger.info("merged PR. res (%s)", res)

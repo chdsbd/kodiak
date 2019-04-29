@@ -53,7 +53,9 @@ async def merge_pr(
         title,
         body,
     )
-    raise NotImplementedError()
+    async with Client() as client:
+        # TODO: Add error handling
+        await client.merge_pr(pr_id=pr_id, sha=sha)
 
 
 async def root_handler(owner: str, repo: str, pr_number: int) -> None:

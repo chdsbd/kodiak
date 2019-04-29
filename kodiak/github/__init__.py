@@ -63,7 +63,7 @@ class Webhook:
             logger.info("No listeners registered for event: %s", github_event)
             return None
         for listener in listeners:
-            listener(handler.parse_obj(event))
+            await listener(handler.parse_obj(event))
         logger.info(
             "'%s' listeners registered for event: %s", len(listeners), github_event
         )

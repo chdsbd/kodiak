@@ -80,7 +80,10 @@ async def evaluate_mergability(
     if pull_request.state == PullRequestState.CLOSED:
         problems.append(MergeErrors.PR_CLOSED)
 
-    if pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN:
+    if (
+        pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN
+        and pull_request.state != PullRequestState.MERGED
+    ):
         # TODO: Retry until we can get a usable status
         raise NotImplementedError()
     if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
