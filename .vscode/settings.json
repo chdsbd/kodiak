@@ -8,5 +8,6 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.testing.pyTestEnabled": true
+    "python.testing.pyTestEnabled": true,
+    "python.jediEnabled": false
 }
