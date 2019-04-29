@@ -2,8 +2,9 @@ interactions:
 - request:
     body: '{"query": "\nquery GetEventInfo($owner: String!, $repo: String!, $configFileExpression:
       String!, $PRNumber: Int!) {\n  repository(owner: $owner, name: $repo) {\n    mergeCommitAllowed\n    rebaseMergeAllowed\n    squashMergeAllowed\n    pullRequest(number:
-      $PRNumber) {\n      mergeStateStatus\n      state\n      labels(first: 100)
-      {\n        nodes {\n          name\n        }\n        totalCount\n      }\n    }\n    object(expression:
+      $PRNumber) {\n      id\n      mergeStateStatus\n      state\n      commits(last:
+      1) {\n        nodes {\n          commit {\n            oid\n          }\n        }\n      }\n      labels(first:
+      100) {\n        nodes {\n          name\n        }\n        totalCount\n      }\n    }\n    object(expression:
       $configFileExpression) {\n      ... on Blob {\n        text\n      }\n    }\n  }\n}\n\n",
       "variables": {"owner": "chdsbd", "repo": "test_repo", "configFileExpression":
       "master:__invalid__config__path__.kodiak.yml", "PRNumber": 1}}'
@@ -15,7 +16,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '669'
+      - '792'
       Content-Type:
       - application/json
       host:
@@ -24,7 +25,7 @@ interactions:
     uri: https://api.github.com/graphql
   response:
     body:
-      string: '{"data":{"repository":{"mergeCommitAllowed":true,"rebaseMergeAllowed":true,"squashMergeAllowed":true,"pullRequest":{"mergeStateStatus":"UNKNOWN","state":"MERGED","labels":{"nodes":[],"totalCount":0}},"object":null}}}'
+      string: '{"data":{"repository":{"mergeCommitAllowed":true,"rebaseMergeAllowed":true,"squashMergeAllowed":true,"pullRequest":{"id":"MDExOlB1bGxSZXF1ZXN0Mjc0MjI2MDI0","mergeStateStatus":"UNKNOWN","state":"MERGED","commits":{"nodes":[{"commit":{"oid":"1d2eef16a50d38959ddc9c7a1d6997c594474d1a"}}]},"labels":{"nodes":[],"totalCount":0}},"object":null}}}'
     headers:
     - - server
       - GitHub.com

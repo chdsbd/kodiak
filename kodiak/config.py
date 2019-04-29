@@ -43,7 +43,7 @@ class Merge(BaseModel):
 
     delete_branch_on_merge: bool = False
     # configuration for commit message of merge
-    message: MergeMessage
+    message: MergeMessage = MergeMessage()
 
 
 class Update(BaseModel):
@@ -59,9 +59,9 @@ class InvalidVersion(ValueError):
 
 
 class V1(BaseModel):
-    version = 1
-    merge: Merge
-    update: Update
+    version: int
+    merge: Merge = Merge()
+    update: Update = Update()
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v):
@@ -70,8 +70,10 @@ class V1(BaseModel):
         return v
 
     @classmethod
-    def parse_toml(cls, content: str) -> typing.Union["V1", toml.TomlDecodeError]:
+    def parse_toml(
+        cls, content: str
+    ) -> typing.Union["V1", toml.TomlDecodeError, ValueError]:
         try:
             return cls.parse_obj(typing.cast(dict, toml.loads(content)))
-        except toml.TomlDecodeError as e:
+        except (ValueError, toml.TomlDecodeError) as e:
             return e

@@ -1,8 +1,8 @@
 interactions:
 - request:
-    body: '{"query": "\nquery ($owner: String!, $repo: String!) {  repository(owner:
-      $owner, name: $repo) {    defaultBranchRef {      name    }  }}\n", "variables":
-      {"owner": "django", "repo": "django"}}'
+    body: '{"query": "\nquery ($owner: String!, $repo: String!) {\n  repository(owner:
+      $owner, name: $repo) {\n    defaultBranchRef {\n      name\n    }\n  }\n}\n",
+      "variables": {"owner": "django", "repo": "django"}}'
     headers:
       Accept:
       - application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json
@@ -11,7 +11,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '193'
+      - '205'
       Content-Type:
       - application/json
       host:
@@ -35,7 +35,7 @@ interactions:
     - - cache-control
       - no-cache
     - - x-oauth-scopes
-      - public_repo
+      - repo
     - - x-accepted-oauth-scopes
       - repo
     - - x-github-media-type
@@ -63,9 +63,9 @@ interactions:
       message: OK
     url: https://api.github.com/graphql
 - request:
-    body: '{"query": "\nquery ($owner: String!, $repo: String!) {  repository(owner:
-      $owner, name: $repo) {    defaultBranchRef {      name    }  }}\n", "variables":
-      {"owner": "about", "repo": "about"}}'
+    body: '{"query": "\nquery ($owner: String!, $repo: String!) {\n  repository(owner:
+      $owner, name: $repo) {\n    defaultBranchRef {\n      name\n    }\n  }\n}\n",
+      "variables": {"owner": "about", "repo": "about"}}'
     headers:
       Accept:
       - application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json
@@ -74,7 +74,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '191'
+      - '203'
       Content-Type:
       - application/json
       host:
@@ -83,7 +83,7 @@ interactions:
     uri: https://api.github.com/graphql
   response:
     body:
-      string: '{"data":{"repository":null},"errors":[{"type":"NOT_FOUND","path":["repository"],"locations":[{"line":2,"column":44}],"message":"Could
+      string: '{"data":{"repository":null},"errors":[{"type":"NOT_FOUND","path":["repository"],"locations":[{"line":3,"column":3}],"message":"Could
         not resolve to a User with the username ''about''."}]}'
     headers:
     - - server
@@ -99,7 +99,7 @@ interactions:
     - - cache-control
       - no-cache
     - - x-oauth-scopes
-      - public_repo
+      - repo
     - - x-accepted-oauth-scopes
       - repo
     - - x-github-media-type

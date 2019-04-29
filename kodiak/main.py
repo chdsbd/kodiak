@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from kodiak.github import Webhook, events
 
-from kodiak.handler import base_handler
+from kodiak.handler import root_handler
 
 app = FastAPI()
 
@@ -15,6 +15,6 @@ async def read_main():
 
 @webhook()
 async def pr_event(pr: events.PullRequestEvent):
-    await base_handler(
+    await root_handler(
         owner=pr.repository.owner.login, repo=pr.repository.name, pr_number=pr.number
     )

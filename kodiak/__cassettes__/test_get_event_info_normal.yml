@@ -2,8 +2,9 @@ interactions:
 - request:
     body: '{"query": "\nquery GetEventInfo($owner: String!, $repo: String!, $configFileExpression:
       String!, $PRNumber: Int!) {\n  repository(owner: $owner, name: $repo) {\n    mergeCommitAllowed\n    rebaseMergeAllowed\n    squashMergeAllowed\n    pullRequest(number:
-      $PRNumber) {\n      mergeStateStatus\n      state\n      labels(first: 100)
-      {\n        nodes {\n          name\n        }\n        totalCount\n      }\n    }\n    object(expression:
+      $PRNumber) {\n      id\n      mergeStateStatus\n      state\n      commits(last:
+      1) {\n        nodes {\n          commit {\n            oid\n          }\n        }\n      }\n      labels(first:
+      100) {\n        nodes {\n          name\n        }\n        totalCount\n      }\n    }\n    object(expression:
       $configFileExpression) {\n      ... on Blob {\n        text\n      }\n    }\n  }\n}\n\n",
       "variables": {"owner": "chdsbd", "repo": "test_repo", "configFileExpression":
       "master:.config.toml", "PRNumber": 2}}'
@@ -15,7 +16,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '645'
+      - '768'
       Content-Type:
       - application/json
       host:
@@ -24,7 +25,7 @@ interactions:
     uri: https://api.github.com/graphql
   response:
     body:
-      string: '{"data":{"repository":{"mergeCommitAllowed":true,"rebaseMergeAllowed":true,"squashMergeAllowed":true,"pullRequest":{"mergeStateStatus":"CLEAN","state":"OPEN","labels":{"nodes":[{"name":"duplicate"}],"totalCount":1}},"object":{"text":"version
+      string: '{"data":{"repository":{"mergeCommitAllowed":true,"rebaseMergeAllowed":true,"squashMergeAllowed":true,"pullRequest":{"id":"MDExOlB1bGxSZXF1ZXN0Mjc0MjI3Njg1","mergeStateStatus":"CLEAN","state":"OPEN","commits":{"nodes":[{"commit":{"oid":"1cd14ec3fa903f96fe8ed328d60532ccf46cbb24"}}]},"labels":{"nodes":[{"name":"duplicate"}],"totalCount":1}},"object":{"text":"version
         = 1\n[merge]\nwhitelist = [\"automerge\"]\nblacklist = [\"wip\", \"block-merge\"]\nmethod
         = \"squash\"\ndelete_branch_on_merge = false\n\n[merge.message]\ntitle = \"github_default\"\nbody
         = \"github_default\"\n\n[update]\nblacklist = [\"no-update\"]\n"}}}}'

@@ -63,8 +63,16 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
     rebaseMergeAllowed
     squashMergeAllowed
     pullRequest(number: $PRNumber) {
+      id
       mergeStateStatus
       state
+      commits(last: 1) {
+        nodes {
+          commit {
+            oid
+          }
+        }
+      }
       labels(first: 100) {
         nodes {
           name
@@ -112,9 +120,12 @@ class PullRequestState(Enum):
 
 
 class PullRequest(BaseModel):
+    id: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     labels: typing.List[str]
+    # the SHA of the most recent commit
+    latest_sha: str
 
 
 @dataclass
@@ -242,9 +253,13 @@ class Client:
         )
         assert label_count is not None, "we should always be able to get the labels"
         assert label_count <= PAGE_SIZE, "we don't paginate at the moment"
-
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = labels
+        sha: typing.Optional[str] = get_value(
+            expr="repository.pullRequest.commits.nodes[0].commit.oid", data=data
+        )
+        assert sha is not None, "a SHA should always exist"
+        pull_request["latest_sha"] = sha
         pr = PullRequest.parse_obj(pull_request)
 
         return EventInfoResponse(config_file=config, pull_request=pr, repo=repo_info)

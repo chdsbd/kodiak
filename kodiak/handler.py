@@ -8,21 +8,18 @@ from kodiak.queries import Client, RepoInfo, PullRequest
 
 logger = logging.getLogger(__name__)
 
-
-def create_git_revision_expression(branch: str, file_path: str) -> str:
-    """
-    example: `master:.circleci/config.yml`
-    """
-    return f"{branch}:{file_path}"
-
-
 CONFIG_FILE_PATH = ".kodiak.toml"
 
 
+def create_git_revision_expression(branch: str, file_path: str) -> str:
+    return f"{branch}:{file_path}"
+
+
+# TODO: Combine into root_handler. Centralize all the stateful calls
 async def find_event_data(
     owner: str, repo: str, pr_number: int
 ) -> typing.Tuple[
-    typing.Optional[typing.Union[config.V1, toml.TomlDecodeError]],
+    typing.Optional[typing.Union[config.V1, toml.TomlDecodeError, ValueError]],
     typing.Optional[PullRequest],
 ]:
     async with Client() as client:
@@ -43,13 +40,25 @@ async def find_event_data(
         return (cfg, event_info.pull_request)
 
 
-async def merge_pr(owner: str, repo: str, pr_number: int):
+async def merge_pr(
+    pr_id: str,
+    sha: str,
+    title: typing.Optional[str] = None,
+    body: typing.Optional[str] = None,
+) -> None:
+    logging.info(
+        "attempting to merge pr (%s) with sha (%s), title (%s) and body (%s)",
+        pr_id,
+        sha,
+        title,
+        body,
+    )
     raise NotImplementedError()
 
 
-async def base_handler(owner: str, repo: str, pr_number: int) -> None:
+async def root_handler(owner: str, repo: str, pr_number: int) -> None:
     cfg, pull_request = await find_event_data(owner, repo, pr_number)
-    if isinstance(cfg, toml.TomlDecodeError):
+    if isinstance(cfg, toml.TomlDecodeError) or isinstance(cfg, ValueError):
         logger.warning("Problem parsing configuration file: %s", cfg)
         return
     if cfg is None:
@@ -62,4 +71,4 @@ async def base_handler(owner: str, repo: str, pr_number: int) -> None:
     if isinstance(res, Failure):
         logger.warning("Pull request is not eligible to be merged: %s", res.problems)
         return
-    await merge_pr(owner=owner, repo=repo, pr_number=pr_number)
+    await merge_pr(pr_id=pull_request.id, sha=pull_request.latest_sha)
