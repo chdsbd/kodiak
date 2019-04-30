@@ -2,6 +2,7 @@ import typing
 from dataclasses import dataclass
 from collections import defaultdict
 import logging
+import inspect
 
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
@@ -63,7 +64,10 @@ class Webhook:
             logger.info("No listeners registered for event: %s", github_event)
             return None
         for listener in listeners:
-            await listener(handler.parse_obj(event))
+            res = listener(handler.parse_obj(event))
+            # support async and non-async functions
+            if inspect.isawaitable(res):
+                await res
         logger.info(
             "'%s' listeners registered for event: %s", len(listeners), github_event
         )
