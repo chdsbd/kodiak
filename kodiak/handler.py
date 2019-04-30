@@ -1,12 +1,12 @@
 import typing
 import toml
-import logging
+import structlog
 
 from kodiak import config
 from kodiak.evaluation import evaluate_mergability, Failure
 from kodiak.queries import Client, RepoInfo, PullRequest
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 CONFIG_FILE_PATH = ".kodiak.toml"
 
@@ -46,13 +46,7 @@ async def merge_pr(
     title: typing.Optional[str] = None,
     body: typing.Optional[str] = None,
 ) -> None:
-    logging.info(
-        "attempting to merge pr (%s) with sha (%s), title (%s) and body (%s)",
-        pr_id,
-        sha,
-        title,
-        body,
-    )
+    log.info("attempting to merge pr", sha=sha, title=title, body=body)
     async with Client() as client:
         # TODO: Add error handling
         await client.merge_pr(pr_id=pr_id, sha=sha)
@@ -61,16 +55,16 @@ async def merge_pr(
 async def root_handler(owner: str, repo: str, pr_number: int) -> None:
     cfg, pull_request = await find_event_data(owner, repo, pr_number)
     if isinstance(cfg, toml.TomlDecodeError) or isinstance(cfg, ValueError):
-        logger.warning("Problem parsing configuration file: %s", cfg)
+        log.warning("Configuration could not be parsed", cfg=cfg)
         return
     if cfg is None:
-        logger.warning("Could not find config file")
+        log.warning("Configuration could not be found", cfg=fg)
         return
     if pull_request is None:
-        logger.warning("Could not find pull request number: %s", pr_number)
+        log.warning("Pull request could not be found", pr_number=pr_number)
         return
     res = await evaluate_mergability(config=cfg, pull_request=pull_request)
     if isinstance(res, Failure):
-        logger.warning("Pull request is not eligible to be merged: %s", res.problems)
+        log.warning("Pull request is not eligible to be merged", problems=res.problems)
         return
     await merge_pr(pr_id=pull_request.id, sha=pull_request.latest_sha)

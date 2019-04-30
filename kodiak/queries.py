@@ -2,7 +2,7 @@ import os
 import typing
 from dataclasses import dataclass
 from enum import Enum
-import logging
+import structlog
 
 import requests_async as http
 from mypy_extensions import TypedDict
@@ -11,7 +11,7 @@ from starlette import status
 from jsonpath_rw import parse
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 
 class ErrorLocation(TypedDict):
@@ -195,7 +195,7 @@ class Client:
         assert (
             self.entered
         ), "Client must be used in an async context manager. `async with Client() as api: ..."
-        logging.debug("request with query (%s) and variables (%s)", query, variables)
+        log.debug("sending request", query=query, variables=variables)
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
@@ -290,4 +290,4 @@ class Client:
         if errors is not None:
             # TODO: Handle error responses from
             raise NotImplementedError()
-        logger.info("merged PR. res (%s)", res)
+        log.info("merged_pr", api_response=res)

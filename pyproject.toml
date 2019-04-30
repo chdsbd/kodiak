@@ -13,6 +13,8 @@ requests-async = "^0.4.1"
 jsonpath-rw = "^1.4"
 PyJWT = "^1.7"
 cryptography = "^2.6"
+structlog = "^19.1"
+colorama = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"
