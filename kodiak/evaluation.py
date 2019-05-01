@@ -16,6 +16,9 @@ class MergeErrors(str, Enum):
     PR_CLOSED = auto()
     # there are unsuccessful checks
     UNSTABLE_MERGE = auto()
+    DRAFT = auto()
+    BEHIND_TARGET = auto()
+    UNKNOWN = auto()
 
 
 @dataclass
@@ -94,26 +97,28 @@ async def evaluate_mergability(
         pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN
         and pull_request.state != PullRequestState.MERGED
     ):
-        pr_log.info("retry until we can get a usable status")
-        raise NotImplementedError()
+        raise NotImplementedError("retry until we can get a usable status")
     if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
-        pr_log.info("enqueue pull request for update")
-        raise NotImplementedError()
+        problems.append(MergeErrors.BEHIND_TARGET)
+        raise NotImplementedError("enqueue pull request for update")
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
-        pr_log.info("unstable means we having in-progress/failing statuses")
+        # unstable means we having in-progress/failing statuses
         problems.append(MergeErrors.UNSTABLE_MERGE)
+    if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
+        problems.append(MergeErrors.DRAFT)
     if pull_request.mergeStateStatus in (
         MergeStateStatus.DIRTY,
-        MergeStateStatus.DRAFT,
         MergeStateStatus.BLOCKED,
     ):
-        pr_log.info("merge status not supported")
-        raise NotImplementedError()
+        # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
+        raise NotImplementedError("merge status DIRTY and BLOCK not supported")
+    if pull_request.mergeStateStatus not in (
+        MergeStateStatus.CLEAN,
+        MergeStateStatus.HAS_HOOKS,
+    ):
+        problems.append(MergeErrors.UNKNOWN)
+        pr_log.warning("Unknown merge state status")
 
     if problems:
         return Failure(problems=problems)
-    assert pull_request.mergeStateStatus in (
-        MergeStateStatus.CLEAN,
-        MergeStateStatus.HAS_HOOKS,
-    )
     return Success()

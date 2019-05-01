@@ -11,7 +11,7 @@ from requests_async import Response
 from starlette import status
 from jsonpath_rw import parse
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 
 log = structlog.get_logger()
@@ -167,6 +167,18 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 """
 
 
+class TokenResponse(BaseModel):
+    token: str
+    expires_at: datetime
+
+    @property
+    def expired(self) -> bool:
+        return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
+
+
+installation_cache: typing.MutableMapping[int, typing.Optional[TokenResponse]] = dict()
+
+
 class Client:
     token: typing.Optional[str]
     session: http.Session
@@ -231,10 +243,14 @@ class Client:
             payload=payload, key=self.private_key, algorithm="RS256"
         ).decode()
 
-    async def get_token_for_install(self, installation_id: int):
+    async def get_token_for_install(self, installation_id: int) -> str:
         """
         https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
         """
+        token = installation_cache.get(installation_id)
+        if token is not None and not token.expired:
+            log.debug("returning cached token")
+            return token.token
         app_token = self.generate_jwt()
         res = await http.post(
             f"https://api.github.com/app/installations/{installation_id}/access_tokens",
@@ -244,7 +260,10 @@ class Client:
             ),
         )
         assert res.status_code < 300
-        return res.json()["token"]
+        token_response = TokenResponse(**res.json())
+        installation_cache[installation_id] = token_response
+        log.debug("returning new token", token_response=token_response)
+        return token_response.token
 
     async def send_query(
         self,
@@ -255,7 +274,6 @@ class Client:
         assert (
             self.entered
         ), "Client must be used in an async context manager. `async with Client() as api: ..."
-        log.debug("sending request", query=query, variables=variables)
 
         if installation_id:
             token = await self.get_token_for_install(installation_id=installation_id)

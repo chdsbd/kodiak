@@ -155,6 +155,7 @@ class MergeableState(Enum):
     # The mergeability of the pull request is still being calculated.
     unknown = "unknown"
     unstable = "unstable"
+    draft = "draft"
 
 
 class PullRequest(BasePullRequest):

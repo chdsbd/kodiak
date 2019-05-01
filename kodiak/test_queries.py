@@ -78,3 +78,12 @@ def private_key():
 async def test_generate_jwt(private_key: str):
     async with Client(private_key=private_key, app_identifier="29196") as api:
         assert api.generate_jwt() is not None
+
+
+@pytest.mark.asyncio
+async def test_get_token_for_install():
+    assert False
+
+
+def test_token_response():
+    assert False
