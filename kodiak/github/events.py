@@ -127,7 +127,7 @@ class BasePullRequest(pydantic.BaseModel):
     locked: bool
     title: str
     user: User
-    body: str
+    body: typing.Optional[str]
     created_at: datetime
     updated_at: datetime
     closed_at: typing.Optional[datetime]
