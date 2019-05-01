@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from kodiak import config
 from kodiak.queries import PullRequest, PullRequestState, MergeStateStatus, RepoInfo
+import structlog
+
+log = structlog.get_logger()
 
 
 class MergeErrors(str, Enum):
@@ -11,6 +14,8 @@ class MergeErrors(str, Enum):
     MISSING_BLACKLIST_LABEL = auto()
     PR_MERGED = auto()
     PR_CLOSED = auto()
+    # there are unsuccessful checks
+    UNSTABLE_MERGE = auto()
 
 
 @dataclass
@@ -52,6 +57,11 @@ async def evaluate_mergability(
     problems: typing.List[MergeErrors] = []
 
     # TODO: Evaluate merge method viability
+    pr_log = log.bind(
+        labels=pull_request.labels,
+        state=pull_request.state,
+        merge_state_status=pull_request.mergeStateStatus,
+    )
 
     # If we don't have a whitelist, we continue.
     if config.merge.whitelist:
@@ -84,17 +94,20 @@ async def evaluate_mergability(
         pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN
         and pull_request.state != PullRequestState.MERGED
     ):
-        # TODO: Retry until we can get a usable status
+        pr_log.info("retry until we can get a usable status")
         raise NotImplementedError()
     if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
-        # TODO: Enqueue pull request for update
+        pr_log.info("enqueue pull request for update")
         raise NotImplementedError()
+    if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
+        pr_log.info("unstable means we having in-progress/failing statuses")
+        problems.append(MergeErrors.UNSTABLE_MERGE)
     if pull_request.mergeStateStatus in (
         MergeStateStatus.DIRTY,
         MergeStateStatus.DRAFT,
-        MergeStateStatus.UNSTABLE,
         MergeStateStatus.BLOCKED,
     ):
+        pr_log.info("merge status not supported")
         raise NotImplementedError()
 
     if problems:

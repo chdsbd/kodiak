@@ -3,6 +3,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 import structlog
+from pathlib import Path
 
 import requests_async as http
 from mypy_extensions import TypedDict
@@ -10,6 +11,8 @@ from requests_async import Response
 from starlette import status
 from jsonpath_rw import parse
 from pydantic import BaseModel
+from datetime import datetime, timedelta
+import jwt
 
 log = structlog.get_logger()
 
@@ -168,16 +171,38 @@ class Client:
     token: typing.Optional[str]
     session: http.Session
     entered: bool = False
+    private_key: typing.Optional[str]
+    private_key_path: typing.Optional[Path]
+    app_identifier: typing.Optional[str]
 
-    def __init__(self, token: typing.Optional[str] = None):
+    def __init__(
+        self,
+        token: typing.Optional[str] = None,
+        private_key: typing.Optional[str] = None,
+        private_key_path: typing.Optional[Path] = None,
+        app_identifier: typing.Optional[str] = None,
+    ):
+        env_path_str = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        env_path: typing.Optional[Path] = None
+        if env_path_str is not None:
+            env_path = Path(env_path_str)
+
+        self.private_key_path = env_path or private_key_path
+        self.private_key = None
+        if self.private_key_path is not None:
+            self.private_key = self.private_key_path.read_text()
+        self.private_key = (
+            self.private_key or private_key or os.getenv("GITHUB_PRIVATE_KEY")
+        )
+
         self.token = token or os.getenv("GITHUB_TOKEN")
-        assert (
-            self.token is not None
-        ), "missing token. Github's GraphQL endpoint requires authentication."
+        self.app_identifier = app_identifier or os.getenv("GITHUB_APP_ID")
+        assert (self.token is not None) or (
+            self.private_key is not None and self.app_identifier is not None
+        ), "missing token or secret key and app_identifier. Github's GraphQL endpoint requires authentication."
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
         self.session = http.Session()
-        self.session.headers["Authorization"] = f"Bearer {self.token}"
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
@@ -189,24 +214,71 @@ class Client:
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.session.close()
 
+    def generate_jwt(self) -> str:
+        """
+        Create an authentication token to make application requests.
+        https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-a-github-app
+
+        This is different from authenticating as an installation
+        """
+        assert (
+            self.private_key is not None and self.app_identifier is not None
+        ), "we need a private key and app_identifier to generate a JWT"
+        issued_at = int(datetime.now().timestamp())
+        expiration = int((datetime.now() + timedelta(minutes=10)).timestamp())
+        payload = dict(iat=issued_at, exp=expiration, iss=self.app_identifier)
+        return jwt.encode(
+            payload=payload, key=self.private_key, algorithm="RS256"
+        ).decode()
+
+    async def get_token_for_install(self, installation_id: int):
+        """
+        https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
+        """
+        app_token = self.generate_jwt()
+        res = await http.post(
+            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+            headers=dict(
+                Accept="application/vnd.github.machine-man-preview+json",
+                Authorization=f"Bearer {app_token}",
+            ),
+        )
+        assert res.status_code < 300
+        return res.json()["token"]
+
     async def send_query(
-        self, query: str, variables: typing.Mapping[str, typing.Union[str, int, None]]
+        self,
+        query: str,
+        variables: typing.Mapping[str, typing.Union[str, int, None]],
+        installation_id: typing.Optional[int] = None,
     ) -> GraphQLResponse:
         assert (
             self.entered
         ), "Client must be used in an async context manager. `async with Client() as api: ..."
         log.debug("sending request", query=query, variables=variables)
+
+        if installation_id:
+            token = await self.get_token_for_install(installation_id=installation_id)
+        else:
+            token = self.token or self.generate_jwt()
+        self.session.headers["Authorization"] = f"Bearer {token}"
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
         )
+        log.debug("server response", res=res)
         if res.status_code != status.HTTP_200_OK:
+            log.warning("server error", res=res)
             raise ServerError(response=res)
         return typing.cast(GraphQLResponse, res.json())
 
-    async def get_default_branch_name(self, owner: str, repo: str) -> str:
+    async def get_default_branch_name(
+        self, owner: str, repo: str, installation_id: int
+    ) -> str:
         res = await self.send_query(
-            query=DEFAULT_BRANCH_NAME_QUERY, variables=dict(owner=owner, repo=repo)
+            query=DEFAULT_BRANCH_NAME_QUERY,
+            variables=dict(owner=owner, repo=repo),
+            installation_id=installation_id,
         )
         data = res.get("data")
         errors = res.get("errors")
@@ -215,7 +287,12 @@ class Client:
         return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
 
     async def get_event_info(
-        self, owner: str, repo: str, config_file_expression: str, pr_number: int
+        self,
+        owner: str,
+        repo: str,
+        config_file_expression: str,
+        pr_number: int,
+        installation_id: int,
     ) -> EventInfoResponse:
         """
         Retrieve all the information we need to evaluate a pull request
@@ -230,6 +307,7 @@ class Client:
                 configFileExpression=config_file_expression,
                 PRNumber=pr_number,
             ),
+            installation_id=installation_id,
         )
 
         PAGE_SIZE = 100

@@ -17,14 +17,14 @@ def create_git_revision_expression(branch: str, file_path: str) -> str:
 
 # TODO: Combine into root_handler. Centralize all the stateful calls
 async def find_event_data(
-    owner: str, repo: str, pr_number: int
+    owner: str, repo: str, pr_number: int, installation_id: int
 ) -> typing.Tuple[
     typing.Optional[typing.Union[config.V1, toml.TomlDecodeError, ValueError]],
     typing.Optional[PullRequest],
 ]:
     async with Client() as client:
         default_branch_name = await client.get_default_branch_name(
-            owner=owner, repo=repo
+            owner=owner, repo=repo, installation_id=installation_id
         )
         event_info = await client.get_event_info(
             owner=owner,
@@ -33,6 +33,7 @@ async def find_event_data(
                 branch=default_branch_name, file_path=CONFIG_FILE_PATH
             ),
             pr_number=pr_number,
+            installation_id=installation_id,
         )
         cfg = None
         if event_info.config_file is not None:
@@ -52,13 +53,17 @@ async def merge_pr(
         await client.merge_pr(pr_id=pr_id, sha=sha)
 
 
-async def root_handler(owner: str, repo: str, pr_number: int) -> None:
-    cfg, pull_request = await find_event_data(owner, repo, pr_number)
+async def root_handler(
+    owner: str, repo: str, pr_number: int, installation_id: int
+) -> None:
+    cfg, pull_request = await find_event_data(
+        owner, repo, pr_number, installation_id=installation_id
+    )
     if isinstance(cfg, toml.TomlDecodeError) or isinstance(cfg, ValueError):
         log.warning("Configuration could not be parsed", cfg=cfg)
         return
     if cfg is None:
-        log.warning("Configuration could not be found", cfg=fg)
+        log.warning("Configuration could not be found", cfg=cfg)
         return
     if pull_request is None:
         log.warning("Pull request could not be found", pr_number=pr_number)

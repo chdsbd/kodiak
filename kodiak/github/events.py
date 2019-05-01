@@ -39,8 +39,14 @@ class Hook(pydantic.BaseModel):
     created_at: datetime
 
 
+class Installation(pydantic.BaseModel):
+    id: int
+    node_id: typing.Optional[str]
+
+
 class GithubEvent(pydantic.BaseModel):
     _event_name: str
+    installation: typing.Optional[Installation]
 
 
 @register

@@ -15,6 +15,10 @@ async def read_main():
 
 @webhook()
 async def pr_event(pr: events.PullRequestEvent):
+    assert pr.installation is not None
     await root_handler(
-        owner=pr.repository.owner.login, repo=pr.repository.name, pr_number=pr.number
+        owner=pr.repository.owner.login,
+        repo=pr.repository.name,
+        pr_number=pr.number,
+        installation_id=pr.installation.id,
     )

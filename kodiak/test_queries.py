@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from kodiak.test import vcr
 from kodiak.queries import Client, BranchNameError, MergeStateStatus, PullRequestState
@@ -64,3 +65,16 @@ async def test_get_event_info_normal():
             merged_pr_no_config.pull_request.mergeStateStatus == MergeStateStatus.CLEAN
         )
         assert merged_pr_no_config.pull_request.state == PullRequestState.OPEN
+
+
+@pytest.fixture
+def private_key():
+    return (
+        Path(__file__).parent / "test" / "fixtures" / "github.voided.private-key.pem"
+    ).read_text()
+
+
+@pytest.mark.asyncio
+async def test_generate_jwt(private_key: str):
+    async with Client(private_key=private_key, app_identifier="29196") as api:
+        assert api.generate_jwt() is not None
