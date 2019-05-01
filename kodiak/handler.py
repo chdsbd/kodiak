@@ -16,35 +16,6 @@ def create_git_revision_expression(branch: str, file_path: str) -> str:
     return f"{branch}:{file_path}"
 
 
-# TODO: Combine into root_handler. Centralize all the stateful calls
-async def find_event_data(
-    owner: str, repo: str, pr_number: int, installation_id: int
-) -> typing.Tuple[
-    typing.Optional[typing.Union[config.V1, toml.TomlDecodeError, ValueError]],
-    typing.Optional[PullRequest],
-]:
-    log = logger.bind(
-        owner=owner, repo=repo, pr_number=pr_number, installation_id=installation_id
-    )
-    async with Client() as client:
-        default_branch_name = await client.get_default_branch_name(
-            owner=owner, repo=repo, installation_id=installation_id
-        )
-        event_info = await client.get_event_info(
-            owner=owner,
-            repo=repo,
-            config_file_expression=create_git_revision_expression(
-                branch=default_branch_name, file_path=CONFIG_FILE_PATH
-            ),
-            pr_number=pr_number,
-            installation_id=installation_id,
-        )
-        cfg = None
-        if event_info.config_file is not None:
-            cfg = config.V1.parse_toml(event_info.config_file)
-        return (cfg, event_info.pull_request)
-
-
 async def root_handler(
     owner: str,
     repo: str,
@@ -62,9 +33,30 @@ async def root_handler(
         if retry_attempt:
             log.info("retrying evaluation with delay")
             await asyncio.sleep(2)
-        cfg, pull_request = await find_event_data(
-            owner, repo, pr_number, installation_id=installation_id
+
+        log.debug("finding event data for pull request")
+        # we need to make one request for the default branch name, which allows
+        # us to find our configuration file on the main branch in the next
+        # query. This would be solved with a join, but that's not possible in
+        # GraphQL.
+        default_branch_name = await client.get_default_branch_name(
+            owner=owner, repo=repo, installation_id=installation_id
         )
+        event_info = await client.get_event_info(
+            owner=owner,
+            repo=repo,
+            config_file_expression=create_git_revision_expression(
+                branch=default_branch_name, file_path=CONFIG_FILE_PATH
+            ),
+            pr_number=pr_number,
+            installation_id=installation_id,
+        )
+        cfg = None
+        if event_info.config_file is not None:
+            cfg = config.V1.parse_toml(event_info.config_file)
+        pull_request = event_info.pull_request
+
+        # process query responses
         if isinstance(cfg, toml.TomlDecodeError) or isinstance(cfg, ValueError):
             log.warning("Configuration could not be parsed", cfg=cfg)
             return
@@ -76,13 +68,15 @@ async def root_handler(
             return
         log = log.bind(pull_request=pull_request)
 
-        log.info('attempting to evaluate mergeability')
+        log.info("attempting to evaluate mergeability")
         res = await evaluate_mergability(config=cfg, pull_request=pull_request)
         if isinstance(res, Failure):
             should_retry = (
                 # we are not in a retry attempt a the moment
                 not retry_attempt
-                # we only have an UNKNOWN status issue, which means that the mergeability evaluation on Github's side hasn't been completed yet
+                # we only have an UNKNOWN status issue, which means that the
+                # mergeability evaluation on Github's side hasn't been completed
+                # yet
                 and len(res.problems) == 1
                 and res.problems[0] == MergeErrors.UNKNOWN
             )
@@ -94,9 +88,7 @@ async def root_handler(
                     )
                 )
                 return
-            log.info(
-                "Pull request is not eligible to be merged", problems=res.problems
-            )
+            log.info("Pull request is not eligible to be merged", problems=res.problems)
             return
 
         log.info("attempting to merge pr")
