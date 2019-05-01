@@ -149,6 +149,14 @@ class EventInfoError(ResponseError):
     pass
 
 
+class MergePRError(BaseException):
+    pass
+
+
+class MergePRUnprocessable(ResponseError):
+    pass
+
+
 def get_values(expr: str, data: typing.Dict) -> typing.List[typing.Any]:
     return [match.value for match in parse(expr).find(data)]
 
@@ -397,4 +405,5 @@ class Client:
                     raise MergePRError(
                         "Unexpected errors occurred trying to merge this PR"
                     )
+        return None
 
