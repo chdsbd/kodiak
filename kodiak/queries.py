@@ -356,12 +356,14 @@ class Client:
         self,
         pr_id: str,
         sha: str,
+        installation_id: int,
         title: typing.Optional[str] = None,
         body: typing.Optional[str] = None,
     ) -> None:
         res = await self.send_query(
             query=MERGE_PR_MUTATION,
             variables=dict(PRId=pr_id, SHA=sha, title=title, body=body),
+            installation_id=installation_id,
         )
         data = res.get("data")
         errors = res.get("errors")

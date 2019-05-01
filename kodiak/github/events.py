@@ -64,6 +64,7 @@ class Ping(GithubEvent):
 class UserType(Enum):
     user = "User"
     organization = "Organization"
+    bot = "Bot"
 
 
 class User(pydantic.BaseModel):
@@ -245,6 +246,26 @@ class CheckRunConclusion(Enum):
     action_required = "action_required"
 
 
+class CheckRunBranchRepo(pydantic.BaseModel):
+    id: int
+    url: UrlStr
+    name: str
+
+
+class CheckRunBranch(pydantic.BaseModel):
+    ref: str
+    sha: str
+    repo: CheckRunBranchRepo
+
+
+class CheckRunPR(pydantic.BaseModel):
+    url: UrlStr
+    id: int
+    number: int
+    head: CheckRunBranch
+    base: CheckRunBranch
+
+
 class CheckRun(pydantic.BaseModel):
     id: int
     head_sha: str
@@ -253,6 +274,7 @@ class CheckRun(pydantic.BaseModel):
     status: CheckRunStatus
     name: str
     conclusion: typing.Optional[CheckRunConclusion]
+    pull_requests: typing.List[CheckRunPR]
 
     def to_status(self) -> Literal["pending", "success", "failure"]:
         if self.status is None:
@@ -344,17 +366,29 @@ class StatusEvent(GithubEvent):
     sender: User
 
 
-class PushEventCommitAuthor(pydantic.BaseModel):
+class PushEventCommitter(pydantic.BaseModel):
     name: str
     email: str
+    username: str
+
+
+class PushEventPusher(pydantic.BaseModel):
+    name: str
+    email: typing.Optional[str]
 
 
 class PushEventCommit(pydantic.BaseModel):
-    sha: str
-    message: str
-    author: PushEventCommitAuthor
+    id: str
+    tree_id: str
+    timestamp: datetime
     url: UrlStr
     distinct: bool
+    message: str
+    author: PushEventCommitter
+    committer: PushEventCommitter
+    added: typing.List[str]
+    removed: typing.List[str]
+    modified: typing.List[str]
 
 
 @register
@@ -375,5 +409,5 @@ class PushEvent(GithubEvent):
     commits: typing.List[PushEventCommit]
     head_commit: typing.Optional[PushEventCommit]
     repository: Repo
-    pusher: PushEventCommitAuthor
+    pusher: PushEventPusher
     sender: User

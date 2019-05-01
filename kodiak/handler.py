@@ -44,13 +44,14 @@ async def find_event_data(
 async def merge_pr(
     pr_id: str,
     sha: str,
+    installation_id: int,
     title: typing.Optional[str] = None,
     body: typing.Optional[str] = None,
 ) -> None:
     log.info("attempting to merge pr", sha=sha, title=title, body=body)
     async with Client() as client:
         # TODO: Add error handling
-        await client.merge_pr(pr_id=pr_id, sha=sha)
+        await client.merge_pr(pr_id=pr_id, sha=sha, installation_id=installation_id)
 
 
 async def root_handler(
@@ -72,4 +73,8 @@ async def root_handler(
     if isinstance(res, Failure):
         log.warning("Pull request is not eligible to be merged", problems=res.problems)
         return
-    await merge_pr(pr_id=pull_request.id, sha=pull_request.latest_sha)
+    await merge_pr(
+        pr_id=pull_request.id,
+        sha=pull_request.latest_sha,
+        installation_id=installation_id,
+    )
