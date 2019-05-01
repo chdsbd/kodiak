@@ -56,6 +56,9 @@ async def root_handler(
         owner=owner, repo=repo, installation_id=installation_id, pr_number=pr_number
     )
     async with Client() as client:
+        # we want to allow retrying requests because Github occasionally takes
+        # time to reach consistency. We want to add a delay to improve our
+        # changes of success.
         if retry_attempt:
             log.info("retrying evaluation with delay")
             await asyncio.sleep(2)
@@ -72,6 +75,8 @@ async def root_handler(
             log.warning("Pull request could not be found")
             return
         log = log.bind(pull_request=pull_request)
+
+        log.info('attempting to evaluate mergeability')
         res = await evaluate_mergability(config=cfg, pull_request=pull_request)
         if isinstance(res, Failure):
             should_retry = (
@@ -89,7 +94,7 @@ async def root_handler(
                     )
                 )
                 return
-            log.warning(
+            log.info(
                 "Pull request is not eligible to be merged", problems=res.problems
             )
             return
