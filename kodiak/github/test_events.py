@@ -1,3 +1,4 @@
+import typing
 import pytest
 from pathlib import Path
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ def test_event_parsing(event: BaseModel, file_name: str):
 
 
 def test_event_count():
-    assert len(fixtures.MAPPING) == len(
+    assert len(set([cls for cls, _fixture in fixtures.MAPPING])) == len(
         events.event_registry
     ), "ensure we're checking all registered events"
 

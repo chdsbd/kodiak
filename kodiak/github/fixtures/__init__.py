@@ -5,6 +5,7 @@ from kodiak.github import events
 # register themselves here for testing.
 MAPPING = [
     (events.CheckRunEvent, "check_run_event.json"),
+    (events.CheckRunEvent, "check_run_event_pull_requests.json"),
     (events.Ping, "ping_event.json"),
     (events.PullRequestEvent, "pull_request_event.json"),
     (events.PullRequestReviewEvent, "pull_request_review_event.json"),
