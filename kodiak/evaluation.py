@@ -102,7 +102,7 @@ async def evaluate_mergability(
         problems.append(MergeErrors.BEHIND_TARGET)
         raise NotImplementedError("enqueue pull request for update")
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
-        # unstable means we having in-progress/failing statuses
+        # unstable means we have in-progress/failing statuses
         problems.append(MergeErrors.UNSTABLE_MERGE)
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
         problems.append(MergeErrors.DRAFT)
@@ -112,6 +112,9 @@ async def evaluate_mergability(
     ):
         # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
         raise NotImplementedError("merge status DIRTY and BLOCK not supported")
+
+    # sanity check for if we update MergeStateStatus or Github does. This
+    # indicates a programming error.
     if pull_request.mergeStateStatus not in (
         MergeStateStatus.CLEAN,
         MergeStateStatus.HAS_HOOKS,
