@@ -114,6 +114,10 @@ class Label(pydantic.BaseModel):
     default: bool = False
 
 
+class Milestone(pydantic.BaseModel):
+    pass
+
+
 class BasePullRequest(pydantic.BaseModel):
     url: UrlStr
     id: int
@@ -129,12 +133,13 @@ class BasePullRequest(pydantic.BaseModel):
     closed_at: typing.Optional[datetime]
     merged_at: typing.Optional[datetime]
     merge_commit_sha: typing.Optional[str]
-    assignee: typing.Optional[str]
-    assignees: typing.List[str]
-    requested_reviewers: typing.List[str]
-    requested_teams: typing.List[str]
+    assignee: typing.Optional[User]
+    assignees: typing.List[User]
+    requested_reviewers: typing.List[User]
+    # TODO: get response for requested_teams
+    requested_teams: typing.List[typing.Any]
     labels: typing.List[Label]
-    milestone: typing.Optional[str]
+    milestone: typing.Optional[Milestone]
     head: CompareBranch
     base: CompareBranch
 
