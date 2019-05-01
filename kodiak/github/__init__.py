@@ -64,12 +64,12 @@ class Webhook:
         if listeners is None:
             bound_log.info("No event listeners registered")
             return None
+        bound_log.info("Processing listeners for event", listener_count=len(listeners))
         for listener in listeners:
             res = listener(handler.parse_obj(event))
             # support async and non-async functions
             if inspect.isawaitable(res):
                 await res
-        bound_log.info("listeners registered for event", listener_count=len(listeners))
         return None
 
     def register_events(

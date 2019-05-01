@@ -284,7 +284,7 @@ class Client:
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
         )
-        log.debug("server response", res=res)
+        log.debug("graphql query server response", res=res)
         if res.status_code != status.HTTP_200_OK:
             log.warning("server error", res=res)
             raise ServerError(response=res)
