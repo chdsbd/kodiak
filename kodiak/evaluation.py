@@ -19,6 +19,7 @@ class MergeErrors(str, Enum):
     DRAFT = auto()
     BEHIND_TARGET = auto()
     UNKNOWN = auto()
+    UNEXPECTED_VALUE = auto()
 
 
 @dataclass
@@ -38,6 +39,10 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     if cfg.merge.method == config.MergeMethod.rebase:
         return repo.rebase_merge_allowed
     raise TypeError("Unknown value")
+
+
+class ProgrammingError(Exception):
+    pass
 
 
 # TOOD: Accumulate all errors instead of returning at first error. We can
@@ -97,7 +102,7 @@ async def evaluate_mergability(
         pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN
         and pull_request.state != PullRequestState.MERGED
     ):
-        raise NotImplementedError("retry until we can get a usable status")
+        problems.append(MergeErrors.UNKNOWN)
     if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
         problems.append(MergeErrors.BEHIND_TARGET)
         raise NotImplementedError("enqueue pull request for update")
@@ -113,15 +118,16 @@ async def evaluate_mergability(
         # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
         raise NotImplementedError("merge status DIRTY and BLOCK not supported")
 
+    if problems:
+        return Failure(problems=problems)
+
     # sanity check for if we update MergeStateStatus or Github does. This
     # indicates a programming error.
     if pull_request.mergeStateStatus not in (
         MergeStateStatus.CLEAN,
         MergeStateStatus.HAS_HOOKS,
     ):
-        problems.append(MergeErrors.UNKNOWN)
-        pr_log.warning("Unknown merge state status")
-
-    if problems:
-        return Failure(problems=problems)
+        raise ProgrammingError(
+            f"Unexpected mergeStateStatus: {pull_request.mergeStateStatus}"
+        )
     return Success()

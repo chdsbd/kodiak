@@ -1,10 +1,11 @@
 import typing
 import toml
 import structlog
+import asyncio
 
 from kodiak import config
-from kodiak.evaluation import evaluate_mergability, Failure
-from kodiak.queries import Client, RepoInfo, PullRequest
+from kodiak.evaluation import evaluate_mergability, Failure, MergeErrors
+from kodiak.queries import Client, RepoInfo, PullRequest, MergePRUnprocessable
 
 log = structlog.get_logger()
 
@@ -41,22 +42,41 @@ async def find_event_data(
         return (cfg, event_info.pull_request)
 
 
+class Retry:
+    pass
+
+
 async def merge_pr(
     pr_id: str,
     sha: str,
     installation_id: int,
     title: typing.Optional[str] = None,
     body: typing.Optional[str] = None,
-) -> None:
+) -> typing.Optional[Retry]:
     log.info("attempting to merge pr", sha=sha, title=title, body=body)
     async with Client() as client:
-        # TODO: Add error handling
-        await client.merge_pr(pr_id=pr_id, sha=sha, installation_id=installation_id)
+        res = await client.merge_pr(
+            pr_id=pr_id, sha=sha, installation_id=installation_id
+        )
+        if res is None:
+            return None
+        if isinstance(res, MergePRUnprocessable):
+            return Retry()
+        # ignore any other errors for now
+        log.warning("An error occurred when trying to merge the PR", res=res)
+        return None
 
 
 async def root_handler(
-    owner: str, repo: str, pr_number: int, installation_id: int
+    owner: str,
+    repo: str,
+    pr_number: int,
+    installation_id: int,
+    retry_attempt: bool = False,
 ) -> None:
+    if retry_attempt:
+        log.info("retrying evaluation with delay")
+        await asyncio.sleep(2)
     cfg, pull_request = await find_event_data(
         owner, repo, pr_number, installation_id=installation_id
     )
@@ -71,10 +91,33 @@ async def root_handler(
         return
     res = await evaluate_mergability(config=cfg, pull_request=pull_request)
     if isinstance(res, Failure):
+        should_retry = (
+            # we are not in a retry attempt a the moment
+            not retry_attempt
+            # we only have an UNKNOWN status issue, which means that the mergeability evaluation on Github's side hasn't been completed yet
+            and len(res.problems) == 1
+            and res.problems[0] == MergeErrors.UNKNOWN
+        )
+        if should_retry:
+            log.info("scheduling task to retry status request")
+            asyncio.create_task(
+                root_handler(
+                    owner, repo, pr_number, installation_id, retry_attempt=True
+                )
+            )
+            return
         log.warning("Pull request is not eligible to be merged", problems=res.problems)
         return
-    await merge_pr(
+    res = await merge_pr(
         pr_id=pull_request.id,
         sha=pull_request.latest_sha,
         installation_id=installation_id,
     )
+    if res is None:
+        return None
+    if not retry_attempt and isinstance(res, Retry):
+        # retry request if we get an error with a merge
+        asyncio.create_task(
+            root_handler(owner, repo, pr_number, installation_id, retry_attempt=True)
+        )
+    return None

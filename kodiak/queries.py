@@ -377,7 +377,7 @@ class Client:
         installation_id: int,
         title: typing.Optional[str] = None,
         body: typing.Optional[str] = None,
-    ) -> None:
+    ) -> typing.Optional[MergePRUnprocessable]:
         res = await self.send_query(
             query=MERGE_PR_MUTATION,
             variables=dict(PRId=pr_id, SHA=sha, title=title, body=body),
@@ -385,7 +385,16 @@ class Client:
         )
         data = res.get("data")
         errors = res.get("errors")
+        if errors is None:
+            return None
+        bound_log = log.bind(res=res, data=data, errors=errors)
         if errors is not None:
-            # TODO: Handle error responses from
-            raise NotImplementedError()
-        log.info("merged_pr", api_response=res)
+            bound_log.error("errors merging pull request")
+            for error in errors:
+                if error["type"] == "UNPROCESSABLE":
+                    return MergePRUnprocessable(res)
+                else:
+                    raise MergePRError(
+                        "Unexpected errors occurred trying to merge this PR"
+                    )
+

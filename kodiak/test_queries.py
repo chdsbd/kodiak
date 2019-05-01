@@ -1,5 +1,7 @@
 import pytest
 from pathlib import Path
+import json
+import asyncio
 
 from kodiak.test import vcr
 from kodiak.queries import Client, BranchNameError, MergeStateStatus, PullRequestState
@@ -87,3 +89,26 @@ async def test_get_token_for_install():
 
 def test_token_response():
     assert False
+
+
+@pytest.mark.asyncio
+async def test_merge_pr():
+    assert False
+
+
+def load_api_fixture(file_name: str) -> str:
+    return json.loads(
+        (Path(__file__).parent / "test" / "fixtures" / "api" / file_name).read_text()
+    )
+
+
+@pytest.mark.asyncio
+async def test_merge_pr_unprocessable(mocker):
+    res = load_api_fixture("merge_unprocessable.json")
+    patched = mocker.patch("kodiak.queries.Client.send_query")
+    future: asyncio.Future[dict] = asyncio.Future()
+    future.set_result(res)
+    patched.return_value = future
+    async with Client(token="blah") as api:
+        # we should not explode when we receive an "UNPROCESSABLE" response from the Github api
+        await api.merge_pr(pr_id="DSLFKJS", sha="223490", installation_id=123)
