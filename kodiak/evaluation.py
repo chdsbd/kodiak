@@ -45,9 +45,8 @@ class ProgrammingError(Exception):
     pass
 
 
-# TOOD: Accumulate all errors instead of returning at first error. We can
-# probably extend that to display a status check on the PR (is there a risk for
-# a loop there?)
+# TOOD: We can probably extend that to display a status check on the PR (is
+# there a risk for a loop there?)
 async def evaluate_mergability(
     config: config.V1, pull_request: PullRequest
 ) -> typing.Union[Success, Failure]:
@@ -121,13 +120,8 @@ async def evaluate_mergability(
     if problems:
         return Failure(problems=problems)
 
-    # sanity check for if we update MergeStateStatus or Github does. This
-    # indicates a programming error.
-    if pull_request.mergeStateStatus not in (
+    assert pull_request.mergeStateStatus in (
         MergeStateStatus.CLEAN,
         MergeStateStatus.HAS_HOOKS,
-    ):
-        raise ProgrammingError(
-            f"Unexpected mergeStateStatus: {pull_request.mergeStateStatus}"
-        )
+    ), "sanity check for if we update MergeStateStatus or Github does. This indicates a programming error."
     return Success()

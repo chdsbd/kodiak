@@ -88,7 +88,7 @@ class Repo(pydantic.BaseModel):
     created_at: datetime
     updated_at: datetime
     pushed_at: datetime
-    homepage: typing.Optional[UrlStr]
+    homepage: typing.Optional[str]
     default_branch: str
 
 
