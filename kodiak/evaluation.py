@@ -17,18 +17,9 @@ class MergeErrors(str, Enum):
     # there are unsuccessful checks
     UNSTABLE_MERGE = auto()
     DRAFT = auto()
-    BEHIND_TARGET = auto()
-    UNKNOWN = auto()
+    DIRTY = auto()
+    BLOCKED = auto()
     UNEXPECTED_VALUE = auto()
-
-
-@dataclass
-class Failure:
-    problems: typing.List[MergeErrors]
-
-
-class Success:
-    pass
 
 
 async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
@@ -41,15 +32,26 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-class ProgrammingError(Exception):
+class MergabilityException(Exception):
+    pass
+
+
+@dataclass
+class NotMergable(MergabilityException):
+    reasons: typing.Optional[typing.List[MergeErrors]]
+
+
+class NeedsUpdate(MergabilityException):
+    pass
+
+
+class CheckMergability(MergabilityException):
     pass
 
 
 # TOOD: We can probably extend that to display a status check on the PR (is
 # there a risk for a loop there?)
-async def evaluate_mergability(
-    config: config.V1, pull_request: PullRequest
-) -> typing.Union[Success, Failure]:
+def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
     """
     Process a PR to potentially be merged
 
@@ -62,6 +64,8 @@ async def evaluate_mergability(
        PR on the queue for serial integration into target.
     """
     problems: typing.List[MergeErrors] = []
+    behind_target = False
+    unknown_mergability = False
 
     # TODO: Evaluate merge method viability
     pr_log = log.bind(
@@ -79,7 +83,6 @@ async def evaluate_mergability(
         )
         # if we don't have a label, ensure the PR is not enqueued and return
         if not has_label:
-            # TODO: Dequeue
             problems.append(MergeErrors.MISSING_WHITELIST_LABEL)
     # If we have any blacklist label, we should stop
     if config.merge.blacklist:
@@ -89,7 +92,6 @@ async def evaluate_mergability(
             if label in set(pull_request.labels)
         )
         if has_label:
-            # TODO: Dequeue
             problems.append(MergeErrors.MISSING_BLACKLIST_LABEL)
 
     if pull_request.state == PullRequestState.MERGED:
@@ -97,14 +99,17 @@ async def evaluate_mergability(
     if pull_request.state == PullRequestState.CLOSED:
         problems.append(MergeErrors.PR_CLOSED)
 
+    # If unknown, we should probably retry
     if (
         pull_request.mergeStateStatus == MergeStateStatus.UNKNOWN
         and pull_request.state != PullRequestState.MERGED
     ):
-        problems.append(MergeErrors.UNKNOWN)
+        # we need to trigger a test commit to fix this. We do that by calling
+        # GET on the pull request endpoint.
+        unknown_mergability = True
     if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
-        problems.append(MergeErrors.BEHIND_TARGET)
-        raise NotImplementedError("enqueue pull request for update")
+        # mark PR was needing merge
+        behind_target = True
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
         # unstable means we have in-progress/failing statuses
         problems.append(MergeErrors.UNSTABLE_MERGE)
@@ -115,13 +120,17 @@ async def evaluate_mergability(
         MergeStateStatus.BLOCKED,
     ):
         # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
-        raise NotImplementedError("merge status DIRTY and BLOCK not supported")
+        problems = problems + [MergeErrors.DIRTY, MergeErrors.BLOCKED]
+    if behind_target:
+        raise NeedsUpdate()
+    if unknown_mergability:
+        raise CheckMergability()
 
     if problems:
-        return Failure(problems=problems)
+        raise NotMergable(reasons=problems)
 
     assert pull_request.mergeStateStatus in (
         MergeStateStatus.CLEAN,
         MergeStateStatus.HAS_HOOKS,
     ), "sanity check for if we update MergeStateStatus or Github does. This indicates a programming error."
-    return Success()
+    return None

@@ -4,7 +4,7 @@ import structlog
 import asyncio
 
 from kodiak import config
-from kodiak.evaluation import evaluate_mergability, Failure, MergeErrors
+from kodiak.evaluation import evaluate_mergability, MergeErrors
 from kodiak.queries import Client, RepoInfo, PullRequest, MergePRUnprocessable
 
 logger = structlog.get_logger()
@@ -20,7 +20,7 @@ async def root_handler(
     owner: str,
     repo: str,
     pr_number: int,
-    installation_id: int,
+    installation_id: str,
     retry_attempt: bool = False,
 ) -> None:
     log = logger.bind(

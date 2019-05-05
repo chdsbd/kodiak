@@ -69,6 +69,8 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       id
       mergeStateStatus
       state
+      baseRefName
+      headRefName
       commits(last: 1) {
         nodes {
           commit {
@@ -129,6 +131,8 @@ class PullRequest(BaseModel):
     labels: typing.List[str]
     # the SHA of the most recent commit
     latest_sha: str
+    baseRefName: str
+    headRefName: str
 
 
 @dataclass
@@ -251,13 +255,12 @@ class Client:
             payload=payload, key=self.private_key, algorithm="RS256"
         ).decode()
 
-    async def get_token_for_install(self, installation_id: int) -> str:
+    async def get_token_for_install(self, installation_id: str) -> str:
         """
         https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
         """
         token = installation_cache.get(installation_id)
         if token is not None and not token.expired:
-            log.debug("returning cached token")
             return token.token
         app_token = self.generate_jwt()
         res = await http.post(
@@ -270,7 +273,6 @@ class Client:
         assert res.status_code < 300
         token_response = TokenResponse(**res.json())
         installation_cache[installation_id] = token_response
-        log.debug("returning new token", token_response=token_response)
         return token_response.token
 
     async def send_query(
@@ -292,14 +294,13 @@ class Client:
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
         )
-        log.debug("graphql query server response", res=res)
         if res.status_code != status.HTTP_200_OK:
             log.warning("server error", res=res)
             raise ServerError(response=res)
         return typing.cast(GraphQLResponse, res.json())
 
     async def get_default_branch_name(
-        self, owner: str, repo: str, installation_id: int
+        self, owner: str, repo: str, installation_id: str
     ) -> str:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
@@ -318,7 +319,7 @@ class Client:
         repo: str,
         config_file_expression: str,
         pr_number: int,
-        installation_id: int,
+        installation_id: str,
     ) -> EventInfoResponse:
         """
         Retrieve all the information we need to evaluate a pull request
@@ -382,7 +383,7 @@ class Client:
         self,
         pr_id: str,
         sha: str,
-        installation_id: int,
+        installation_id: str,
         title: typing.Optional[str] = None,
         body: typing.Optional[str] = None,
     ) -> typing.Optional[MergePRUnprocessable]:
@@ -406,4 +407,3 @@ class Client:
                         "Unexpected errors occurred trying to merge this PR"
                     )
         return None
-

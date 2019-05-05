@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing
 from enum import Enum
 from dataclasses import field
@@ -70,10 +71,5 @@ class V1(BaseModel):
         return v
 
     @classmethod
-    def parse_toml(
-        cls, content: str
-    ) -> typing.Union["V1", toml.TomlDecodeError, ValueError]:
-        try:
-            return cls.parse_obj(typing.cast(dict, toml.loads(content)))
-        except (ValueError, toml.TomlDecodeError) as e:
-            return e
+    def parse_toml(cls, content: str) -> V1:
+        return cls.parse_obj(typing.cast(dict, toml.loads(content)))
