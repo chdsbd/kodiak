@@ -233,7 +233,7 @@ async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
                             Authorization=f"token {token}",
                             Accept="application/vnd.github.machine-man-preview+json",
                         )
-                        while True:
+                        for _ in range(0, 4):
                             try:
                                 url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/merge"
                                 # TODO: Use configuration to determine merge method and other features of merge
