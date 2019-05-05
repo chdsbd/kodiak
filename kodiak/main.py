@@ -16,7 +16,6 @@ from kodiak.evaluation import (
     NeedsUpdate,
     CheckMergability,
 )
-from kodiak.handler import root_handler, create_git_revision_expression
 
 app = FastAPI()
 
@@ -113,29 +112,35 @@ def get_queue_for_repo(owner: str, name: str) -> RepoQueue:
 
 def add_to_queue(repo_name: str, repo_owner: str, pull_request_id: int):
     queue = get_queue_for_repo(owner=repo_owner, name=repo_name).queue
-    logger.info("add to queue", queue=queue._queue)
+    internal_deque = typing.cast(typing.Any, queue)._queue
+    logger.info("add to queue", queue=internal_deque)
     queue.put_nowait(
         QueuePR(
             repo_name=repo_name, repo_owner=repo_owner, pull_request_id=pull_request_id
         )
     )
-    logger.info("added to queue", queue=queue._queue)
+    logger.info("added to queue", queue=internal_deque)
 
 
 async def remove_from_queue(repo_name: str, repo_owner: str, pull_request_id: int):
     repo_queue = get_queue_for_repo(owner=repo_owner, name=repo_name)
-    logger.info("remove from queue", queue=repo_queue.queue._queue)
+    internal_deque = typing.cast(typing.Any, repo_queue.queue)._queue
+    logger.info("remove from queue", queue=internal_deque)
     pr = QueuePR(
         repo_name=repo_name, repo_owner=repo_owner, pull_request_id=pull_request_id
     )
     queue = repo_queue.queue
     async with repo_queue.lock:
         try:
-            typing.cast(typing.Any, queue)._queue.remove(pr)
+            internal_deque.remove(pr)
         except ValueError:
             # pr wasn't in queue to remove
             pass
-        logger.info("removed from queue", item=pr, queue=queue._queue)
+        logger.info("removed from queue", item=pr, queue=internal_deque)
+
+
+def create_git_revision_expression(branch: str, file_path: str) -> str:
+    return f"{branch}:{file_path}"
 
 
 async def event_processor(webhook_queue: "asyncio.Queue[Event]"):

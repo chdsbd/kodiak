@@ -188,7 +188,7 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-installation_cache: typing.MutableMapping[int, typing.Optional[TokenResponse]] = dict()
+installation_cache: typing.MutableMapping[str, typing.Optional[TokenResponse]] = dict()
 
 
 class Client:
@@ -279,7 +279,7 @@ class Client:
         self,
         query: str,
         variables: typing.Mapping[str, typing.Union[str, int, None]],
-        installation_id: typing.Optional[int] = None,
+        installation_id: typing.Optional[str] = None,
     ) -> GraphQLResponse:
         assert (
             self.entered
