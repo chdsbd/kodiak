@@ -33,7 +33,7 @@
             "type": "User",
             "site_admin": false
         },
-        "body": "This is a pretty simple change that we need to pull into master.",
+        "body": null,
         "created_at": "2018-05-30T20:18:30Z",
         "updated_at": "2018-05-30T20:18:50Z",
         "closed_at": "2018-05-30T20:18:50Z",

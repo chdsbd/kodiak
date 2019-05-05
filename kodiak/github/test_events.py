@@ -1,3 +1,4 @@
+import typing
 import pytest
 from pathlib import Path
 from pydantic import BaseModel
@@ -11,8 +12,14 @@ def test_event_parsing(event: BaseModel, file_name: str):
     event.parse_file(Path(__file__).parent / "fixtures" / file_name)
 
 
+def test_events():
+    for fixture_path in (Path(__file__).parent / "fixtures").rglob("*/*.json"):
+        event_name = fixture_path.parent.name.replace("_event", "")
+        events.event_registry[event_name].parse_file(fixture_path)
+
+
 def test_event_count():
-    assert len(fixtures.MAPPING) == len(
+    assert len(set([cls for cls, _fixture in fixtures.MAPPING])) == len(
         events.event_registry
     ), "ensure we're checking all registered events"
 

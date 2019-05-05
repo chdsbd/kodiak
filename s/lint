@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-set -eux
+set -ex
 
 # format code
-poetry run black --check .
+if [[ $CI ]]; then
+    poetry run black --check .
+else
+    poetry run black .
+fi
 
 # type check code
 poetry run mypy .

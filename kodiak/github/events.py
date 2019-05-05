@@ -6,6 +6,7 @@ import typing
 import pydantic
 from pydantic import UrlStr
 from enum import Enum
+from typing_extensions import Literal
 
 
 AnyDict = typing.Dict[typing.Any, typing.Any]
@@ -38,8 +39,14 @@ class Hook(pydantic.BaseModel):
     created_at: datetime
 
 
+class Installation(pydantic.BaseModel):
+    id: int
+    node_id: typing.Optional[str]
+
+
 class GithubEvent(pydantic.BaseModel):
     _event_name: str
+    installation: typing.Optional[Installation]
 
 
 @register
@@ -57,6 +64,7 @@ class Ping(GithubEvent):
 class UserType(Enum):
     user = "User"
     organization = "Organization"
+    bot = "Bot"
 
 
 class User(pydantic.BaseModel):
@@ -80,7 +88,7 @@ class Repo(pydantic.BaseModel):
     created_at: datetime
     updated_at: datetime
     pushed_at: datetime
-    homepage: typing.Optional[UrlStr]
+    homepage: typing.Optional[str]
     default_branch: str
 
 
@@ -92,37 +100,70 @@ class CompareBranch(pydantic.BaseModel):
     repo: Repo
 
 
+class PullRequestState(Enum):
+    open = "open"
+    closed = "closed"
+
+
+class Label(pydantic.BaseModel):
+    id: int
+    node_id: str
+    url: UrlStr
+    name: str
+    color: str
+    default: bool = False
+
+
+class Milestone(pydantic.BaseModel):
+    pass
+
+
 class BasePullRequest(pydantic.BaseModel):
     url: UrlStr
     id: int
     node_id: str
     number: int
-    state: str
+    state: PullRequestState
     locked: bool
     title: str
     user: User
-    body: str
+    body: typing.Optional[str]
     created_at: datetime
     updated_at: datetime
     closed_at: typing.Optional[datetime]
     merged_at: typing.Optional[datetime]
-    merge_commit_sha: str
-    assignee: typing.Optional[str]
-    assignees: typing.List[str]
-    requested_reviewers: typing.List[str]
-    requested_teams: typing.List[str]
-    labels: typing.List[str]
-    milestone: typing.Optional[str]
+    merge_commit_sha: typing.Optional[str]
+    assignee: typing.Optional[User]
+    assignees: typing.List[User]
+    requested_reviewers: typing.List[User]
+    # TODO: get response for requested_teams
+    requested_teams: typing.List[typing.Any]
+    labels: typing.List[Label]
+    milestone: typing.Optional[Milestone]
     head: CompareBranch
     base: CompareBranch
+
+
+class MergeableState(Enum):
+    # The pull request is behind target
+    behind = "behind"
+    blocked = "blocked"
+    # The pull request can be merged.
+    clean = "clean"
+    # The pull request cannot be merged due to merge conflicts.
+    conflicting = "dirty"
+    # The mergeability of the pull request is still being calculated.
+    unknown = "unknown"
+    unstable = "unstable"
+    draft = "draft"
 
 
 class PullRequest(BasePullRequest):
     merged: bool
     mergeable: bool
     rebaseable: bool
-    mergeable_state: str
-    merged_by: typing.Optional[str]
+    mergeable_state: MergeableState
+    merged_by: typing.Optional[User]
     comments: int
     review_comments: int
     maintainer_can_modify: bool
@@ -146,6 +187,7 @@ class PullRequestEventActions(Enum):
     locked = "locked"
     unlocked = "unlocked"
     reopened = "reopened"
+    synchronize = "synchronize"
 
 
 @register
@@ -211,13 +253,42 @@ class CheckRunConclusion(Enum):
     action_required = "action_required"
 
 
+class CheckRunBranchRepo(pydantic.BaseModel):
+    id: int
+    url: UrlStr
+    name: str
+
+
+class CheckRunBranch(pydantic.BaseModel):
+    ref: str
+    sha: str
+    repo: CheckRunBranchRepo
+
+
+class CheckRunPR(pydantic.BaseModel):
+    url: UrlStr
+    id: int
+    number: int
+    head: CheckRunBranch
+    base: CheckRunBranch
+
+
 class CheckRun(pydantic.BaseModel):
     id: int
     head_sha: str
     external_id: str
     url: UrlStr
     status: CheckRunStatus
+    name: str
     conclusion: typing.Optional[CheckRunConclusion]
+    pull_requests: typing.List[CheckRunPR]
+
+    def to_status(self) -> Literal["pending", "success", "failure"]:
+        if self.status is None:
+            return "pending"
+        if self.status in (CheckRunConclusion.success, CheckRunConclusion.neutral):
+            return "success"
+        return "failure"
 
 
 class CheckRunEventAction(Enum):
@@ -302,17 +373,29 @@ class StatusEvent(GithubEvent):
     sender: User
 
 
-class PushEventCommitAuthor(pydantic.BaseModel):
+class PushEventCommitter(pydantic.BaseModel):
     name: str
     email: str
+    username: str
+
+
+class PushEventPusher(pydantic.BaseModel):
+    name: str
+    email: typing.Optional[str]
 
 
 class PushEventCommit(pydantic.BaseModel):
-    sha: str
-    message: str
-    author: PushEventCommitAuthor
+    id: str
+    tree_id: str
+    timestamp: datetime
     url: UrlStr
     distinct: bool
+    message: str
+    author: PushEventCommitter
+    committer: PushEventCommitter
+    added: typing.List[str]
+    removed: typing.List[str]
+    modified: typing.List[str]
 
 
 @register
@@ -333,5 +416,5 @@ class PushEvent(GithubEvent):
     commits: typing.List[PushEventCommit]
     head_commit: typing.Optional[PushEventCommit]
     repository: Repo
-    pusher: PushEventCommitAuthor
+    pusher: PushEventPusher
     sender: User

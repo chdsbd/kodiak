@@ -120,24 +120,32 @@ def test_event_parsing(
     """Test all of the events we have"""
     data = json.loads((Path(__file__).parent / "fixtures" / file_name).read_bytes())
 
-    hook_run = False
+    hook_run = 0
 
     def push(data: events.GithubEvent):
         nonlocal hook_run
-        hook_run = True
+        hook_run += 1
         assert isinstance(data, event)
 
-    push.__annotations__["data"] = event
-    webhook()(push)
+    async def push_async(data: events.GithubEvent):
+        nonlocal hook_run
+        hook_run += 1
+        assert isinstance(data, event)
 
-    assert webhook.event_mapping[event] == [push]
-    assert len(webhook.event_mapping) == 1
+    # manually configure push and push_async to listen for parameterized event
+    push.__annotations__["data"] = event
+    push_async.__annotations__["data"] = event
+    webhook()(push)
+    webhook()(push_async)
+
+    assert webhook.event_mapping[event] == [push, push_async]
+    assert len(webhook.event_mapping) == 1, "we have one event mapping to two listeners"
 
     res = client.post(
         "/api/github/hook", json=data, headers={"X-Github-Event": event._event_name}
     )
     assert res.status_code == status.HTTP_200_OK
-    assert hook_run
+    assert hook_run == 2, "push and push_async should both be called"
 
 
 def test_event_count():

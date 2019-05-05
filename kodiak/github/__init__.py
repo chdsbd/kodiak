@@ -1,14 +1,15 @@
 import typing
 from dataclasses import dataclass
 from collections import defaultdict
-import logging
+import structlog
+import inspect
 
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
 from kodiak.github import events
 
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 
 def valid_event(arg: typing.Any) -> bool:
@@ -59,14 +60,16 @@ class Webhook:
                 detail=f"Event '{github_event}' has no registered handler. Support likely doesn't exist for this kind of event.",
             )
         listeners = self.event_mapping.get(handler)
+        bound_log = log.bind(github_event=github_event)
         if listeners is None:
-            logger.info("No listeners registered for event: %s", github_event)
+            bound_log.info("No event listeners registered")
             return None
+        bound_log.info("Processing listeners for event", listener_count=len(listeners))
         for listener in listeners:
-            listener(handler.parse_obj(event))
-        logger.info(
-            "'%s' listeners registered for event: %s", len(listeners), github_event
-        )
+            res = listener(handler.parse_obj(event))
+            # support async and non-async functions
+            if inspect.isawaitable(res):
+                await res
         return None
 
     def register_events(
