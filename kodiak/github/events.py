@@ -187,6 +187,7 @@ class PullRequestEventActions(Enum):
     locked = "locked"
     unlocked = "unlocked"
     reopened = "reopened"
+    synchronize = "synchronize"
 
 
 @register
