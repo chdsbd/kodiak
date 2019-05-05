@@ -1,7 +1,8 @@
+from __future__ import annotations
 import typing
 import asyncio
 from dataclasses import dataclass
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import toml
 from fastapi import FastAPI
@@ -89,7 +90,7 @@ async def pr_review(review: events.PullRequestReviewEvent):
 @dataclass
 class RepoQueue:
     lock: asyncio.Lock = asyncio.Lock()
-    queue: "asyncio.Queue[QueuePR]" = asyncio.Queue()
+    queue: typing.Deque[QueuePR] = deque()
 
 
 REPO_QUEUES: typing.MutableMapping[str, RepoQueue] = defaultdict(RepoQueue)
@@ -112,31 +113,29 @@ def get_queue_for_repo(owner: str, name: str) -> RepoQueue:
 
 def add_to_queue(repo_name: str, repo_owner: str, pull_request_id: int):
     queue = get_queue_for_repo(owner=repo_owner, name=repo_name).queue
-    internal_deque = typing.cast(typing.Any, queue)._queue
-    logger.info("add to queue", queue=internal_deque)
-    queue.put_nowait(
+    logger.info("add to queue", queue=queue)
+    queue.append(
         QueuePR(
             repo_name=repo_name, repo_owner=repo_owner, pull_request_id=pull_request_id
         )
     )
-    logger.info("added to queue", queue=internal_deque)
+    logger.info("added to queue", queue=queue)
 
 
 async def remove_from_queue(repo_name: str, repo_owner: str, pull_request_id: int):
     repo_queue = get_queue_for_repo(owner=repo_owner, name=repo_name)
-    internal_deque = typing.cast(typing.Any, repo_queue.queue)._queue
-    logger.info("remove from queue", queue=internal_deque)
+    queue = repo_queue.queue
+    logger.info("remove from queue", queue=queue)
     pr = QueuePR(
         repo_name=repo_name, repo_owner=repo_owner, pull_request_id=pull_request_id
     )
-    queue = repo_queue.queue
     async with repo_queue.lock:
         try:
-            internal_deque.remove(pr)
+            queue.remove(pr)
         except ValueError:
             # pr wasn't in queue to remove
             pass
-        logger.info("removed from queue", item=pr, queue=internal_deque)
+        logger.info("removed from queue", item=pr, queue=queue)
 
 
 def create_git_revision_expression(branch: str, file_path: str) -> str:
@@ -230,7 +229,7 @@ async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
                 queue = repo_queue.queue
                 async with repo_queue.lock:
                     try:
-                        first: QueuePR = typing.cast(typing.Any, queue)._queue[0]
+                        first: QueuePR = queue[0]
                         token = await client.get_token_for_install(
                             installation_id=installation_id
                         )
