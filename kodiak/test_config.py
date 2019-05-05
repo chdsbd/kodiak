@@ -26,18 +26,16 @@ def test_config_parsing(config, fixtures: typing.List[str]):
 
 
 def test_bad_file():
-    res = V1.parse_toml("something[invalid[")
-    assert isinstance(res, toml.TomlDecodeError)
+    with pytest.raises(toml.TomlDecodeError):
+        V1.parse_toml("something[invalid[")
 
-    res = V1.parse_toml("version = 20")
-    assert isinstance(
-        res, ValueError
-    ), "we should raise an error when we try to parse a different version"
+    with pytest.raises(ValueError):
+        # we should raise an error when we try to parse a different version
+        V1.parse_toml("version = 20")
 
-    res = V1.parse_toml("")
-    assert isinstance(
-        res, ValueError
-    ), "we should always require that the version is specified, even if we provide defaults for everything else"
+    with pytest.raises(ValueError):
+        # we should always require that the version is specified, even if we provide defaults for everything else
+        V1.parse_toml("")
 
-    res = V1.parse_toml("merge.whitelist = [123]")
-    assert isinstance(res, ValueError)
+    with pytest.raises(ValueError):
+        V1.parse_toml("merge.whitelist = [123]")
