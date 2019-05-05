@@ -8,7 +8,6 @@ authors = ["Christopher Dignam <chris@dignam.xyz>"]
 python = "^3.7"
 uvicorn = "^0.7.0"
 fastapi = {version = "^0.17.0",extras = ["all"]}
-PyGithub = "^1.43"
 requests-async = "^0.4.1"
 jsonpath-rw = "^1.4"
 PyJWT = "^1.7"
@@ -24,7 +23,6 @@ ipdb = "^0.12.0"
 toml = "^0.10.0"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "^1.10"
-rope = "^0.14.0"
 typing_extensions = "^3.7"
 
 [build-system]
