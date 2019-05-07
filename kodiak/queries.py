@@ -378,32 +378,3 @@ class Client:
         pr = PullRequest.parse_obj(pull_request)
 
         return EventInfoResponse(config_file=config, pull_request=pr, repo=repo_info)
-
-    async def merge_pr(
-        self,
-        pr_id: str,
-        sha: str,
-        installation_id: str,
-        title: typing.Optional[str] = None,
-        body: typing.Optional[str] = None,
-    ) -> typing.Optional[MergePRUnprocessable]:
-        res = await self.send_query(
-            query=MERGE_PR_MUTATION,
-            variables=dict(PRId=pr_id, SHA=sha, title=title, body=body),
-            installation_id=installation_id,
-        )
-        data = res.get("data")
-        errors = res.get("errors")
-        if errors is None:
-            return None
-        bound_log = log.bind(res=res, data=data, errors=errors)
-        if errors is not None:
-            bound_log.error("errors merging pull request")
-            for error in errors:
-                if error["type"] == "UNPROCESSABLE":
-                    return MergePRUnprocessable(res)
-                else:
-                    raise MergePRError(
-                        "Unexpected errors occurred trying to merge this PR"
-                    )
-        return None

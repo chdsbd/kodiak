@@ -121,13 +121,19 @@ def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
     ):
         # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
         problems = problems + [MergeErrors.DIRTY, MergeErrors.BLOCKED]
+
+    log.debug(
+        "mergeablity results",
+        behind=behind_target,
+        need_test=unknown_mergability,
+        problems=problems,
+    )
+    if problems:
+        raise NotMergable(reasons=problems)
     if behind_target:
         raise NeedsUpdate()
     if unknown_mergability:
         raise CheckMergability()
-
-    if problems:
-        raise NotMergable(reasons=problems)
 
     assert pull_request.mergeStateStatus in (
         MergeStateStatus.CLEAN,
