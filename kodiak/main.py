@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import defaultdict, deque
 from enum import Enum, auto
 
@@ -96,11 +96,26 @@ async def pr_review(review: events.PullRequestReviewEvent):
 class RepoQueue:
     lock: asyncio.Lock = asyncio.Lock()
     queue: typing.Deque[PR] = deque()
+    _waiters: typing.List[asyncio.Future] = field(default_factory=list)
+
+    async def __getitem__(self, index: int) -> PR:
+        try:
+            return self.queue[index]
+        except IndexError:
+            fut: "asyncio.Future[PR]" = asyncio.get_event_loop().create_future()
+            self._waiters.append(fut)
+            return await fut
 
     async def enqueue(self, pr: PR) -> None:
         async with self.lock:
             if pr not in self.queue:
+                # TODO: Is there a bug here by adding the item to the queue and returning it in the future?
                 self.queue.append(pr)
+                try:
+                    fut = self._waiters.pop(0)
+                    fut.set_result(pr)
+                except IndexError:
+                    pass
 
     async def dequeue(self, pr: PR) -> None:
         async with self.lock:
@@ -294,23 +309,17 @@ async def work_repo_queue(q: RepoQueue) -> typing.NoReturn:
     while True:
         try:
             logger.info("processing work queue", queue=q.queue)
+            first = await q[0]
             async with q.lock:
-                try:
-                    # TODO: Use asyncio.queue so we can await
-                    first = q.queue[0]
-                    res = await first.merge()
-                    if res == MergeResults.OK:
-                        logger.info("merged")
-                        q.queue.popleft()
-                    elif res == MergeResults.CANNOT_MERGE:
-                        q.queue.popleft()
-                        logger.info("Cannot merge")
-                    else:
-                        logger.warning("problem merging", pr=first)
-                except IndexError:
-                    pass
-            # TODO: Use asyncio.queue so we can await instead of busy waiting
-            await asyncio.sleep(1)
+                res = await first.merge()
+                if res == MergeResults.OK:
+                    logger.info("merged")
+                    q.queue.popleft()
+                elif res == MergeResults.CANNOT_MERGE:
+                    q.queue.popleft()
+                    logger.info("Cannot merge")
+                else:
+                    logger.warning("problem merging", pr=first)
         except BaseException as e:
             logger.error("Captured exception", exception=e)
             pass
