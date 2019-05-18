@@ -302,7 +302,7 @@ class Client:
         else:
             token = self.token or self.generate_jwt()
         self.session.headers["Authorization"] = f"Bearer {token}"
-        log.info("request", headers=self.session.headers)
+        log.info("sending query")
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),

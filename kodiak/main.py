@@ -176,15 +176,28 @@ class PR:
     owner: str
     repo: str
     installation_id: str
+    log: structlog.BoundLogger
     Client: typing.Type[queries.Client] = queries.Client
 
+    def __init__(
+        self,
+        number: int,
+        owner: str,
+        repo: str,
+        installation_id: str,
+        Client: typing.Type[queries.Client] = queries.Client,
+    ):
+        self.number = number
+        self.owner = owner
+        self.repo = repo
+        self.installation_id = installation_id
+        self.Client = Client
+        self.log = logger.bind(repo=f"{owner}/{repo}#{number}")
+
+    def __repr__(self) -> str:
+        return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
+
     async def get_event(self) -> typing.Optional[PREventData]:
-        log = logger.bind(
-            owner=self.owner,
-            repo=self.repo,
-            number=self.number,
-            installation_id=self.installation_id,
-        )
         async with self.Client() as client:
             default_branch_name = await client.get_default_branch_name(
                 owner=self.owner, repo=self.repo, installation_id=self.installation_id
@@ -200,18 +213,18 @@ class PR:
             )
 
             if event_info.config_file is None:
-                log.warning("No configuration file found for repo.")
+                self.log.warning("No configuration file found for repo.")
                 return None
             if event_info.pull_request is None:
-                log.warning("Could not find pull request")
+                self.log.warning("Could not find pull request")
                 return None
             if event_info.repo is None:
-                log.warning("Could not find repository")
+                self.log.warning("Could not find repository")
                 return None
             try:
                 config = kodiak.config.V1.parse_toml(event_info.config_file)
             except (ValueError, toml.TomlDecodeError):
-                log.warning(
+                self.log.warning(
                     "Failure to parse toml configuration file",
                     config_path=CONFIG_FILE_PATH,
                 )
@@ -223,7 +236,6 @@ class PR:
             )
 
     async def mergability(self) -> MergeabilityResponse:
-        log = logger.bind(owner=self.owner, repo=self.repo)
         event = await self.get_event()
         if event is None:
             return MergeabilityResponse.INTERNAL_PROBLEM
@@ -231,10 +243,10 @@ class PR:
             evaluate_mergability(config=event.config, pull_request=event.pull_request)
             return MergeabilityResponse.OK
         except NotMergable as e:
-            log.info("not mergable", reasons=e.reasons)
+            self.log.info("not mergable", reasons=e.reasons)
             return MergeabilityResponse.NOT_MERGABLE
         except NeedsUpdate:
-            log.info("needs update")
+            self.log.info("needs update")
             return MergeabilityResponse.NEEDS_UPDATE
         except WaitingForCI:
             return MergeabilityResponse.WAITING_FOR_CI
@@ -245,7 +257,7 @@ class PR:
         async with self.Client() as client:
             event = await self.get_event()
             if event is None:
-                logger.warning("problem")
+                self.log.warning("problem")
                 return
             token = await client.get_token_for_install(
                 installation_id=self.installation_id
@@ -265,7 +277,7 @@ class PR:
 
     async def merge(self) -> MergeResults:
         m_res = await self.mergability()
-        log = logger.bind(merge_response=m_res)
+        log = self.log.bind(merge_response=m_res)
         if m_res == MergeabilityResponse.NEEDS_UPDATE:
             await self.update()
         elif m_res == MergeabilityResponse.OK:
@@ -306,7 +318,7 @@ class RepoWorker:
     Client: typing.Type[queries.Client] = queries.Client
 
     async def ingest(self, pr: PR) -> typing.Optional[Retry]:
-        log = logger.bind(pr=pr)
+        log = logger.bind(repo=f"{pr.owner}/{pr.repo}", pr_number=pr.number)
         # IF PR needs an update or can be merged, add it to queue
         mergability = await pr.mergability()
         if mergability in (
