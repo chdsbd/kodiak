@@ -12,6 +12,7 @@ from starlette import status
 from jsonpath_rw import parse
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
+from kodiak.github import events
 import jwt
 
 log = structlog.get_logger()
@@ -69,6 +70,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       id
       mergeStateStatus
       state
+      mergeable
       baseRefName
       headRefName
       commits(last: 1) {
@@ -115,6 +117,15 @@ class MergeStateStatus(Enum):
     UNSTABLE = "UNSTABLE"
 
 
+class MergableState(Enum):
+    # The pull request cannot be merged due to merge conflicts.
+    CONFLICTING = "CONFLICTING"
+    # The pull request can be merged.
+    MERGEABLE = "MERGEABLE"
+    # The mergeability of the pull request is still being calculated.
+    UNKNOWN = "UNKNOWN"
+
+
 class PullRequestState(Enum):
     # A pull request that is still open.
     OPEN = "OPEN"
@@ -128,6 +139,7 @@ class PullRequest(BaseModel):
     id: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
+    mergeable: MergableState
     labels: typing.List[str]
     # the SHA of the most recent commit
     latest_sha: str
@@ -290,6 +302,7 @@ class Client:
         else:
             token = self.token or self.generate_jwt()
         self.session.headers["Authorization"] = f"Bearer {token}"
+        log.info("request", headers=self.session.headers)
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
@@ -378,3 +391,29 @@ class Client:
         pr = PullRequest.parse_obj(pull_request)
 
         return EventInfoResponse(config_file=config, pull_request=pr, repo=repo_info)
+
+    async def get_pull_requests_for_sha(
+        self, owner: str, repo: str, installation_id: str, sha: str
+    ) -> typing.Optional[typing.List[events.BasePullRequest]]:
+        async with Client() as client:
+            token = await client.get_token_for_install(installation_id=installation_id)
+            headers = dict(
+                Authorization=f"token {token}",
+                Accept="application/vnd.github.machine-man-preview+json",
+            )
+            res = await client.session.get(
+                f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
+                headers=headers,
+            )
+            if res.status_code != 200:
+                log.warning(
+                    "problem finding prs",
+                    owner=owner,
+                    repo=repo,
+                    sha=sha,
+                    res=res,
+                    res_json=res.json(),
+                )
+                return None
+            return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
+

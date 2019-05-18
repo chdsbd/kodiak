@@ -16,6 +16,7 @@ from kodiak.evaluation import (
     evaluate_mergability,
     NotMergable,
     NeedsUpdate,
+    WaitingForCI,
     CheckMergability,
 )
 
@@ -82,14 +83,33 @@ async def check_run(check_run_event: events.CheckRunEvent):
 @webhook()
 async def status_event(status_event: events.StatusEvent):
     assert status_event.installation
-    raise NotImplementedError
-    # TODO: Get PRs for sha and do something like we do with check_run
+    sha = status_event.commit.sha
+    owner = status_event.repository.owner.login
+    repo = status_event.repository.name
+    installation_id = str(status_event.installation.id)
+    async with Client() as client:
+        prs = await client.get_pull_requests_for_sha(
+            owner=owner, repo=repo, installation_id=installation_id, sha=sha
+        )
+        if prs is None:
+            logger.warning("problem finding prs for sha")
+            return None
+        for pr in prs:
+            processing_queue.put_nowait(
+                Event(
+                    repo_owner=owner,
+                    repo_name=repo,
+                    pull_request_number=pr.number,
+                    source_event=status_event,
+                    installation_id=installation_id,
+                )
+            )
 
 
 @webhook()
 async def pr_review(review: events.PullRequestReviewEvent):
     assert review.installation
-    raise NotImplementedError
+    # raise NotImplementedError
 
 
 @dataclass
@@ -139,12 +159,14 @@ class MergeabilityResponse(Enum):
     NOT_MERGABLE = auto()
     NEED_REFRESH = auto()
     INTERNAL_PROBLEM = auto()
+    WAITING_FOR_CI = auto()
 
 
 class MergeResults(Enum):
     OK = auto()
     CANNOT_MERGE = auto()
     API_FAILURE = auto()
+    WAITING = auto()
 
 
 @dataclass
@@ -212,6 +234,8 @@ class PR:
         except NeedsUpdate:
             log.info("needs update")
             return MergeabilityResponse.NEEDS_UPDATE
+        except WaitingForCI:
+            return MergeabilityResponse.WAITING_FOR_CI
         except CheckMergability:
             return MergeabilityResponse.NEED_REFRESH
 
@@ -246,6 +270,8 @@ class PR:
             pass
         elif m_res == MergeabilityResponse.NEED_REFRESH:
             pass
+        elif m_res == MergeabilityResponse.WAITING_FOR_CI:
+            return MergeResults.WAITING
         else:
             log.warning("Couldn't merge PR")
             return MergeResults.CANNOT_MERGE
@@ -306,22 +332,24 @@ REPO_QUEUES: typing.MutableMapping[str, RepoWorker] = dict()
 
 
 async def work_repo_queue(q: RepoQueue) -> typing.NoReturn:
+    log = logger.bind(queue_worker=True)
     while True:
         try:
-            logger.info("processing work queue", queue=q.queue)
+            log.info("processing work queue", queue=q.queue)
             first = await q[0]
             async with q.lock:
+                log.info("wait for item to merge")
                 res = await first.merge()
                 if res == MergeResults.OK:
-                    logger.info("merged")
+                    log.info("Merged. POP FROM QUEUE")
                     q.queue.popleft()
                 elif res == MergeResults.CANNOT_MERGE:
+                    log.info("Cannot merge. REMOVE FROM QUEUE")
                     q.queue.popleft()
-                    logger.info("Cannot merge")
                 else:
-                    logger.warning("problem merging", pr=first)
+                    log.warning("problem merging", pr=first)
         except BaseException as e:
-            logger.error("Captured exception", exception=e)
+            log.error("Captured exception", exception=e)
             pass
 
 

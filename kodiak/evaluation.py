@@ -3,7 +3,13 @@ from enum import Enum, auto
 from dataclasses import dataclass
 
 from kodiak import config
-from kodiak.queries import PullRequest, PullRequestState, MergeStateStatus, RepoInfo
+from kodiak.queries import (
+    PullRequest,
+    PullRequestState,
+    MergeStateStatus,
+    RepoInfo,
+    MergableState,
+)
 import structlog
 
 log = structlog.get_logger()
@@ -49,8 +55,14 @@ class CheckMergability(MergabilityException):
     pass
 
 
-# TOOD: We can probably extend that to display a status check on the PR (is
-# there a risk for a loop there?)
+class Passable(Exception):
+    pass
+
+
+class WaitingForCI(Passable):
+    pass
+
+
 def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
     """
     Process a PR to potentially be merged
@@ -63,15 +75,18 @@ def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
     4. PR is up-to-date with target. If this last case fails, we will place the
        PR on the queue for serial integration into target.
     """
+    # TODO: Eliminate this array and just raise on the first problem
     problems: typing.List[MergeErrors] = []
     behind_target = False
     unknown_mergability = False
+    waiting_for_ci = False
 
     # TODO: Evaluate merge method viability
     pr_log = log.bind(
         labels=pull_request.labels,
         state=pull_request.state,
         merge_state_status=pull_request.mergeStateStatus,
+        mergeable_state=pull_request.mergeable,
     )
 
     # If we don't have a whitelist, we continue.
@@ -115,14 +130,17 @@ def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
         problems.append(MergeErrors.UNSTABLE_MERGE)
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
         problems.append(MergeErrors.DRAFT)
-    if pull_request.mergeStateStatus in (
-        MergeStateStatus.DIRTY,
-        MergeStateStatus.BLOCKED,
-    ):
+    if pull_request.mergeStateStatus == MergeStateStatus.BLOCKED:
+        if pull_request.mergeable == MergableState.CONFLICTING:
+            # TODO: How do we handle this? We'll always get this status when we are waiting on CI.
+            problems.append(MergeErrors.BLOCKED)
+        else:
+            waiting_for_ci = True
+    if pull_request.mergeStateStatus == MergeStateStatus.DIRTY:
         # TODO: Add comment to PR explaining that PR cannot be merged. Remove automerge label.
-        problems = problems + [MergeErrors.DIRTY, MergeErrors.BLOCKED]
+        problems.append(MergeErrors.DIRTY)
 
-    log.debug(
+    pr_log.debug(
         "mergeablity results",
         behind=behind_target,
         need_test=unknown_mergability,
@@ -134,6 +152,8 @@ def evaluate_mergability(config: config.V1, pull_request: PullRequest) -> None:
         raise NeedsUpdate()
     if unknown_mergability:
         raise CheckMergability()
+    if waiting_for_ci:
+        raise WaitingForCI()
 
     assert pull_request.mergeStateStatus in (
         MergeStateStatus.CLEAN,
