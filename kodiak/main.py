@@ -12,6 +12,7 @@ import structlog
 import kodiak
 from kodiak.github import Webhook, events
 from kodiak.queries import Client, EventInfoResponse, PullRequest, RepoInfo
+from kodiak import queries
 from kodiak.evaluation import (
     evaluate_mergability,
     NotMergable,
@@ -175,6 +176,7 @@ class PR:
     owner: str
     repo: str
     installation_id: str
+    Client: typing.Type[queries.Client] = queries.Client
 
     async def get_event(self) -> typing.Optional[PREventData]:
         log = logger.bind(
@@ -183,7 +185,7 @@ class PR:
             number=self.number,
             installation_id=self.installation_id,
         )
-        async with Client() as client:
+        async with self.Client() as client:
             default_branch_name = await client.get_default_branch_name(
                 owner=self.owner, repo=self.repo, installation_id=self.installation_id
             )
@@ -240,7 +242,7 @@ class PR:
             return MergeabilityResponse.NEED_REFRESH
 
     async def update(self) -> None:
-        async with Client() as client:
+        async with self.Client() as client:
             event = await self.get_event()
             if event is None:
                 logger.warning("problem")
@@ -275,7 +277,7 @@ class PR:
         else:
             log.warning("Couldn't merge PR")
             return MergeResults.CANNOT_MERGE
-        async with Client() as client:
+        async with self.Client() as client:
             token = await client.get_token_for_install(
                 installation_id=self.installation_id
             )
@@ -301,6 +303,7 @@ class Retry:
 class RepoWorker:
     q: RepoQueue
     task: asyncio.Task
+    Client: typing.Type[queries.Client] = queries.Client
 
     async def ingest(self, pr: PR) -> typing.Optional[Retry]:
         log = logger.bind(pr=pr)
@@ -315,7 +318,7 @@ class RepoWorker:
             await self.q.enqueue(pr)
         elif mergability == MergeabilityResponse.NEED_REFRESH:
             log.info("Need to trigger update")
-            async with Client() as client:
+            async with self.Client() as client:
                 token = await client.get_token_for_install(
                     installation_id=pr.installation_id
                 )
