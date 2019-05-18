@@ -338,25 +338,30 @@ class RepoWorker:
 REPO_QUEUES: typing.MutableMapping[str, RepoWorker] = dict()
 
 
+async def _work_repo_queue(q: RepoQueue):
+    log = logger.bind(queue=q.queue)
+    log.info("processing start")
+    first = await q[0]
+    async with q.lock:
+        res = await first.merge()
+        if res == MergeResults.OK:
+            log.info("Merged. POP FROM QUEUE")
+            q.queue.popleft()
+        elif res == MergeResults.CANNOT_MERGE:
+            log.info("Cannot merge. REMOVE FROM QUEUE")
+            q.queue.popleft()
+        else:
+            await asyncio.sleep(1)
+            log.warning("problem merging", pr=first)
+        log.info("processing finished")
+
+
 async def work_repo_queue(q: RepoQueue) -> typing.NoReturn:
-    log = logger.bind(queue_worker=True)
     while True:
         try:
-            log.info("processing work queue", queue=q.queue)
-            first = await q[0]
-            async with q.lock:
-                log.info("wait for item to merge")
-                res = await first.merge()
-                if res == MergeResults.OK:
-                    log.info("Merged. POP FROM QUEUE")
-                    q.queue.popleft()
-                elif res == MergeResults.CANNOT_MERGE:
-                    log.info("Cannot merge. REMOVE FROM QUEUE")
-                    q.queue.popleft()
-                else:
-                    log.warning("problem merging", pr=first)
+            await _work_repo_queue(q)
         except BaseException as e:
-            log.error("Captured exception", exception=e)
+            logger.error("Captured exception", exception=e)
             pass
 
 
