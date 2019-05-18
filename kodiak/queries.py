@@ -416,4 +416,3 @@ class Client:
                 )
                 return None
             return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
-
