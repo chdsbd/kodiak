@@ -306,7 +306,7 @@ class RepoWorker:
         log = logger.bind(pr=pr)
         # IF PR needs an update or can be merged, add it to queue
         mergability = await pr.mergability()
-        if mergability in (MergeabilityResponse.OK, MergeabilityResponse.NEEDS_UPDATE):
+        if mergability in (MergeabilityResponse.OK, MergeabilityResponse.NEEDS_UPDATE, MergeabilityResponse.WAITING_FOR_CI):
             log.info("queuing", mergability=mergability)
             await self.q.enqueue(pr)
         elif mergability == MergeabilityResponse.NEED_REFRESH:
