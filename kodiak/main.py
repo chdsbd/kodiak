@@ -350,6 +350,7 @@ class RepoWorker:
 REPO_QUEUES: typing.MutableMapping[str, RepoWorker] = dict()
 MERGE_SLEEP_SECONDS = 3
 
+
 async def _work_repo_queue(q: RepoQueue):
     log = logger.bind(queue=q.queue)
     log.info("processing start")
