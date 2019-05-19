@@ -348,12 +348,13 @@ class RepoWorker:
 
 
 REPO_QUEUES: typing.MutableMapping[str, RepoWorker] = dict()
-
+MERGE_SLEEP_SECONDS = 3
 
 async def _work_repo_queue(q: RepoQueue):
     log = logger.bind(queue=q.queue)
     log.info("processing start")
     first = await q[0]
+    log = log.bind(pr=first)
     async with q.lock:
         res = await first.merge()
         if res == MergeResults.OK:
@@ -363,8 +364,8 @@ async def _work_repo_queue(q: RepoQueue):
             log.info("Cannot merge. REMOVE FROM QUEUE")
             q.queue.popleft()
         else:
-            await asyncio.sleep(1)
-            log.warning("problem merging", pr=first)
+            await asyncio.sleep(MERGE_SLEEP_SECONDS)
+            log.warning("problem merging")
         log.info("processing finished")
 
 
