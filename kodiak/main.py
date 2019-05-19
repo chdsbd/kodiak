@@ -11,14 +11,23 @@ import structlog
 
 import kodiak
 from kodiak.github import Webhook, events
-from kodiak.queries import Client, EventInfoResponse, PullRequest, RepoInfo
+from kodiak.queries import (
+    Client,
+    EventInfoResponse,
+    PullRequest,
+    RepoInfo,
+    BranchProtectionRule,
+    PRReview,
+    StatusContext,
+    MergeMethod,
+)
 from kodiak import queries
 from kodiak.evaluation import (
-    evaluate_mergability,
-    NotMergable,
-    NeedsUpdate,
-    WaitingForCI,
-    CheckMergability,
+    mergable,
+    NotQueueable,
+    WaitingForChecks,
+    MissingGithubMergabilityState,
+    NeedsBranchUpdate,
 )
 
 app = FastAPI()
@@ -152,32 +161,45 @@ class PREventData:
     pull_request: PullRequest
     config: kodiak.config.V1
     repo_info: RepoInfo
+    branch_protection: BranchProtectionRule
+    reviews: typing.List[PRReview] = field(default_factory=list)
+    status_contexts: typing.List[StatusContext] = field(default_factory=list)
+    valid_signature: bool = False
+    valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
 
 
 class MergeabilityResponse(Enum):
     OK = auto()
     NEEDS_UPDATE = auto()
-    NOT_MERGABLE = auto()
     NEED_REFRESH = auto()
-    INTERNAL_PROBLEM = auto()
-    WAITING_FOR_CI = auto()
+    NOT_MERGEABLE = auto()
+    WAIT = auto()
 
 
 class MergeResults(Enum):
     OK = auto()
     CANNOT_MERGE = auto()
     API_FAILURE = auto()
-    WAITING = auto()
 
 
-@dataclass(init=False, repr=False)
+@dataclass(init=False, repr=False, eq=False)
 class PR:
     number: int
     owner: str
     repo: str
     installation_id: str
     log: structlog.BoundLogger
-    Client: typing.Type[queries.Client] = queries.Client
+    Client: typing.Type[queries.Client] = field(
+        default_factory=typing.Type[queries.Client]
+    )
+
+    def __eq__(self, b):
+        return (
+            self.number == b.number
+            and self.owner == b.owner
+            and self.repo == b.repo
+            and self.installation_id == b.installation_id
+        )
 
     def __init__(
         self,
@@ -202,6 +224,7 @@ class PR:
             default_branch_name = await client.get_default_branch_name(
                 owner=self.owner, repo=self.repo, installation_id=self.installation_id
             )
+            # TODO: Make this return a response we can immediately return
             event_info = await client.get_event_info(
                 owner=self.owner,
                 repo=self.repo,
@@ -221,6 +244,9 @@ class PR:
             if event_info.repo is None:
                 self.log.warning("Could not find repository")
                 return None
+            if event_info.branch_protection is None:
+                self.log.warning("Missing required branch protection")
+                return None
             try:
                 config = kodiak.config.V1.parse_toml(event_info.config_file)
             except (ValueError, toml.TomlDecodeError):
@@ -233,25 +259,36 @@ class PR:
                 pull_request=event_info.pull_request,
                 config=config,
                 repo_info=event_info.repo,
+                branch_protection=event_info.branch_protection,
+                reviews=event_info.reviews,
+                status_contexts=event_info.status_contexts,
+                valid_signature=event_info.valid_signature,
+                valid_merge_methods=event_info.valid_merge_methods,
             )
 
     async def mergability(self) -> MergeabilityResponse:
         event = await self.get_event()
         if event is None:
-            return MergeabilityResponse.INTERNAL_PROBLEM
+            return MergeabilityResponse.NOT_MERGEABLE
         try:
-            evaluate_mergability(config=event.config, pull_request=event.pull_request)
+            mergable(
+                config=event.config,
+                pull_request=event.pull_request,
+                branch_protection=event.branch_protection,
+                reviews=event.reviews,
+                contexts=event.status_contexts,
+                valid_signature=event.valid_signature,
+                valid_merge_methods=event.valid_merge_methods,
+            )
             return MergeabilityResponse.OK
-        except NotMergable as e:
-            self.log.info("not mergable", reasons=e.reasons)
-            return MergeabilityResponse.NOT_MERGABLE
-        except NeedsUpdate:
-            self.log.info("needs update")
-            return MergeabilityResponse.NEEDS_UPDATE
-        except WaitingForCI:
-            return MergeabilityResponse.WAITING_FOR_CI
-        except CheckMergability:
+        except NotQueueable:
+            return MergeabilityResponse.NOT_MERGEABLE
+        except MissingGithubMergabilityState:
             return MergeabilityResponse.NEED_REFRESH
+        except WaitingForChecks:
+            return MergeabilityResponse.WAIT
+        except NeedsBranchUpdate:
+            return MergeabilityResponse.NEEDS_UPDATE
 
     async def update(self) -> None:
         async with self.Client() as client:
@@ -284,8 +321,8 @@ class PR:
             pass
         elif m_res == MergeabilityResponse.NEED_REFRESH:
             pass
-        elif m_res == MergeabilityResponse.WAITING_FOR_CI:
-            return MergeResults.WAITING
+        elif m_res == MergeabilityResponse.WAIT:
+            pass
         else:
             log.warning("Couldn't merge PR")
             return MergeResults.CANNOT_MERGE
@@ -324,7 +361,7 @@ class RepoWorker:
         if mergability in (
             MergeabilityResponse.OK,
             MergeabilityResponse.NEEDS_UPDATE,
-            MergeabilityResponse.WAITING_FOR_CI,
+            MergeabilityResponse.WAIT,
         ):
             log.info("queuing", mergability=mergability)
             await self.q.enqueue(pr)
@@ -343,7 +380,7 @@ class RepoWorker:
             return Retry()
 
         else:
-            log.info("cannot merge", mergability=mergability)
+            log.info("cannot queue", mergability=mergability)
         return None
 
 
@@ -404,37 +441,30 @@ async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
     """
     logger.info("event processor started")
     while True:
-        try:
-            github_event: "Event" = await webhook_queue.get()
-            owner = github_event.repo_owner
-            repo = github_event.repo_name
-            pr_number = github_event.pull_request_number
-            installation_id = github_event.installation_id
-            log = logger.bind(
-                installation_id=installation_id,
+        github_event: "Event" = await webhook_queue.get()
+        owner = github_event.repo_owner
+        repo = github_event.repo_name
+        pr_number = github_event.pull_request_number
+        installation_id = github_event.installation_id
+        log = logger.bind(
+            installation_id=installation_id, owner=owner, repo=repo, pr_number=pr_number
+        )
+        log.info("pull event from queue for processing")
+        repo_queue = get_queue_for_repo(
+            owner=owner, repo=repo, installation_id=installation_id
+        )
+        res = await repo_queue.ingest(
+            PR(
                 owner=owner,
                 repo=repo,
-                pr_number=pr_number,
+                number=pr_number,
+                installation_id=installation_id,
             )
-            log.info("pull event from queue for processing")
-            repo_queue = get_queue_for_repo(
-                owner=owner, repo=repo, installation_id=installation_id
-            )
-            res = await repo_queue.ingest(
-                PR(
-                    owner=owner,
-                    repo=repo,
-                    number=pr_number,
-                    installation_id=installation_id,
-                )
-            )
-            if isinstance(res, Retry):
-                # add some delay for things to settle on Github's end
-                await asyncio.sleep(1)
-                webhook_queue.put_nowait(github_event)
-        except Exception as e:
-            log.warning("ignore exception", exec=e)
-            pass
+        )
+        if isinstance(res, Retry):
+            # add some delay for things to settle on Github's end
+            await asyncio.sleep(1)
+            webhook_queue.put_nowait(github_event)
 
 
 @app.on_event("startup")

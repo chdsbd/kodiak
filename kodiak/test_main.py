@@ -52,7 +52,8 @@ def create_pr():
 MERGEABLE_RESPONSES = (
     MergeabilityResponse.OK,
     MergeabilityResponse.NEEDS_UPDATE,
-    MergeabilityResponse.WAITING_FOR_CI,
+    MergeabilityResponse.NEED_REFRESH,
+    MergeabilityResponse.WAIT,
 )
 
 
@@ -69,10 +70,7 @@ async def test_repo_worker_ingest_enqueable(
     assert pr in worker.q.queue, "PR should be enqueued for future merge"
 
 
-NOT_MERGEABLE_RESPONSES = (
-    MergeabilityResponse.INTERNAL_PROBLEM,
-    MergeabilityResponse.NOT_MERGABLE,
-)
+NOT_MERGEABLE_RESPONSES = (MergeabilityResponse.NOT_MERGEABLE,)
 
 
 @pytest.mark.asyncio
@@ -80,12 +78,19 @@ NOT_MERGEABLE_RESPONSES = (
 async def test_repo_worker_ingest_not_enqueable(
     create_pr, worker: RepoWorker, mergeable_response: MergeabilityResponse
 ):
+    worker.q.queue.clear()
     pr = create_pr(mergeable_response)
 
     res = await worker.ingest(pr)
 
     assert res != Retry
     assert pr not in worker.q.queue, "PR should not be enqueued"
+
+
+def test_mergeability_response_coverage():
+    assert len(MergeabilityResponse) == len(
+        MERGEABLE_RESPONSES + NOT_MERGEABLE_RESPONSES
+    )
 
 
 @pytest.fixture
@@ -120,8 +125,48 @@ def repo():
 
 
 @pytest.fixture
-def event_response(config_file, pull_request, repo):
-    return queries.EventInfoResponse(config_file, pull_request, repo)
+def branch_protection():
+
+    requiredApprovingReviewCount: typing.Optional[int]
+    requiresStatusChecks: bool
+    requiredStatusCheckContexts: typing.List[str]
+    requiresStrictStatusChecks: bool
+    requiresCommitSignatures: bool
+
+    return queries.BranchProtectionRule(
+        requiresApprovingReviews=True,
+        requiredApprovingReviewCount=2,
+        requiresStatusChecks=True,
+        requiredStatusCheckContexts=["ci/example"],
+        requiresStrictStatusChecks=True,
+        requiresCommitSignatures=True,
+    )
+
+
+@pytest.fixture
+def review():
+    return queries.PRReview(id="abc", state=queries.PRReviewState.APPROVED)
+
+
+@pytest.fixture
+def status_context():
+    return queries.StatusContext(context="123", state=queries.StatusState.SUCCESS)
+
+
+@pytest.fixture
+def event_response(
+    config_file, pull_request, repo, branch_protection, review, status_context
+):
+    return queries.EventInfoResponse(
+        config_file,
+        pull_request,
+        repo,
+        branch_protection,
+        reviews=[review],
+        status_contexts=[status_context],
+        valid_signature=True,
+        valid_merge_methods=[queries.MergeMethod.merge],
+    )
 
 
 @pytest.fixture
@@ -161,6 +206,8 @@ def gh_client(event_response: queries.EventInfoResponse):
 
 @pytest.mark.asyncio
 async def test_repo_worker_ingest_need_refresh(gh_client, worker: RepoWorker):
+    worker.q.queue.clear()
+
     class FakePR(PR):
         async def mergability(self) -> MergeabilityResponse:
             return MergeabilityResponse.NEED_REFRESH
@@ -186,12 +233,16 @@ async def test_repo_worker_ingest_need_refresh(gh_client, worker: RepoWorker):
         (MergeResults.OK, 0),
         (MergeResults.CANNOT_MERGE, 0),
         (MergeResults.API_FAILURE, 1),
-        (MergeResults.WAITING, 1),
     ],
 )
 async def test_work_repo_queue(
-    create_pr, merge_result: MergeResults, expected_length: int
+    monkeypatch, create_pr, merge_result: MergeResults, expected_length: int
 ):
+    # don't wait during tests
+    import kodiak
+
+    monkeypatch.setattr(kodiak.main, "MERGE_SLEEP_SECONDS", 0)
+
     class FakePR(PR):
         async def merge(self) -> MergeResults:
             return merge_result
@@ -205,59 +256,17 @@ async def test_work_repo_queue(
     assert len(q.queue) == expected_length
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response,result",
-    [
-        (
-            queries.EventInfoResponse(config_file=None, pull_request=None, repo=None),
-            None,
-        ),
-        (
-            queries.EventInfoResponse(
-                config_file="",
-                pull_request=queries.PullRequest(
-                    id="123",
-                    mergeStateStatus=queries.MergeStateStatus.BEHIND,
-                    state=queries.PullRequestState.OPEN,
-                    mergeable=queries.MergableState.MERGEABLE,
-                    labels=[],
-                    latest_sha="abcd",
-                    baseRefName="some-branch",
-                    headRefName="another-branch",
-                ),
-                repo=queries.RepoInfo(False, False, False),
-            ),
-            None,
-        ),
-    ],
-)
-async def test_pr_get_event_failures(gh_client, response, result):
-    class MyMockClient(gh_client):  # type: ignore
-        async def get_event_info(*args, **kwargs):
-            return response
-
-    pr = PR(
+def test_pr(gh_client):
+    a = PR(
         number=123,
-        owner="tester",
-        repo="repo",
-        installation_id="abc",
-        Client=MyMockClient,
+        owner="ghost",
+        repo="ghost",
+        installation_id="abc123",
+        Client=gh_client,
     )
-    res = await pr.get_event()
-    assert res == result
+    b = PR(number=123, owner="ghost", repo="ghost", installation_id="abc123")
+    assert a == b, "equality should work even though they have different clients"
 
+    from collections import deque
 
-@pytest.fixture
-def pr(gh_client):
-    return PR(
-        number=123, owner="tester", repo="repo", installation_id="abc", Client=gh_client
-    )
-
-
-@pytest.mark.asyncio
-async def test_pr_get_event_success(gh_client, pull_request, pr, config):
-    res = await pr.get_event()
-    assert res == PREventData(
-        pull_request=pull_request, config=config, repo_info=RepoInfo(False, True, True)
-    )
+    assert a in deque([b])
