@@ -170,7 +170,7 @@ class MergeResults(Enum):
     WAITING = auto()
 
 
-@dataclass
+@dataclass(init=False, repr=False)
 class PR:
     number: int
     owner: str
