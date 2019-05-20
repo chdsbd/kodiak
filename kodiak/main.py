@@ -266,10 +266,12 @@ class PR:
                 valid_merge_methods=event_info.valid_merge_methods,
             )
 
-    async def mergability(self) -> MergeabilityResponse:
+    async def mergability(
+        self
+    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[kodiak.config.V1]]:
         event = await self.get_event()
         if event is None:
-            return MergeabilityResponse.NOT_MERGEABLE
+            return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             mergable(
                 config=event.config,
@@ -280,15 +282,15 @@ class PR:
                 valid_signature=event.valid_signature,
                 valid_merge_methods=event.valid_merge_methods,
             )
-            return MergeabilityResponse.OK
+            return MergeabilityResponse.OK, event.config
         except NotQueueable:
-            return MergeabilityResponse.NOT_MERGEABLE
+            return MergeabilityResponse.NOT_MERGEABLE, event.config
         except MissingGithubMergabilityState:
-            return MergeabilityResponse.NEED_REFRESH
+            return MergeabilityResponse.NEED_REFRESH, event.config
         except WaitingForChecks:
-            return MergeabilityResponse.WAIT
+            return MergeabilityResponse.WAIT, event.config
         except NeedsBranchUpdate:
-            return MergeabilityResponse.NEEDS_UPDATE
+            return MergeabilityResponse.NEEDS_UPDATE, event.config
 
     async def update(self) -> None:
         async with self.Client() as client:
@@ -313,7 +315,7 @@ class PR:
             )
 
     async def merge(self) -> MergeResults:
-        m_res = await self.mergability()
+        m_res, config = await self.mergability()
         log = self.log.bind(merge_response=m_res)
         if m_res == MergeabilityResponse.NEEDS_UPDATE:
             await self.update()
@@ -326,6 +328,8 @@ class PR:
         else:
             log.warning("Couldn't merge PR")
             return MergeResults.CANNOT_MERGE
+        if config is None:
+            return MergeResults.CANNOT_MERGE
         async with self.Client() as client:
             token = await client.get_token_for_install(
                 installation_id=self.installation_id
@@ -336,9 +340,9 @@ class PR:
             )
             url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{self.number}/merge"
             res = await client.session.put(
-                url, headers=headers, json={"merge_method": "squash"}
+                url, headers=headers, json={"merge_method": config.merge.method}
             )
-            log.info("merge attemp", res=res, res_json=res.json())
+            log.info("merge attempt", res=res, res_json=res.json())
             if res.status_code < 300:
                 return MergeResults.OK
             return MergeResults.API_FAILURE
@@ -357,7 +361,7 @@ class RepoWorker:
     async def ingest(self, pr: PR) -> typing.Optional[Retry]:
         log = logger.bind(repo=f"{pr.owner}/{pr.repo}", pr_number=pr.number)
         # IF PR needs an update or can be merged, add it to queue
-        mergability = await pr.mergability()
+        mergability, _config = await pr.mergability()
         if mergability in (
             MergeabilityResponse.OK,
             MergeabilityResponse.NEEDS_UPDATE,

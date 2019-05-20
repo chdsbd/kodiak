@@ -41,8 +41,8 @@ async def worker(gh_client):
 def create_pr():
     def create(mergeable_response: MergeabilityResponse):
         class FakePR(PR):
-            async def mergability(self) -> MergeabilityResponse:
-                return mergeable_response
+            async def mergability(self) -> typing.Tuple[MergeabilityResponse, V1]:
+                return mergeable_response, V1(version=1)
 
         return FakePR(number=123, owner="tester", repo="repo", installation_id="abc")
 
@@ -209,8 +209,8 @@ async def test_repo_worker_ingest_need_refresh(gh_client, worker: RepoWorker):
     worker.q.queue.clear()
 
     class FakePR(PR):
-        async def mergability(self) -> MergeabilityResponse:
-            return MergeabilityResponse.NEED_REFRESH
+        async def mergability(self) -> typing.Tuple[MergeabilityResponse, V1]:
+            return MergeabilityResponse.NEED_REFRESH, V1(version=1)
 
     pr = FakePR(
         number=123,
