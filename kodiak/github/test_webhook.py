@@ -47,10 +47,12 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
     assert webhook.event_mapping[events.PullRequestEvent] == [push]
     assert len(webhook.event_mapping) == 1
 
+    body, sha = get_body_and_hash(pull_request_event)
+
     res = client.post(
         "/api/github/hook",
-        json=pull_request_event,
-        headers={"X-Github-Event": "pull_request"},
+        data=body,
+        headers={"X-Github-Event": "pull_request", "X-Hub-Signature": sha},
     )
     assert res.status_code == status.HTTP_200_OK
     assert hook_run
@@ -110,6 +112,20 @@ def test_invalid_union(webhook: Webhook):
             pass
 
 
+def get_body_and_hash(data: dict) -> typing.Tuple[bytes, str]:
+    import hmac
+    import hashlib
+    import os
+
+    import ujson
+
+    body = ujson.dumps(data).encode()
+    sha = hmac.new(
+        key=os.environ["SECRET_KEY"].encode(), msg=body, digestmod=hashlib.sha1
+    ).hexdigest()
+    return body, sha
+
+
 @pytest.mark.parametrize("event, file_name", fixtures.MAPPING)
 def test_event_parsing(
     client: TestClient,
@@ -141,8 +157,12 @@ def test_event_parsing(
     assert webhook.event_mapping[event] == [push, push_async]
     assert len(webhook.event_mapping) == 1, "we have one event mapping to two listeners"
 
+    body, sha = get_body_and_hash(data)
+
     res = client.post(
-        "/api/github/hook", json=data, headers={"X-Github-Event": event._event_name}
+        "/api/github/hook",
+        data=body,
+        headers={"X-Github-Event": event._event_name, "X-Hub-Signature": sha},
     )
     assert res.status_code == status.HTTP_200_OK
     assert hook_run == 2, "push and push_async should both be called"
