@@ -621,6 +621,29 @@ version = "1.6.1"
 
 [[package]]
 category = "main"
+description = "Sentry integration for ASGI frameworks."
+name = "sentry-asgi"
+optional = false
+python-versions = "*"
+version = "0.1.5"
+
+[package.dependencies]
+sentry-sdk = "*"
+
+[[package]]
+category = "main"
+description = "Python client for Sentry (https://getsentry.com)"
+name = "sentry-sdk"
+optional = false
+python-versions = "*"
+version = "0.8.0"
+
+[package.dependencies]
+certifi = "*"
+urllib3 = "*"
+
+[[package]]
+category = "main"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
 optional = false
@@ -754,7 +777,7 @@ python-versions = ">=3.4"
 version = "7.0"
 
 [metadata]
-content-hash = "29d9a115e25195ad5d63646231e02483bbf58c2d8dc9b0393a972206e4bbff65"
+content-hash = "c23acdcec53077c0ce2e0c26da7d02a70f5e630770f1015983d6c2a9f3189199"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -816,6 +839,8 @@ pyyaml = ["1adecc22f88d38052fb787d959f003811ca858b799590a5eaa70e63dca50308c", "4
 requests = ["502a824f31acdacb3a35b6690b5fbf0bc41d63a24a45c4004352b0242707598e", "7bf2a778576d825600030a110f3c0e3e8edc51dfaafe1c146e39a2027784957b"]
 requests-async = ["484221fb41ccc47b475cdc2634b37884ca78ca291160664e9b8b8c5e53fdd4af"]
 rx = ["13a1d8d9e252625c173dc795471e614eadfe1cf40ffc684e08b8fff0d9748c23", "7357592bc7e881a95e0c2013b73326f704953301ab551fbc8133a6fadab84105"]
+sentry-asgi = ["c72d45e980f3e499f06a02498d3ad91f3599f11bbe2fa45e53b0a47e2a50459a"]
+sentry-sdk = ["e308129104567cee9f8848ed5098de17cbccc19bd21417c8980d47f80f1409ec", "f5819df450d7b0696be69a0c6d70a09e4890a3844ee8ccb7a461794135bd5965"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
 starlette = ["9d48b35d1fc7521d59ae53c421297ab3878d3c7cd4b75266d77f6c73cccb78bb"]
 structlog = ["5feae03167620824d3ae3e8915ea8589fc28d1ad6f3edf3cc90ed7c7cb33fab5", "db441b81c65b0f104a7ce5d86c5432be099956b98b8a2c8be0b3fb3a7a0b1536"]

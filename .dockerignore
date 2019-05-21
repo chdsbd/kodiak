@@ -1,0 +1,6 @@
+.git
+**/*.pyc
+**/__pycache__/
+.venv/
+Dockerfile
+*.pem
