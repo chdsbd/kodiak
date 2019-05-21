@@ -124,7 +124,19 @@ async def status_event(status_event: events.StatusEvent):
 @webhook()
 async def pr_review(review: events.PullRequestReviewEvent):
     assert review.installation
-    # raise NotImplementedError
+    owner = review.repository.owner.login
+    repo = review.repository.name
+    installation_id = review.installation.id
+    pr = review.pull_request
+    processing_queue.put_nowait(
+        Event(
+            repo_owner=owner,
+            repo_name=repo,
+            pull_request_number=pr.number,
+            source_event=review,
+            installation_id=str(installation_id),
+        )
+    )
 
 
 @dataclass
