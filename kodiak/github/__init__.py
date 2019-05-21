@@ -3,9 +3,13 @@ from dataclasses import dataclass
 from collections import defaultdict
 import structlog
 import inspect
+import hmac
+import hashlib
+import os
 
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
+from starlette.requests import Request
 from kodiak.github import events
 
 
@@ -36,7 +40,12 @@ class Webhook:
         app.add_api_route(path=path, endpoint=self._api_handler, methods=["POST"])
 
     async def _api_handler(
-        self, event: dict, *, x_github_event: str = Header(None)
+        self,
+        event: dict,
+        *,
+        request: Request,
+        x_github_event: str = Header(None),
+        x_hub_signature: str = Header(None),
     ) -> None:
         """
         Handler for all Github api payloads
@@ -48,10 +57,27 @@ class Webhook:
         # Optional in the function definition
         # https://github.com/tiangolo/fastapi/issues/179
         github_event = typing.cast(typing.Optional[str], x_github_event)
+        github_signature = typing.cast(typing.Optional[str], x_hub_signature)
+        expected_sha = hmac.new(
+            key=os.environ["SECRET_KEY"].encode(),
+            msg=(await request.body()),
+            digestmod=hashlib.sha1,
+        ).hexdigest()
         if github_event is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Missing required header: X-Github-Event",
+            )
+        if github_signature is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required signature: X-Hub-Signature",
+            )
+        sha = github_signature.replace("sha1=", "")
+        if not hmac.compare_digest(sha, expected_sha):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid signature: X-Hub-Signature",
             )
         handler = events.event_registry.get(github_event)
         if handler is None:

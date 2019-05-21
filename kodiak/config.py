@@ -6,7 +6,7 @@ from pydantic import BaseModel, validator
 import toml
 
 
-class MergeMethod(Enum):
+class MergeMethod(str, Enum):
     merge = "merge"
     squash = "squash"
     rebase = "rebase"

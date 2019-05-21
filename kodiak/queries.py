@@ -1,6 +1,7 @@
+from __future__ import annotations
 import os
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import structlog
 from pathlib import Path
@@ -12,6 +13,8 @@ from starlette import status
 from jsonpath_rw import parse
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
+from kodiak.github import events
+from kodiak.config import MergeMethod
 import jwt
 
 log = structlog.get_logger()
@@ -62,6 +65,21 @@ class BranchNameError(ResponseError):
 GET_EVENT_INFO_QUERY = """
 query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
+    branchProtectionRules(first: 100) {
+      nodes {
+        matchingRefs(first: 100) {
+          nodes {
+            name
+          }
+        }
+        requiresApprovingReviews
+        requiredApprovingReviewCount
+        requiresStatusChecks
+        requiredStatusCheckContexts
+        requiresStrictStatusChecks
+        requiresCommitSignatures
+      }
+    }
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
@@ -69,12 +87,31 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       id
       mergeStateStatus
       state
+      mergeable
+      reviews(first: 100, states: [APPROVED, CHANGES_REQUESTED]) {
+        nodes {
+          id
+          databaseId
+          state
+        }
+        totalCount
+      }
       baseRefName
       headRefName
       commits(last: 1) {
         nodes {
           commit {
             oid
+            signature {
+              isValid
+            }
+            status {
+              state
+              contexts {
+                context
+                state
+              }
+            }
           }
         }
       }
@@ -115,6 +152,15 @@ class MergeStateStatus(Enum):
     UNSTABLE = "UNSTABLE"
 
 
+class MergableState(Enum):
+    # The pull request cannot be merged due to merge conflicts.
+    CONFLICTING = "CONFLICTING"
+    # The pull request can be merged.
+    MERGEABLE = "MERGEABLE"
+    # The mergeability of the pull request is still being calculated.
+    UNKNOWN = "UNKNOWN"
+
+
 class PullRequestState(Enum):
     # A pull request that is still open.
     OPEN = "OPEN"
@@ -128,6 +174,7 @@ class PullRequest(BaseModel):
     id: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
+    mergeable: MergableState
     labels: typing.List[str]
     # the SHA of the most recent commit
     latest_sha: str
@@ -147,6 +194,11 @@ class EventInfoResponse:
     config_file: typing.Optional[str]
     pull_request: typing.Optional[PullRequest]
     repo: typing.Optional[RepoInfo]
+    branch_protection: typing.Optional[BranchProtectionRule]
+    reviews: typing.List[PRReview] = field(default_factory=list)
+    status_contexts: typing.List[StatusContext] = field(default_factory=list)
+    valid_signature: bool = False
+    valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
 
 
 class EventInfoError(ResponseError):
@@ -177,6 +229,41 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 }
 
 """
+
+
+class BranchProtectionRule(BaseModel):
+    requiresApprovingReviews: bool
+    requiredApprovingReviewCount: typing.Optional[int]
+    requiresStatusChecks: bool
+    requiredStatusCheckContexts: typing.List[str]
+    requiresStrictStatusChecks: bool
+    requiresCommitSignatures: bool
+
+
+class PRReviewState(Enum):
+    APPROVED = "APPROVED"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED"
+    COMMENTED = "COMMENTED"
+    DISMISSED = "DISMISSED"
+    PENDING = "PENDING"
+
+
+class PRReview(BaseModel):
+    id: str
+    state: PRReviewState
+
+
+class StatusState(Enum):
+    ERROR = "ERROR"
+    EXPECTED = "EXPECTED"
+    FAILURE = "FAILURE"
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+
+
+class StatusContext(BaseModel):
+    context: str
+    state: StatusState
 
 
 class TokenResponse(BaseModel):
@@ -290,6 +377,7 @@ class Client:
         else:
             token = self.token or self.generate_jwt()
         self.session.headers["Authorization"] = f"Bearer {token}"
+        log.info("sending query")
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
@@ -358,7 +446,9 @@ class Client:
             expr="repository.pullRequest", data=data
         )
         if pull_request is None:
-            return EventInfoResponse(config_file=config, pull_request=None, repo=None)
+            return EventInfoResponse(
+                config_file=config, pull_request=None, repo=None, branch_protection=None
+            )
 
         labels: typing.List[str] = get_values(
             expr="repository.pullRequest.labels.nodes[*].name", data=data
@@ -377,33 +467,85 @@ class Client:
         pull_request["latest_sha"] = sha
         pr = PullRequest.parse_obj(pull_request)
 
-        return EventInfoResponse(config_file=config, pull_request=pr, repo=repo_info)
-
-    async def merge_pr(
-        self,
-        pr_id: str,
-        sha: str,
-        installation_id: str,
-        title: typing.Optional[str] = None,
-        body: typing.Optional[str] = None,
-    ) -> typing.Optional[MergePRUnprocessable]:
-        res = await self.send_query(
-            query=MERGE_PR_MUTATION,
-            variables=dict(PRId=pr_id, SHA=sha, title=title, body=body),
-            installation_id=installation_id,
+        branch_protection_dicts: typing.List[dict] = get_values(
+            expr="repository.branchProtectionRules.nodes[*]", data=data
         )
-        data = res.get("data")
-        errors = res.get("errors")
-        if errors is None:
+
+        def find_branch_protection(
+            response_data: typing.List[dict], ref_name: str
+        ) -> typing.Optional[BranchProtectionRule]:
+            for rule in branch_protection_dicts:
+                for node in rule.get("matchingRefs", {}).get("nodes", []):
+                    if node["name"] == ref_name:
+
+                        return BranchProtectionRule.parse_obj(rule)
             return None
-        bound_log = log.bind(res=res, data=data, errors=errors)
-        if errors is not None:
-            bound_log.error("errors merging pull request")
-            for error in errors:
-                if error["type"] == "UNPROCESSABLE":
-                    return MergePRUnprocessable(res)
-                else:
-                    raise MergePRError(
-                        "Unexpected errors occurred trying to merge this PR"
-                    )
-        return None
+
+        branch_protection = find_branch_protection(
+            branch_protection_dicts, pr.baseRefName
+        )
+
+        review_dicts: typing.List[dict] = get_values(
+            expr="repository.pullRequest.reviews.nodes[*]", data=data
+        )
+        reviews = [PRReview.parse_obj(review_dict) for review_dict in review_dicts]
+
+        commit_status_dicts: typing.List[dict] = get_values(
+            expr="repository.pullRequest.commits.nodes[0].commit.status.contexts[*]",
+            data=data,
+        )
+        status_contexts = [
+            StatusContext.parse_obj(status) for status in commit_status_dicts
+        ]
+
+        valid_signature = (
+            get_value(
+                expr="repository.pullRequest.commits.nodes[0].commit.signature.isValid",
+                data=data,
+            )
+            or False
+        )
+
+        valid_merge_methods: typing.List[MergeMethod] = []
+        if get_value(expr="repository.mergeCommitAllowed", data=data):
+            valid_merge_methods.append(MergeMethod.merge)
+        if get_value(expr="repository.rebaseMergeAllowed", data=data):
+            valid_merge_methods.append(MergeMethod.rebase)
+        if get_value(expr="repository.squashMergeAllowed", data=data):
+            valid_merge_methods.append(MergeMethod.squash)
+
+        return EventInfoResponse(
+            config_file=config,
+            pull_request=pr,
+            repo=repo_info,
+            branch_protection=branch_protection,
+            reviews=reviews,
+            status_contexts=status_contexts,
+            valid_signature=valid_signature,
+            valid_merge_methods=valid_merge_methods,
+        )
+
+    async def get_pull_requests_for_sha(
+        self, owner: str, repo: str, installation_id: str, sha: str
+    ) -> typing.Optional[typing.List[events.BasePullRequest]]:
+        async with Client() as client:
+            token = await client.get_token_for_install(installation_id=installation_id)
+            headers = dict(
+                Authorization=f"token {token}",
+                Accept="application/vnd.github.machine-man-preview+json",
+            )
+            res = await client.session.get(
+                f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
+                headers=headers,
+            )
+            if res.status_code != 200:
+                log.warning(
+                    "problem finding prs",
+                    owner=owner,
+                    repo=repo,
+                    sha=sha,
+                    res=res,
+                    res_json=res.json(),
+                )
+                return None
+            return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
