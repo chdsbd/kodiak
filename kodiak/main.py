@@ -418,11 +418,7 @@ async def _work_repo_queue(q: RepoQueue):
 
 async def work_repo_queue(q: RepoQueue) -> typing.NoReturn:
     while True:
-        try:
-            await _work_repo_queue(q)
-        except BaseException as e:
-            logger.error("Captured exception", exception=e)
-            pass
+        await _work_repo_queue(q)
 
 
 def get_queue_for_repo(owner: str, repo: str, installation_id: str) -> RepoWorker:
@@ -434,6 +430,12 @@ def get_queue_for_repo(owner: str, repo: str, installation_id: str) -> RepoWorke
         task = asyncio.create_task(work_repo_queue(q))
         rq = RepoWorker(q=q, task=task)
         REPO_QUEUES[id] = rq
+    # check if we had a problem with the task and restart
+    if rq.task.done():
+        exception = rq.task.exception()
+        sentry_sdk.capture_exception(exception)
+        logger.info("task done", task_exception=exception)
+        rq.task = asyncio.create_task(work_repo_queue(rq.q))
     return rq
 
 
@@ -476,9 +478,29 @@ async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
             webhook_queue.put_nowait(github_event)
 
 
+EVENT_PROCESSOR: typing.Optional[asyncio.Task] = None
+
+
+async def task_manager() -> None:
+    global EVENT_PROCESSOR
+    while True:
+        if (
+            EVENT_PROCESSOR is not None
+            and EVENT_PROCESSOR.done()
+            and EVENT_PROCESSOR.exception()
+        ):
+            task_exception = EVENT_PROCESSOR.exception()
+            sentry_sdk.capture_exception(task_exception)
+            logger.warning("event_processor failed", task_exception=task_exception)
+            EVENT_PROCESSOR = asyncio.create_task(event_processor(processing_queue))
+        await asyncio.sleep(2)
+
+
 @app.on_event("startup")
 async def startup():
-    asyncio.create_task(event_processor(processing_queue))
+    global EVENT_PROCESSOR
+    EVENT_PROCESSOR = asyncio.create_task(event_processor(processing_queue))
+    asyncio.create_task(task_manager())
 
 
 @app.on_event("shutdown")
