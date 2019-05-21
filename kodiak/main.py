@@ -8,6 +8,8 @@ from enum import Enum, auto
 import toml
 from fastapi import FastAPI
 import structlog
+from sentry_asgi import SentryMiddleware
+import sentry_sdk
 
 import kodiak
 from kodiak.github import Webhook, events
@@ -30,7 +32,10 @@ from kodiak.evaluation import (
     NeedsBranchUpdate,
 )
 
+sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
+
 app = FastAPI()
+app.add_middleware(SentryMiddleware)
 
 webhook = Webhook(app)
 logger = structlog.get_logger()
