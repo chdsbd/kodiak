@@ -58,9 +58,6 @@ class Webhook:
         # https://github.com/tiangolo/fastapi/issues/179
         github_event = typing.cast(typing.Optional[str], x_github_event)
         github_signature = typing.cast(typing.Optional[str], x_hub_signature)
-        # import ipdb
-
-        # ipdb.set_trace()
         expected_sha = hmac.new(
             key=os.environ["SECRET_KEY"].encode(),
             msg=(await request.body()),
