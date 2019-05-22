@@ -31,7 +31,8 @@ from kodiak.evaluation import (
     NeedsBranchUpdate,
 )
 
-sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
+if not os.environ.get("DEBUG"):
+    sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
 
 app = FastAPI()
 app.add_middleware(SentryMiddleware)
