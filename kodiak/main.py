@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 import asyncio
 from dataclasses import dataclass, field
-from collections import defaultdict, deque
+from collections import deque
 from enum import Enum, auto
 
 import toml
@@ -15,7 +15,6 @@ import kodiak
 from kodiak.github import Webhook, events
 from kodiak.queries import (
     Client,
-    EventInfoResponse,
     PullRequest,
     RepoInfo,
     BranchProtectionRule,
@@ -322,7 +321,7 @@ class PR:
                 Authorization=f"token {token}",
                 Accept="application/vnd.github.machine-man-preview+json",
             )
-            res = await client.session.post(
+            await client.session.post(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
                 json=dict(
                     head=event.pull_request.baseRefName,
@@ -397,7 +396,7 @@ class RepoWorker:
                     Accept="application/vnd.github.machine-man-preview+json",
                 )
                 url = f"https://api.github.com/repos/{pr.owner}/{pr.repo}/pulls/{pr.number}"
-                res = await client.session.get(url, headers=headers)
+                await client.session.get(url, headers=headers)
             return Retry()
 
         else:
@@ -494,6 +493,7 @@ EVENT_PROCESSOR: typing.Optional[asyncio.Task] = None
 
 
 async def task_manager() -> None:
+    # pylint: disable=global-statement
     global EVENT_PROCESSOR
     while True:
         if (
@@ -510,6 +510,7 @@ async def task_manager() -> None:
 
 @app.on_event("startup")
 async def startup():
+    # pylint: disable=global-statement
     global EVENT_PROCESSOR
     EVENT_PROCESSOR = asyncio.create_task(event_processor(processing_queue))
     asyncio.create_task(task_manager())

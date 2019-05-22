@@ -17,7 +17,6 @@ from kodiak.queries import (
     PRReviewState,
     StatusContext,
     StatusState,
-    MergeMethod,
 )
 
 

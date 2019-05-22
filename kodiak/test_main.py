@@ -7,7 +7,6 @@ from starlette.testclient import TestClient
 from kodiak import queries
 from kodiak.config import V1
 from .main import (
-    app,
     RepoWorker,
     RepoQueue,
     MergeResults,
@@ -15,8 +14,6 @@ from .main import (
     MergeabilityResponse,
     Retry,
     _work_repo_queue,
-    PREventData,
-    RepoInfo,
 )
 
 
@@ -179,7 +176,7 @@ def gh_client(event_response: queries.EventInfoResponse):
             private_key_path=None,
             app_identifier=None,
         ):
-            return super().__init__(
+            super().__init__(
                 token="abc123",
                 private_key=private_key,
                 private_key_path=private_key_path,

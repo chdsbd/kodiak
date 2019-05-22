@@ -171,7 +171,7 @@ def test_event_parsing(
 def test_event_count():
     """
     Verify we are testing all of the events
-    
+
     If this is failing, we probably forgot to register an event in events
     """
     all_events = []
@@ -184,5 +184,5 @@ def test_event_count():
             all_events.append(item)
 
     assert set(all_events) == set(
-        [event_class for event_class, _fixture_name in fixtures.MAPPING]
+        event_class for event_class, _fixture_name in fixtures.MAPPING
     )

@@ -1,6 +1,5 @@
 import typing
 from enum import Enum, auto
-from dataclasses import dataclass
 
 from kodiak import config
 from kodiak.config import MergeMethod
@@ -155,10 +154,6 @@ def mergable(
             failing_contexts: typing.List[str] = []
             pending_contexts: typing.List[str] = []
             passing_contexts: typing.List[str] = []
-            b_log = log.bind(
-                contexts=contexts,
-                required=branch_protection.requiredStatusCheckContexts,
-            )
             required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):

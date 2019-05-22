@@ -22,7 +22,7 @@ def valid_event(arg: typing.Any) -> bool:
 
 class UnsupportType(TypeError):
     def __init__(self, annotation: str):
-        return super().__init__(
+        super().__init__(
             f"Invalid type annotation: '{annotation}'. Only `github.events` types are valid in Union."
         )
 
@@ -49,7 +49,7 @@ class Webhook:
     ) -> None:
         """
         Handler for all Github api payloads
-        
+
         We run webhook events that hit this endpoint against events registered
         in `event_mapping`.
         """

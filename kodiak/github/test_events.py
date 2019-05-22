@@ -1,8 +1,6 @@
-import typing
 import pytest
 from pathlib import Path
 from pydantic import BaseModel
-import json
 
 from kodiak.github import events, fixtures
 
@@ -19,7 +17,7 @@ def test_events():
 
 
 def test_event_count():
-    assert len(set([cls for cls, _fixture in fixtures.MAPPING])) == len(
+    assert len({cls for cls, _fixture in fixtures.MAPPING}) == len(
         events.event_registry
     ), "ensure we're checking all registered events"
 

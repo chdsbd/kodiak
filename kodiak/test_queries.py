@@ -1,7 +1,5 @@
 import pytest
 from pathlib import Path
-import json
-import asyncio
 
 from kodiak.queries import Client
 
