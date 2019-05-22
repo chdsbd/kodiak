@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 set -e
+DOCKER_HUB_REPO='cdignam/kodiak'
 docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
 
 set -x
@@ -10,5 +11,5 @@ if [[ ! -z $CIRCLE_TAG ]]; then
     LABEL="$CIRCLE_TAG"
 fi
 
-docker build --tag chdsbd/kodiak:$LABEL .
-docker push chdsbd/kodiak:$LABEL
+docker build --tag $DOCKER_HUB_REPO:$LABEL .
+docker push $DOCKER_HUB_REPO:$LABEL
