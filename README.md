@@ -105,8 +105,8 @@ currently Kodiak won't merge PRs if status checks are failing, but in the future
    heroku container:login
 
    # download latest release from docker hub and tag for push to heroku
-   docker pull chdsbd/kodiak
-   docker tag chdsbd/kodiak registry.heroku.com/$APP_NAME/web
+   docker pull cdignam/kodiak
+   docker tag cdignam/kodiak registry.heroku.com/$APP_NAME/web
 
    # push tagged image to Heroku
    docker push registry.heroku.com/$APP_NAME/web
