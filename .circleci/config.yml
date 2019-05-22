@@ -74,4 +74,9 @@ workflows:
     jobs:
       - test_api
       - lint_api
-      - build_container
+      - build_container:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^v.*/
