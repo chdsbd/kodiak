@@ -240,6 +240,8 @@ class PR:
             default_branch_name = await client.get_default_branch_name(
                 owner=self.owner, repo=self.repo, installation_id=self.installation_id
             )
+            if default_branch_name is None:
+                return None
             # TODO: Make this return a response we can immediately return
             event_info = await client.get_event_info(
                 owner=self.owner,
@@ -250,6 +252,8 @@ class PR:
                 pr_number=self.number,
                 installation_id=self.installation_id,
             )
+            if event_info is None:
+                return None
 
             if event_info.config_file is None:
                 self.log.warning("No configuration file found for repo.")

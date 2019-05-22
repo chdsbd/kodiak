@@ -7,6 +7,7 @@ import structlog
 from pathlib import Path
 
 import requests_async as http
+import sentry_sdk
 from mypy_extensions import TypedDict
 from requests_async import Response
 from starlette import status
@@ -51,15 +52,6 @@ query ($owner: String!, $repo: String!) {
   }
 }
 """
-
-
-@dataclass
-class ResponseError(BaseException):
-    res: GraphQLResponse
-
-
-class BranchNameError(ResponseError):
-    pass
 
 
 GET_EVENT_INFO_QUERY = """
@@ -199,18 +191,6 @@ class EventInfoResponse:
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
-
-
-class EventInfoError(ResponseError):
-    pass
-
-
-class MergePRError(BaseException):
-    pass
-
-
-class MergePRUnprocessable(ResponseError):
-    pass
 
 
 def get_values(expr: str, data: typing.Dict) -> typing.List[typing.Any]:
@@ -367,7 +347,8 @@ class Client:
         query: str,
         variables: typing.Mapping[str, typing.Union[str, int, None]],
         installation_id: typing.Optional[str] = None,
-    ) -> GraphQLResponse:
+        remaining_retries: int = 4,
+    ) -> typing.Optional[GraphQLResponse]:
         assert (
             self.entered
         ), "Client must be used in an async context manager. `async with Client() as api: ..."
@@ -383,22 +364,25 @@ class Client:
             json=(dict(query=query, variables=variables)),
         )
         if res.status_code != status.HTTP_200_OK:
-            log.warning("server error", res=res)
-            raise ServerError(response=res)
+            sentry_sdk.send_message("github api request error", res=res)
+            return None
         return typing.cast(GraphQLResponse, res.json())
 
     async def get_default_branch_name(
         self, owner: str, repo: str, installation_id: str
-    ) -> str:
+    ) -> typing.Optional[str]:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
             variables=dict(owner=owner, repo=repo),
             installation_id=installation_id,
         )
+        if res is None:
+            return None
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            raise BranchNameError(res=res)
+            sentry_sdk.send_message("could not fetch default branch name", res=res)
+            return None
         return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
 
     async def get_event_info(
@@ -408,7 +392,7 @@ class Client:
         config_file_expression: str,
         pr_number: int,
         installation_id: str,
-    ) -> EventInfoResponse:
+    ) -> typing.Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -424,12 +408,15 @@ class Client:
             ),
             installation_id=installation_id,
         )
+        if res is None:
+            return None
 
         PAGE_SIZE = 100
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            raise EventInfoError(res=res)
+            sentry_sdk.send_message("could not fetch event info", res=res)
+            return None
 
         config: typing.Optional[str] = get_value(
             expr="repository.object.text", data=data
