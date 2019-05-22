@@ -9,18 +9,23 @@ great because, when coupled with CI, master will always be green.
 
 However, as the number of collaborators on a GitHub repo increases, a
 repetitive behavior emerges where contributors are updating their branches
-manually hoping to merge their branch before someone else does, otherwise the
-cycle repeats.
+manually hoping to merge their branch before others.
 
-Kodiak aims to fix this by providing an automated GitHub bot to update
-branches and merge them for the contributors. Contributors simply mark their
-PR with a GitHub label that indicates the PR is ready to merge and Kodiak
-will do the rest, handling branch updates and merging, using the minimal
-number of updates to land the code on master.
+Kodiak fixes this wasteful behavior by automatically updating
+and merging branches. Contributors simply mark their
+PR with a configurable label that indicates the PR is ready to merge and Kodiak
+will do the rest, handling branch updates and merging, using the _minimal_
+number of branch updates to land the code on master.
 
 This means that contributors don't have to worry about keeping their PRs up
 to date with the latest on master or even pressing the merge button. Kodiak
 does this for them.
+
+### Minimal updates
+Kodiak ensures that branches are always updated before merging, but does so
+efficiently by only updating a PR when it's being prepared to merge. This
+prevents spurious CI jobs from being created as they would if all PRs were
+updated when their targets were updated.
 
 ## How does it work?
 
@@ -46,35 +51,38 @@ does this for them.
 ## Setup
 
 **Danger:** Kodiak requires branch protection to be enabled to function,
-currently Kodiak doesn't merge PRs reguardless of this setting if status
-checks aren't met, but this is subject to change. In the future Kodiak will
-fail if branch protection is not enabled.
+currently Kodiak won't merge PRs if status checks are failing, but in the future Kodiak will not run if branch protection is disabled.
 
 1. Create a `.kodiak.toml` file in the root of your repository on the default
    branch with the following contents:
 
    ```toml
+   # version is the only required field
    version = 1
+   
+   # the following default settings can be omitted
    [merge]
-   method = "squash"; or "merge", "rebase"
+   method = "merge" # or "squash", "rebase"
+   whitelist = ["automerge"] # labels to trigger bot 
+   blacklist = [] # labels to block bot
    ```
 
 2. Setup Kodiak
 
    Kodiak can be run either through the GitHub App or by self hosting.
    In order to merge pull requests (PRs) Kodiak needs read write access to
-   PRs as well as additional permissions to the repo. This means that Kodiak
+   PRs as well as additional permissions to the repository. This means that Kodiak
    can see **all** the code in your repository.
 
-   The current permissions that are required to use the GitHub App are:
+   The current [permissions](https://developer.github.com/v3/apps/permissions/) that are required to use the GitHub App are:
 
-   | name                       | level       | reason                          |
+   | name                       | level       | reason                          |
    | -------------------------- | ----------- | ------------------------------- |
-   | repository administration  | read-only   | branch protection info          |
-   | checks                     | read-only   | PR mergeability                 |
-   | repository contents        | read/write  | update PRs, read configuration  |
-   | pull requests              | read/write  | PR mergeability, merge PR       |
-   | commit statuses            | read-only   | PR mergeability                 |
+   | repository administration  | read-only   | branch protection info          |
+   | checks                     | read-only   | PR mergeability                 |
+   | repository contents        | read/write  | update PRs, read configuration  |
+   | pull requests              | read/write  | PR mergeability, merge PR       |
+   | commit statuses            | read-only   | PR mergeability                 |
 
    **Via GitHub App**
 
@@ -103,8 +111,11 @@ fail if branch protection is not enabled.
    # push tagged image to Heroku
    docker push registry.heroku.com/$APP_NAME/web
 
-   # configure app environment (this can also be done through the web ui)
-   heroku config:set GITHUB_APP_ID=29196 SECRET_KEY=06D31E05-951D-46C8-BDA8-6A5EB65B1F66 GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
+   # create gihub app at https://developer.github.com/apps/building-github-apps/creating-a-github-app/
+   # The APP_ID and PRIVATE_KEY are needed to run the app. You must also set a SECRET_KEY to pass to the app.
+
+   # configure app environment (this can also be done through the Heroku web ui)
+   heroku config:set GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
 
    # release app
    heroku container:release web -a $APP_NAME
@@ -131,7 +142,7 @@ Works With GitHub Integration:
 
 - doesn't require changing CI
 - follows commit statuses & GitHub checks
-- works with PRs - some services create separate test branches for merging
+- works with PRs — some services create separate test branches for merging
   that circumvent the simpler PR workflow
 
 Auto Merging:
