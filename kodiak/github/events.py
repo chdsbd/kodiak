@@ -334,8 +334,8 @@ class Commit(pydantic.BaseModel):
     sha: str
     node_id: str
     url: UrlStr
-    author: User
-    committer: User
+    author: typing.Optional[User]
+    committer: typing.Optional[User]
     parents: typing.List[Tree]
 
 
