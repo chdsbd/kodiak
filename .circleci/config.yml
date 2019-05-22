@@ -74,5 +74,4 @@ workflows:
     jobs:
       - test_api
       - lint_api
-      - build_container:
-          context: DockerHub
+      - build_container
