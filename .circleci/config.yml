@@ -57,9 +57,27 @@ jobs:
           name: run lints
           command: ./s/lint
 
+  # https://circleci.com/docs/2.0/building-docker-images/
+  build_container:
+    docker:
+      - image: docker:18.05.0-ce
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build container
+          command: ./s/build
+
 workflows:
   version: 2
   test:
     jobs:
       - test_api
       - lint_api
+      - build_container:
+          context: DockerHub
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^v.*/
