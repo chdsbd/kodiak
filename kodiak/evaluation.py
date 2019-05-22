@@ -17,7 +17,7 @@ from kodiak.queries import (
 )
 import structlog
 
-log = structlog.get_logger()
+logger = structlog.get_logger()
 
 
 class MergeErrors(str, Enum):
@@ -72,6 +72,15 @@ def mergable(
     valid_signature: bool,
     valid_merge_methods: typing.List[MergeMethod],
 ) -> None:
+    log = logger.bind(
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=reviews,
+        contexts=contexts,
+        valid_signature=valid_signature,
+        valid_merge_methods=valid_merge_methods,
+    )
     if config.merge.whitelist:
         if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
             log.info(
