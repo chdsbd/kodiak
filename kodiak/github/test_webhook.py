@@ -183,6 +183,6 @@ def test_event_count():
         ):
             all_events.append(item)
 
-    assert set(all_events) == set(
+    assert set(all_events) == {
         event_class for event_class, _fixture_name in fixtures.MAPPING
-    )
+    }
