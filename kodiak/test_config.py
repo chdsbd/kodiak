@@ -2,8 +2,6 @@ import pytest
 from pathlib import Path
 import typing
 import toml
-from pathlib import Path
-import toml
 
 from kodiak.config import V1
 
@@ -21,8 +19,8 @@ def test_config_parsing(config, fixtures: typing.List[str]):
         files.append(loaded)
 
     configs = [config.parse_obj(file) for file in files]
-    for config in configs:
-        assert config == configs[0], "all configs should be equal"
+    for cfg in configs:
+        assert cfg == configs[0], "all configs should be equal"
 
 
 def test_bad_file():

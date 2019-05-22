@@ -1,4 +1,3 @@
-import typing
 from kodiak.github import events
 
 # A mapping of all events to their corresponding fixtures. Any new event must

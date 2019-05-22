@@ -26,6 +26,9 @@ toml = "^0.10.0"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "^1.10"
 typing_extensions = "^3.7"
+pylint = "^2.3"
+flake8 = "^3.7"
+flake8-pie = "^0.2.1"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"
