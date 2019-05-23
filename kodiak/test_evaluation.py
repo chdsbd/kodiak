@@ -440,6 +440,33 @@ def test_block_on_reviews_requested(
         )
 
 
+def test_regression_error_before_update(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+) -> None:
+    """
+    We should not queue if we're waiting for status checks
+    """
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    branch_protection.requiresStrictStatusChecks = True
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    contexts = [StatusContext(context="ci/backend", state=StatusState.SUCCESS)]
+    with pytest.raises(NotQueueable):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=1,
+            reviews=[review],
+            contexts=contexts,
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
 def test_passing(
     pull_request: PullRequest,
     config: V1,
