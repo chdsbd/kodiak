@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import typing
 from enum import Enum
-from pydantic import BaseModel, validator
+
 import toml
+from pydantic import BaseModel, validator
 
 
 class MergeMethod(str, Enum):

@@ -1,6 +1,7 @@
-import pytest
-from pathlib import Path
 import typing
+from pathlib import Path
+
+import pytest
 import toml
 
 from kodiak.config import V1

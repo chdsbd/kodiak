@@ -1,35 +1,36 @@
 from __future__ import annotations
-import typing
-import asyncio
-from dataclasses import dataclass, field
-from collections import deque
-from enum import Enum, auto
-import os
 
+import asyncio
+import os
+import typing
+from collections import deque
+from dataclasses import dataclass, field
+from enum import Enum, auto
+
+import sentry_sdk
+import structlog
 import toml
 from fastapi import FastAPI
-import structlog
 from sentry_asgi import SentryMiddleware
-import sentry_sdk
 
 import kodiak
-from kodiak.github import Webhook, events
-from kodiak.queries import (
-    Client,
-    PullRequest,
-    RepoInfo,
-    BranchProtectionRule,
-    PRReview,
-    StatusContext,
-    MergeMethod,
-)
 from kodiak import queries
 from kodiak.evaluation import (
-    mergable,
-    NotQueueable,
-    WaitingForChecks,
     MissingGithubMergabilityState,
     NeedsBranchUpdate,
+    NotQueueable,
+    WaitingForChecks,
+    mergable,
+)
+from kodiak.github import Webhook, events
+from kodiak.queries import (
+    BranchProtectionRule,
+    Client,
+    MergeMethod,
+    PRReview,
+    PullRequest,
+    RepoInfo,
+    StatusContext,
 )
 
 if not os.environ.get("DEBUG"):

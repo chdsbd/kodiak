@@ -1,21 +1,22 @@
 import typing
 from enum import Enum, auto
 
+import structlog
+
 from kodiak import config
 from kodiak.config import MergeMethod
 from kodiak.queries import (
-    PullRequest,
-    PullRequestState,
-    MergeStateStatus,
-    RepoInfo,
-    MergableState,
     BranchProtectionRule,
+    MergableState,
+    MergeStateStatus,
     PRReview,
     PRReviewState,
+    PullRequest,
+    PullRequestState,
+    RepoInfo,
     StatusContext,
     StatusState,
 )
-import structlog
 
 logger = structlog.get_logger()
 

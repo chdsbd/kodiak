@@ -1,13 +1,14 @@
-import pytest
+import inspect
+import json
 import typing
 from pathlib import Path
-import json
-import inspect
+
+import pytest
+from fastapi import FastAPI
+from starlette import status
+from starlette.testclient import TestClient
 
 from kodiak.github import Webhook, events, fixtures
-from fastapi import FastAPI
-from starlette.testclient import TestClient
-from starlette import status
 
 
 @pytest.fixture

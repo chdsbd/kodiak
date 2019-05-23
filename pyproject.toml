@@ -30,6 +30,7 @@ typing_extensions = "^3.7"
 pylint = "^2.3"
 flake8 = "^3.7"
 flake8-pie = "^0.2.1"
+isort = "^4.3"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"

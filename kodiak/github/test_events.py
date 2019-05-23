@@ -1,5 +1,6 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from pydantic import BaseModel
 
 from kodiak.github import events, fixtures

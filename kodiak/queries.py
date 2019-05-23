@@ -1,22 +1,24 @@
 from __future__ import annotations
+
 import os
 import typing
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-import structlog
 from pathlib import Path
 
+import jwt
 import requests_async as http
 import sentry_sdk
+import structlog
+from jsonpath_rw import parse
 from mypy_extensions import TypedDict
+from pydantic import BaseModel
 from requests_async import Response
 from starlette import status
-from jsonpath_rw import parse
-from pydantic import BaseModel
-from datetime import datetime, timedelta, timezone
-from kodiak.github import events
+
 from kodiak.config import MergeMethod
-import jwt
+from kodiak.github import events
 
 log = structlog.get_logger()
 

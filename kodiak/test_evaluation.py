@@ -1,20 +1,21 @@
 import pytest
-from kodiak.evaluation import (
-    mergable,
-    NotQueueable,
-    NeedsBranchUpdate,
-    MissingGithubMergabilityState,
-    WaitingForChecks,
-)
+
 from kodiak.config import V1, MergeMethod
+from kodiak.evaluation import (
+    MissingGithubMergabilityState,
+    NeedsBranchUpdate,
+    NotQueueable,
+    WaitingForChecks,
+    mergable,
+)
 from kodiak.queries import (
-    PullRequest,
-    MergeStateStatus,
-    PullRequestState,
-    MergableState,
     BranchProtectionRule,
+    MergableState,
+    MergeStateStatus,
     PRReview,
     PRReviewState,
+    PullRequest,
+    PullRequestState,
     StatusContext,
     StatusState,
 )
