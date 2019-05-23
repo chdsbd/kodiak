@@ -68,6 +68,7 @@ def mergable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: BranchProtectionRule,
+    review_requests_count: int,
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
     valid_signature: bool,
@@ -77,6 +78,7 @@ def mergable(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
+        review_requests_count=review_requests_count,
         reviews=reviews,
         contexts=contexts,
         valid_signature=valid_signature,
@@ -103,6 +105,9 @@ def mergable(
             valid_merge_methods=valid_merge_methods,
         )
         raise NotQueueable("invalid merge methods")
+
+    if config.block_on_reviews_requested and review_requests_count:
+        raise NotQueueable("reviews requested")
 
     if pull_request.state == PullRequestState.MERGED:
         raise NotQueueable("merged")

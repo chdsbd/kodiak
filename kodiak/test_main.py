@@ -166,10 +166,11 @@ def event_response(
     status_context: queries.StatusContext,
 ) -> queries.EventInfoResponse:
     return queries.EventInfoResponse(
-        config_file,
+        config,
         pull_request,
         repo,
         branch_protection,
+        review_requests_count=0,
         reviews=[review],
         status_contexts=[status_context],
         valid_signature=True,

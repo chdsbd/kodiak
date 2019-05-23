@@ -64,6 +64,7 @@ class V1(BaseModel):
     version: int
     merge: Merge = Merge()
     update: Update = Update()
+    block_on_reviews_requested: bool = False
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v: int) -> int:
