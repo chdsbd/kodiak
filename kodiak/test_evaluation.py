@@ -340,7 +340,7 @@ def test_requires_signature(
 
 def test_unknown_blockage(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
-):
+) -> None:
     branch_protection.requiredApprovingReviewCount = 0
     branch_protection.requiresStatusChecks = False
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -362,7 +362,7 @@ def test_dont_update_before_block(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     """
     Regression test for when Kodiak would update a PR that is not mergeable.
     We were raising the NeedsBranchUpdate exception too early.
