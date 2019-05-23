@@ -10,6 +10,8 @@ from kodiak.evaluation import (
 )
 from kodiak.queries import (
     BranchProtectionRule,
+    CheckConclusionState,
+    CheckRun,
     MergableState,
     MergeStateStatus,
     PRReview,
@@ -66,6 +68,11 @@ def context() -> StatusContext:
     return StatusContext(context="ci/api", state=StatusState.SUCCESS)
 
 
+@pytest.fixture
+def check_run() -> CheckRun:
+    return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
+
+
 def test_failing_whitelist(
     pull_request: PullRequest,
     config: V1,
@@ -84,6 +91,7 @@ def test_failing_whitelist(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
@@ -106,6 +114,7 @@ def test_empty_whitelist(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
@@ -130,6 +139,7 @@ def test_blacklisted(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
@@ -151,6 +161,7 @@ def test_bad_merge_method_config(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge],
         )
@@ -172,6 +183,7 @@ def test_merged(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -193,6 +205,7 @@ def test_closed(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -214,6 +227,7 @@ def test_merge_conflict(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -235,6 +249,7 @@ def test_need_update(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -256,6 +271,7 @@ def test_missing_mergeability_state(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -278,6 +294,7 @@ def test_blocking_review(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -300,6 +317,7 @@ def test_missing_review_count(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -324,6 +342,90 @@ def test_failing_contexts(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_passing_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    context.context = "ci/backend"
+    context.state = StatusState.SUCCESS
+    check_run.name = "wip-app"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+    mergable(
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests_count=0,
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+    )
+
+
+def test_incomplete_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    context.context = "ci/backend"
+    context.state = StatusState.SUCCESS
+    check_run.name = "wip-app"
+    check_run.conclusion = None
+    with pytest.raises(NotQueueable, match="missing required status checks"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_failing_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    context.context = "ci/backend"
+    context.state = StatusState.SUCCESS
+    check_run.name = "wip-app"
+    check_run.conclusion = CheckConclusionState.FAILURE
+    with pytest.raises(NotQueueable, match="failing required status checks"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -347,6 +449,7 @@ def test_missing_required_context(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -369,6 +472,7 @@ def test_requires_signature(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -388,6 +492,7 @@ def test_unknown_blockage(
             review_requests_count=0,
             reviews=[],
             contexts=[],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -414,6 +519,7 @@ def test_dont_update_before_block(
             review_requests_count=0,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -435,6 +541,7 @@ def test_block_on_reviews_requested(
             review_requests_count=1,
             reviews=[review],
             contexts=[context],
+            check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
@@ -445,22 +552,23 @@ def test_regression_error_before_update(
     config: V1,
     branch_protection: BranchProtectionRule,
     review: PRReview,
+    check_run: CheckRun,
 ) -> None:
-    """
-    We should not queue if we're waiting for status checks
-    """
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
     branch_protection.requiresStrictStatusChecks = True
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     contexts = [StatusContext(context="ci/backend", state=StatusState.SUCCESS)]
-    with pytest.raises(NotQueueable):
+    check_run.name = "wip-app"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+    with pytest.raises(NeedsBranchUpdate):
         mergable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
             review_requests_count=1,
             reviews=[review],
+            check_runs=[check_run],
             contexts=contexts,
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
@@ -481,6 +589,7 @@ def test_passing(
         review_requests_count=0,
         reviews=[review],
         contexts=[context],
+        check_runs=[],
         valid_signature=False,
         valid_merge_methods=[MergeMethod.squash],
     )

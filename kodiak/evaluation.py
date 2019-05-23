@@ -7,6 +7,8 @@ from kodiak import config
 from kodiak.config import MergeMethod
 from kodiak.queries import (
     BranchProtectionRule,
+    CheckConclusionState,
+    CheckRun,
     MergableState,
     MergeStateStatus,
     PRReview,
@@ -71,6 +73,7 @@ def mergable(
     review_requests_count: int,
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
+    check_runs: typing.List[CheckRun],
     valid_signature: bool,
     valid_merge_methods: typing.List[MergeMethod],
 ) -> None:
@@ -175,6 +178,17 @@ def mergable(
                 else:
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
+            for check_run in check_runs:
+                if check_run.conclusion is None:
+                    continue
+                if check_run.conclusion == CheckConclusionState.SUCCESS:
+                    passing_contexts.append(check_run.name)
+                if check_run.conclusion in (
+                    CheckConclusionState.ACTION_REQUIRED,
+                    CheckConclusionState.FAILURE,
+                    CheckConclusionState.TIMED_OUT,
+                ):
+                    failing_contexts.append(check_run.name)
 
             failing = set(failing_contexts)
             # we have failing statuses that are required

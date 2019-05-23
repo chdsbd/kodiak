@@ -250,6 +250,7 @@ class PR:
                 review_requests_count=event.review_requests_count,
                 reviews=event.reviews,
                 contexts=event.status_contexts,
+                check_runs=event.check_runs,
                 valid_signature=event.valid_signature,
                 valid_merge_methods=event.valid_merge_methods,
             )
