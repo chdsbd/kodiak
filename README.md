@@ -50,7 +50,7 @@ updated when their targets were updated.
 
 ## Setup
 
-**Danger:** Kodiak requires branch protection to be enabled to function,
+**Warning:** Kodiak requires branch protection to be enabled to function,
 Kodiak won't merge PRs if branch protection is disabled.
 
 1. Create a `.kodiak.toml` file in the root of your repository on the default
