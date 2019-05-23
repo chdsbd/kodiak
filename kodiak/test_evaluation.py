@@ -338,6 +338,27 @@ def test_requires_signature(
         )
 
 
+def test_dont_update_before_block(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+):
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    with pytest.raises(NeedsBranchUpdate):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            reviews=[review],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
 def test_passing(
     pull_request: PullRequest,
     config: V1,
