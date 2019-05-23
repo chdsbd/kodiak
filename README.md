@@ -61,7 +61,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    version = 1
    
    # the following default settings can be omitted
-   block_on_reviews_requested = true
+   block_on_reviews_requested = false
    [merge]
    method = "merge" # or "squash", "rebase"
    whitelist = ["automerge"] # labels to trigger bot 
