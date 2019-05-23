@@ -1,18 +1,19 @@
-import pytest
-import typing
 import asyncio
+import typing
 from pathlib import Path
 
+import pytest
 from starlette.testclient import TestClient
 
 from kodiak import queries
 from kodiak.config import V1
+
 from .main import (
-    RepoWorker,
-    RepoQueue,
-    MergeResults,
     PR,
     MergeabilityResponse,
+    MergeResults,
+    RepoQueue,
+    RepoWorker,
     Retry,
     _work_repo_queue,
 )

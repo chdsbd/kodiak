@@ -1,13 +1,13 @@
 """
 Schemas for Github webhook events. These models are incomplete.
 """
-from datetime import datetime
 import typing
+from datetime import datetime
+from enum import Enum
+
 import pydantic
 from pydantic import UrlStr
-from enum import Enum
 from typing_extensions import Literal
-
 
 AnyDict = typing.Dict[typing.Any, typing.Any]
 

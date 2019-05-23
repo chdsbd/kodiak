@@ -1,17 +1,17 @@
-import typing
-from dataclasses import dataclass
-from collections import defaultdict
-import structlog
-import inspect
-import hmac
 import hashlib
+import hmac
+import inspect
 import os
+import typing
+from collections import defaultdict
+from dataclasses import dataclass
 
+import structlog
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
 from starlette.requests import Request
-from kodiak.github import events
 
+from kodiak.github import events
 
 log = structlog.get_logger()
 

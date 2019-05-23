@@ -4,8 +4,10 @@ set -ex
 # format code
 if [[ $CI ]]; then
     poetry run black --check .
+    poetry run isort --check-only
 else
     poetry run black .
+    poetry run isort -y
 fi
 
 # type check code
