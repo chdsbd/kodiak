@@ -8,7 +8,6 @@ if [[ $CI ]]; then
 else
     poetry run black .
     poetry run isort -y
-
 fi
 
 # type check code
