@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from requests_async import Response
 from starlette import status
 
-from kodiak.config import MergeMethod
+from kodiak.config import V1, MergeMethod
 from kodiak.github import events
 
-log = structlog.get_logger()
+logger = structlog.get_logger()
 
 
 class ErrorLocation(TypedDict):
@@ -82,6 +82,9 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       mergeStateStatus
       state
       mergeable
+      reviewRequests(first: 100) {
+        totalCount
+      }
       reviews(first: 100, states: [APPROVED, CHANGES_REQUESTED]) {
         nodes {
           id
@@ -185,10 +188,11 @@ class RepoInfo:
 
 @dataclass
 class EventInfoResponse:
-    config_file: typing.Optional[str]
-    pull_request: typing.Optional[PullRequest]
-    repo: typing.Optional[RepoInfo]
+    config: V1
+    pull_request: PullRequest
+    repo: RepoInfo
     branch_protection: typing.Optional[BranchProtectionRule]
+    review_requests_count: int
     reviews: typing.List[PRReview] = field(default_factory=list)
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
     valid_signature: bool = False
@@ -353,6 +357,7 @@ class Client:
         installation_id: typing.Optional[str] = None,
         remaining_retries: int = 4,
     ) -> typing.Optional[GraphQLResponse]:
+        log = logger.bind(install=installation_id)
         assert (
             self.entered
         ), "Client must be used in an async context manager. `async with Client() as api: ..."
@@ -402,6 +407,7 @@ class Client:
 
         This is basically the "do-all-the-things" query
         """
+        log = logger.bind(repo=f"{owner}/{repo}", pr=pr_number, install=installation_id)
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
             variables=dict(
@@ -415,16 +421,24 @@ class Client:
         if res is None:
             return None
 
-        PAGE_SIZE = 100
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
             sentry_sdk.send_message("could not fetch event info", res=res)
             return None
 
-        config: typing.Optional[str] = get_value(
+        config_str: typing.Optional[str] = get_value(
             expr="repository.object.text", data=data
         )
+
+        if config_str is None:
+            log.warning("could not find configuration file")
+            return None
+
+        try:
+            config = V1.parse_toml(config_str)
+        except ValueError:
+            log.warning("could not parse configuration")
 
         repo_dict: typing.Dict = get_value(expr="repository", data=data) or {}
         repo_info = RepoInfo(
@@ -437,26 +451,25 @@ class Client:
             expr="repository.pullRequest", data=data
         )
         if pull_request is None:
-            return EventInfoResponse(
-                config_file=config, pull_request=None, repo=None, branch_protection=None
-            )
+            log.warning("Could not find PR")
+            return None
 
         labels: typing.List[str] = get_values(
             expr="repository.pullRequest.labels.nodes[*].name", data=data
         )
-        label_count: typing.Optional[int] = get_value(
-            expr="repository.pullRequest.labels.totalCount", data=data
-        )
-        assert label_count is not None, "we should always be able to get the labels"
-        assert label_count <= PAGE_SIZE, "we don't paginate at the moment"
+
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = labels
         sha: typing.Optional[str] = get_value(
             expr="repository.pullRequest.commits.nodes[0].commit.oid", data=data
         )
-        assert sha is not None, "a SHA should always exist"
+
         pull_request["latest_sha"] = sha
-        pr = PullRequest.parse_obj(pull_request)
+        try:
+            pr = PullRequest.parse_obj(pull_request)
+        except ValueError:
+            log.warning("Could not parse pull request")
+            return None
 
         branch_protection_dicts: typing.List[dict] = get_values(
             expr="repository.branchProtectionRules.nodes[*]", data=data
@@ -468,26 +481,42 @@ class Client:
             for rule in branch_protection_dicts:
                 for node in rule.get("matchingRefs", {}).get("nodes", []):
                     if node["name"] == ref_name:
-
-                        return BranchProtectionRule.parse_obj(rule)
+                        try:
+                            return BranchProtectionRule.parse_obj(rule)
+                        except ValueError:
+                            log.warning("Could not parse branch protection")
+                            return None
             return None
 
         branch_protection = find_branch_protection(
             branch_protection_dicts, pr.baseRefName
         )
 
+        review_requests_count: int = get_value(
+            expr="repository.pullRequest.reviewRequests.totalCount", data=data
+        ) or 0
+
         review_dicts: typing.List[dict] = get_values(
             expr="repository.pullRequest.reviews.nodes[*]", data=data
         )
-        reviews = [PRReview.parse_obj(review_dict) for review_dict in review_dicts]
+        reviews: typing.List[PRReview] = []
+        for review_dict in review_dicts:
+            try:
+                reviews.append(PRReview.parse_obj(review_dict))
+            except ValueError:
+                log.warning("Could not parse PRReview")
 
         commit_status_dicts: typing.List[dict] = get_values(
             expr="repository.pullRequest.commits.nodes[0].commit.status.contexts[*]",
             data=data,
         )
-        status_contexts = [
-            StatusContext.parse_obj(status) for status in commit_status_dicts
-        ]
+
+        status_contexts: typing.List[StatusContext] = []
+        for commit_status in commit_status_dicts:
+            try:
+                status_contexts.append(StatusContext.parse_obj(commit_status))
+            except ValueError:
+                log.warning("Could not parse StatusContext")
 
         valid_signature = (
             get_value(
@@ -506,10 +535,11 @@ class Client:
             valid_merge_methods.append(MergeMethod.squash)
 
         return EventInfoResponse(
-            config_file=config,
+            config=config,
             pull_request=pr,
             repo=repo_info,
             branch_protection=branch_protection,
+            review_requests_count=review_requests_count,
             reviews=reviews,
             status_contexts=status_contexts,
             valid_signature=valid_signature,
@@ -519,6 +549,7 @@ class Client:
     async def get_pull_requests_for_sha(
         self, owner: str, repo: str, installation_id: str, sha: str
     ) -> typing.Optional[typing.List[events.BasePullRequest]]:
+        log = logger.bind(repo=f"{owner}/{repo}", install=installation_id, sha=sha)
         async with Client() as client:
             token = await client.get_token_for_install(installation_id=installation_id)
             headers = dict(
@@ -530,13 +561,6 @@ class Client:
                 headers=headers,
             )
             if res.status_code != 200:
-                log.warning(
-                    "problem finding prs",
-                    owner=owner,
-                    repo=repo,
-                    sha=sha,
-                    res=res,
-                    res_json=res.json(),
-                )
+                log.error("problem finding prs", res=res, res_json=res.json())
                 return None
             return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]

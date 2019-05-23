@@ -9,7 +9,6 @@ from enum import Enum, auto
 
 import sentry_sdk
 import structlog
-import toml
 from fastapi import FastAPI
 from sentry_asgi import SentryMiddleware
 
@@ -23,15 +22,7 @@ from kodiak.evaluation import (
     mergable,
 )
 from kodiak.github import Webhook, events
-from kodiak.queries import (
-    BranchProtectionRule,
-    Client,
-    MergeMethod,
-    PRReview,
-    PullRequest,
-    RepoInfo,
-    StatusContext,
-)
+from kodiak.queries import Client, EventInfoResponse
 
 if not os.environ.get("DEBUG"):
     sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
@@ -175,18 +166,6 @@ class RepoQueue:
                 pass
 
 
-@dataclass
-class PREventData:
-    pull_request: PullRequest
-    config: kodiak.config.V1
-    repo_info: RepoInfo
-    branch_protection: BranchProtectionRule
-    reviews: typing.List[PRReview] = field(default_factory=list)
-    status_contexts: typing.List[StatusContext] = field(default_factory=list)
-    valid_signature: bool = False
-    valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
-
-
 class MergeabilityResponse(Enum):
     OK = auto()
     NEEDS_UPDATE = auto()
@@ -240,15 +219,14 @@ class PR:
     def __repr__(self) -> str:
         return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
 
-    async def get_event(self) -> typing.Optional[PREventData]:
+    async def get_event(self) -> typing.Optional[EventInfoResponse]:
         async with self.Client() as client:
             default_branch_name = await client.get_default_branch_name(
                 owner=self.owner, repo=self.repo, installation_id=self.installation_id
             )
             if default_branch_name is None:
                 return None
-            # TODO: Make this return a response we can immediately return
-            event_info = await client.get_event_info(
+            return await client.get_event_info(
                 owner=self.owner,
                 repo=self.repo,
                 config_file_expression=create_git_revision_expression(
@@ -256,39 +234,6 @@ class PR:
                 ),
                 pr_number=self.number,
                 installation_id=self.installation_id,
-            )
-            if event_info is None:
-                return None
-
-            if event_info.config_file is None:
-                self.log.warning("No configuration file found for repo.")
-                return None
-            if event_info.pull_request is None:
-                self.log.warning("Could not find pull request")
-                return None
-            if event_info.repo is None:
-                self.log.warning("Could not find repository")
-                return None
-            if event_info.branch_protection is None:
-                self.log.warning("Missing required branch protection")
-                return None
-            try:
-                config = kodiak.config.V1.parse_toml(event_info.config_file)
-            except (ValueError, toml.TomlDecodeError):
-                self.log.warning(
-                    "Failure to parse toml configuration file",
-                    config_path=CONFIG_FILE_PATH,
-                )
-                return None
-            return PREventData(
-                pull_request=event_info.pull_request,
-                config=config,
-                repo_info=event_info.repo,
-                branch_protection=event_info.branch_protection,
-                reviews=event_info.reviews,
-                status_contexts=event_info.status_contexts,
-                valid_signature=event_info.valid_signature,
-                valid_merge_methods=event_info.valid_merge_methods,
             )
 
     async def mergability(
@@ -302,6 +247,7 @@ class PR:
                 config=event.config,
                 pull_request=event.pull_request,
                 branch_protection=event.branch_protection,
+                review_requests_count=event.review_requests_count,
                 reviews=event.reviews,
                 contexts=event.status_contexts,
                 valid_signature=event.valid_signature,
