@@ -48,14 +48,6 @@ class Merge(BaseModel):
     message: MergeMessage = MergeMessage()
 
 
-class Update(BaseModel):
-    # required labels to enable updating of pull request. An empty list indicates
-    # no label is required to enable updating. This is not recommended.
-    whitelist: typing.List[str] = []
-    # labels to block updating of a pull request
-    blacklist: typing.List[str] = []
-
-
 class InvalidVersion(ValueError):
     pass
 
@@ -63,7 +55,6 @@ class InvalidVersion(ValueError):
 class V1(BaseModel):
     version: int
     merge: Merge = Merge()
-    update: Update = Update()
     block_on_reviews_requested: bool = False
 
     @validator("version", pre=True, always=True)
