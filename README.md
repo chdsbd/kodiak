@@ -96,11 +96,11 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    ```shell
    # a unique name for the heroku app
-   APP_NAME='kodiak-prod'
+   export APP_NAME='kodiak-prod'
 
    # create app with container stack
    heroku apps:create $APP_NAME
-   heroku stack:set container
+   heroku stack:set container -a $APP_NAME
 
    # login to registry
    heroku container:login
@@ -116,7 +116,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    # The APP_ID and PRIVATE_KEY are needed to run the app. You must also set a SECRET_KEY to pass to the app.
 
    # configure app environment (this can also be done through the Heroku web ui)
-   heroku config:set GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
+   heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
 
    # release app
    heroku container:release web -a $APP_NAME
