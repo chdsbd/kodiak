@@ -84,18 +84,17 @@ def mergable(
         valid_signature=valid_signature,
         valid_merge_methods=valid_merge_methods,
     )
-    if config.merge.whitelist:
-        if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
-            log.info(
-                "missing required whitelist labels",
-                has=pull_request.labels,
-                requires=config.merge.whitelist,
-            )
-            raise NotQueueable("missing whitelist")
-    if config.merge.blacklist:
-        if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
-            log.info("missing required blacklist labels")
-            raise NotQueueable("has blacklist labels")
+
+    if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
+        log.info(
+            "missing required whitelist labels",
+            has=pull_request.labels,
+            requires=config.merge.whitelist,
+        )
+        raise NotQueueable("missing whitelist")
+    if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
+        log.info("missing required blacklist labels")
+        raise NotQueueable("has blacklist labels")
 
     if config.merge.method not in valid_merge_methods:
         # TODO: This is a fatal configuration error. We should provide some notification of this issue
