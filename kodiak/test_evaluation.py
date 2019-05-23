@@ -338,6 +338,49 @@ def test_requires_signature(
         )
 
 
+def test_unknown_blockage(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+):
+    branch_protection.requiredApprovingReviewCount = 0
+    branch_protection.requiresStatusChecks = False
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    with pytest.raises(NotQueueable, match="determine why PR is blocked"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            reviews=[],
+            contexts=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_dont_update_before_block(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+):
+    """
+    Regression test for when Kodiak would update a PR that is not mergeable.
+    We were raising the NeedsBranchUpdate exception too early.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    with pytest.raises(NeedsBranchUpdate):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            reviews=[review],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
 def test_passing(
     pull_request: PullRequest,
     config: V1,
