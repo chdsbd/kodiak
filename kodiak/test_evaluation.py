@@ -89,6 +89,28 @@ def test_failing_whitelist(
         )
 
 
+def test_empty_whitelist(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    pull_request.labels = ["bug"]
+    config.merge.whitelist = []
+    with pytest.raises(NotQueueable, match="missing whitelist"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[review],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
+        )
+
+
 def test_blacklisted(
     pull_request: PullRequest,
     config: V1,
