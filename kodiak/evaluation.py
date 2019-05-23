@@ -186,7 +186,10 @@ def mergable(
         if branch_protection.requiresCommitSignatures:
             if not valid_signature:
                 raise NotQueueable("missing required signature")
-        if branch_protection.requiresStrictStatusChecks:
+        if (
+            branch_protection.requiresStrictStatusChecks
+            and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+        ):
             raise NeedsBranchUpdate("behind branch. need update")
         raise NotQueueable("Could not determine why PR is blocked")
 
