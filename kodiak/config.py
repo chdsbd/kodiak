@@ -47,6 +47,7 @@ class Merge(BaseModel):
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
 
+
 class InvalidVersion(ValueError):
     pass
 
