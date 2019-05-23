@@ -123,14 +123,7 @@ def mergable(
         # GET on the pull request endpoint.
         raise MissingGithubMergabilityState("missing mergeablity state")
 
-    if (
-        pull_request.mergeStateStatus == MergeStateStatus.BEHIND
-        and branch_protection.requiresStrictStatusChecks
-    ):
-        # this is the same logic as above
-        if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
-            raise NeedsBranchUpdate("behind branch. need update")
-
+    waiting_for_checks = False
     if pull_request.mergeStateStatus == pull_request.mergeStateStatus.BLOCKED:
         # figure out why we can't merge. There isn't a way to get this simply from the Github API. We need to find out ourselves.
         #
@@ -186,11 +179,21 @@ def mergable(
                 raise NotQueueable("failing required status checks")
             passing = set(passing_contexts)
             if len(required - passing) > 0:
-                raise WaitingForChecks("missing required status checks")
+                waiting_for_checks = True
 
         if branch_protection.requiresCommitSignatures:
             if not valid_signature:
                 raise NotQueueable("missing required signature")
         raise NotQueueable("Could not determine why PR is blocked")
+
+    if (
+        pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+        and branch_protection.requiresStrictStatusChecks
+    ):
+        raise NeedsBranchUpdate("behind branch. need update")
+
+    # we set this flag so we can raise NeedsBranchUpdate after we do the prior BLOCKED check
+    if waiting_for_checks:
+        raise WaitingForChecks("missing required status checks")
     # okay to merge
     return None
