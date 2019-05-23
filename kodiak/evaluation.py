@@ -123,15 +123,10 @@ def mergable(
         # GET on the pull request endpoint.
         raise MissingGithubMergabilityState("missing mergeablity state")
 
-    if (
-        pull_request.mergeStateStatus == MergeStateStatus.BEHIND
-        and branch_protection.requiresStrictStatusChecks
+    if pull_request.mergeStateStatus in (
+        MergeStateStatus.BLOCKED,
+        MergeStateStatus.BEHIND,
     ):
-        # this is the same logic as above
-        if pull_request.mergeStateStatus == MergeStateStatus.BEHIND:
-            raise NeedsBranchUpdate("behind branch. need update")
-
-    if pull_request.mergeStateStatus == pull_request.mergeStateStatus.BLOCKED:
         # figure out why we can't merge. There isn't a way to get this simply from the Github API. We need to find out ourselves.
         #
         # I think it's possible to find out blockers from branch protection issues
@@ -191,6 +186,12 @@ def mergable(
         if branch_protection.requiresCommitSignatures:
             if not valid_signature:
                 raise NotQueueable("missing required signature")
+        if (
+            branch_protection.requiresStrictStatusChecks
+            and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+        ):
+            raise NeedsBranchUpdate("behind branch. need update")
         raise NotQueueable("Could not determine why PR is blocked")
+
     # okay to merge
     return None
