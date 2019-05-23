@@ -37,6 +37,19 @@ async def test_generate_jwt(private_key: str) -> None:
         assert api.generate_jwt() is not None
 
 
+@pytest.mark.asyncio
+async def test_get_default_branch_name_error(mock_client: typing.Type[Client]):
+    class MockClient(mock_client):
+        async def send_query(*args, **kwargs):
+            return dict(data=None, errors=[{"test": 123}])
+
+    async with MockClient() as client:
+        res = await client.get_default_branch_name(
+            owner="recipeyak", repo="recipeyak", installation_id="23049845"
+        )
+        assert res is None
+
+
 @pytest.fixture
 def blocked_response() -> dict:
     return typing.cast(

@@ -398,7 +398,7 @@ class Client:
             json=(dict(query=query, variables=variables)),
         )
         if res.status_code != status.HTTP_200_OK:
-            sentry_sdk.send_message("github api request error", res=res)
+            sentry_sdk.capture_message("github api request error", res=res)
             return None
         return typing.cast(GraphQLResponse, res.json())
 
@@ -415,7 +415,7 @@ class Client:
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            sentry_sdk.send_message("could not fetch default branch name", res=res)
+            sentry_sdk.capture_message("could not fetch default branch name", res=res)
             return None
         return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
 
@@ -449,7 +449,7 @@ class Client:
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            sentry_sdk.send_message("could not fetch event info", res=res)
+            sentry_sdk.capture_message("could not fetch event info", res=res)
             return None
 
         config_str: typing.Optional[str] = get_value(
