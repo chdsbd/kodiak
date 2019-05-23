@@ -345,6 +345,10 @@ def test_dont_update_before_block(
     review: PRReview,
     context: StatusContext,
 ):
+    """
+    Regression test for when Kodiak would update a PR that is not mergeable.
+    We were raising the NeedsBranchUpdate exception too early.
+    """
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
     with pytest.raises(NeedsBranchUpdate):
