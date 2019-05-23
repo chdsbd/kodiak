@@ -62,6 +62,16 @@ def test_correct_case(
     assert hook_run
 
 
+def test_without_return_annotation(webhook: Webhook) -> None:
+    """
+    webhook should work with functions that don't have return types
+    """
+
+    @webhook()
+    def push(data: events.PullRequestEvent):  # type: ignore
+        pass
+
+
 def test_union(webhook: Webhook) -> None:
     """
     We should be able to request a union of events
