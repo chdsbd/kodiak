@@ -27,6 +27,12 @@ class UnsupportType(TypeError):
         )
 
 
+DecoratorFunc = typing.Union[
+    typing.Callable[[events.GithubEvent], None],
+    typing.Callable[[typing.Union[events.GithubEvent]], None],
+]
+
+
 @dataclass(init=False)
 class Webhook:
 
@@ -34,7 +40,7 @@ class Webhook:
         typing.Type[events.GithubEvent], typing.List[typing.Callable]
     ]
 
-    def __init__(self, app: FastAPI, path="/api/github/hook"):
+    def __init__(self, app: FastAPI, path: str = "/api/github/hook"):
         self.event_mapping = defaultdict(list)
 
         app.add_api_route(path=path, endpoint=self._api_handler, methods=["POST"])
@@ -102,17 +108,12 @@ class Webhook:
         self,
         func: typing.Callable,
         events: typing.List[typing.Type[events.GithubEvent]],
-    ):
+    ) -> None:
         for event in events:
             self.event_mapping[event].append(func)
 
     def __call__(self) -> typing.Callable:
-        def decorator(
-            func: typing.Union[
-                typing.Callable[[events.GithubEvent], None],
-                typing.Callable[[typing.Union[events.GithubEvent]], None],
-            ]
-        ):
+        def decorator(func: DecoratorFunc) -> DecoratorFunc:
             arg_count = func.__code__.co_argcount
             annotations = typing.get_type_hints(func)
             if arg_count != 1 or len(annotations) != 1:

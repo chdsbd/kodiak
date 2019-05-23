@@ -21,7 +21,7 @@ from kodiak.queries import (
 
 
 @pytest.fixture
-def pull_request():
+def pull_request() -> PullRequest:
     return PullRequest(
         id="254",
         mergeStateStatus=MergeStateStatus.CLEAN,
@@ -35,7 +35,7 @@ def pull_request():
 
 
 @pytest.fixture
-def config():
+def config() -> V1:
     cfg = V1(version=1)
     cfg.merge.whitelist = ["automerge"]
     cfg.merge.blacklist = []
@@ -44,7 +44,7 @@ def config():
 
 
 @pytest.fixture
-def branch_protection():
+def branch_protection() -> BranchProtectionRule:
     return BranchProtectionRule(
         requiresApprovingReviews=True,
         requiredApprovingReviewCount=1,
@@ -56,12 +56,12 @@ def branch_protection():
 
 
 @pytest.fixture
-def review():
+def review() -> PRReview:
     return PRReview(id="82359D937470", state=PRReviewState.APPROVED)
 
 
 @pytest.fixture
-def context():
+def context() -> StatusContext:
     return StatusContext(context="ci/api", state=StatusState.SUCCESS)
 
 
@@ -71,7 +71,7 @@ def test_failing_whitelist(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.labels = []
     config.merge.whitelist = ["automerge"]
     config.merge.blacklist = []
@@ -93,7 +93,7 @@ def test_blacklisted(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     # a PR with a blacklisted label should not be mergeable
     with pytest.raises(NotQueueable, match="blacklist"):
         pull_request.labels = ["automerge", "dont-merge"]
@@ -116,7 +116,7 @@ def test_bad_merge_method_config(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(NotQueueable, match="merge method"):
         config.merge.method = MergeMethod.squash
         mergable(
@@ -136,7 +136,7 @@ def test_merged(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(NotQueueable, match="merged"):
         pull_request.state = PullRequestState.MERGED
         mergable(
@@ -156,7 +156,7 @@ def test_closed(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(NotQueueable, match="closed"):
         pull_request.state = PullRequestState.CLOSED
         mergable(
@@ -176,7 +176,7 @@ def test_merge_conflict(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(NotQueueable, match="merge conflict"):
         pull_request.mergeStateStatus = MergeStateStatus.DIRTY
         mergable(
@@ -196,7 +196,7 @@ def test_need_update(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(NeedsBranchUpdate):
         pull_request.mergeStateStatus = MergeStateStatus.BEHIND
         mergable(
@@ -216,7 +216,7 @@ def test_missing_mergeability_state(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     with pytest.raises(MissingGithubMergabilityState):
         pull_request.mergeable = MergableState.UNKNOWN
         mergable(
@@ -236,7 +236,7 @@ def test_blocking_review(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
     with pytest.raises(NotQueueable, match="blocking review"):
@@ -257,7 +257,7 @@ def test_missing_review_count(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
     with pytest.raises(NotQueueable, match="missing required review count"):
@@ -278,7 +278,7 @@ def test_failing_contexts(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
@@ -301,7 +301,7 @@ def test_missing_required_context(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
@@ -323,7 +323,7 @@ def test_requires_signature(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresCommitSignatures = True
     with pytest.raises(NotQueueable, match="missing required signature"):
@@ -344,7 +344,7 @@ def test_passing(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
-):
+) -> None:
     mergable(
         config=config,
         pull_request=pull_request,

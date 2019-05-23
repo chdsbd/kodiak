@@ -60,12 +60,12 @@ class Event:
 
 
 @app.get("/")
-async def root():
+async def root() -> str:
     return "OK"
 
 
 @webhook()
-async def pr_event(pr: events.PullRequestEvent):
+async def pr_event(pr: events.PullRequestEvent) -> None:
     assert pr.installation is not None
     processing_queue.put_nowait(
         Event(
@@ -79,7 +79,7 @@ async def pr_event(pr: events.PullRequestEvent):
 
 
 @webhook()
-async def check_run(check_run_event: events.CheckRunEvent):
+async def check_run(check_run_event: events.CheckRunEvent) -> None:
     assert check_run_event.installation
     owner = check_run_event.repository.owner.login
     repo = check_run_event.repository.name
@@ -97,7 +97,7 @@ async def check_run(check_run_event: events.CheckRunEvent):
 
 
 @webhook()
-async def status_event(status_event: events.StatusEvent):
+async def status_event(status_event: events.StatusEvent) -> None:
     assert status_event.installation
     sha = status_event.commit.sha
     owner = status_event.repository.owner.login
@@ -123,7 +123,7 @@ async def status_event(status_event: events.StatusEvent):
 
 
 @webhook()
-async def pr_review(review: events.PullRequestReviewEvent):
+async def pr_review(review: events.PullRequestReviewEvent) -> None:
     assert review.installation
     owner = review.repository.owner.login
     repo = review.repository.name
@@ -211,7 +211,9 @@ class PR:
         default_factory=typing.Type[queries.Client]
     )
 
-    def __eq__(self, b):
+    def __eq__(self, b: object) -> bool:
+        if not isinstance(b, PR):
+            raise NotImplementedError
         return (
             self.number == b.number
             and self.owner == b.owner
@@ -414,7 +416,7 @@ REPO_QUEUES: typing.MutableMapping[str, RepoWorker] = dict()
 MERGE_SLEEP_SECONDS = 3
 
 
-async def _work_repo_queue(q: RepoQueue):
+async def _work_repo_queue(q: RepoQueue) -> None:
     log = logger.bind(queue=q.queue)
     log.info("processing start")
     first = await q[0]
@@ -456,7 +458,7 @@ def get_queue_for_repo(owner: str, repo: str, installation_id: str) -> RepoWorke
     return rq
 
 
-async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
+async def event_processor(webhook_queue: "asyncio.Queue[Event]") -> typing.NoReturn:
     """
     - Lookup info for pull request
     - Should we add the pull request to be queued to updated/merged?
@@ -498,7 +500,7 @@ async def event_processor(webhook_queue: "asyncio.Queue[Event]"):
 EVENT_PROCESSOR: typing.Optional[asyncio.Task] = None
 
 
-async def task_manager() -> None:
+async def task_manager() -> typing.NoReturn:
     # pylint: disable=global-statement
     global EVENT_PROCESSOR
     while True:
@@ -515,7 +517,7 @@ async def task_manager() -> None:
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     # pylint: disable=global-statement
     global EVENT_PROCESSOR
     EVENT_PROCESSOR = asyncio.create_task(event_processor(processing_queue))
@@ -523,5 +525,5 @@ async def startup():
 
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     ...

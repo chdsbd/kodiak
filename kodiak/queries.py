@@ -302,7 +302,9 @@ class Client:
         self.entered = True
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(
+        self, exc_type: typing.Any, exc_value: typing.Any, traceback: typing.Any
+    ) -> None:
         await self.session.close()
 
     def generate_jwt(self) -> str:
