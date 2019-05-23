@@ -98,6 +98,16 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       commits(last: 1) {
         nodes {
           commit {
+            checkSuites(first: 100) {
+              nodes {
+                checkRuns(first: 100) {
+                  nodes {
+                    name
+                    conclusion
+                  }
+                }
+              }
+            }
             oid
             signature {
               isValid
@@ -195,6 +205,7 @@ class EventInfoResponse:
     review_requests_count: int
     reviews: typing.List[PRReview] = field(default_factory=list)
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
+    check_runs: typing.List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
 
@@ -250,6 +261,20 @@ class StatusState(Enum):
 class StatusContext(BaseModel):
     context: str
     state: StatusState
+
+
+class CheckConclusionState(Enum):
+    ACTION_REQUIRED = "ACTION_REQUIRED"
+    CANCELLED = "CANCELLED"
+    FAILURE = "FAILURE"
+    NEUTRAL = "NEUTRAL"
+    SUCCESS = "SUCCESS"
+    TIMED_OUT = "TIMED_OUT"
+
+
+class CheckRun(BaseModel):
+    name: str
+    conclusion: typing.Optional[CheckConclusionState]
 
 
 class TokenResponse(BaseModel):
@@ -522,6 +547,17 @@ class Client:
             except ValueError:
                 log.warning("Could not parse StatusContext")
 
+        check_run_dicts: typing.List[dict] = get_values(
+            expr="repository.pullRequest.commits.nodes[*].commit.checkSuites.nodes[*].checkRuns.nodes[*]",
+            data=data,
+        )
+        check_runs: typing.List[CheckRun] = []
+        for check_run_dict in check_run_dicts:
+            try:
+                check_runs.append(CheckRun.parse_obj(check_run_dict))
+            except ValueError:
+                log.warning("Could not parse CheckRun")
+
         valid_signature = (
             get_value(
                 expr="repository.pullRequest.commits.nodes[0].commit.signature.isValid",
@@ -546,6 +582,7 @@ class Client:
             review_requests_count=review_requests_count,
             reviews=reviews,
             status_contexts=status_contexts,
+            check_runs=check_runs,
             valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
         )

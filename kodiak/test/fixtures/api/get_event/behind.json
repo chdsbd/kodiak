@@ -1,0 +1,118 @@
+{
+  "data": {
+    "repository": {
+      "branchProtectionRules": {
+        "nodes": [
+          {
+            "matchingRefs": {
+              "nodes": [
+                {
+                  "name": "master"
+                }
+              ]
+            },
+            "requiresApprovingReviews": true,
+            "requiredApprovingReviewCount": 2,
+            "requiresStatusChecks": true,
+            "requiredStatusCheckContexts": [
+              "ci/circleci: backend_lint",
+              "ci/circleci: backend_test",
+              "ci/circleci: frontend_lint",
+              "ci/circleci: frontend_test",
+              "WIP (beta)"
+            ],
+            "requiresStrictStatusChecks": true,
+            "requiresCommitSignatures": false
+          }
+        ]
+      },
+      "mergeCommitAllowed": false,
+      "rebaseMergeAllowed": false,
+      "squashMergeAllowed": true,
+      "pullRequest": {
+        "id": "e14ff7599399478fb9dbc2dacb87da72",
+        "mergeStateStatus": "BEHIND",
+        "state": "OPEN",
+        "mergeable": "MERGEABLE",
+        "reviewRequests": {
+          "totalCount": 0
+        },
+        "reviews": {
+          "nodes": [
+            {
+              "id": "32f57f6aaf91489cb6ce76af62f7c7e2f3b15956",
+              "databaseId": 319685856,
+              "state": "APPROVED"
+            },
+            {
+              "id": "1ff69d4ad5d345a5ab2a0882d799f6066d89f675",
+              "databaseId": 921139199,
+              "state": "APPROVED"
+            }
+          ],
+          "totalCount": 2
+        },
+        "baseRefName": "master",
+        "headRefName": "df825f90-9825-424c-a97e-733522027e4c",
+        "commits": {
+          "nodes": [
+            {
+              "commit": {
+                "checkSuites": {
+                  "nodes": [
+                    {
+                      "checkRuns": {
+                        "nodes": [
+                          {
+                            "name": "WIP (beta)",
+                            "conclusion": "SUCCESS"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "oid": "8d728d017cac4f5ba37533debe65730abe65730a",
+                "signature": {
+                  "isValid": true
+                },
+                "status": {
+                  "state": "SUCCESS",
+                  "contexts": [
+                    {
+                      "context": "ci/circleci: backend_lint",
+                      "state": "SUCCESS"
+                    },
+                    {
+                      "context": "ci/circleci: backend_test",
+                      "state": "SUCCESS"
+                    },
+                    {
+                      "context": "ci/circleci: frontend_lint",
+                      "state": "SUCCESS"
+                    },
+                    {
+                      "context": "ci/circleci: frontend_test",
+                      "state": "SUCCESS"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "labels": {
+          "nodes": [
+            {
+              "name": "automerge"
+            }
+          ],
+          "totalCount": 1
+        }
+      },
+      "object": {
+        "text": "version = 1\n[merge]\nmethod = \"squash\"\n"
+      }
+    }
+  }
+}
