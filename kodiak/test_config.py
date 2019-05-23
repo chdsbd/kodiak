@@ -11,19 +11,22 @@ def load_config_fixture(fixture_name: str) -> Path:
 
 
 @pytest.mark.parametrize("config, fixtures", [(V1, ["v1.toml"])])
-def test_config_parsing(config, fixtures: typing.List[str]):
+def test_config_parsing(config: V1, fixtures: typing.List[str]) -> None:
     files = []
     for fixture_name in fixtures:
         file_path = load_config_fixture(fixture_name)
         loaded = toml.load(file_path)
         files.append(loaded)
 
-    configs = [config.parse_obj(file) for file in files]
+    configs = [
+        config.parse_obj(typing.cast(typing.Dict[typing.Any, typing.Any], file))
+        for file in files
+    ]
     for cfg in configs:
         assert cfg == configs[0], "all configs should be equal"
 
 
-def test_bad_file():
+def test_bad_file() -> None:
     with pytest.raises(toml.TomlDecodeError):
         V1.parse_toml("something[invalid[")
 

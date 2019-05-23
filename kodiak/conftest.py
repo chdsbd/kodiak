@@ -4,12 +4,12 @@ from kodiak.main import app
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def configure_structlog():
+def configure_structlog() -> None:
     """
     Configures cleanly structlog for each test method.
     https://github.com/hynek/structlog/issues/76#issuecomment-240373958

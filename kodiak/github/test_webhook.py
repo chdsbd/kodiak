@@ -11,27 +11,31 @@ from starlette import status
 
 
 @pytest.fixture
-def app():
+def app() -> FastAPI:
     return FastAPI()
 
 
 @pytest.fixture
-def webhook(app: FastAPI):
+def webhook(app: FastAPI) -> Webhook:
     return Webhook(app)
 
 
 @pytest.fixture
-def client(app: FastAPI):
+def client(app: FastAPI) -> TestClient:
     return TestClient(app)
 
 
 @pytest.fixture
-def pull_request_event():
+def pull_request_event() -> dict:
     file = Path(__file__).parent / "fixtures" / "pull_request_event.json"
-    return json.loads(file.read_bytes())
+    res = json.loads(file.read_bytes())
+    assert isinstance(res, dict)
+    return res
 
 
-def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
+def test_correct_case(
+    webhook: Webhook, client: TestClient, pull_request_event: dict
+) -> None:
     """
     Passing one arg with a valid type should be accepted
     """
@@ -39,7 +43,7 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
     hook_run = False
 
     @webhook()
-    def push(data: events.PullRequestEvent):
+    def push(data: events.PullRequestEvent) -> None:
         nonlocal hook_run
         hook_run = True
         assert isinstance(data, events.PullRequestEvent)
@@ -58,13 +62,23 @@ def test_correct_case(webhook: Webhook, client: TestClient, pull_request_event):
     assert hook_run
 
 
-def test_union(webhook: Webhook):
+def test_without_return_annotation(webhook: Webhook) -> None:
+    """
+    webhook should work with functions that don't have return types
+    """
+
+    @webhook()
+    def push(data: events.PullRequestEvent):  # type: ignore
+        pass
+
+
+def test_union(webhook: Webhook) -> None:
     """
     We should be able to request a union of events
     """
 
     @webhook()
-    def push(data: typing.Union[events.PullRequestEvent, events.PushEvent]):
+    def push(data: typing.Union[events.PullRequestEvent, events.PushEvent]) -> None:
         pass
 
     for event in (events.PullRequestEvent, events.PushEvent):
@@ -72,23 +86,23 @@ def test_union(webhook: Webhook):
     assert len(webhook.event_mapping) == 2
 
 
-def too_few_args(webhook: Webhook):
+def too_few_args(webhook: Webhook) -> None:
     with pytest.raises(TypeError, match="invalid number of arguments"):
 
         @webhook()
-        def push():
+        def push() -> None:
             pass
 
 
-def test_too_many_args(webhook: Webhook):
+def test_too_many_args(webhook: Webhook) -> None:
     with pytest.raises(TypeError, match="invalid number of arguments"):
 
         @webhook()
-        def push(pull: events.PullRequestEvent, push: events.PushEvent):
+        def push(pull: events.PullRequestEvent, push: events.PushEvent) -> None:
             pass
 
 
-def test_invalid_arg_type(webhook: Webhook):
+def test_invalid_arg_type(webhook: Webhook) -> None:
     with pytest.raises(
         TypeError,
         match="Invalid type annotation",
@@ -96,11 +110,11 @@ def test_invalid_arg_type(webhook: Webhook):
     ):
 
         @webhook()
-        def push(event: dict):
+        def push(event: dict) -> None:
             pass
 
 
-def test_invalid_union(webhook: Webhook):
+def test_invalid_union(webhook: Webhook) -> None:
     with pytest.raises(
         TypeError,
         match="Invalid type annotation",
@@ -108,7 +122,7 @@ def test_invalid_union(webhook: Webhook):
     ):
 
         @webhook()
-        def push(event: typing.Union[events.PullRequestEvent, int]):
+        def push(event: typing.Union[events.PullRequestEvent, int]) -> None:
             pass
 
 
@@ -132,18 +146,18 @@ def test_event_parsing(
     webhook: Webhook,
     event: typing.Type[events.GithubEvent],
     file_name: str,
-):
+) -> None:
     """Test all of the events we have"""
     data = json.loads((Path(__file__).parent / "fixtures" / file_name).read_bytes())
 
     hook_run = 0
 
-    def push(data: events.GithubEvent):
+    def push(data: events.GithubEvent) -> None:
         nonlocal hook_run
         hook_run += 1
         assert isinstance(data, event)
 
-    async def push_async(data: events.GithubEvent):
+    async def push_async(data: events.GithubEvent) -> None:
         nonlocal hook_run
         hook_run += 1
         assert isinstance(data, event)
@@ -168,7 +182,7 @@ def test_event_parsing(
     assert hook_run == 2, "push and push_async should both be called"
 
 
-def test_event_count():
+def test_event_count() -> None:
     """
     Verify we are testing all of the events
 

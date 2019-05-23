@@ -64,7 +64,7 @@ class V1(BaseModel):
     update: Update = Update()
 
     @validator("version", pre=True, always=True)
-    def correct_version(cls, v):
+    def correct_version(cls, v: int) -> int:
         if v != 1:
             raise InvalidVersion("Version must be `1`")
         return v
