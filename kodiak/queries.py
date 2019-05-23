@@ -439,6 +439,7 @@ class Client:
             config = V1.parse_toml(config_str)
         except ValueError:
             log.warning("could not parse configuration")
+            return None
 
         repo_dict: typing.Dict = get_value(expr="repository", data=data) or {}
         repo_info = RepoInfo(
