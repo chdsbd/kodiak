@@ -124,7 +124,7 @@ def mergable(
         raise MissingGithubMergabilityState("missing mergeablity state")
 
     if pull_request.mergeStateStatus in (
-        pull_request.mergeStateStatus.BLOCKED,
+        MergeStateStatus.BLOCKED,
         MergeStateStatus.BEHIND,
     ):
         # figure out why we can't merge. There isn't a way to get this simply from the Github API. We need to find out ourselves.
