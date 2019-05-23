@@ -418,23 +418,6 @@ def test_block_on_reviews_requested(
         )
 
 
-def test_require_branch_protection(
-    pull_request: PullRequest, config: V1, review: PRReview, context: StatusContext
-) -> None:
-    config.require_branch_protection = True
-    with pytest.raises(NotQueueable, match="branch protection is not enabled"):
-        mergable(
-            config=config,
-            pull_request=pull_request,
-            branch_protection=None,
-            review_requests_count=0,
-            reviews=[review],
-            contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-        )
-
-
 def test_passing(
     pull_request: PullRequest,
     config: V1,

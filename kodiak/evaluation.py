@@ -67,7 +67,7 @@ class NotQueueable(BaseException):
 def mergable(
     config: config.V1,
     pull_request: PullRequest,
-    branch_protection: typing.Optional[BranchProtectionRule],
+    branch_protection: BranchProtectionRule,
     review_requests_count: int,
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
@@ -109,9 +109,6 @@ def mergable(
     if config.block_on_reviews_requested and review_requests_count:
         raise NotQueueable("reviews requested")
 
-    if branch_protection is None and config.require_branch_protection:
-        raise NotQueueable("branch protection is not enabled")
-
     if pull_request.state == PullRequestState.MERGED:
         raise NotQueueable("merged")
     if pull_request.state == PullRequestState.CLOSED:
@@ -148,8 +145,7 @@ def mergable(
         # - branch not up to date (should be handled before this)
         # - missing required signature
         if (
-            branch_protection
-            and branch_protection.requiresApprovingReviews
+            branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
             successful_reviews = 0
@@ -164,7 +160,7 @@ def mergable(
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
                 raise NotQueueable("missing required review count")
 
-        if branch_protection and branch_protection.requiresStatusChecks:
+        if branch_protection.requiresStatusChecks:
             failing_contexts: typing.List[str] = []
             pending_contexts: typing.List[str] = []
             passing_contexts: typing.List[str] = []
@@ -193,12 +189,11 @@ def mergable(
             if len(required - passing) > 0:
                 raise WaitingForChecks("missing required status checks")
 
-        if branch_protection and branch_protection.requiresCommitSignatures:
+        if branch_protection.requiresCommitSignatures:
             if not valid_signature:
                 raise NotQueueable("missing required signature")
         if (
-            branch_protection
-            and branch_protection.requiresStrictStatusChecks
+            branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         ):
             raise NeedsBranchUpdate("behind branch. need update")

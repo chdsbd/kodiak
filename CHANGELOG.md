@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Add `block_on_reviews_requested` configuration to block merging if there are unanswered review requests.
-- Add `require_branch_protection` configuration to block merging if branch protection is not enabled for target.
 
 ### Changed
 - Update mergeability evaluation to trigger branch update after all other mergeability tests are verified.

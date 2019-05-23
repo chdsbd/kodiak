@@ -191,7 +191,7 @@ class EventInfoResponse:
     config: V1
     pull_request: PullRequest
     repo: RepoInfo
-    branch_protection: typing.Optional[BranchProtectionRule]
+    branch_protection: BranchProtectionRule
     review_requests_count: int
     reviews: typing.List[PRReview] = field(default_factory=list)
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
@@ -491,6 +491,9 @@ class Client:
         branch_protection = find_branch_protection(
             branch_protection_dicts, pr.baseRefName
         )
+        if branch_protection is None:
+            log.warning("Could not find branch protection")
+            return None
 
         review_requests_count: int = get_value(
             expr="repository.pullRequest.reviewRequests.totalCount", data=data
