@@ -116,7 +116,7 @@ class Webhook:
         def decorator(func: DecoratorFunc) -> DecoratorFunc:
             arg_count = func.__code__.co_argcount
             annotations = typing.get_type_hints(func)
-            if arg_count != 1 or len(annotations) != 1:
+            if arg_count != 1 or len(annotations) not in {1, 2}:
                 raise TypeError(
                     f"invalid number of arguments '{arg_count}'. Only one argument should be provided."
                 )
