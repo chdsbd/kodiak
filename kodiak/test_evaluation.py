@@ -389,7 +389,7 @@ def test_incomplete_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = None
-    with pytest.raises(NotQueueable, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks, match="missing required status checks"):
         mergable(
             config=config,
             pull_request=pull_request,
