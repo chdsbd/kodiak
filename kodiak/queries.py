@@ -590,17 +590,40 @@ class Client:
         self, owner: str, repo: str, installation_id: str, sha: str
     ) -> typing.Optional[typing.List[events.BasePullRequest]]:
         log = logger.bind(repo=f"{owner}/{repo}", install=installation_id, sha=sha)
-        async with Client() as client:
-            token = await client.get_token_for_install(installation_id=installation_id)
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
-            res = await client.session.get(
-                f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
-                headers=headers,
-            )
-            if res.status_code != 200:
-                log.error("problem finding prs", res=res, res_json=res.json())
-                return None
-            return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
+        token = await self.get_token_for_install(installation_id=installation_id)
+        headers = dict(
+            Authorization=f"token {token}",
+            Accept="application/vnd.github.machine-man-preview+json",
+        )
+        res = await self.session.get(
+            f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
+            headers=headers,
+        )
+        if res.status_code != 200:
+            log.error("problem finding prs", res=res, res_json=res.json())
+            return None
+        return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
+
+    async def delete_branch(
+        self, owner: str, repo: str, installation_id: str, branch: str
+    ) -> bool:
+        """
+        delete a branch by name
+        """
+        log = logger.bind(
+            repo=f"{owner}/{repo}", install=installation_id, branch=branch
+        )
+        token = await self.get_token_for_install(installation_id=installation_id)
+        headers = dict(
+            Authorization=f"token {token}",
+            Accept="application/vnd.github.machine-man-preview+json",
+        )
+        ref = f"heads/{branch}"
+        res = await self.session.delete(
+            f"https://api.github.com/repos/{owner}/{repo}/git/refs/{ref}",
+            headers=headers,
+        )
+        if res.status_code != 200:
+            log.error("problem deleting branch", res=res, res_json=res.json())
+            return False
+        return True

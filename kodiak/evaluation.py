@@ -66,6 +66,10 @@ class NotQueueable(BaseException):
     pass
 
 
+class BranchMerged(NotQueueable):
+    """branch has already been merged"""
+
+
 def mergable(
     config: config.V1,
     pull_request: PullRequest,
@@ -112,7 +116,7 @@ def mergable(
         raise NotQueueable("reviews requested")
 
     if pull_request.state == PullRequestState.MERGED:
-        raise NotQueueable("merged")
+        raise BranchMerged()
     if pull_request.state == PullRequestState.CLOSED:
         raise NotQueueable("closed")
     if (
