@@ -719,6 +719,46 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
         )
 
 
+def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    check_run: CheckRun,
+    context: StatusContext,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    reviews = [
+        PRReview(
+            state=PRReviewState.CHANGES_REQUESTED,
+            createdAt=first_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.NONE,
+        ),
+        PRReview(
+            state=PRReviewState.APPROVED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="ghost"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+    ]
+    with pytest.raises(NeedsBranchUpdate):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=1,
+            reviews=reviews,
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
 def test_passing(
     pull_request: PullRequest,
     config: V1,

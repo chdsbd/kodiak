@@ -10,6 +10,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommentAuthorAssociation,
     MergableState,
     MergeStateStatus,
     PRReview,
@@ -155,6 +156,9 @@ def mergable(
                 str, typing.List[PRReview]
             ] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
+                # only reviews by members with write access count towards mergeability
+                if review.authorAssociation == CommentAuthorAssociation.NONE:
+                    continue
                 reviews_by_author[review.author.login].append(review)
 
             def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
