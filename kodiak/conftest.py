@@ -57,6 +57,8 @@ def pull_request() -> queries.PullRequest:
         latest_sha="abcd",
         baseRefName="some-branch",
         headRefName="another-branch",
+        title="adding blah",
+        bodyText="hello world",
     )
 
 

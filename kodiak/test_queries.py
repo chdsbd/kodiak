@@ -81,6 +81,8 @@ def block_event() -> EventInfoResponse:
         latest_sha="8d728d017cac4f5ba37533debe65730abe65730a",
         baseRefName="master",
         headRefName="df825f90-9825-424c-a97e-733522027e4c",
+        title="Update README.md",
+        bodyText="",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
