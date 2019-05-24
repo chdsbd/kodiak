@@ -1,9 +1,9 @@
 import asyncio
 import typing
 from pathlib import Path
-import requests_async as http
 
 import pytest
+import requests_async as http
 from starlette.testclient import TestClient
 
 from kodiak import queries

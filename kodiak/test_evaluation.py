@@ -2,12 +2,12 @@ import pytest
 
 from kodiak.config import V1, MergeMethod
 from kodiak.evaluation import (
+    BranchMerged,
     MissingGithubMergabilityState,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
     mergable,
-    BranchMerged,
 )
 from kodiak.queries import (
     BranchProtectionRule,
