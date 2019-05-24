@@ -2,9 +2,9 @@ import json
 import typing
 from pathlib import Path
 
+import arrow
 import pytest
 
-import arrow
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
     BranchProtectionRule,
