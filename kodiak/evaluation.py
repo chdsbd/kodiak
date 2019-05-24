@@ -150,8 +150,11 @@ def mergable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
+            reviews_by_author: typing.MutableMapping[str, PRReview] = {}
+            for review in sorted(reviews, key=lambda x: x.createdAt):
+                reviews_by_author[review.author.login] = review
             successful_reviews = 0
-            for review in reviews:
+            for review in reviews_by_author.values():
                 # blocking review
                 if review.state == PRReviewState.CHANGES_REQUESTED:
                     raise NotQueueable("blocking review")

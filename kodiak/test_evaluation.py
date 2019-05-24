@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 
 from kodiak.config import V1, MergeMethod
@@ -12,9 +14,11 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommentAuthorAssociation,
     MergableState,
     MergeStateStatus,
     PRReview,
+    PRReviewAuthor,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -56,16 +60,6 @@ def branch_protection() -> BranchProtectionRule:
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
     )
-
-
-@pytest.fixture
-def review() -> PRReview:
-    return PRReview(id="82359D937470", state=PRReviewState.APPROVED)
-
-
-@pytest.fixture
-def context() -> StatusContext:
-    return StatusContext(context="ci/api", state=StatusState.SUCCESS)
 
 
 @pytest.fixture
@@ -570,6 +564,110 @@ def test_regression_error_before_update(
             reviews=[review],
             check_runs=[check_run],
             contexts=contexts,
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_regression_mishandling_multiple_reviews_failing_reviews(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    check_run: CheckRun,
+    context: StatusContext,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 2
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    reviews = [
+        PRReview(
+            state=PRReviewState.CHANGES_REQUESTED,
+            createdAt=first_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.COMMENTED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.APPROVED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="ghost"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.APPROVED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="kodiak"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+    ]
+    with pytest.raises(NotQueueable, match="blocking review"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=1,
+            reviews=reviews,
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_regression_mishandling_multiple_reviews_okay_reviews(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    check_run: CheckRun,
+    context: StatusContext,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    reviews = [
+        PRReview(
+            state=PRReviewState.CHANGES_REQUESTED,
+            createdAt=first_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.COMMENTED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.APPROVED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="chdsbd"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+        PRReview(
+            state=PRReviewState.APPROVED,
+            createdAt=latest_review_date,
+            author=PRReviewAuthor(login="ghost"),
+            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+        ),
+    ]
+    with pytest.raises(NeedsBranchUpdate):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=1,
+            reviews=reviews,
+            check_runs=[check_run],
+            contexts=[context],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
