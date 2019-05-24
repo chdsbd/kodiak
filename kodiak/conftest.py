@@ -1,4 +1,5 @@
 import typing
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -83,12 +84,22 @@ def branch_protection() -> queries.BranchProtectionRule:
 
 @pytest.fixture
 def review() -> queries.PRReview:
-    return queries.PRReview(id="abc", state=queries.PRReviewState.APPROVED)
+    return queries.PRReview(
+        state=queries.PRReviewState.APPROVED,
+        createdAt=datetime(2015, 5, 25),
+        author=queries.PRReviewAuthor(login="ghost"),
+        authorAssociation=queries.CommentAuthorAssociation.CONTRIBUTOR,
+    )
 
 
 @pytest.fixture
 def status_context() -> queries.StatusContext:
-    return queries.StatusContext(context="123", state=queries.StatusState.SUCCESS)
+    return queries.StatusContext(context="ci/api", state=queries.StatusState.SUCCESS)
+
+
+@pytest.fixture
+def context(status_context: queries.StatusContext) -> queries.StatusContext:
+    return status_context
 
 
 @pytest.fixture

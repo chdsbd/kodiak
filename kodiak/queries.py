@@ -86,11 +86,14 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       }
       title
       bodyText
-      reviews(first: 100, states: [APPROVED, CHANGES_REQUESTED]) {
+      reviews(first: 100) {
         nodes {
-          id
-          databaseId
+          createdAt
           state
+          author {
+            login
+          }
+          authorAssociation
         }
         totalCount
       }
@@ -248,9 +251,25 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
+class CommentAuthorAssociation(Enum):
+    COLLABORATOR = "COLLABORATOR"
+    CONTRIBUTOR = "CONTRIBUTOR"
+    FIRST_TIMER = "FIRST_TIMER"
+    FIRST_TIME_CONTRIBUTOR = "FIRST_TIME_CONTRIBUTOR"
+    MEMBER = "MEMBER"
+    NONE = "NONE"
+    OWNER = "OWNER"
+
+
+class PRReviewAuthor(BaseModel):
+    login: str
+
+
 class PRReview(BaseModel):
-    id: str
     state: PRReviewState
+    createdAt: datetime
+    author: PRReviewAuthor
+    authorAssociation: CommentAuthorAssociation
 
 
 class StatusState(Enum):
