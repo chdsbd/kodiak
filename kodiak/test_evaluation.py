@@ -672,6 +672,7 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
             valid_merge_methods=[MergeMethod.squash],
         )
 
+
 def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
     pull_request: PullRequest,
     config: V1,

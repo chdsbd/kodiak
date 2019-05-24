@@ -164,6 +164,7 @@ def mergable(
                     if review.state in (
                         PRReviewState.CHANGES_REQUESTED,
                         PRReviewState.APPROVED,
+                        PRReviewState.DISMISSED
                     ):
                         status = review.state
                 return status
