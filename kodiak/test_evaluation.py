@@ -38,6 +38,8 @@ def pull_request() -> PullRequest:
         latest_sha="f89be6c",
         baseRefName="master",
         headRefName="feature/hello-world",
+        title="new feature",
+        bodyText="some description",
     )
 
 
