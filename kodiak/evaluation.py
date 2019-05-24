@@ -68,11 +68,10 @@ class NotQueueable(BaseException):
     pass
 
 
-
 class BranchMerged(BaseException):
     """branch has already been merged"""
 
-    
+
 def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
@@ -87,7 +86,6 @@ def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
         ):
             status = review.state
     return status
-
 
 
 def mergable(
