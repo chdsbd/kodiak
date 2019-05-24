@@ -183,6 +183,7 @@ class PullRequestState(Enum):
 
 class PullRequest(BaseModel):
     id: str
+    number: int
     title: str
     bodyText: str
     mergeStateStatus: MergeStateStatus
@@ -513,6 +514,7 @@ class Client:
         )
 
         pull_request["latest_sha"] = sha
+        pull_request["number"] = pr_number
         try:
             pr = PullRequest.parse_obj(pull_request)
         except ValueError:
