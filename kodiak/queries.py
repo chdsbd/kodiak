@@ -84,11 +84,16 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       reviewRequests(first: 100) {
         totalCount
       }
-      reviews(first: 100, states: [APPROVED, CHANGES_REQUESTED]) {
+      title
+      bodyText
+      reviews(first: 100) {
         nodes {
-          id
-          databaseId
+          createdAt
           state
+          author {
+            login
+          }
+          authorAssociation
         }
         totalCount
       }
@@ -178,6 +183,9 @@ class PullRequestState(Enum):
 
 class PullRequest(BaseModel):
     id: str
+    number: int
+    title: str
+    bodyText: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergableState
@@ -244,9 +252,25 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
+class CommentAuthorAssociation(Enum):
+    COLLABORATOR = "COLLABORATOR"
+    CONTRIBUTOR = "CONTRIBUTOR"
+    FIRST_TIMER = "FIRST_TIMER"
+    FIRST_TIME_CONTRIBUTOR = "FIRST_TIME_CONTRIBUTOR"
+    MEMBER = "MEMBER"
+    NONE = "NONE"
+    OWNER = "OWNER"
+
+
+class PRReviewAuthor(BaseModel):
+    login: str
+
+
 class PRReview(BaseModel):
-    id: str
     state: PRReviewState
+    createdAt: datetime
+    author: PRReviewAuthor
+    authorAssociation: CommentAuthorAssociation
 
 
 class StatusState(Enum):
@@ -490,6 +514,7 @@ class Client:
         )
 
         pull_request["latest_sha"] = sha
+        pull_request["number"] = pr_number
         try:
             pr = PullRequest.parse_obj(pull_request)
         except ValueError:

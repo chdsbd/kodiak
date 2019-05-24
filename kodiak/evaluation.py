@@ -1,4 +1,5 @@
 import typing
+from collections import defaultdict
 from enum import Enum, auto
 
 import structlog
@@ -9,6 +10,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommentAuthorAssociation,
     MergableState,
     MergeStateStatus,
     PRReview,
@@ -66,8 +68,26 @@ class NotQueueable(BaseException):
     pass
 
 
+
 class BranchMerged(BaseException):
     """branch has already been merged"""
+
+    
+def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
+    """
+    Find the most recent actionable review state for a user
+    """
+    status = PRReviewState.COMMENTED
+    for review in reviews:
+        # only these events are meaningful to us
+        if review.state in (
+            PRReviewState.CHANGES_REQUESTED,
+            PRReviewState.APPROVED,
+            PRReviewState.DISMISSED,
+        ):
+            status = review.state
+    return status
+
 
 
 def mergable(
@@ -154,13 +174,23 @@ def mergable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
+            reviews_by_author: typing.MutableMapping[
+                str, typing.List[PRReview]
+            ] = defaultdict(list)
+            for review in sorted(reviews, key=lambda x: x.createdAt):
+                # only reviews by members with write access count towards mergeability
+                if review.authorAssociation == CommentAuthorAssociation.NONE:
+                    continue
+                reviews_by_author[review.author.login].append(review)
+
             successful_reviews = 0
-            for review in reviews:
+            for review_list in reviews_by_author.values():
+                review_state = review_status(review_list)
                 # blocking review
-                if review.state == PRReviewState.CHANGES_REQUESTED:
+                if review_state == PRReviewState.CHANGES_REQUESTED:
                     raise NotQueueable("blocking review")
                 # successful review
-                if review.state == PRReviewState.APPROVED:
+                if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:

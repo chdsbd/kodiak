@@ -7,7 +7,15 @@ import requests_async as http
 from starlette.testclient import TestClient
 
 from kodiak import queries
-from kodiak.config import V1
+from kodiak.config import (
+    V1,
+    Merge,
+    MergeBodyStyle,
+    MergeMessage,
+    MergeMethod,
+    MergeTitleStyle,
+)
+from kodiak.queries import EventInfoResponse
 
 from .main import (
     PR,
@@ -38,11 +46,13 @@ async def worker(gh_client: typing.Type[queries.Client]) -> RepoWorker:
 
 
 @pytest.fixture
-def create_pr() -> typing.Callable:
+def create_pr(event_response: EventInfoResponse) -> typing.Callable:
     def create(mergeable_response: MergeabilityResponse) -> PR:
         class FakePR(PR):
-            async def mergability(self) -> typing.Tuple[MergeabilityResponse, V1]:
-                return mergeable_response, V1(version=1)
+            async def mergability(
+                self
+            ) -> typing.Tuple[MergeabilityResponse, EventInfoResponse]:
+                return mergeable_response, event_response
 
         return FakePR(number=123, owner="tester", repo="repo", installation_id="abc")
 
@@ -123,13 +133,17 @@ def gh_client(
 
 @pytest.mark.asyncio
 async def test_repo_worker_ingest_need_refresh(
-    gh_client: typing.Type[queries.Client], worker: RepoWorker
+    gh_client: typing.Type[queries.Client],
+    worker: RepoWorker,
+    event_response: EventInfoResponse,
 ) -> None:
     worker.q.queue.clear()
 
     class FakePR(PR):
-        async def mergability(self) -> typing.Tuple[MergeabilityResponse, V1]:
-            return MergeabilityResponse.NEED_REFRESH, V1(version=1)
+        async def mergability(
+            self
+        ) -> typing.Tuple[MergeabilityResponse, EventInfoResponse]:
+            return MergeabilityResponse.NEED_REFRESH, event_response
 
     pr = FakePR(
         number=123, owner="tester", repo="repo", installation_id="abc", Client=gh_client
@@ -241,3 +255,34 @@ def test_pr(gh_client: typing.Type[queries.Client]) -> None:
     from collections import deque
 
     assert a in deque([b])
+
+
+def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
+    actual = PR.get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    title=MergeTitleStyle.pull_request_title,
+                    body=MergeBodyStyle.pull_request_body,
+                    include_pr_number=True,
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = dict(
+        merge_method="squash",
+        commit_title=pull_request.title + f" (#{pull_request.number})",
+        commit_message=pull_request.bodyText,
+    )
+    assert actual == expected
+
+
+def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
+    actual = PR.get_merge_body(
+        V1(version=1, merge=Merge(method=MergeMethod.squash)), pull_request
+    )
+    expected = dict(merge_method="squash")
+    assert actual == expected

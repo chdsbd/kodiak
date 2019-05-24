@@ -12,8 +12,8 @@ import structlog
 from fastapi import FastAPI
 from sentry_asgi import SentryMiddleware
 
-import kodiak
 from kodiak import queries
+from kodiak.config import V1, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
     MissingGithubMergabilityState,
@@ -23,7 +23,7 @@ from kodiak.evaluation import (
     mergable,
 )
 from kodiak.github import Webhook, events
-from kodiak.queries import Client, EventInfoResponse
+from kodiak.queries import Client, EventInfoResponse, PullRequest
 
 if not os.environ.get("DEBUG"):
     sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
@@ -239,7 +239,7 @@ class PR:
 
     async def mergability(
         self
-    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[kodiak.config.V1]]:
+    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
         event = await self.get_event()
         if event is None:
             return MergeabilityResponse.NOT_MERGEABLE, None
@@ -255,15 +255,15 @@ class PR:
                 valid_signature=event.valid_signature,
                 valid_merge_methods=event.valid_merge_methods,
             )
-            return MergeabilityResponse.OK, event.config
+            return MergeabilityResponse.OK, event
         except NotQueueable:
-            return MergeabilityResponse.NOT_MERGEABLE, event.config
+            return MergeabilityResponse.NOT_MERGEABLE, event
         except MissingGithubMergabilityState:
-            return MergeabilityResponse.NEED_REFRESH, event.config
+            return MergeabilityResponse.NEED_REFRESH, event
         except WaitingForChecks:
-            return MergeabilityResponse.WAIT, event.config
+            return MergeabilityResponse.WAIT, event
         except NeedsBranchUpdate:
-            return MergeabilityResponse.NEEDS_UPDATE, event.config
+            return MergeabilityResponse.NEEDS_UPDATE, event
         except BranchMerged:
             async with self.Client() as client:
                 await client.delete_branch(
@@ -272,7 +272,7 @@ class PR:
                     installation_id=self.installation_id,
                     branch=event.pull_request.headRefName,
                 )
-            return MergeabilityResponse.NOT_MERGEABLE, event.config
+            return MergeabilityResponse.NOT_MERGEABLE, event
 
     async def update(self) -> None:
         async with self.Client() as client:
@@ -297,8 +297,19 @@ class PR:
                 headers=headers,
             )
 
+    @staticmethod
+    def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
+        merge_body: dict = {"merge_method": config.merge.method.value}
+        if config.merge.message.body == MergeBodyStyle.pull_request_body:
+            merge_body.update(dict(commit_message=pull_request.bodyText))
+        if config.merge.message.title == MergeTitleStyle.pull_request_title:
+            merge_body.update(dict(commit_title=pull_request.title))
+        if config.merge.message.include_pr_number and merge_body.get("commit_title"):
+            merge_body["commit_title"] += f" (#{pull_request.number})"
+        return merge_body
+
     async def merge(self) -> MergeResults:
-        m_res, config = await self.mergability()
+        m_res, event = await self.mergability()
         log = self.log.bind(merge_response=m_res)
         if m_res == MergeabilityResponse.NEEDS_UPDATE:
             await self.update()
@@ -311,7 +322,7 @@ class PR:
         else:
             log.warning("Couldn't merge PR")
             return MergeResults.CANNOT_MERGE
-        if config is None:
+        if event is None:
             return MergeResults.CANNOT_MERGE
 
         # TODO(sbdchd): move to queries
@@ -323,9 +334,12 @@ class PR:
                 Authorization=f"token {token}",
                 Accept="application/vnd.github.machine-man-preview+json",
             )
+
             url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{self.number}/merge"
             res = await client.session.put(
-                url, headers=headers, json={"merge_method": config.merge.method}
+                url,
+                headers=headers,
+                json=self.get_merge_body(event.config, event.pull_request),
             )
             log.info("merge attempt", res=res, res_json=res.json())
             if res.status_code < 300:
@@ -346,7 +360,7 @@ class RepoWorker:
     async def ingest(self, pr: PR) -> typing.Optional[Retry]:
         log = logger.bind(repo=f"{pr.owner}/{pr.repo}", pr_number=pr.number)
         # IF PR needs an update or can be merged, add it to queue
-        mergability, _config = await pr.mergability()
+        mergability, _event = await pr.mergability()
         if mergability in (
             MergeabilityResponse.OK,
             MergeabilityResponse.NEEDS_UPDATE,

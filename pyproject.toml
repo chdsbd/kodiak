@@ -17,6 +17,7 @@ sentry-sdk = "^0.8.0"
 sentry-asgi = "^0.1.5"
 fastapi = "^0.17.0"
 ujson = "^1.35"
+arrow = "^0.13.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"

@@ -1,4 +1,5 @@
 import typing
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -49,7 +50,8 @@ def config(config_file: str) -> V1:
 @pytest.fixture
 def pull_request() -> queries.PullRequest:
     return queries.PullRequest(
-        id="123",
+        id="MDExOlB1bGxSZXF1ZXN0MjgxODQ0Nzg2",
+        number=235,
         mergeStateStatus=queries.MergeStateStatus.BEHIND,
         state=queries.PullRequestState.OPEN,
         mergeable=queries.MergableState.MERGEABLE,
@@ -57,6 +59,8 @@ def pull_request() -> queries.PullRequest:
         latest_sha="abcd",
         baseRefName="some-branch",
         headRefName="another-branch",
+        title="adding blah",
+        bodyText="hello world",
     )
 
 
@@ -81,12 +85,22 @@ def branch_protection() -> queries.BranchProtectionRule:
 
 @pytest.fixture
 def review() -> queries.PRReview:
-    return queries.PRReview(id="abc", state=queries.PRReviewState.APPROVED)
+    return queries.PRReview(
+        state=queries.PRReviewState.APPROVED,
+        createdAt=datetime(2015, 5, 25),
+        author=queries.PRReviewAuthor(login="ghost"),
+        authorAssociation=queries.CommentAuthorAssociation.CONTRIBUTOR,
+    )
 
 
 @pytest.fixture
 def status_context() -> queries.StatusContext:
-    return queries.StatusContext(context="123", state=queries.StatusState.SUCCESS)
+    return queries.StatusContext(context="ci/api", state=queries.StatusState.SUCCESS)
+
+
+@pytest.fixture
+def context(status_context: queries.StatusContext) -> queries.StatusContext:
+    return status_context
 
 
 @pytest.fixture

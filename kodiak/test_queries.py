@@ -2,6 +2,7 @@ import json
 import typing
 from pathlib import Path
 
+import arrow
 import pytest
 
 from kodiak.config import V1, Merge, MergeMethod
@@ -10,11 +11,13 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Client,
+    CommentAuthorAssociation,
     EventInfoResponse,
     GraphQLResponse,
     MergableState,
     MergeStateStatus,
     PRReview,
+    PRReviewAuthor,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -74,6 +77,7 @@ def block_event() -> EventInfoResponse:
     )
     pr = PullRequest(
         id="e14ff7599399478fb9dbc2dacb87da72",
+        number=100,
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
         mergeable=MergableState.MERGEABLE,
@@ -81,6 +85,8 @@ def block_event() -> EventInfoResponse:
         latest_sha="8d728d017cac4f5ba37533debe65730abe65730a",
         baseRefName="master",
         headRefName="df825f90-9825-424c-a97e-733522027e4c",
+        title="Update README.md",
+        bodyText="",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
@@ -110,12 +116,34 @@ def block_event() -> EventInfoResponse:
         review_requests_count=0,
         reviews=[
             PRReview(
-                id="32f57f6aaf91489cb6ce76af62f7c7e2f3b15956",
-                state=PRReviewState.APPROVED,
+                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                state=PRReviewState.COMMENTED,
+                author=PRReviewAuthor(login="ghost"),
+                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
             ),
             PRReview(
-                id="1ff69d4ad5d345a5ab2a0882d799f6066d89f675",
+                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                state=PRReviewState.CHANGES_REQUESTED,
+                author=PRReviewAuthor(login="ghost"),
+                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            ),
+            PRReview(
+                createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
+                state=PRReviewState.COMMENTED,
+                author=PRReviewAuthor(login="kodiak"),
+                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            ),
+            PRReview(
+                createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
                 state=PRReviewState.APPROVED,
+                author=PRReviewAuthor(login="ghost"),
+                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            ),
+            PRReview(
+                createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
+                state=PRReviewState.APPROVED,
+                author=PRReviewAuthor(login="walrus"),
+                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
             ),
         ],
         status_contexts=[
