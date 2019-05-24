@@ -1,4 +1,5 @@
 import typing
+from collections import defaultdict
 from enum import Enum, auto
 
 import structlog
@@ -150,16 +151,31 @@ def mergable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
-            reviews_by_author: typing.MutableMapping[str, PRReview] = {}
+            reviews_by_author: typing.MutableMapping[
+                str, typing.List[PRReview]
+            ] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
-                reviews_by_author[review.author.login] = review
+                reviews_by_author[review.author.login].append(review)
+
+            def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
+                status = PRReviewState.COMMENTED
+                for review in reviews:
+                    # only these events are meaningful to us
+                    if review.state in (
+                        PRReviewState.CHANGES_REQUESTED,
+                        PRReviewState.APPROVED,
+                    ):
+                        status = review.state
+                return status
+
             successful_reviews = 0
-            for review in reviews_by_author.values():
+            for review_list in reviews_by_author.values():
+                review_state = review_status(review_list)
                 # blocking review
-                if review.state == PRReviewState.CHANGES_REQUESTED:
+                if review_state == PRReviewState.CHANGES_REQUESTED:
                     raise NotQueueable("blocking review")
                 # successful review
-                if review.state == PRReviewState.APPROVED:
+                if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
