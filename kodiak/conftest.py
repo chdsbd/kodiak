@@ -105,12 +105,12 @@ def context(status_context: queries.StatusContext) -> queries.StatusContext:
 
 @pytest.fixture
 def event_response(
-    config_file: str,
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
     review: queries.PRReview,
     status_context: queries.StatusContext,
+    config: V1,
 ) -> queries.EventInfoResponse:
     return queries.EventInfoResponse(
         config,

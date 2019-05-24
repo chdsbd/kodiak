@@ -1,7 +1,9 @@
 import asyncio
 import typing
+from pathlib import Path
 
 import pytest
+import requests_async as http
 from starlette.testclient import TestClient
 
 from kodiak import queries
@@ -184,6 +186,59 @@ async def test_work_repo_queue(
     q.queue.append(pr)
     await _work_repo_queue(q)
     assert len(q.queue) == expected_length
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("labels,expected", [(["automerge"], True), ([], False)])
+async def test_deleting_branch_after_merge(
+    labels: typing.List[str], expected: bool, event_response: queries.EventInfoResponse
+) -> None:
+    """
+    ensure client.delete_branch is called when a PR that is already merged is
+    evaluated.
+    """
+
+    event_response.pull_request.state = queries.PullRequestState.MERGED
+    event_response.pull_request.labels = labels
+
+    class FakePR(PR):
+        async def get_event(self) -> typing.Optional[queries.EventInfoResponse]:
+            return event_response
+
+    called = False
+
+    class FakeClient(queries.Client):
+        def __init__(
+            self,
+            token: typing.Optional[str] = None,
+            private_key: typing.Optional[str] = None,
+            private_key_path: typing.Optional[Path] = None,
+            app_identifier: typing.Optional[str] = None,
+        ):
+            self.token = token
+            self.private_key = private_key
+            self.private_key_path = private_key_path
+            self.app_identifier = app_identifier
+            self.session = http.Session()
+
+        async def delete_branch(
+            self, owner: str, repo: str, installation_id: str, branch: str
+        ) -> bool:
+            nonlocal called
+            called = True
+            return True
+
+    pr = FakePR(
+        number=123,
+        owner="tester",
+        repo="repo",
+        installation_id="abc",
+        Client=FakeClient,
+    )
+
+    await pr.mergability()
+
+    assert called == expected
 
 
 def test_pr(gh_client: typing.Type[queries.Client]) -> None:

@@ -4,6 +4,7 @@ import pytest
 
 from kodiak.config import V1, MergeMethod
 from kodiak.evaluation import (
+    BranchMerged,
     MissingGithubMergabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -171,7 +172,7 @@ def test_merged(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merged"):
+    with pytest.raises(BranchMerged):
         pull_request.state = PullRequestState.MERGED
         mergable(
             config=config,

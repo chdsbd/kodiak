@@ -15,6 +15,7 @@ from sentry_asgi import SentryMiddleware
 from kodiak import queries
 from kodiak.config import V1, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
+    BranchMerged,
     MissingGithubMergabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -263,6 +264,15 @@ class PR:
             return MergeabilityResponse.WAIT, event
         except NeedsBranchUpdate:
             return MergeabilityResponse.NEEDS_UPDATE, event
+        except BranchMerged:
+            async with self.Client() as client:
+                await client.delete_branch(
+                    owner=self.owner,
+                    repo=self.repo,
+                    installation_id=self.installation_id,
+                    branch=event.pull_request.headRefName,
+                )
+            return MergeabilityResponse.NOT_MERGEABLE, event
 
     async def update(self) -> None:
         async with self.Client() as client:
@@ -270,6 +280,7 @@ class PR:
             if event is None:
                 self.log.warning("problem")
                 return
+            # TODO(sbdchd): move to queries
             token = await client.get_token_for_install(
                 installation_id=self.installation_id
             )
@@ -313,6 +324,8 @@ class PR:
             return MergeResults.CANNOT_MERGE
         if event is None:
             return MergeResults.CANNOT_MERGE
+
+        # TODO(sbdchd): move to queries
         async with self.Client() as client:
             token = await client.get_token_for_install(
                 installation_id=self.installation_id
