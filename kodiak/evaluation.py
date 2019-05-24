@@ -68,6 +68,22 @@ class NotQueueable(BaseException):
     pass
 
 
+def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
+    """
+    Find the most recent actionable review state for a user
+    """
+    status = PRReviewState.COMMENTED
+    for review in reviews:
+        # only these events are meaningful to us
+        if review.state in (
+            PRReviewState.CHANGES_REQUESTED,
+            PRReviewState.APPROVED,
+            PRReviewState.DISMISSED,
+        ):
+            status = review.state
+    return status
+
+
 def mergable(
     config: config.V1,
     pull_request: PullRequest,
@@ -160,18 +176,6 @@ def mergable(
                 if review.authorAssociation == CommentAuthorAssociation.NONE:
                     continue
                 reviews_by_author[review.author.login].append(review)
-
-            def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
-                status = PRReviewState.COMMENTED
-                for review in reviews:
-                    # only these events are meaningful to us
-                    if review.state in (
-                        PRReviewState.CHANGES_REQUESTED,
-                        PRReviewState.APPROVED,
-                        PRReviewState.DISMISSED,
-                    ):
-                        status = review.state
-                return status
 
             successful_reviews = 0
             for review_list in reviews_by_author.values():
