@@ -294,7 +294,7 @@ class PR:
         if config.merge.message.title == MergeTitleStyle.pull_request_title:
             merge_body.update(dict(commit_title=pull_request.title))
         if config.merge.message.include_pr_number and merge_body.get("commit_title"):
-            merge_body["commit_title"] += f" ({pull_request.number})"
+            merge_body["commit_title"] += f" (#{pull_request.number})"
         return merge_body
 
     async def merge(self) -> MergeResults:
