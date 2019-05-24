@@ -211,6 +211,7 @@ def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
                 message=MergeMessage(
                     title=MergeTitleStyle.pull_request_title,
                     body=MergeBodyStyle.pull_request_body,
+                    include_pr_number=True,
                 ),
             ),
         ),
@@ -218,7 +219,7 @@ def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
     )
     expected = dict(
         merge_method="squash",
-        commit_title=pull_request.title,
+        commit_title=pull_request.title + f" ({pull_request.number})",
         commit_message=pull_request.bodyText,
     )
     assert actual == expected

@@ -30,7 +30,8 @@ from kodiak.queries import (
 @pytest.fixture
 def pull_request() -> PullRequest:
     return PullRequest(
-        id="254",
+        id="FDExOlB1bGxSZXX1ZXN0MjgxODQ0Nzg7",
+        number=142,
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergableState.MERGEABLE,
