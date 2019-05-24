@@ -7,6 +7,7 @@ from kodiak.evaluation import (
     NotQueueable,
     WaitingForChecks,
     mergable,
+    BranchMerged,
 )
 from kodiak.queries import (
     BranchProtectionRule,
@@ -174,7 +175,7 @@ def test_merged(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merged"):
+    with pytest.raises(BranchMerged):
         pull_request.state = PullRequestState.MERGED
         mergable(
             config=config,
