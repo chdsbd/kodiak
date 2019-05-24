@@ -66,7 +66,7 @@ class NotQueueable(BaseException):
     pass
 
 
-class BranchMerged(NotQueueable):
+class BranchMerged(BaseException):
     """branch has already been merged"""
 
 
