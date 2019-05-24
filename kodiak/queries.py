@@ -623,7 +623,7 @@ class Client:
             f"https://api.github.com/repos/{owner}/{repo}/git/refs/{ref}",
             headers=headers,
         )
-        if res.status_code != 200:
+        if res.status_code != 204:
             log.error("problem deleting branch", res=res, res_json=res.json())
             return False
         return True
