@@ -186,3 +186,13 @@ s/fmt
 # test code
 s/test
 ```
+
+### Releasing a new version
+```bash
+GIT_SHA='62fcc1870b609f43b95de41b8be41a2858eb56bd'
+APP_NAME='kodiak-prod'
+docker pull cdignam/kodiak:$GIT_SHA
+docker tag cdignam/kodiak:$GIT_SHA registry.heroku.com/$APP_NAME/web
+docker push registry.heroku.com/$APP_NAME/web
+heroku container:release -a $APP_NAME web
+```
