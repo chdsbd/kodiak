@@ -54,14 +54,13 @@ updated when their targets were updated.
 Kodiak won't merge PRs if branch protection is disabled.
 
 1. Create a `.kodiak.toml` file in the root of your repository on the default
-   branch with the following contents:
+   branch with the following contents (see [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples):
 
    ```toml
    # version is the only required field
    version = 1
    
    # the following default settings can be omitted
-   block_on_reviews_requested = false
    [merge]
    method = "merge" # or "squash", "rebase"
    whitelist = ["automerge"] # labels to trigger bot 

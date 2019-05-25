@@ -85,7 +85,9 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         totalCount
       }
       title
+      body
       bodyText
+      bodyHTML
       reviews(first: 100) {
         nodes {
           createdAt
@@ -185,7 +187,9 @@ class PullRequest(BaseModel):
     id: str
     number: int
     title: str
+    body: str
     bodyText: str
+    bodyHTML: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergableState

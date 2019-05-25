@@ -130,7 +130,7 @@ def mergable(
         )
         raise NotQueueable("invalid merge methods")
 
-    if config.block_on_reviews_requested and review_requests_count:
+    if config.merge.block_on_reviews_requested and review_requests_count:
         raise NotQueueable("reviews requested")
 
     if pull_request.state == PullRequestState.MERGED:

@@ -86,7 +86,9 @@ def block_event() -> EventInfoResponse:
         baseRefName="master",
         headRefName="df825f90-9825-424c-a97e-733522027e4c",
         title="Update README.md",
+        body="",
         bodyText="",
+        bodyHTML="",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,

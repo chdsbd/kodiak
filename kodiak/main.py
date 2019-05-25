@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from sentry_asgi import SentryMiddleware
 
 from kodiak import queries
-from kodiak.config import V1, MergeBodyStyle, MergeTitleStyle
+from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
     MissingGithubMergabilityState,
@@ -181,6 +181,28 @@ class MergeResults(Enum):
     API_FAILURE = auto()
 
 
+def get_body_content(body_type: BodyText, pull_request: PullRequest) -> str:
+    if body_type == BodyText.markdown:
+        return pull_request.body
+    if body_type == BodyText.plain_text:
+        return pull_request.bodyText
+    if body_type == BodyText.html:
+        return pull_request.bodyHTML
+    raise Exception(f"Unknown body_type: {body_type}")
+
+
+def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
+    merge_body: dict = {"merge_method": config.merge.method.value}
+    if config.merge.message.body == MergeBodyStyle.pull_request_body:
+        body = get_body_content(config.merge.message.body_type, pull_request)
+        merge_body.update(dict(commit_message=body))
+    if config.merge.message.title == MergeTitleStyle.pull_request_title:
+        merge_body.update(dict(commit_title=pull_request.title))
+    if config.merge.message.include_pr_number and merge_body.get("commit_title"):
+        merge_body["commit_title"] += f" (#{pull_request.number})"
+    return merge_body
+
+
 @dataclass(init=False, repr=False, eq=False)
 class PR:
     number: int
@@ -297,17 +319,6 @@ class PR:
                 headers=headers,
             )
 
-    @staticmethod
-    def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
-        merge_body: dict = {"merge_method": config.merge.method.value}
-        if config.merge.message.body == MergeBodyStyle.pull_request_body:
-            merge_body.update(dict(commit_message=pull_request.bodyText))
-        if config.merge.message.title == MergeTitleStyle.pull_request_title:
-            merge_body.update(dict(commit_title=pull_request.title))
-        if config.merge.message.include_pr_number and merge_body.get("commit_title"):
-            merge_body["commit_title"] += f" (#{pull_request.number})"
-        return merge_body
-
     async def merge(self) -> MergeResults:
         m_res, event = await self.mergability()
         log = self.log.bind(merge_response=m_res)
@@ -339,7 +350,7 @@ class PR:
             res = await client.session.put(
                 url,
                 headers=headers,
-                json=self.get_merge_body(event.config, event.pull_request),
+                json=get_merge_body(event.config, event.pull_request),
             )
             log.info("merge attempt", res=res, res_json=res.json())
             if res.status_code < 300:

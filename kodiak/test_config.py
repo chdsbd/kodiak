@@ -1,30 +1,60 @@
-import typing
 from pathlib import Path
+from typing import Any, Dict, cast
 
 import pytest
 import toml
 
-from kodiak.config import V1
+from kodiak.config import (
+    V1,
+    BodyText,
+    Merge,
+    MergeBodyStyle,
+    MergeMessage,
+    MergeMethod,
+    MergeTitleStyle,
+)
 
 
 def load_config_fixture(fixture_name: str) -> Path:
     return Path(__file__).parent / "test" / "fixtures" / "config" / fixture_name
 
 
-@pytest.mark.parametrize("config, fixtures", [(V1, ["v1.toml"])])
-def test_config_parsing(config: V1, fixtures: typing.List[str]) -> None:
-    files = []
-    for fixture_name in fixtures:
-        file_path = load_config_fixture(fixture_name)
-        loaded = toml.load(file_path)
-        files.append(loaded)
+def test_config_default() -> None:
+    file_path = load_config_fixture("v1-default.toml")
+    loaded = toml.load(file_path)
+    actual = V1.parse_obj(cast(Dict[Any, Any], loaded))
+    expected = V1(version=1)
 
-    configs = [
-        config.parse_obj(typing.cast(typing.Dict[typing.Any, typing.Any], file))
-        for file in files
-    ]
-    for cfg in configs:
-        assert cfg == configs[0], "all configs should be equal"
+    assert actual == expected
+
+
+def test_config_parsing_opposite() -> None:
+    """
+    parse config with all opposite settings so we can ensure the config is
+    correctly formatted.
+    """
+    file_path = load_config_fixture("v1-opposite.toml")
+    loaded = toml.load(file_path)
+    actual = V1.parse_obj(cast(Dict[Any, Any], loaded))
+
+    expected = V1(
+        version=1,
+        merge=Merge(
+            whitelist=["mergeit!"],
+            blacklist=["wip", "block-merge"],
+            method=MergeMethod.squash,
+            delete_branch_on_merge=True,
+            block_on_reviews_requested=True,
+            message=MergeMessage(
+                title=MergeTitleStyle.pull_request_title,
+                body=MergeBodyStyle.pull_request_body,
+                include_pr_number=False,
+                body_type=BodyText.plain_text,
+            ),
+        ),
+    )
+
+    assert actual == expected
 
 
 def test_bad_file() -> None:

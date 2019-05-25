@@ -60,7 +60,9 @@ def pull_request() -> queries.PullRequest:
         baseRefName="some-branch",
         headRefName="another-branch",
         title="adding blah",
+        body="# hello world",
         bodyText="hello world",
+        bodyHTML="<h1>hello world</h1>",
     )
 
 
