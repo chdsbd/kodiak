@@ -25,6 +25,7 @@ from .main import (
     RepoWorker,
     Retry,
     _work_repo_queue,
+    get_merge_body,
 )
 
 
@@ -258,7 +259,7 @@ def test_pr(gh_client: typing.Type[queries.Client]) -> None:
 
 
 def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
-    actual = PR.get_merge_body(
+    actual = get_merge_body(
         V1(
             version=1,
             merge=Merge(
@@ -275,13 +276,13 @@ def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
     expected = dict(
         merge_method="squash",
         commit_title=pull_request.title + f" (#{pull_request.number})",
-        commit_message=pull_request.bodyText,
+        commit_message=pull_request.body,
     )
     assert actual == expected
 
 
 def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
-    actual = PR.get_merge_body(
+    actual = get_merge_body(
         V1(version=1, merge=Merge(method=MergeMethod.squash)), pull_request
     )
     expected = dict(merge_method="squash")

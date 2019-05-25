@@ -23,6 +23,12 @@ class MergeBodyStyle(Enum):
     pull_request_body = "pull_request_body"
 
 
+class BodyText(Enum):
+    plain_text = "plain_text"
+    markdown = "markdown"
+    html = "html"
+
+
 class MergeMessage(BaseModel):
     """
     https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
@@ -31,6 +37,7 @@ class MergeMessage(BaseModel):
     title: MergeTitleStyle = MergeTitleStyle.github_default
     body: MergeBodyStyle = MergeBodyStyle.github_default
     include_pr_number: bool = True
+    body_type: BodyText = BodyText.markdown
 
 
 class Merge(BaseModel):
@@ -42,8 +49,10 @@ class Merge(BaseModel):
     # action to take when attempting to merge PR. An error will occur if method
     # is disabled for repository
     method: MergeMethod = MergeMethod.merge
-
+    # delete branch when PR is merged
     delete_branch_on_merge: bool = False
+    # block merging if there are outstanding review requests
+    block_on_reviews_requested: bool = False
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
 
@@ -55,7 +64,6 @@ class InvalidVersion(ValueError):
 class V1(BaseModel):
     version: int
     merge: Merge = Merge()
-    block_on_reviews_requested: bool = False
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v: int) -> int:

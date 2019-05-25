@@ -1,0 +1,15 @@
+# configuration with all defaults set
+version = 1 # required
+
+[merge]
+whitelist = ["automerge"]
+blacklist = []
+method = "merge"
+delete_branch_on_merge = false
+block_on_reviews_requested = false
+
+[merge.message]
+title = "github_default"
+body = "github_default"
+include_pr_number = true
+body_type = "markdown"

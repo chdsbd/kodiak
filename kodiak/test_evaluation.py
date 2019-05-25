@@ -41,7 +41,9 @@ def pull_request() -> PullRequest:
         baseRefName="master",
         headRefName="feature/hello-world",
         title="new feature",
+        body="# some description",
         bodyText="some description",
+        bodyHTML="<h1>some description</h1>",
     )
 
 
@@ -530,7 +532,7 @@ def test_block_on_reviews_requested(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    config.block_on_reviews_requested = True
+    config.merge.block_on_reviews_requested = True
     with pytest.raises(NotQueueable, match="reviews requested"):
         mergable(
             config=config,
