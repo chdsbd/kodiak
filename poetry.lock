@@ -49,6 +49,14 @@ typed-ast = ">=1.3.0"
 wrapt = "*"
 
 [[package]]
+category = "main"
+description = "PEP 3156 implementation of the redis protocol."
+name = "asyncio-redis"
+optional = false
+python-versions = "*"
+version = "0.15.1"
+
+[[package]]
 category = "dev"
 description = "Atomic file writes."
 name = "atomicwrites"
@@ -741,7 +749,7 @@ python-versions = "*"
 version = "1.11.1"
 
 [metadata]
-content-hash = "8fcce7837e85251241b77dd357115b1fb29985c5cffc3c8f3ca6a6a1e4dc664d"
+content-hash = "80d5c653868f700c6786d3d7c417de996117b76f3617baf1e763ea48961f9d9d"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -750,6 +758,7 @@ appnope = ["5b26757dc6f79a3b7dc9fab95359328d5747fcb2409d331ea66d0272b90ab2a0", "
 arrow = ["002f2315cf4c8404de737c42860441732d339bbc57fee584e2027520e055ecc1", "82dd5e13b733787d4eb0fef42d1ee1a99136dc1d65178f70373b3678b3181bfc"]
 asn1crypto = ["2f1adbb7546ed199e3c90ef23ec95c5cf3585bac7d11fb7eb562a3fe89c64e87", "9d5c20441baf0cb60a4ac34cc447c6c189024b6b4c6cd7877034f4965c464e49"]
 astroid = ["6560e1e1749f68c64a4b5dee4e091fce798d2f0d84ebe638cf0e0585a343acf4", "b65db1bbaac9f9f4d190199bb8680af6f6f84fd3769a5ea883df8a91fe68b4c4"]
+asyncio-redis = ["067dbc251ab84d6e53ef8b33dbfd8afd62987ab08f72ca922f6870c96be53b54", "f49e2c6626f3fcfddb478ee1d01f0335e22b6656add274e8a88fcdec9bd78745"]
 atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
 attrs = ["69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79", "f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"]
 backcall = ["38ecd85be2c1e78f77fd91700c76e14667dc21e2713b63876c0eb901196e01e4", "bbbf4b1e5cd2bdb08f915895b51081c041bac22394fdfcfdfbe9f14b77c08bf2"]
