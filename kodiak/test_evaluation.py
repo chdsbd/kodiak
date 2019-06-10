@@ -783,3 +783,35 @@ def test_passing(
         valid_signature=False,
         valid_merge_methods=[MergeMethod.squash],
     )
+
+
+def test_app_id(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    config.app_id = 123
+    with pytest.raises(NotQueueable, match="app_id"):
+        mergable(
+            app_id=1234,
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=[],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[],
+        )
+    # try without passing an app_id
+    with pytest.raises(NotQueueable, match="app_id"):
+        mergable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=[],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[],
+        )

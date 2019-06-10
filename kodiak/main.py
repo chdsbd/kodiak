@@ -268,6 +268,7 @@ class PR:
         try:
             mergable(
                 config=event.config,
+                app_id=os.getenv("GITHUB_APP_ID"),
                 pull_request=event.pull_request,
                 branch_protection=event.branch_protection,
                 review_requests_count=event.review_requests_count,
