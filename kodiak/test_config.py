@@ -39,7 +39,7 @@ def test_config_parsing_opposite() -> None:
 
     expected = V1(
         version=1,
-        app_id=12345,
+        app_id="12345",
         merge=Merge(
             whitelist=["mergeit!"],
             blacklist=["wip", "block-merge"],

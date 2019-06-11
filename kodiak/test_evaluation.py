@@ -788,7 +788,7 @@ def test_passing(
 def test_app_id(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
 ) -> None:
-    config.app_id = 123
+    config.app_id = "123"
     with pytest.raises(NotQueueable, match="app_id"):
         mergable(
             app_id="1234",

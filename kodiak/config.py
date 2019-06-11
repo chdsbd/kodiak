@@ -68,7 +68,7 @@ class V1(BaseModel):
     # kodiak, but also run the development version on a specific repo. By
     # setting _app_id to the development github app ID, we can prevent the
     # production kodiak instance from interfering.
-    app_id: typing.Optional[int]
+    app_id: typing.Optional[str]
     merge: Merge = Merge()
 
     @validator("version", pre=True, always=True)
