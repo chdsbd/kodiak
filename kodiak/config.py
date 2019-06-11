@@ -63,6 +63,12 @@ class InvalidVersion(ValueError):
 
 class V1(BaseModel):
     version: int
+    # _internal_ value to require a certain github app ID to process this repo.
+    # This is useful for development, so we can globally install the production
+    # kodiak, but also run the development version on a specific repo. By
+    # setting _app_id to the development github app ID, we can prevent the
+    # production kodiak instance from interfering.
+    app_id: typing.Optional[int]
     merge: Merge = Merge()
 
     @validator("version", pre=True, always=True)
