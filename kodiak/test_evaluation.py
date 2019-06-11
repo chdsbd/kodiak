@@ -791,7 +791,7 @@ def test_app_id(
     config.app_id = 123
     with pytest.raises(NotQueueable, match="app_id"):
         mergable(
-            app_id=1234,
+            app_id="1234",
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
