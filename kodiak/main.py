@@ -47,9 +47,16 @@ REPO_WORKERS: typing.MutableMapping[str, asyncio.Task] = {}
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
 ) -> typing.NoReturn:
-    logger.info("repo_consumer")
+    """
+    Worker for a repo
+
+    Pull webhook events off redis queue and process for mergeability.
+    """
+    with sentry_sdk.configure_scope() as scope:
+        scope.set_tag("queue", queue_name)
+    log = logger.bind(queue=queue_name)
+    log.info("start repo_consumer")
     while True:
-        log = logger.bind(queue=queue_name)
         log.info("block for new event")
         webhook_event_json: BlockingPopReply = await connection.blpop([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
@@ -60,25 +67,37 @@ async def repo_queue_consumer(
             installation_id=webhook_event.installation_id,
         )
 
-        try_to_merge = True
-        while try_to_merge:
+        while True:
+            # there are two exits to this loop:
+            # - OK MergabilityResponse
+            # - NOT_MERGEABLE MergeabilityResponse
+            #
+            # otherwise we continue to poll the Github API for a status change
+            # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
             m_res, event = await pull_request.mergability()
             log = log.bind(res=m_res)
             if event is None or m_res in (MergeabilityResponse.NOT_MERGEABLE,):
                 log.info("cannot merge")
                 break
             if m_res == MergeabilityResponse.NEEDS_UPDATE:
+                # update pull request and poll for result
                 log.info("update pull request and don't attempt to merge")
                 await pull_request.update()
                 continue
             elif m_res == MergeabilityResponse.NEED_REFRESH:
+                # trigger a git mergeability check on Github's end and poll for result
                 log.info("needs refresh")
                 await pull_request.trigger_mergeability_check()
                 continue
             elif m_res == MergeabilityResponse.WAIT:
+                # continuously poll until we either get an OK or a failure for mergeability
                 log.info("waiting for status checks")
                 continue
-                # TODO
+            elif m_res == MergeabilityResponse.OK:
+                # continue to try and merge
+                pass
+            else:
+                raise Exception("Unknown MergeabilityResponse")
 
             retries = 5
             while retries:
@@ -89,7 +108,8 @@ async def repo_queue_consumer(
                 retries -= 1
                 log.info("retry merge")
                 await asyncio.sleep(0.5)
-            # TODO: Do something about these failures
+            else:
+                log.error("Exhausted attempts to merge pull request")
 
 
 QUEUE_SET_NAME = "kodiak_repo_set"
@@ -102,16 +122,13 @@ class RedisWebhookQueue:
         self.connection = await asyncio_redis.Pool.create(
             host="127.0.0.1", port=6379, poolsize=10
         )
+        queues = await self.connection.smembers(QUEUE_SET_NAME)
+        for result in queues:
+            queue_name = await result
+            self.start_worker(queue_name)
 
-    @staticmethod
-    def get_queue_key(event: WebhookEvent) -> str:
-        return f"kodiak_repo_queue:{event.repo_owner}/{event.repo_name}"
 
-    async def enqueue(self, *, event: WebhookEvent) -> None:
-        key = self.get_queue_key(event)
-        await self.connection.sadd(QUEUE_SET_NAME, [key])
-        await self.connection.rpush(key, [event.json()])
-
+    def start_worker(self, key: str):
         repo_worker = REPO_WORKERS.get(key)
         if repo_worker is not None:
             if not repo_worker.done():
@@ -126,6 +143,17 @@ class RedisWebhookQueue:
         REPO_WORKERS[key] = asyncio.create_task(
             repo_queue_consumer(queue_name=key, connection=self.connection)
         )
+
+    @staticmethod
+    def get_queue_key(event: WebhookEvent) -> str:
+        return f"kodiak_repo_queue:{event.repo_owner}/{event.repo_name}"
+
+    async def enqueue(self, *, event: WebhookEvent) -> None:
+        key = self.get_queue_key(event)
+        await self.connection.sadd(QUEUE_SET_NAME, [key])
+        await self.connection.rpush(key, [event.json()])
+
+        self.start_worker(key)
 
 
 def create_git_revision_expression(branch: str, file_path: str) -> str:

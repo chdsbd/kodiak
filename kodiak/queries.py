@@ -427,6 +427,10 @@ class Client:
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
         )
+        rate_limit_remaining=res.headers.get('x-ratelimit-remaining')
+        rate_limit_max = res.headers.get('x-ratelimit-limit')
+        rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
+        log = log.bind(rate_limit=rate_limit)
         if res.status_code != status.HTTP_200_OK:
             log.error("github api request error", res=res)
             return None
