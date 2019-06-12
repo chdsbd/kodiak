@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import typing
-from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -51,7 +50,7 @@ async def repo_queue_consumer(
     logger.info("repo_consumer")
     while True:
         log = logger.bind(queue=queue_name)
-        log.info("blpop")
+        log.info("block for new event")
         webhook_event_json: BlockingPopReply = await connection.blpop([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
         pull_request = PR(
@@ -77,8 +76,8 @@ async def repo_queue_consumer(
                 await pull_request.trigger_mergeability_check()
                 continue
             elif m_res == MergeabilityResponse.WAIT:
-                continue
                 log.info("waiting for status checks")
+                continue
                 # TODO
 
             retries = 5
@@ -97,6 +96,8 @@ QUEUE_SET_NAME = "kodiak_repo_set"
 
 
 class RedisWebhookQueue:
+    connection: asyncio_redis.Connection
+
     async def create(self) -> None:
         self.connection = await asyncio_redis.Pool.create(
             host="127.0.0.1", port=6379, poolsize=10
@@ -398,7 +399,7 @@ class PR:
                 headers=headers,
                 json=get_merge_body(event.config, event.pull_request),
             )
-            return not (res.status_code > 300)
+            return not res.status_code > 300
 
 
 @app.on_event("startup")

@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from pathlib import Path
 
@@ -17,33 +16,13 @@ from kodiak.config import (
 )
 from kodiak.queries import EventInfoResponse
 
-from .main import (
-    PR,
-    MergeabilityResponse,
-    MergeResults,
-    RepoQueue,
-    RepoWorker,
-    Retry,
-    _work_repo_queue,
-    get_merge_body,
-)
+from .main import PR, MergeabilityResponse, get_merge_body
 
 
 def test_read_main(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == "OK"
-
-
-@pytest.fixture
-@pytest.mark.asyncio
-async def worker(gh_client: typing.Type[queries.Client]) -> RepoWorker:
-    async def foo(queue: RepoQueue) -> None:
-        pass
-
-    q = RepoQueue()
-    task = asyncio.create_task(foo(q))
-    return RepoWorker(q=q, task=task, Client=gh_client)
 
 
 @pytest.fixture
@@ -67,39 +46,7 @@ MERGEABLE_RESPONSES = (
     MergeabilityResponse.WAIT,
 )
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mergeable_response", MERGEABLE_RESPONSES)
-async def test_repo_worker_ingest_enqueable(
-    create_pr: typing.Callable,
-    worker: RepoWorker,
-    mergeable_response: MergeabilityResponse,
-) -> None:
-    pr = create_pr(mergeable_response)
-
-    res = await worker.ingest(pr)
-
-    assert res != Retry
-    assert pr in worker.q.queue, "PR should be enqueued for future merge"
-
-
 NOT_MERGEABLE_RESPONSES = (MergeabilityResponse.NOT_MERGEABLE,)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mergeable_response", NOT_MERGEABLE_RESPONSES)
-async def test_repo_worker_ingest_not_enqueable(
-    create_pr: typing.Callable,
-    worker: RepoWorker,
-    mergeable_response: MergeabilityResponse,
-) -> None:
-    worker.q.queue.clear()
-    pr = create_pr(mergeable_response)
-
-    res = await worker.ingest(pr)
-
-    assert res != Retry
-    assert pr not in worker.q.queue, "PR should not be enqueued"
 
 
 def test_mergeability_response_coverage() -> None:
@@ -130,63 +77,6 @@ def gh_client(
             return "abc"
 
     return MockClient
-
-
-@pytest.mark.asyncio
-async def test_repo_worker_ingest_need_refresh(
-    gh_client: typing.Type[queries.Client],
-    worker: RepoWorker,
-    event_response: EventInfoResponse,
-) -> None:
-    worker.q.queue.clear()
-
-    class FakePR(PR):
-        async def mergability(
-            self
-        ) -> typing.Tuple[MergeabilityResponse, EventInfoResponse]:
-            return MergeabilityResponse.NEED_REFRESH, event_response
-
-    pr = FakePR(
-        number=123, owner="tester", repo="repo", installation_id="abc", Client=gh_client
-    )
-
-    res = await worker.ingest(pr)
-
-    assert isinstance(res, Retry)
-    assert pr not in worker.q.queue, "PR should not be enqueued"
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "merge_result,expected_length",
-    [
-        (MergeResults.OK, 0),
-        (MergeResults.CANNOT_MERGE, 0),
-        (MergeResults.API_FAILURE, 1),
-    ],
-)
-async def test_work_repo_queue(
-    monkeypatch: typing.Any,
-    create_pr: typing.Callable,
-    merge_result: MergeResults,
-    expected_length: int,
-) -> None:
-    # don't wait during tests
-    import kodiak
-
-    monkeypatch.setattr(kodiak.main, "MERGE_SLEEP_SECONDS", 0)
-
-    class FakePR(PR):
-        async def merge(self) -> MergeResults:
-            return merge_result
-
-    pr = FakePR(number=123, owner="tester", repo="repo", installation_id="abc")
-    q = RepoQueue()
-    # HACK: pytest doesn't cleanup between parametrized test runs
-    q.queue.clear()
-    q.queue.append(pr)
-    await _work_repo_queue(q)
-    assert len(q.queue) == expected_length
 
 
 @pytest.mark.asyncio
