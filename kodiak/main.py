@@ -124,6 +124,7 @@ class RedisWebhookQueue:
         self.connection = await asyncio_redis.Pool.create(
             host="127.0.0.1", port=6379, poolsize=10
         )
+        # restart workers for queues
         queues = await self.connection.smembers(QUEUE_SET_NAME)
         for result in queues:
             queue_name = await result
