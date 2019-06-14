@@ -328,7 +328,7 @@ class PR:
                 installation_id=self.installation_id,
             )
 
-    # TODO: fix typos with mergeability
+    # TODO(chdsbd): fix typos with mergeability
     async def mergability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:

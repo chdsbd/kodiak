@@ -42,7 +42,7 @@ async def test_generate_jwt(private_key: str) -> None:
 
 @pytest.mark.asyncio
 async def test_get_default_branch_name_error(mock_client: typing.Type[Client]) -> None:
-    # TODO: Using patching instead of inheritance
+    # TODO(chdsbd): Using patching instead of inheritance
     class MockClient(mock_client):  # type: ignore
         async def send_query(*args: typing.Any, **kwargs: typing.Any) -> dict:
             return dict(data=None, errors=[{"test": 123}])
