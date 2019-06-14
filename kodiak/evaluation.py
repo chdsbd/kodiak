@@ -98,6 +98,7 @@ def mergable(
     check_runs: typing.List[CheckRun],
     valid_signature: bool,
     valid_merge_methods: typing.List[MergeMethod],
+    app_id: typing.Optional[str] = None,
 ) -> None:
     log = logger.bind(
         config=config,
@@ -109,6 +110,11 @@ def mergable(
         valid_signature=valid_signature,
         valid_merge_methods=valid_merge_methods,
     )
+
+    # if we have an app_id in the config then we only want to work on this repo
+    # if our app_id from the environment matches the configuration.
+    if config.app_id is not None and config.app_id != app_id:
+        raise NotQueueable("missing required app_id")
 
     if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
         log.info(
