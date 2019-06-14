@@ -78,7 +78,7 @@ async def repo_queue_consumer(
             # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
             m_res, event = await pull_request.mergability()
             log = log.bind(res=m_res)
-            if event is None or m_res in (MergeabilityResponse.NOT_MERGEABLE,):
+            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
                 log.info("cannot merge")
                 break
             if m_res == MergeabilityResponse.NEEDS_UPDATE:
