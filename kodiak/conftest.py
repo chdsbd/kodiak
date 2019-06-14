@@ -119,6 +119,7 @@ def event_response(
         pull_request,
         repo,
         branch_protection,
+        head_exists=True,
         review_requests_count=0,
         reviews=[review],
         status_contexts=[status_context],

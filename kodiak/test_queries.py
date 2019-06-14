@@ -42,6 +42,7 @@ async def test_generate_jwt(private_key: str) -> None:
 
 @pytest.mark.asyncio
 async def test_get_default_branch_name_error(mock_client: typing.Type[Client]) -> None:
+    # TODO(chdsbd): Using patching instead of inheritance
     class MockClient(mock_client):  # type: ignore
         async def send_query(*args: typing.Any, **kwargs: typing.Any) -> dict:
             return dict(data=None, errors=[{"test": 123}])
@@ -112,6 +113,7 @@ def block_event() -> EventInfoResponse:
 
     return EventInfoResponse(
         config=config,
+        head_exists=True,
         pull_request=pr,
         repo=rep_info,
         branch_protection=branch_protection,

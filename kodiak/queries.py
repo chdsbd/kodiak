@@ -101,6 +101,9 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       }
       baseRefName
       headRefName
+      headRef {
+        id
+      }
       commits(last: 1) {
         nodes {
           commit {
@@ -214,6 +217,7 @@ class EventInfoResponse:
     repo: RepoInfo
     branch_protection: BranchProtectionRule
     review_requests_count: int
+    head_exists: bool
     reviews: typing.List[PRReview] = field(default_factory=list)
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
     check_runs: typing.List[CheckRun] = field(default_factory=list)
@@ -419,11 +423,14 @@ class Client:
         else:
             token = self.token or self.generate_jwt()
         self.session.headers["Authorization"] = f"Bearer {token}"
-        log.info("sending query")
         res = await self.session.post(
             "https://api.github.com/graphql",
             json=(dict(query=query, variables=variables)),
         )
+        rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
+        rate_limit_max = res.headers.get("x-ratelimit-limit")
+        rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
+        log = log.bind(rate_limit=rate_limit)
         if res.status_code != status.HTTP_200_OK:
             log.error("github api request error", res=res)
             return None
@@ -602,6 +609,10 @@ class Client:
         if get_value(expr="repository.squashMergeAllowed", data=data):
             valid_merge_methods.append(MergeMethod.squash)
 
+        head_exists = bool(
+            get_value(expr="repository.pullRequest.headRef.id", data=data)
+        )
+
         return EventInfoResponse(
             config=config,
             pull_request=pr,
@@ -611,6 +622,7 @@ class Client:
             reviews=reviews,
             status_contexts=status_contexts,
             check_runs=check_runs,
+            head_exists=head_exists,
             valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
         )
