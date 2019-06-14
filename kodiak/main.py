@@ -43,6 +43,8 @@ WEBHOOK_QUEUE_NAME = "kodiak_webhooks"
 
 REPO_WORKERS: typing.MutableMapping[str, asyncio.Task] = {}
 
+MERGE_RETRY_RATE_SECONDS = 2
+
 
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
@@ -107,7 +109,7 @@ async def repo_queue_consumer(
                     break
                 retries -= 1
                 log.info("retry merge")
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
             else:
                 log.error("Exhausted attempts to merge pull request")
 
@@ -127,12 +129,11 @@ class RedisWebhookQueue:
             queue_name = await result
             self.start_worker(queue_name)
 
-
-    def start_worker(self, key: str):
+    def start_worker(self, key: str) -> None:
         repo_worker = REPO_WORKERS.get(key)
         if repo_worker is not None:
             if not repo_worker.done():
-                return None
+                return
             logger.info("task failed")
             # task failed. record result and restart
             exception = repo_worker.exception()
@@ -326,6 +327,7 @@ class PR:
                 installation_id=self.installation_id,
             )
 
+    # TODO: fix typos with mergeability
     async def mergability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
