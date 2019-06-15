@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import inspect
-import os
 import typing
 from collections import defaultdict
 from dataclasses import dataclass
@@ -9,9 +8,13 @@ from dataclasses import dataclass
 import structlog
 from fastapi import FastAPI, Header, HTTPException
 from starlette import status
+from starlette.config import Config
 from starlette.requests import Request
 
 from kodiak.github import events
+
+config = Config(".env")
+SECRET_KEY = config("SECRET_KEY")
 
 log = structlog.get_logger()
 
@@ -65,9 +68,7 @@ class Webhook:
         github_event = typing.cast(typing.Optional[str], x_github_event)
         github_signature = typing.cast(typing.Optional[str], x_hub_signature)
         expected_sha = hmac.new(
-            key=os.environ["SECRET_KEY"].encode(),
-            msg=(await request.body()),
-            digestmod=hashlib.sha1,
+            key=SECRET_KEY.encode(), msg=(await request.body()), digestmod=hashlib.sha1
         ).hexdigest()
         if github_event is None:
             raise HTTPException(
