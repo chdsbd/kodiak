@@ -1,6 +1,5 @@
 import typing
 from collections import defaultdict
-from enum import Enum, auto
 
 import structlog
 
@@ -23,19 +22,6 @@ from kodiak.queries import (
 )
 
 logger = structlog.get_logger()
-
-
-class MergeErrors(str, Enum):
-    MISSING_WHITELIST_LABEL = auto()
-    MISSING_BLACKLIST_LABEL = auto()
-    PR_MERGED = auto()
-    PR_CLOSED = auto()
-    # there are unsuccessful checks
-    UNSTABLE_MERGE = auto()
-    DRAFT = auto()
-    DIRTY = auto()
-    BLOCKED = auto()
-    UNEXPECTED_VALUE = auto()
 
 
 async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
@@ -116,13 +102,10 @@ def mergeable(
     if config.app_id is not None and config.app_id != app_id:
         raise NotQueueable("missing required app_id")
 
-    if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
-        log.info(
-            "missing required whitelist labels",
-            has=pull_request.labels,
-            requires=config.merge.whitelist,
+    if config.merge.automerge_label not in pull_request.labels:
+        raise NotQueueable(
+            f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )
-        raise NotQueueable("missing whitelist")
     if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
         log.info("missing required blacklist labels")
         raise NotQueueable("has blacklist labels")

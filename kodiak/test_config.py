@@ -41,7 +41,7 @@ def test_config_parsing_opposite() -> None:
         version=1,
         app_id="12345",
         merge=Merge(
-            whitelist=["mergeit!"],
+            automerge_label="mergeit!",
             blacklist=["wip", "block-merge"],
             method=MergeMethod.squash,
             delete_branch_on_merge=True,
@@ -71,4 +71,4 @@ def test_bad_file() -> None:
         V1.parse_toml("")
 
     with pytest.raises(ValueError):
-        V1.parse_toml("merge.whitelist = [123]")
+        V1.parse_toml("merge.automerge_label = 123")

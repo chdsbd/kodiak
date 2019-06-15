@@ -50,7 +50,7 @@ def pull_request() -> PullRequest:
 @pytest.fixture
 def config() -> V1:
     cfg = V1(version=1)
-    cfg.merge.whitelist = ["automerge"]
+    cfg.merge.automerge_label = "automerge"
     cfg.merge.blacklist = []
     cfg.merge.method = MergeMethod.squash
     return cfg
@@ -73,31 +73,7 @@ def check_run() -> CheckRun:
     return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
 
 
-def test_failing_whitelist(
-    pull_request: PullRequest,
-    config: V1,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-) -> None:
-    pull_request.labels = []
-    config.merge.whitelist = ["automerge"]
-    config.merge.blacklist = []
-    with pytest.raises(NotQueueable, match="whitelist"):
-        mergeable(
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            review_requests_count=0,
-            reviews=[review],
-            contexts=[context],
-            check_runs=[],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
-        )
-
-
-def test_empty_whitelist(
+def test_missing_automerge_label(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
@@ -105,8 +81,8 @@ def test_empty_whitelist(
     context: StatusContext,
 ) -> None:
     pull_request.labels = ["bug"]
-    config.merge.whitelist = []
-    with pytest.raises(NotQueueable, match="missing whitelist"):
+    config.merge.automerge_label = "automerge"
+    with pytest.raises(NotQueueable, match="missing automerge_label"):
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -130,7 +106,7 @@ def test_blacklisted(
     # a PR with a blacklisted label should not be mergeable
     with pytest.raises(NotQueueable, match="blacklist"):
         pull_request.labels = ["automerge", "dont-merge"]
-        config.merge.whitelist = ["automerge"]
+        config.merge.automerge_label = "automerge"
         config.merge.blacklist = ["dont-merge"]
         mergeable(
             config=config,

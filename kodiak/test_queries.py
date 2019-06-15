@@ -74,7 +74,7 @@ def blocked_response() -> dict:
 @pytest.fixture
 def block_event() -> EventInfoResponse:
     config = V1(
-        version=1, merge=Merge(whitelist=["automerge"], method=MergeMethod.squash)
+        version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
     pr = PullRequest(
         id="e14ff7599399478fb9dbc2dacb87da72",
