@@ -486,8 +486,11 @@ class PR:
         comment instead of multiple comments on each consecutive PR push.
         """
 
-        # TODO(sbdchd): get label from config
-        if not await self.delete_label(label):
+        event = await self.get_event()
+        if not event:
+            return False
+        automerge_label = event.config.merge.whitelist
+        if not await self.delete_label(label=automerge_label):
             return False
 
         body = textwrap.dedent(
