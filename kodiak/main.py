@@ -7,15 +7,15 @@ import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+import asyncio_redis
 import sentry_sdk
 import structlog
+from asyncio_redis.connection import Connection as RedisConnection
+from asyncio_redis.replies import BlockingPopReply
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
 
-import asyncio_redis
-from asyncio_redis.connection import Connection as RedisConnection
-from asyncio_redis.replies import BlockingPopReply
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
