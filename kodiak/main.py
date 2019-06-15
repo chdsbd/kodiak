@@ -385,50 +385,31 @@ class PR:
             if event is None:
                 self.log.warning("problem")
                 return
-            # TODO(sbdchd): move to queries
-            token = await client.get_token_for_install(
-                installation_id=self.installation_id
-            )
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
-            await client.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
-                json=dict(
-                    head=event.pull_request.baseRefName,
-                    base=event.pull_request.headRefName,
-                ),
-                headers=headers,
+            await client.merge_branch(
+                owner=self.owner,
+                repo=self.repo,
+                installation_id=self.installation_id,
+                head=event.pull_request.baseRefName,
+                base=event.pull_request.headRefName,
             )
 
     async def trigger_mergeability_check(self) -> None:
         async with self.Client() as client:
-            token = await client.get_token_for_install(
-                installation_id=self.installation_id
+            await client.get_pull_request(
+                owner=self.owner,
+                repo=self.repo,
+                number=self.number,
+                installation_id=self.installation_id,
             )
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
-            url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{self.number}"
-            await client.session.get(url, headers=headers)
 
     async def merge(self, event: EventInfoResponse) -> bool:
         async with self.Client() as client:
-            token = await client.get_token_for_install(
-                installation_id=self.installation_id
-            )
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
-
-            url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{self.number}/merge"
-            res = await client.session.put(
-                url,
-                headers=headers,
-                json=get_merge_body(event.config, event.pull_request),
+            res = await client.merge_pull_request(
+                owner=self.owner,
+                repo=self.repo,
+                number=self.number,
+                body=get_merge_body(event.config, event.pull_request),
+                installation_id=self.installation_id,
             )
             return not res.status_code > 300
 

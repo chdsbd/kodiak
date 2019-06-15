@@ -369,6 +369,13 @@ class Client:
     ) -> None:
         await self.session.close()
 
+    async def get_headers(self, installation_id: str) -> typing.Mapping[str, str]:
+        token = await self.get_token_for_install(installation_id=installation_id)
+        return dict(
+            Authorization=f"token {token}",
+            Accept="application/vnd.github.machine-man-preview+json",
+        )
+
     def generate_jwt(self) -> str:
         """
         Create an authentication token to make application requests.
@@ -631,11 +638,7 @@ class Client:
         self, owner: str, repo: str, installation_id: str, sha: str
     ) -> typing.Optional[typing.List[events.BasePullRequest]]:
         log = logger.bind(repo=f"{owner}/{repo}", install=installation_id, sha=sha)
-        token = await self.get_token_for_install(installation_id=installation_id)
-        headers = dict(
-            Authorization=f"token {token}",
-            Accept="application/vnd.github.machine-man-preview+json",
-        )
+        headers = await self.get_headers(installation_id)
         res = await self.session.get(
             f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
             headers=headers,
@@ -654,11 +657,7 @@ class Client:
         log = logger.bind(
             repo=f"{owner}/{repo}", install=installation_id, branch=branch
         )
-        token = await self.get_token_for_install(installation_id=installation_id)
-        headers = dict(
-            Authorization=f"token {token}",
-            Accept="application/vnd.github.machine-man-preview+json",
-        )
+        headers = await self.get_headers(installation_id)
         ref = f"heads/{branch}"
         res = await self.session.delete(
             f"https://api.github.com/repos/{owner}/{repo}/git/refs/{ref}",
@@ -668,3 +667,30 @@ class Client:
             log.error("problem deleting branch", res=res, res_json=res.json())
             return False
         return True
+
+    async def merge_branch(
+        self, owner: str, repo: str, installation_id: str, head: str, base: str
+    ) -> http.Response:
+        headers = await self.get_headers(installation_id)
+        return await self.session.post(
+            f"https://api.github.com/repos/{owner}/{repo}/merges",
+            json=dict(head=head, base=base),
+            headers=headers,
+        )
+
+    async def get_pull_request(
+        self, owner: str, repo: str, number: int, installation_id: str
+    ) -> typing.Optional[dict]:
+        headers = await self.get_headers(installation_id)
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}"
+        res = await self.session.get(url, headers=headers)
+        if not res.ok:
+            return None
+        return typing.cast(dict, res.json())
+
+    async def merge_pull_request(
+        self, owner: str, repo: str, number: int, body: dict, installation_id: str
+    ) -> http.Response:
+        headers = await self.get_headers(installation_id)
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}/merge"
+        return await self.session.put(url, headers=headers, json=body)
