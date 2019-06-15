@@ -51,7 +51,7 @@ def pull_request() -> PullRequest:
 def config() -> V1:
     cfg = V1(version=1)
     cfg.merge.automerge_label = "automerge"
-    cfg.merge.blacklist = []
+    cfg.merge.blacklist_labels = []
     cfg.merge.method = MergeMethod.squash
     return cfg
 
@@ -107,7 +107,7 @@ def test_blacklisted(
     with pytest.raises(NotQueueable, match="blacklist"):
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.automerge_label = "automerge"
-        config.merge.blacklist = ["dont-merge"]
+        config.merge.blacklist_labels = ["dont-merge"]
         mergeable(
             config=config,
             pull_request=pull_request,
