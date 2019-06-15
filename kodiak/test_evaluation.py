@@ -120,6 +120,7 @@ def test_blacklisted(
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
 
+
 def test_blacklist_title_match(
     pull_request: PullRequest,
     config: V1,
