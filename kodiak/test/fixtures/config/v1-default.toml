@@ -2,7 +2,7 @@
 version = 1 # required
 
 [merge]
-whitelist = ["automerge"]
+automerge_label = "automerge"
 blacklist = []
 method = "merge"
 delete_branch_on_merge = false

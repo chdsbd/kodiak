@@ -3,7 +3,7 @@ version = 1 # required
 app_id = 12345 # default: None
 
 [merge]
-whitelist = ["mergeit!"] # default: ["automerge"]
+automerge_label = "mergeit!" # default: "automerge"
 blacklist = ["wip", "block-merge"] # default: []
 method = "squash" # default: "merge"
 delete_branch_on_merge = true # default: False
