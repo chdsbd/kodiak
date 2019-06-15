@@ -3,7 +3,8 @@ version = 1 # required
 
 [merge]
 automerge_label = "automerge"
-blacklist = []
+blacklist_title_regex = "^WIP:.*"
+blacklist_labels = []
 method = "merge"
 delete_branch_on_merge = false
 block_on_reviews_requested = false

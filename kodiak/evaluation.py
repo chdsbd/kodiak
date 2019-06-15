@@ -1,3 +1,4 @@
+import re
 import typing
 from collections import defaultdict
 
@@ -106,9 +107,16 @@ def mergeable(
         raise NotQueueable(
             f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )
-    if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
+    if not set(pull_request.labels).isdisjoint(config.merge.blacklist_labels):
         log.info("missing required blacklist labels")
         raise NotQueueable("has blacklist labels")
+
+    if (
+        config.merge.blacklist_title_regex
+        and re.search(config.merge.blacklist_title_regex, pull_request.title)
+        is not None
+    ):
+        raise NotQueueable("title matches blacklist_title_regex")
 
     if config.merge.method not in valid_merge_methods:
         # TODO: This is a fatal configuration error. We should provide some notification of this issue

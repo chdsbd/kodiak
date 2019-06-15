@@ -51,7 +51,7 @@ def pull_request() -> PullRequest:
 def config() -> V1:
     cfg = V1(version=1)
     cfg.merge.automerge_label = "automerge"
-    cfg.merge.blacklist = []
+    cfg.merge.blacklist_labels = []
     cfg.merge.method = MergeMethod.squash
     return cfg
 
@@ -107,7 +107,31 @@ def test_blacklisted(
     with pytest.raises(NotQueueable, match="blacklist"):
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.automerge_label = "automerge"
-        config.merge.blacklist = ["dont-merge"]
+        config.merge.blacklist_labels = ["dont-merge"]
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[review],
+            contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
+        )
+
+
+def test_blacklist_title_match(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    # a PR with a blacklisted title should not be mergeable
+    with pytest.raises(NotQueueable, match="blacklist_title"):
+        config.merge.blacklist_title_regex = "^WIP:.*"
+        pull_request.title = "WIP: add fleeb to plumbus"
         mergeable(
             config=config,
             pull_request=pull_request,
