@@ -2,24 +2,25 @@ from __future__ import annotations
 
 import asyncio
 import os
+import textwrap
 import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
-import textwrap
 
-import asyncio_redis
 import sentry_sdk
 import structlog
-from asyncio_redis.connection import Connection as RedisConnection
-from asyncio_redis.replies import BlockingPopReply
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
 
+import asyncio_redis
+from asyncio_redis.connection import Connection as RedisConnection
+from asyncio_redis.replies import BlockingPopReply
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
+    MergeConflict,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -359,7 +360,8 @@ class PR:
         except NotQueueable:
             self.log.info("not queueable")
             return MergeabilityResponse.NOT_MERGEABLE, event
-
+        except MissingGithubMergeabilityState:
+            self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, event
         except WaitingForChecks:
             self.log.info("waiting for checks")
@@ -433,7 +435,7 @@ class PR:
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
                 headers=headers,
             )
-            return res.status_code != 204
+            return typing.cast(bool, res.status_code != 204)
 
     async def create_comment(self, body: str) -> bool:
         """
@@ -453,7 +455,7 @@ class PR:
                 json=dict(body=body),
                 headers=headers,
             )
-            return res.status_code != 200
+            return typing.cast(bool, res.status_code != 200)
 
     async def notify_pr_creator(self) -> bool:
         """

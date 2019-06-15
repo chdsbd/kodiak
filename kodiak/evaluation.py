@@ -58,7 +58,7 @@ class BranchMerged(BaseException):
     """branch has already been merged"""
 
 
-class MergeConflict(NotQueueable):
+class MergeConflict(BaseException):
     """Merge conflict in the PR."""
 
 
