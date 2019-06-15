@@ -120,6 +120,29 @@ def test_blacklisted(
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
 
+def test_blacklist_title_match(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    # a PR with a blacklisted label should not be mergeable
+    with pytest.raises(NotQueueable, match="blacklist_title"):
+        config.merge.blacklist_title_regex = "^WIP:.*"
+        pull_request.title = "WIP: add fleeb to plumbus"
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[review],
+            contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
+        )
+
 
 def test_bad_merge_method_config(
     pull_request: PullRequest,
