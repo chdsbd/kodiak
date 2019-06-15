@@ -22,6 +22,7 @@ to date with the latest on master or even pressing the merge button. Kodiak
 does this for them.
 
 ### Minimal updates
+
 Kodiak ensures that branches are always updated before merging, but does so
 efficiently by only updating a PR when it's being prepared to merge. This
 prevents spurious CI jobs from being created as they would if all PRs were
@@ -59,7 +60,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    ```toml
    # version is the only required field
    version = 1
-   
+
    # the following settings can be omitted since they have defaults
 
    [merge]
@@ -75,8 +76,6 @@ Kodiak won't merge PRs if branch protection is disabled.
    body = "pull_request_body" # default: "github_default"
    include_pr_number = false # default: true
    body_type = "markdown" # default: "markdown"
-
-
    ```
 
 2. Setup Kodiak
@@ -88,13 +87,13 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    The current [permissions](https://developer.github.com/v3/apps/permissions/) that are required to use the GitHub App are:
 
-   | name                       | level       | reason                          |
-   | -------------------------- | ----------- | ------------------------------- |
-   | repository administration  | read-only   | branch protection info          |
-   | checks                     | read/write   | PR mergeability and status report                 |
-   | repository contents        | read/write  | update PRs, read configuration  |
-   | pull requests              | read/write  | PR mergeability, merge PR       |
-   | commit statuses            | read-only   | PR mergeability                 |
+   | name                      | level      | reason                            |
+   | ------------------------- | ---------- | --------------------------------- |
+   | repository administration | read-only  | branch protection info            |
+   | checks                    | read/write | PR mergeability and status report |
+   | repository contents       | read/write | update PRs, read configuration    |
+   | pull requests             | read/write | PR mergeability, merge PR         |
+   | commit statuses           | read-only  | PR mergeability                   |
 
    **Via GitHub App**
 
@@ -187,7 +186,84 @@ s/fmt
 s/test
 ```
 
+### Testing on a Live Repo
+
+Due to the nature of a GitHub bot, the testing relies largley on mocks.
+For testing to see if a given feature will work it is recommended to create a
+GitHub App and a testing GitHub repo.
+
+#### Create a GitHub App via <https://github.com/settings/apps/new>
+
+1. Configure the permissions as described in the setup instructions above.
+2. Add a homepage URL (anything works)
+3. Setup the webhook URL
+
+   You probably want to use something like [`ngrok`](https://ngrok.com) for
+   this. If you do use `ngrok`, you may also want to signup for an account
+   via the [`ngrok` website](https://ngrok.com) so that your `ngrok` url
+   for the webhook doesn't expire.
+
+   With can then run `ngrok` with the Kodiak's dev port provided.
+
+   ```
+   ngrok http 8000
+   ```
+
+   Now we can copy the **Forwarding** url into the GitHub app form.
+   Be sure to copy the one with `https`.
+
+   Then hit create.
+
+4. Now install the GitHub
+
+   Use the **Install** option in the sidebar for the GitHub App.
+
+   You will want to create a testing GitHub repo with a Kodiak config file
+   with the `app_id` option set to your GitHub app's id.
+
+   This allows for the production version of Kodiak to be setup on all repos,
+   while allowing the testing version to run on the configured repo.
+
+5. Setup secrets
+
+   After creating we need to add a **Webhook secret**. The field is labeled **(optional)** but it is necessary for Kodiak to work.
+
+   You can fill it in with a UUID -- be sure to hold onto it, we'll need it
+   later.
+
+   Now you need to generate a private key via the generate private key button under the **Private keys** section.
+
+   Move the secret key to directory where you are running Kodiak.
+
+#### Run the dev server
+
+Note: you need to replace the `$SHARE_SECRET`, `$GH_PRIVATE_KEY_PATH` and `$GITHUB_APP_ID` with your own values.
+
+The GitHub App ID can be found in the **About** sectiono of your GitHub App.
+
+```
+SECRET_KEY=$SHARED_SECRET GITHUB_PRIVATE_KEY_PATH=$GH_PRIVATE_KEY_PATH GITHUB_APP_ID=$GITHUB_APP_ID poetry run uvicorn kodiak.main:app
+```
+
+You can create a test PR via the following shell function.
+
+Note: you need to have [`hub`](https://github.com/github/hub) installed.
+
+```sh
+create_mock_pr() {
+  git pull &&
+  uuidgen >> "$(uuidgen).txt" &&
+  git checkout -b $(uuidgen) &&
+  git add . &&
+  git commit -am $(uuidgen) &&
+  git push &&
+  hub pull-request -l automerge -m "$(uuidgen)" &&
+  git checkout master
+}
+```
+
 ### Releasing a new version
+
 ```bash
 GIT_SHA='62fcc1870b609f43b95de41b8be41a2858eb56bd'
 APP_NAME='kodiak-prod'
