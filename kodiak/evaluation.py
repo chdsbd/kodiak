@@ -1,6 +1,5 @@
 import typing
 from collections import defaultdict
-from enum import Enum, auto
 
 import structlog
 
