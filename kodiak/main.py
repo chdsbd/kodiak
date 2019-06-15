@@ -333,9 +333,12 @@ class PR:
                 installation_id=self.installation_id,
             )
 
-    async def set_state(
+    async def set_status(
         self, summary: str, detail: typing.Optional[str] = None
     ) -> None:
+        """
+        Display a message to a user through a github check
+        """
         if detail is not None:
             message = f"{summary} ({detail})"
         else:
@@ -381,19 +384,21 @@ class PR:
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except NotQueueable as e:
-            await self.set_state(summary="cannot merge", detail=str(e))
+            await self.set_status(summary="cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
-            await self.set_state(summary="waiting for checks")
+            await self.set_status(summary="waiting for checks")
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            await self.set_state(summary="need update")
+            await self.set_status(summary="need update")
             return MergeabilityResponse.NEEDS_UPDATE, self.event
         except BranchMerged:
-            await self.set_state(summary="cannot merge", detail="branch merged already")
+            await self.set_status(
+                summary="cannot merge", detail="branch merged already"
+            )
             async with self.Client() as client:
                 await client.delete_branch(
                     owner=self.owner,

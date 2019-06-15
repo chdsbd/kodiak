@@ -709,12 +709,12 @@ class Client:
     ) -> http.Response:
         headers = await self.get_headers(installation_id)
         url = f"https://api.github.com/repos/{owner}/{repo}/check-runs"
-        body = {
-            "name": CHECK_RUN_NAME,
-            "head_sha": head_sha,
-            "status": "completed",
-            "completed_at": arrow.utcnow().isoformat(),
-            "conclusion": "neutral",
-            "output": {"title": message, "summary": summary or ""},
-        }
+        body = dict(
+            name=CHECK_RUN_NAME,
+            head_sha=head_sha,
+            status="completed",
+            completed_at=arrow.utcnow().isoformat(),
+            conclusion="neutral",
+            output=dict(title=message, summary=summary or ""),
+        )
         return await self.session.post(url, headers=headers, json=body)
