@@ -10,6 +10,7 @@ import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
+from databases import DatabaseURL
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
@@ -117,19 +118,27 @@ async def repo_queue_consumer(
 QUEUE_SET_NAME = "kodiak_repo_set"
 
 
+def get_redis_config(redis_url: DatabaseURL) -> typing.MutableMapping[str, typing.Any]:
+    """
+    Build a redis config from a redis url. We only set non-null values so we can
+    use the defaults provided by asyncio_redis.Pool.create.
+    """
+    redis_config: typing.MutableMapping[str, typing.Any] = {}
+    for kwarg, value in [
+        ("host", conf.REDIS_URL.hostname),
+        ("port", conf.REDIS_URL.port),
+        ("db", conf.REDIS_URL.database),
+    ]:
+        if value is not None:
+            redis_config[kwarg] = value
+    return redis_config
+
+
 class RedisWebhookQueue:
     connection: asyncio_redis.Connection
 
     async def create(self) -> None:
-        redis_config: typing.MutableMapping[str, typing.Any] = {}
-        for kwarg, value in [
-            ("host", conf.REDIS_URL.hostname),
-            ("port", conf.REDIS_URL.port),
-            ("db", conf.REDIS_URL.database),
-        ]:
-            if value is not None:
-                redis_config[kwarg] = value
-
+        redis_config = get_redis_config(conf.REDIS_URL)
         self.connection = await asyncio_redis.Pool.create(**redis_config, poolsize=10)
         # restart workers for queues
         queues = await self.connection.smembers(QUEUE_SET_NAME)
