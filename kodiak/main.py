@@ -359,39 +359,39 @@ class PR:
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        if not event.head_exists:
+        if not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
             mergeable(
-                config=event.config,
+                config=self.event.config,
                 app_id=os.getenv("GITHUB_APP_ID"),
-                pull_request=event.pull_request,
-                branch_protection=event.branch_protection,
-                review_requests_count=event.review_requests_count,
-                reviews=event.reviews,
-                contexts=event.status_contexts,
-                check_runs=event.check_runs,
-                valid_signature=event.valid_signature,
-                valid_merge_methods=event.valid_merge_methods,
+                pull_request=self.event.pull_request,
+                branch_protection=self.event.branch_protection,
+                review_requests_count=self.event.review_requests_count,
+                reviews=self.event.reviews,
+                contexts=self.event.status_contexts,
+                check_runs=self.event.check_runs,
+                valid_signature=self.event.valid_signature,
+                valid_merge_methods=self.event.valid_merge_methods,
             )
             self.log.info("okay")
-            return MergeabilityResponse.OK, event
+            return MergeabilityResponse.OK, self.event
         except MissingAppID:
-            return MergeabilityResponse.NOT_MERGEABLE, event
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except NotQueueable as e:
             await self.set_state(summary="cannot merge", detail=str(e))
-            return MergeabilityResponse.NOT_MERGEABLE, event
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
-            return MergeabilityResponse.NEED_REFRESH, event
+            return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
             await self.set_state(summary="waiting for checks")
-            return MergeabilityResponse.WAIT, event
+            return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
             await self.set_state(summary="need update")
-            return MergeabilityResponse.NEEDS_UPDATE, event
+            return MergeabilityResponse.NEEDS_UPDATE, self.event
         except BranchMerged:
             await self.set_state(summary="cannot merge", detail="branch merged already")
             async with self.Client() as client:
@@ -399,9 +399,9 @@ class PR:
                     owner=self.owner,
                     repo=self.repo,
                     installation_id=self.installation_id,
-                    branch=event.pull_request.headRefName,
+                    branch=self.event.pull_request.headRefName,
                 )
-            return MergeabilityResponse.NOT_MERGEABLE, event
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
 
     async def update(self) -> None:
         async with self.Client() as client:
