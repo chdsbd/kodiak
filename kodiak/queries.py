@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
+import arrow
 import jwt
 import requests_async as http
 import structlog
@@ -20,6 +21,8 @@ from kodiak.config import V1, MergeMethod
 from kodiak.github import events
 
 logger = structlog.get_logger()
+
+CHECK_RUN_NAME = "kodiakhq: status"
 
 
 class ErrorLocation(TypedDict):
@@ -373,7 +376,7 @@ class Client:
         token = await self.get_token_for_install(installation_id=installation_id)
         return dict(
             Authorization=f"token {token}",
-            Accept="application/vnd.github.machine-man-preview+json",
+            Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
         )
 
     def generate_jwt(self) -> str:
@@ -694,3 +697,24 @@ class Client:
         headers = await self.get_headers(installation_id)
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}/merge"
         return await self.session.put(url, headers=headers, json=body)
+
+    async def create_notification(
+        self,
+        owner: str,
+        repo: str,
+        head_sha: str,
+        message: str,
+        installation_id: str,
+        summary: typing.Optional[str] = None,
+    ) -> http.Response:
+        headers = await self.get_headers(installation_id)
+        url = f"https://api.github.com/repos/{owner}/{repo}/check-runs"
+        body = dict(
+            name=CHECK_RUN_NAME,
+            head_sha=head_sha,
+            status="completed",
+            completed_at=arrow.utcnow().isoformat(),
+            conclusion="neutral",
+            output=dict(title=message, summary=summary or ""),
+        )
+        return await self.session.post(url, headers=headers, json=body)

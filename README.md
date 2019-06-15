@@ -91,7 +91,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    | name                       | level       | reason                          |
    | -------------------------- | ----------- | ------------------------------- |
    | repository administration  | read-only   | branch protection info          |
-   | checks                     | read-only   | PR mergeability                 |
+   | checks                     | read/write   | PR mergeability and status report                 |
    | repository contents        | read/write  | update PRs, read configuration  |
    | pull requests              | read/write  | PR mergeability, merge PR       |
    | commit statuses            | read-only   | PR mergeability                 |
