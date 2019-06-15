@@ -19,11 +19,11 @@ from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
-    MissingGithubMergabilityState,
+    MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
-    mergable,
+    mergeable,
 )
 from kodiak.github import Webhook, events
 from kodiak.queries import Client, EventInfoResponse, PullRequest
@@ -71,12 +71,12 @@ async def repo_queue_consumer(
 
         while True:
             # there are two exits to this loop:
-            # - OK MergabilityResponse
+            # - OK MergeabilityResponse
             # - NOT_MERGEABLE MergeabilityResponse
             #
             # otherwise we continue to poll the Github API for a status change
             # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
-            m_res, event = await pull_request.mergability()
+            m_res, event = await pull_request.mergeability()
             log = log.bind(res=m_res)
             if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
                 log.info("cannot merge")
@@ -328,8 +328,7 @@ class PR:
                 installation_id=self.installation_id,
             )
 
-    # TODO(chdsbd): fix typos with mergeability
-    async def mergability(
+    async def mergeability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
         self.log.info("get_event")
@@ -342,7 +341,7 @@ class PR:
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
-            mergable(
+            mergeable(
                 config=event.config,
                 app_id=os.getenv("GITHUB_APP_ID"),
                 pull_request=event.pull_request,
@@ -359,8 +358,8 @@ class PR:
         except NotQueueable:
             self.log.info("not queueable")
             return MergeabilityResponse.NOT_MERGEABLE, event
-        except MissingGithubMergabilityState:
-            self.log.info("missing mergabilit state, need refresh")
+        except MissingGithubMergeabilityState:
+            self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, event
         except WaitingForChecks:
             self.log.info("waiting for checks")

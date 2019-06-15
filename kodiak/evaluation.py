@@ -11,7 +11,7 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     CommentAuthorAssociation,
-    MergableState,
+    MergeableState,
     MergeStateStatus,
     PRReview,
     PRReviewState,
@@ -52,7 +52,7 @@ class Queueable(BaseException):
     pass
 
 
-class MissingGithubMergabilityState(Queueable):
+class MissingGithubMergeabilityState(Queueable):
     """Github hasn't evaluated if this PR can be merged without conflicts yet"""
 
 
@@ -88,7 +88,7 @@ def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
     return status
 
 
-def mergable(
+def mergeable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: BranchProtectionRule,
@@ -145,7 +145,7 @@ def mergable(
         raise NotQueueable("closed")
     if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
-        or pull_request.mergeable == MergableState.CONFLICTING
+        or pull_request.mergeable == MergeableState.CONFLICTING
     ):
         raise NotQueueable("merge conflict")
 
@@ -154,10 +154,10 @@ def mergable(
         # status checks. we may want to handle this via config
         pass
 
-    if pull_request.mergeable == MergableState.UNKNOWN:
+    if pull_request.mergeable == MergeableState.UNKNOWN:
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
-        raise MissingGithubMergabilityState("missing mergeablity state")
+        raise MissingGithubMergeabilityState("missing mergeablity state")
 
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,

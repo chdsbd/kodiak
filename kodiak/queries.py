@@ -168,7 +168,7 @@ class MergeStateStatus(Enum):
     UNSTABLE = "UNSTABLE"
 
 
-class MergableState(Enum):
+class MergeableState(Enum):
     # The pull request cannot be merged due to merge conflicts.
     CONFLICTING = "CONFLICTING"
     # The pull request can be merged.
@@ -195,7 +195,7 @@ class PullRequest(BaseModel):
     bodyHTML: str
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
-    mergeable: MergableState
+    mergeable: MergeableState
     labels: typing.List[str]
     # the SHA of the most recent commit
     latest_sha: str
