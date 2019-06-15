@@ -29,7 +29,7 @@ def test_read_main(client: TestClient) -> None:
 def create_pr(event_response: EventInfoResponse) -> typing.Callable:
     def create(mergeable_response: MergeabilityResponse) -> PR:
         class FakePR(PR):
-            async def mergability(
+            async def mergeability(
                 self
             ) -> typing.Tuple[MergeabilityResponse, EventInfoResponse]:
                 return mergeable_response, event_response
@@ -127,7 +127,7 @@ async def test_deleting_branch_after_merge(
         Client=FakeClient,
     )
 
-    await pr.mergability()
+    await pr.mergeability()
 
     assert called == expected
 

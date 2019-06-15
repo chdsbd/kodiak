@@ -5,18 +5,18 @@ import pytest
 from kodiak.config import V1, MergeMethod
 from kodiak.evaluation import (
     BranchMerged,
-    MissingGithubMergabilityState,
+    MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
-    mergable,
+    mergeable,
 )
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     CommentAuthorAssociation,
-    MergableState,
+    MergeableState,
     MergeStateStatus,
     PRReview,
     PRReviewAuthor,
@@ -35,7 +35,7 @@ def pull_request() -> PullRequest:
         number=142,
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
-        mergeable=MergableState.MERGEABLE,
+        mergeable=MergeableState.MERGEABLE,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
         baseRefName="master",
@@ -84,7 +84,7 @@ def test_failing_whitelist(
     config.merge.whitelist = ["automerge"]
     config.merge.blacklist = []
     with pytest.raises(NotQueueable, match="whitelist"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -107,7 +107,7 @@ def test_empty_whitelist(
     pull_request.labels = ["bug"]
     config.merge.whitelist = []
     with pytest.raises(NotQueueable, match="missing whitelist"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -132,7 +132,7 @@ def test_blacklisted(
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.whitelist = ["automerge"]
         config.merge.blacklist = ["dont-merge"]
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -154,7 +154,7 @@ def test_bad_merge_method_config(
 ) -> None:
     with pytest.raises(NotQueueable, match="merge method"):
         config.merge.method = MergeMethod.squash
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -176,7 +176,7 @@ def test_merged(
 ) -> None:
     with pytest.raises(BranchMerged):
         pull_request.state = PullRequestState.MERGED
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -198,7 +198,7 @@ def test_closed(
 ) -> None:
     with pytest.raises(NotQueueable, match="closed"):
         pull_request.state = PullRequestState.CLOSED
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -220,7 +220,7 @@ def test_merge_conflict(
 ) -> None:
     with pytest.raises(NotQueueable, match="merge conflict"):
         pull_request.mergeStateStatus = MergeStateStatus.DIRTY
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -242,7 +242,7 @@ def test_need_update(
 ) -> None:
     with pytest.raises(NeedsBranchUpdate):
         pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -262,9 +262,9 @@ def test_missing_mergeability_state(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(MissingGithubMergabilityState):
-        pull_request.mergeable = MergableState.UNKNOWN
-        mergable(
+    with pytest.raises(MissingGithubMergeabilityState):
+        pull_request.mergeable = MergeableState.UNKNOWN
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -287,7 +287,7 @@ def test_blocking_review(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
     with pytest.raises(NotQueueable, match="blocking review"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -310,7 +310,7 @@ def test_missing_review_count(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
     with pytest.raises(NotQueueable, match="missing required review count"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -335,7 +335,7 @@ def test_failing_contexts(
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
     with pytest.raises(NotQueueable, match="failing required status checks"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -362,7 +362,7 @@ def test_passing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.SUCCESS
-    mergable(
+    mergeable(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
@@ -390,7 +390,7 @@ def test_incomplete_checks(
     check_run.name = "wip-app"
     check_run.conclusion = None
     with pytest.raises(WaitingForChecks, match="missing required status checks"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -418,7 +418,7 @@ def test_failing_checks(
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
     with pytest.raises(NotQueueable, match="failing required status checks"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -442,7 +442,7 @@ def test_missing_required_context(
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
     with pytest.raises(WaitingForChecks, match="missing required status checks"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -465,7 +465,7 @@ def test_requires_signature(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresCommitSignatures = True
     with pytest.raises(NotQueueable, match="missing required signature"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -485,7 +485,7 @@ def test_unknown_blockage(
     branch_protection.requiresStatusChecks = False
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     with pytest.raises(NotQueueable, match="determine why PR is blocked"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -512,7 +512,7 @@ def test_dont_update_before_block(
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
     with pytest.raises(NeedsBranchUpdate):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -534,7 +534,7 @@ def test_block_on_reviews_requested(
 ) -> None:
     config.merge.block_on_reviews_requested = True
     with pytest.raises(NotQueueable, match="reviews requested"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -562,7 +562,7 @@ def test_regression_error_before_update(
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.SUCCESS
     with pytest.raises(NeedsBranchUpdate):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -614,7 +614,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
         ),
     ]
     with pytest.raises(NotQueueable, match="blocking review"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -666,7 +666,7 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -712,7 +712,7 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -752,7 +752,7 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
@@ -772,7 +772,7 @@ def test_passing(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    mergable(
+    mergeable(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
@@ -790,7 +790,7 @@ def test_app_id(
 ) -> None:
     config.app_id = "123"
     with pytest.raises(NotQueueable, match="app_id"):
-        mergable(
+        mergeable(
             app_id="1234",
             config=config,
             pull_request=pull_request,
@@ -804,7 +804,7 @@ def test_app_id(
         )
     # try without passing an app_id
     with pytest.raises(NotQueueable, match="app_id"):
-        mergable(
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
