@@ -194,6 +194,9 @@ async def pr_event(pr: events.PullRequestEvent) -> None:
 @webhook()
 async def check_run(check_run_event: events.CheckRunEvent) -> None:
     assert check_run_event.installation
+    # Prevent an infinite loop when we update our check run
+    if check_run_event.check_run.name == queries.CHECK_RUN_NAME:
+        return
     for pr in check_run_event.check_run.pull_requests:
         await redis_webhook_queue.enqueue(
             event=WebhookEvent(
@@ -280,6 +283,7 @@ class PR:
     repo: str
     installation_id: str
     log: structlog.BoundLogger
+    event: typing.Optional[EventInfoResponse]
     Client: typing.Type[queries.Client] = field(
         default_factory=typing.Type[queries.Client]
     )
@@ -329,12 +333,30 @@ class PR:
                 installation_id=self.installation_id,
             )
 
+    async def set_state(
+        self, summary: str, detail: typing.Optional[str] = None
+    ) -> None:
+        if detail is not None:
+            message = f"{summary} ({detail})"
+        else:
+            message = summary
+        assert self.event is not None
+        async with self.Client() as client:
+            await client.create_notification(
+                owner=self.owner,
+                repo=self.repo,
+                head_sha=self.event.pull_request.latest_sha,
+                message=message,
+                summary=None,
+                installation_id=self.installation_id,
+            )
+
     async def mergeability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
         self.log.info("get_event")
-        event = await self.get_event()
-        if event is None:
+        self.event = await self.get_event()
+        if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
         if not event.head_exists:
@@ -358,20 +380,20 @@ class PR:
             return MergeabilityResponse.OK, event
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, event
-        except NotQueueable:
-            self.log.info("not queueable")
+        except NotQueueable as e:
+            await self.set_state(summary="cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, event
         except WaitingForChecks:
-            self.log.info("waiting for checks")
+            await self.set_state(summary="waiting for checks")
             return MergeabilityResponse.WAIT, event
         except NeedsBranchUpdate:
-            self.log.info("need update")
+            await self.set_state(summary="need update")
             return MergeabilityResponse.NEEDS_UPDATE, event
         except BranchMerged:
-            self.log.info("branch merged already")
+            await self.set_state(summary="cannot merge", detail="branch merged already")
             async with self.Client() as client:
                 await client.delete_branch(
                     owner=self.owner,
