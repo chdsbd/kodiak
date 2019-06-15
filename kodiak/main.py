@@ -467,8 +467,7 @@ class PR:
         event = await self.get_event()
         if not event:
             return False
-        automerge_label = event.config.merge.whitelist
-        if not await self.delete_label(label=automerge_label):
+        if not await self.delete_label(label=event.config.merge.automerge_label):
             return False
 
         body = textwrap.dedent(
