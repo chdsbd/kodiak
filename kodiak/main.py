@@ -5,6 +5,7 @@ import os
 import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
+import textwrap
 
 import asyncio_redis
 import sentry_sdk
@@ -24,6 +25,7 @@ from kodiak.evaluation import (
     NotQueueable,
     WaitingForChecks,
     mergable,
+    MergeConflict,
 )
 from kodiak.github import Webhook, events
 from kodiak.queries import Client, EventInfoResponse, PullRequest
@@ -360,7 +362,7 @@ class PR:
             self.log.info("not queueable")
             return MergeabilityResponse.NOT_MERGEABLE, event
         except MissingGithubMergabilityState:
-            self.log.info("missing mergabilit state, need refresh")
+            self.log.info("missing mergability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, event
         except WaitingForChecks:
             self.log.info("waiting for checks")
@@ -377,6 +379,10 @@ class PR:
                     installation_id=self.installation_id,
                     branch=event.pull_request.headRefName,
                 )
+            return MergeabilityResponse.NOT_MERGEABLE, event
+        except MergeConflict:
+            self.log.info("merge conflict on branch")
+            await self.notify_pr_creator()
             return MergeabilityResponse.NOT_MERGEABLE, event
 
     async def update(self) -> None:
@@ -432,6 +438,64 @@ class PR:
                 json=get_merge_body(event.config, event.pull_request),
             )
             return not res.status_code > 300
+
+    async def delete_label(self, label: str) -> bool:
+        """
+        remove the PR label specified by `label_id` for a given `pr_number`
+        """
+        async with self.Client() as client:
+            token = await client.get_token_for_install(
+                installation_id=self.installation_id
+            )
+            headers = dict(
+                Authorization=f"token {token}",
+                Accept="application/vnd.github.machine-man-preview+json",
+            )
+            res = await client.session.delete(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
+                headers=headers,
+            )
+            return res.status_code != 204
+
+    async def create_comment(self, body: str) -> bool:
+        """
+        create a comment on the speicifed `pr_number` with the given `body` as text.
+        """
+        async with self.Client() as client:
+            token = await client.get_token_for_install(
+                installation_id=self.installation_id
+            )
+            headers = dict(
+                Authorization=f"token {token}",
+                Accept="application/vnd.github.machine-man-preview+json",
+            )
+
+            res = await client.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/comments",
+                json=dict(body=body),
+                headers=headers,
+            )
+            return res.status_code != 200
+
+    async def notify_pr_creator(self) -> bool:
+        """
+        comment on PR with an `@$PR_CREATOR_NAME` and remove `automerge` label.
+
+        Since we don't have atomicity we chose to remove the label first
+        instead of creating the comment first as we would rather have no
+        comment instead of multiple comments on each consecutive PR push.
+        """
+
+        # TODO(sbdchd): get label from config
+        if not await self.delete_label(label):
+            return False
+
+        body = textwrap.dedent(
+            """
+        This PR currently has a merge conflict. Please resolve this and then re-add the `automerge` label.
+        """
+        )
+        return await self.create_comment(body)
 
 
 @app.on_event("startup")
