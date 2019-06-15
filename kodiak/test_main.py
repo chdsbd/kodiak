@@ -96,7 +96,7 @@ async def test_deleting_branch_after_merge(
         async def get_event(self) -> typing.Optional[queries.EventInfoResponse]:
             return event_response
 
-        async def set_state(
+        async def set_status(
             self, *args: typing.Any, **kwargs: typing.Any
         ) -> typing.Any:
             return None
