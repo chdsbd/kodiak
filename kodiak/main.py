@@ -417,7 +417,6 @@ class PR:
                     branch=self.event.pull_request.headRefName,
                 )
 
-
     async def update(self) -> None:
         async with self.Client() as client:
             self.log.info("update")
