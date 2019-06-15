@@ -16,11 +16,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
 
+import kodiak.app_config as conf
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
     MergeConflict,
+    MissingAppID,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -30,8 +32,7 @@ from kodiak.evaluation import (
 from kodiak.github import Webhook, events
 from kodiak.queries import Client, EventInfoResponse, PullRequest
 
-if not os.environ.get("DEBUG"):
-    sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
+sentry_sdk.init()
 
 app = FastAPI()
 app.add_middleware(SentryMiddleware)
@@ -123,8 +124,16 @@ class RedisWebhookQueue:
     connection: asyncio_redis.Connection
 
     async def create(self) -> None:
+        redis_db = 0
+        try:
+            redis_db = int(conf.REDIS_URL.database)
+        except ValueError:
+            pass
         self.connection = await asyncio_redis.Pool.create(
-            host="127.0.0.1", port=6379, poolsize=10
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
+            db=redis_db,
+            poolsize=10,
         )
         # restart workers for queues
         queues = await self.connection.smembers(QUEUE_SET_NAME)
@@ -195,6 +204,9 @@ async def pr_event(pr: events.PullRequestEvent) -> None:
 @webhook()
 async def check_run(check_run_event: events.CheckRunEvent) -> None:
     assert check_run_event.installation
+    # Prevent an infinite loop when we update our check run
+    if check_run_event.check_run.name == queries.CHECK_RUN_NAME:
+        return
     for pr in check_run_event.check_run.pull_requests:
         await redis_webhook_queue.enqueue(
             event=WebhookEvent(
@@ -281,6 +293,7 @@ class PR:
     repo: str
     installation_id: str
     log: structlog.BoundLogger
+    event: typing.Optional[EventInfoResponse]
     Client: typing.Type[queries.Client] = field(
         default_factory=typing.Type[queries.Client]
     )
@@ -330,59 +343,80 @@ class PR:
                 installation_id=self.installation_id,
             )
 
+    async def set_status(
+        self, summary: str, detail: typing.Optional[str] = None
+    ) -> None:
+        """
+        Display a message to a user through a github check
+        """
+        if detail is not None:
+            message = f"{summary} ({detail})"
+        else:
+            message = summary
+        assert self.event is not None
+        async with self.Client() as client:
+            await client.create_notification(
+                owner=self.owner,
+                repo=self.repo,
+                head_sha=self.event.pull_request.latest_sha,
+                message=message,
+                summary=None,
+                installation_id=self.installation_id,
+            )
+
     async def mergeability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
         self.log.info("get_event")
-        event = await self.get_event()
-        if event is None:
+        self.event = await self.get_event()
+        if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        if not event.head_exists:
+        if not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
             mergeable(
-                config=event.config,
-                app_id=os.getenv("GITHUB_APP_ID"),
-                pull_request=event.pull_request,
-                branch_protection=event.branch_protection,
-                review_requests_count=event.review_requests_count,
-                reviews=event.reviews,
-                contexts=event.status_contexts,
-                check_runs=event.check_runs,
-                valid_signature=event.valid_signature,
-                valid_merge_methods=event.valid_merge_methods,
+                config=self.event.config,
+                app_id=conf.GITHUB_APP_ID,
+                pull_request=self.event.pull_request,
+                branch_protection=self.event.branch_protection,
+                review_requests_count=self.event.review_requests_count,
+                reviews=self.event.reviews,
+                contexts=self.event.status_contexts,
+                check_runs=self.event.check_runs,
+                valid_signature=self.event.valid_signature,
+                valid_merge_methods=self.event.valid_merge_methods,
             )
             self.log.info("okay")
-            return MergeabilityResponse.OK, event
-        except NotQueueable:
-            self.log.info("not queueable")
-            return MergeabilityResponse.NOT_MERGEABLE, event
+            return MergeabilityResponse.OK, self.event
+        except MissingAppID:
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except NotQueueable as e:
+            await self.set_status(summary="cannot merge", detail=str(e))
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
-            return MergeabilityResponse.NEED_REFRESH, event
+            return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
-            self.log.info("waiting for checks")
-            return MergeabilityResponse.WAIT, event
+            await self.set_status(summary="waiting for checks")
+            return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            self.log.info("need update")
-            return MergeabilityResponse.NEEDS_UPDATE, event
+            await self.set_status(summary="need update")
+            return MergeabilityResponse.NEEDS_UPDATE, self.event
         except BranchMerged:
-            self.log.info("branch merged already")
+            await self.set_status(
+                summary="cannot merge", detail="branch merged already"
+            )
             async with self.Client() as client:
                 await client.delete_branch(
                     owner=self.owner,
                     repo=self.repo,
                     installation_id=self.installation_id,
-                    branch=event.pull_request.headRefName,
+                    branch=self.event.pull_request.headRefName,
                 )
-            return MergeabilityResponse.NOT_MERGEABLE, event
-        except MergeConflict:
-            self.log.info("merge conflict on branch")
-            await self.notify_pr_creator()
-            return MergeabilityResponse.NOT_MERGEABLE, event
+
 
     async def update(self) -> None:
         async with self.Client() as client:

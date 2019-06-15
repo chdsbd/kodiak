@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
 import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
+import arrow
 import jwt
 import requests_async as http
 import structlog
@@ -16,10 +16,13 @@ from pydantic import BaseModel
 from requests_async import Response
 from starlette import status
 
+import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.github import events
 
 logger = structlog.get_logger()
+
+CHECK_RUN_NAME = "kodiakhq: status"
 
 
 class ErrorLocation(TypedDict):
@@ -328,6 +331,7 @@ class Client:
     private_key_path: typing.Optional[Path]
     app_identifier: typing.Optional[str]
 
+    # TODO(chdsbd): Remove non-github app features
     def __init__(
         self,
         token: typing.Optional[str] = None,
@@ -335,7 +339,7 @@ class Client:
         private_key_path: typing.Optional[Path] = None,
         app_identifier: typing.Optional[str] = None,
     ):
-        env_path_str = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        env_path_str = conf.GITHUB_PRIVATE_KEY_PATH
         env_path: typing.Optional[Path] = None
         if env_path_str is not None:
             env_path = Path(env_path_str)
@@ -344,12 +348,10 @@ class Client:
         self.private_key = None
         if self.private_key_path is not None:
             self.private_key = self.private_key_path.read_text()
-        self.private_key = (
-            self.private_key or private_key or os.getenv("GITHUB_PRIVATE_KEY")
-        )
+        self.private_key = self.private_key or private_key or conf.GITHUB_PRIVATE_KEY
 
-        self.token = token or os.getenv("GITHUB_TOKEN")
-        self.app_identifier = app_identifier or os.getenv("GITHUB_APP_ID")
+        self.token = token or conf.GITHUB_TOKEN
+        self.app_identifier = app_identifier or conf.GITHUB_APP_ID
         assert (self.token is not None) or (
             self.private_key is not None and self.app_identifier is not None
         ), "missing token or secret key and app_identifier. Github's GraphQL endpoint requires authentication."
@@ -373,7 +375,7 @@ class Client:
         token = await self.get_token_for_install(installation_id=installation_id)
         return dict(
             Authorization=f"token {token}",
-            Accept="application/vnd.github.machine-man-preview+json",
+            Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
         )
 
     def generate_jwt(self) -> str:
@@ -694,3 +696,24 @@ class Client:
         headers = await self.get_headers(installation_id)
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}/merge"
         return await self.session.put(url, headers=headers, json=body)
+
+    async def create_notification(
+        self,
+        owner: str,
+        repo: str,
+        head_sha: str,
+        message: str,
+        installation_id: str,
+        summary: typing.Optional[str] = None,
+    ) -> http.Response:
+        headers = await self.get_headers(installation_id)
+        url = f"https://api.github.com/repos/{owner}/{repo}/check-runs"
+        body = dict(
+            name=CHECK_RUN_NAME,
+            head_sha=head_sha,
+            status="completed",
+            completed_at=arrow.utcnow().isoformat(),
+            conclusion="neutral",
+            output=dict(title=message, summary=summary or ""),
+        )
+        return await self.session.post(url, headers=headers, json=body)

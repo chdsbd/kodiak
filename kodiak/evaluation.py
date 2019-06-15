@@ -1,3 +1,4 @@
+import re
 import typing
 from collections import defaultdict
 
@@ -54,6 +55,15 @@ class NotQueueable(BaseException):
     pass
 
 
+class MissingAppID(BaseException):
+    """
+    Application app_id doesn't match configuration
+
+    We do _not_ want to display this message to users as it could clobber
+    another instance of kodiak.
+    """
+
+
 class BranchMerged(BaseException):
     """branch has already been merged"""
 
@@ -104,15 +114,22 @@ def mergeable(
     # if we have an app_id in the config then we only want to work on this repo
     # if our app_id from the environment matches the configuration.
     if config.app_id is not None and config.app_id != app_id:
-        raise NotQueueable("missing required app_id")
+        raise MissingAppID("missing required app_id")
 
     if config.merge.automerge_label not in pull_request.labels:
         raise NotQueueable(
             f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )
-    if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
+    if not set(pull_request.labels).isdisjoint(config.merge.blacklist_labels):
         log.info("missing required blacklist labels")
         raise NotQueueable("has blacklist labels")
+
+    if (
+        config.merge.blacklist_title_regex
+        and re.search(config.merge.blacklist_title_regex, pull_request.title)
+        is not None
+    ):
+        raise NotQueueable("title matches blacklist_title_regex")
 
     if config.merge.method not in valid_merge_methods:
         # TODO: This is a fatal configuration error. We should provide some notification of this issue

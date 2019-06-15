@@ -40,7 +40,7 @@ updated when their targets were updated.
 
 4. Pull request mergeability is evaluated using PR data
 
-   - configuration automerge_label and blacklist are checked
+   - configuration automerge_label, blacklist_title_regex, and blacklist_labels are checked
    - configuration merge method is checked against enabled repo merge methods
    - pull request merge states are evaluated
    - the branch is updated if necessary and this process restarts
@@ -64,7 +64,8 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    [merge]
    automerge_label = "automerge" # default: "automerge"
-   blacklist = [] # default: []
+   blacklist_title_regex = "^WIP.*" # default: "^WIP.*"
+   blacklist_labels = [] # default: []
    method = "squash" # default: "merge", options: "merge", "squash", "rebase"
    delete_branch_on_merge = true # default: false
    block_on_reviews_requested = false # default: false
@@ -90,7 +91,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    | name                       | level       | reason                          |
    | -------------------------- | ----------- | ------------------------------- |
    | repository administration  | read-only   | branch protection info          |
-   | checks                     | read-only   | PR mergeability                 |
+   | checks                     | read/write   | PR mergeability and status report                 |
    | repository contents        | read/write  | update PRs, read configuration  |
    | pull requests              | read/write  | PR mergeability, merge PR       |
    | commit statuses            | read-only   | PR mergeability                 |
