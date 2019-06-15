@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -15,6 +14,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
 
+import kodiak.app_config as conf
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
@@ -29,8 +29,7 @@ from kodiak.evaluation import (
 from kodiak.github import Webhook, events
 from kodiak.queries import Client, EventInfoResponse, PullRequest
 
-if not os.environ.get("DEBUG"):
-    sentry_sdk.init(dsn="https://8ccee0e2ac584ed78483ad51868db0a2@sentry.io/1464537")
+sentry_sdk.init()
 
 app = FastAPI()
 app.add_middleware(SentryMiddleware)
@@ -122,8 +121,16 @@ class RedisWebhookQueue:
     connection: asyncio_redis.Connection
 
     async def create(self) -> None:
+        redis_db = 0
+        try:
+            redis_db = int(conf.REDIS_URL.database)
+        except ValueError:
+            pass
         self.connection = await asyncio_redis.Pool.create(
-            host="127.0.0.1", port=6379, poolsize=10
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
+            db=redis_db,
+            poolsize=10,
         )
         # restart workers for queues
         queues = await self.connection.smembers(QUEUE_SET_NAME)
@@ -369,7 +376,7 @@ class PR:
             self.log.info("check mergeable")
             mergeable(
                 config=self.event.config,
-                app_id=os.getenv("GITHUB_APP_ID"),
+                app_id=conf.GITHUB_APP_ID,
                 pull_request=self.event.pull_request,
                 branch_protection=self.event.branch_protection,
                 review_requests_count=self.event.review_requests_count,
