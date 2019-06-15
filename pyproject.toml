@@ -20,6 +20,7 @@ fastapi = "^0.17.0"
 ujson = "^1.35"
 arrow = "^0.13.2"
 asyncio_redis = "^0.15.1"
+databases = "^0.2.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"

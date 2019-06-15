@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -17,6 +16,7 @@ from pydantic import BaseModel
 from requests_async import Response
 from starlette import status
 
+import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.github import events
 
@@ -331,6 +331,7 @@ class Client:
     private_key_path: typing.Optional[Path]
     app_identifier: typing.Optional[str]
 
+    # TODO(chdsbd): Remove non-github app features
     def __init__(
         self,
         token: typing.Optional[str] = None,
@@ -338,7 +339,7 @@ class Client:
         private_key_path: typing.Optional[Path] = None,
         app_identifier: typing.Optional[str] = None,
     ):
-        env_path_str = os.getenv("GITHUB_PRIVATE_KEY_PATH")
+        env_path_str = conf.GITHUB_PRIVATE_KEY_PATH
         env_path: typing.Optional[Path] = None
         if env_path_str is not None:
             env_path = Path(env_path_str)
@@ -347,12 +348,10 @@ class Client:
         self.private_key = None
         if self.private_key_path is not None:
             self.private_key = self.private_key_path.read_text()
-        self.private_key = (
-            self.private_key or private_key or os.getenv("GITHUB_PRIVATE_KEY")
-        )
+        self.private_key = self.private_key or private_key or conf.GITHUB_PRIVATE_KEY
 
-        self.token = token or os.getenv("GITHUB_TOKEN")
-        self.app_identifier = app_identifier or os.getenv("GITHUB_APP_ID")
+        self.token = token or conf.GITHUB_TOKEN
+        self.app_identifier = app_identifier or conf.GITHUB_APP_ID
         assert (self.token is not None) or (
             self.private_key is not None and self.app_identifier is not None
         ), "missing token or secret key and app_identifier. Github's GraphQL endpoint requires authentication."
