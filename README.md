@@ -64,7 +64,7 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    [merge]
    automerge_label = "automerge" # default: "automerge"
-   blacklist_title_regex = "WIP.*" # default: unset
+   blacklist_title_regex = "^WIP.*" # default: "^WIP.*"
    blacklist_labels = [] # default: []
    method = "squash" # default: "merge", options: "merge", "squash", "rebase"
    delete_branch_on_merge = true # default: false

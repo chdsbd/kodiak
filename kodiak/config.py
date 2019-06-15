@@ -43,8 +43,9 @@ class MergeMessage(BaseModel):
 class Merge(BaseModel):
     # label to enable merging of pull request.
     automerge_label: str = "automerge"
-    # regex to match against title and block merging
-    blacklist_title_regex: typing.Optional[str] = None
+    # regex to match against title and block merging. Set to empty string to
+    # disable check.
+    blacklist_title_regex: str = "^WIP:.*"
     # labels to block merging of pull request
     blacklist_labels: typing.List[str] = []
     # action to take when attempting to merge PR. An error will occur if method
