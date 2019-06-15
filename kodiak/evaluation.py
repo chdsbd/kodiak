@@ -55,6 +55,15 @@ class NotQueueable(BaseException):
     pass
 
 
+class MissingAppID(BaseException):
+    """
+    Application app_id doesn't match configuration
+
+    We do _not_ want to display this message to users as it could clobber
+    another instance of kodiak.
+    """
+
+
 class BranchMerged(BaseException):
     """branch has already been merged"""
 
@@ -101,7 +110,7 @@ def mergeable(
     # if we have an app_id in the config then we only want to work on this repo
     # if our app_id from the environment matches the configuration.
     if config.app_id is not None and config.app_id != app_id:
-        raise NotQueueable("missing required app_id")
+        raise MissingAppID("missing required app_id")
 
     if config.merge.automerge_label not in pull_request.labels:
         raise NotQueueable(

@@ -19,6 +19,7 @@ from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
+    MissingAppID,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -355,6 +356,8 @@ class PR:
             )
             self.log.info("okay")
             return MergeabilityResponse.OK, event
+        except MissingAppID:
+            return MergeabilityResponse.NOT_MERGEABLE, event
         except NotQueueable:
             self.log.info("not queueable")
             return MergeabilityResponse.NOT_MERGEABLE, event
