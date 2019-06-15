@@ -128,7 +128,7 @@ def test_blacklist_title_match(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    # a PR with a blacklisted label should not be mergeable
+    # a PR with a blacklisted title should not be mergeable
     with pytest.raises(NotQueueable, match="blacklist_title"):
         config.merge.blacklist_title_regex = "^WIP:.*"
         pull_request.title = "WIP: add fleeb to plumbus"
