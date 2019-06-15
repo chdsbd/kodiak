@@ -54,7 +54,7 @@ def pull_request() -> queries.PullRequest:
         number=235,
         mergeStateStatus=queries.MergeStateStatus.BEHIND,
         state=queries.PullRequestState.OPEN,
-        mergeable=queries.MergableState.MERGEABLE,
+        mergeable=queries.MergeableState.MERGEABLE,
         labels=[],
         latest_sha="abcd",
         baseRefName="some-branch",

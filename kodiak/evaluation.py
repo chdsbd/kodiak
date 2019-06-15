@@ -1,6 +1,5 @@
 import typing
 from collections import defaultdict
-from enum import Enum, auto
 
 import structlog
 
@@ -11,7 +10,7 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     CommentAuthorAssociation,
-    MergableState,
+    MergeableState,
     MergeStateStatus,
     PRReview,
     PRReviewState,
@@ -23,19 +22,6 @@ from kodiak.queries import (
 )
 
 logger = structlog.get_logger()
-
-
-class MergeErrors(str, Enum):
-    MISSING_WHITELIST_LABEL = auto()
-    MISSING_BLACKLIST_LABEL = auto()
-    PR_MERGED = auto()
-    PR_CLOSED = auto()
-    # there are unsuccessful checks
-    UNSTABLE_MERGE = auto()
-    DRAFT = auto()
-    DIRTY = auto()
-    BLOCKED = auto()
-    UNEXPECTED_VALUE = auto()
 
 
 async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
@@ -52,7 +38,7 @@ class Queueable(BaseException):
     pass
 
 
-class MissingGithubMergabilityState(Queueable):
+class MissingGithubMergeabilityState(Queueable):
     """Github hasn't evaluated if this PR can be merged without conflicts yet"""
 
 
@@ -92,7 +78,7 @@ def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
     return status
 
 
-def mergable(
+def mergeable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: BranchProtectionRule,
@@ -120,13 +106,10 @@ def mergable(
     if config.app_id is not None and config.app_id != app_id:
         raise NotQueueable("missing required app_id")
 
-    if set(pull_request.labels).isdisjoint(set(config.merge.whitelist)):
-        log.info(
-            "missing required whitelist labels",
-            has=pull_request.labels,
-            requires=config.merge.whitelist,
+    if config.merge.automerge_label not in pull_request.labels:
+        raise NotQueueable(
+            f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )
-        raise NotQueueable("missing whitelist")
     if not set(pull_request.labels).isdisjoint(config.merge.blacklist):
         log.info("missing required blacklist labels")
         raise NotQueueable("has blacklist labels")
@@ -149,7 +132,7 @@ def mergable(
         raise NotQueueable("closed")
     if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
-        or pull_request.mergeable == MergableState.CONFLICTING
+        or pull_request.mergeable == MergeableState.CONFLICTING
     ):
         raise MergeConflict()
 
@@ -158,10 +141,10 @@ def mergable(
         # status checks. we may want to handle this via config
         pass
 
-    if pull_request.mergeable == MergableState.UNKNOWN:
+    if pull_request.mergeable == MergeableState.UNKNOWN:
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
-        raise MissingGithubMergabilityState("missing mergeablity state")
+        raise MissingGithubMergeabilityState("missing mergeablity state")
 
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,

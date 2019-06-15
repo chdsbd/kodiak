@@ -14,7 +14,7 @@ from kodiak.queries import (
     CommentAuthorAssociation,
     EventInfoResponse,
     GraphQLResponse,
-    MergableState,
+    MergeableState,
     MergeStateStatus,
     PRReview,
     PRReviewAuthor,
@@ -74,14 +74,14 @@ def blocked_response() -> dict:
 @pytest.fixture
 def block_event() -> EventInfoResponse:
     config = V1(
-        version=1, merge=Merge(whitelist=["automerge"], method=MergeMethod.squash)
+        version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
     pr = PullRequest(
         id="e14ff7599399478fb9dbc2dacb87da72",
         number=100,
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
-        mergeable=MergableState.MERGEABLE,
+        mergeable=MergeableState.MERGEABLE,
         labels=["automerge"],
         latest_sha="8d728d017cac4f5ba37533debe65730abe65730a",
         baseRefName="master",
