@@ -424,13 +424,7 @@ class PR:
         remove the PR label specified by `label_id` for a given `pr_number`
         """
         async with self.Client() as client:
-            token = await client.get_token_for_install(
-                installation_id=self.installation_id
-            )
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
+            headers = client.get_headers(self.installation_id)
             res = await client.session.delete(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
                 headers=headers,
@@ -442,14 +436,7 @@ class PR:
         create a comment on the speicifed `pr_number` with the given `body` as text.
         """
         async with self.Client() as client:
-            token = await client.get_token_for_install(
-                installation_id=self.installation_id
-            )
-            headers = dict(
-                Authorization=f"token {token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            )
-
+            headers = client.get_headers(self.installation_id)
             res = await client.session.post(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/comments",
                 json=dict(body=body),
