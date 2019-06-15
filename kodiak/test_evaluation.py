@@ -5,6 +5,7 @@ import pytest
 from kodiak.config import V1, MergeMethod
 from kodiak.evaluation import (
     BranchMerged,
+    MissingAppID,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
     NotQueueable,
@@ -789,7 +790,7 @@ def test_app_id(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
 ) -> None:
     config.app_id = "123"
-    with pytest.raises(NotQueueable, match="app_id"):
+    with pytest.raises(MissingAppID):
         mergeable(
             app_id="1234",
             config=config,
@@ -803,7 +804,7 @@ def test_app_id(
             valid_merge_methods=[],
         )
     # try without passing an app_id
-    with pytest.raises(NotQueueable, match="app_id"):
+    with pytest.raises(MissingAppID):
         mergeable(
             config=config,
             pull_request=pull_request,
