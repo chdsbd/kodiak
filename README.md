@@ -188,7 +188,7 @@ s/test
 
 ### Testing on a Live Repo
 
-Due to the nature of a GitHub bot, the testing relies largley on mocks.
+Due to the nature of a GitHub bot, testing relies largely on mocks.
 For testing to see if a given feature will work it is recommended to create a
 GitHub App and a testing GitHub repo.
 
@@ -203,7 +203,7 @@ GitHub App and a testing GitHub repo.
    via the [`ngrok` website](https://ngrok.com) so that your `ngrok` url
    for the webhook doesn't expire.
 
-   With can then run `ngrok` with the Kodiak's dev port provided.
+   With `ngrok` installed, we can run it with the Kodiak's dev port.
 
    ```
    ngrok http 8000
@@ -222,7 +222,9 @@ GitHub App and a testing GitHub repo.
    with the `app_id` option set to your GitHub app's id.
 
    This allows for the production version of Kodiak to be setup on all repos,
-   while allowing the testing version to run on the configured repo.
+   while allowing the testing version to run on the configured repo. If the
+   production version of Kodiak finds a non-matching app_id, it will ignore
+   the repository, leaving your local version to handle it.
 
 5. Setup secrets
 
@@ -239,7 +241,7 @@ GitHub App and a testing GitHub repo.
 
 Note: you need to replace the `$SHARE_SECRET`, `$GH_PRIVATE_KEY_PATH` and `$GITHUB_APP_ID` with your own values.
 
-The GitHub App ID can be found in the **About** sectiono of your GitHub App.
+The GitHub App ID can be found in the **About** sections of your GitHub App.
 
 ```
 SECRET_KEY=$SHARED_SECRET GITHUB_PRIVATE_KEY_PATH=$GH_PRIVATE_KEY_PATH GITHUB_APP_ID=$GITHUB_APP_ID poetry run uvicorn kodiak.main:app
