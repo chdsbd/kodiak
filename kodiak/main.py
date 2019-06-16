@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import time
 import textwrap
+import time
 import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
