@@ -3,6 +3,7 @@ version = 1
 [merge]
 method = "squash"
 block_on_reviews_requested = true
+delete_branch_on_merge = true
 
 [merge.message]
 title = "pull_request_title"
