@@ -95,6 +95,15 @@ Kodiak won't merge PRs if branch protection is disabled.
    | pull requests             | read/write | PR mergeability, merge PR         |
    | commit statuses           | read-only  | PR mergeability                   |
 
+   The necessary event subscriptions are:
+
+   | event name                  |
+   | --------------------------- |
+   | check run                   |
+   | pull request                |
+   | pull request review         |
+   | pull request review comment |
+
    **Via GitHub App**
 
    Follow the steps at: <https://github.com/apps/kodiakhq>
@@ -102,7 +111,8 @@ Kodiak won't merge PRs if branch protection is disabled.
    **Self Hosted**
 
    You can run the `Dockerfile` provided in the repo on your platform of choice
-   or you could use the Heroku app configuration below:
+   or you could use the Heroku app configuration below. Redis >=5 is required
+   for operation.
 
    ```shell
    # a unique name for the heroku app
@@ -127,6 +137,9 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    # configure app environment (this can also be done through the Heroku web ui)
    heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
+
+   # Redis v5 is required and provided by RedisCloud
+   heroku addons:create -a $APP_NAME rediscloud:30 --wait
 
    # release app
    heroku container:release web -a $APP_NAME
@@ -210,16 +223,22 @@ GitHub App and a testing GitHub repo.
    ```
 
    Now we can copy the **Forwarding** url into the GitHub app form.
-   Be sure to copy the one with `https`.
+   Don't forget to append the path: `/api/github/hook` and sure to copy the
+   `https`.
 
    Then hit create.
 
-4. Now install the GitHub
+4. Now install the GitHub App
 
    Use the **Install** option in the sidebar for the GitHub App.
 
    You will want to create a testing GitHub repo with a Kodiak config file
    with the `app_id` option set to your GitHub app's id.
+
+   You will also need to setup branch protection in `settings > branches`.
+   Make sure the **Branch name pattern** matches `master`. Then check
+   **Require status checks to pass before merging** and the sub-option
+   **Require branches to be up to date before merging**.
 
    This allows for the production version of Kodiak to be setup on all repos,
    while allowing the testing version to run on the configured repo. If the
@@ -258,7 +277,7 @@ create_mock_pr() {
   git checkout -b $(uuidgen) &&
   git add . &&
   git commit -am $(uuidgen) &&
-  git push &&
+  git push --set-upstream origin $(git symbolic-ref --short HEAD) &&
   hub pull-request -l automerge -m "$(uuidgen)" &&
   git checkout master
 }

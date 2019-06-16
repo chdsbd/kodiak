@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import textwrap
 import typing
 from dataclasses import dataclass, field
@@ -10,7 +11,7 @@ import asyncio_redis
 import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
-from asyncio_redis.replies import BlockingPopReply
+from asyncio_redis.replies import BlockingZPopReply
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
@@ -62,7 +63,7 @@ async def repo_queue_consumer(
     log.info("start repo_consumer")
     while True:
         log.info("block for new event")
-        webhook_event_json: BlockingPopReply = await connection.blpop([queue_name])
+        webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
         pull_request = PR(
             owner=webhook_event.repo_owner,
@@ -162,8 +163,10 @@ class RedisWebhookQueue:
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
         key = self.get_queue_key(event)
-        await self.connection.sadd(QUEUE_SET_NAME, [key])
-        await self.connection.rpush(key, [event.json()])
+        transaction = await self.connection.multi()
+        await transaction.sadd(QUEUE_SET_NAME, [key])
+        await transaction.zadd(key, {event.json(): time.time()})
+        await transaction.exec()
 
         self.start_worker(key)
 
@@ -393,7 +396,7 @@ class PR:
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except NotQueueable as e:
-            await self.set_status(summary="cannot merge", detail=str(e))
+            await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MergeConflict:
             await self.set_status(summary="merge conflict")
@@ -403,14 +406,14 @@ class PR:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
-            await self.set_status(summary="waiting for checks")
+            await self.set_status(summary="⏳ waiting for checks")
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            await self.set_status(summary="need update")
+            await self.set_status(summary="⏭ need update")
             return MergeabilityResponse.NEEDS_UPDATE, self.event
         except BranchMerged:
             await self.set_status(
-                summary="cannot merge", detail="branch merged already"
+                summary="🛑 cannot merge", detail="branch merged already"
             )
             async with self.Client() as client:
                 await client.delete_branch(
