@@ -400,7 +400,7 @@ class PR:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MergeConflict:
             await self.set_status(summary="🛑 cannot merge", detail="merge conflict")
-            if self.event.config.merge.notify_on_merge_conflict:
+            if self.event.config.merge.notify_on_conflict:
                 await self.notify_pr_creator()
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
