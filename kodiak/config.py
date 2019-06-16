@@ -55,6 +55,8 @@ class Merge(BaseModel):
     delete_branch_on_merge: bool = False
     # block merging if there are outstanding review requests
     block_on_reviews_requested: bool = False
+    # comment on merge conflict and remove automerge label
+    notify_on_conflict: bool = True
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
 
