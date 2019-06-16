@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import textwrap
 import typing
 from dataclasses import dataclass, field
@@ -397,6 +396,7 @@ class PR:
             await self.set_status(summary="cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MergeConflict:
+            await self.set_status(summary="merge conflict")
             await self.notify_pr_creator()
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
