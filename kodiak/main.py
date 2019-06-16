@@ -417,13 +417,14 @@ class PR:
             await self.set_status(
                 summary="🛑 cannot merge", detail="branch merged already"
             )
-            async with self.Client() as client:
-                await client.delete_branch(
-                    owner=self.owner,
-                    repo=self.repo,
-                    installation_id=self.installation_id,
-                    branch=self.event.pull_request.headRefName,
-                )
+            if self.event.config.merge.delete_branch_on_merge:
+                async with self.Client() as client:
+                    await client.delete_branch(
+                        owner=self.owner,
+                        repo=self.repo,
+                        installation_id=self.installation_id,
+                        branch=self.event.pull_request.headRefName,
+                    )
             return MergeabilityResponse.NOT_MERGEABLE, self.event
 
     async def update(self) -> None:
