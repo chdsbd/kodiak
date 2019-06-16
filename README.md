@@ -1,4 +1,4 @@
-<p align=center><img src="https://github.com/chdsbd/kodiak/tree/master/assets/logo.png" alt="" width="200" height="200"></p>
+<p align=center><img src="https://github.com/chdsbd/kodiak/raw/master/assets/logo.png" alt="" width="200" height="200"></p>
 
 # kodiak [![CircleCI](https://circleci.com/gh/chdsbd/kodiak.svg?style=svg&circle-token=4879604a0cca6fa815c4d22936350f5bdf455905)](https://circleci.com/gh/chdsbd/kodiak)
 
