@@ -394,20 +394,20 @@ class PR:
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except NotQueueable as e:
-            await self.set_status(summary="cannot merge", detail=str(e))
+            await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
-            await self.set_status(summary="waiting for checks")
+            await self.set_status(summary="⏳ waiting for checks")
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            await self.set_status(summary="need update")
+            await self.set_status(summary="⏭ need update")
             return MergeabilityResponse.NEEDS_UPDATE, self.event
         except BranchMerged:
             await self.set_status(
-                summary="cannot merge", detail="branch merged already"
+                summary="🛑 cannot merge", detail="branch merged already"
             )
             async with self.Client() as client:
                 await client.delete_branch(
