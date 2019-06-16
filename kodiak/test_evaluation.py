@@ -5,6 +5,7 @@ import pytest
 from kodiak.config import V1, MergeMethod
 from kodiak.evaluation import (
     BranchMerged,
+    MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
@@ -219,7 +220,7 @@ def test_merge_conflict(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merge conflict"):
+    with pytest.raises(MergeConflict):
         pull_request.mergeStateStatus = MergeStateStatus.DIRTY
         mergeable(
             config=config,

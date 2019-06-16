@@ -68,6 +68,10 @@ class BranchMerged(BaseException):
     """branch has already been merged"""
 
 
+class MergeConflict(BaseException):
+    """Merge conflict in the PR."""
+
+
 def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
@@ -147,7 +151,7 @@ def mergeable(
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
         or pull_request.mergeable == MergeableState.CONFLICTING
     ):
-        raise NotQueueable("merge conflict")
+        raise MergeConflict()
 
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
         # TODO: This status means that the pr is mergeable but has failing

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import textwrap
 import time
 import typing
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.evaluation import (
     BranchMerged,
+    MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
     NeedsBranchUpdate,
@@ -396,6 +398,10 @@ class PR:
         except NotQueueable as e:
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except MergeConflict:
+            await self.set_status(summary="🛑 cannot merge", detail="merge conflict")
+            await self.notify_pr_creator()
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
@@ -452,6 +458,57 @@ class PR:
                 installation_id=self.installation_id,
             )
             return not res.status_code > 300
+
+    async def delete_label(self, label: str) -> bool:
+        """
+        remove the PR label specified by `label_id` for a given `pr_number`
+        """
+        self.log.info("deleting label", label=label)
+        async with self.Client() as client:
+            headers = await client.get_headers(self.installation_id)
+            res = await client.session.delete(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
+                headers=headers,
+            )
+            return typing.cast(bool, res.status_code != 204)
+
+    async def create_comment(self, body: str) -> bool:
+        """
+        create a comment on the speicifed `pr_number` with the given `body` as text.
+        """
+        self.log.info("creating comment", body=body)
+        async with self.Client() as client:
+            headers = await client.get_headers(self.installation_id)
+            res = await client.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/comments",
+                json=dict(body=body),
+                headers=headers,
+            )
+            return typing.cast(bool, res.status_code != 200)
+
+    async def notify_pr_creator(self) -> bool:
+        """
+        comment on PR with an `@$PR_CREATOR_NAME` and remove `automerge` label.
+
+        Since we don't have atomicity we chose to remove the label first
+        instead of creating the comment first as we would rather have no
+        comment instead of multiple comments on each consecutive PR push.
+        """
+
+        event = self.event
+        if not event:
+            return False
+        label = event.config.merge.automerge_label
+        if not await self.delete_label(label=label):
+            return False
+
+        # TODO(sbdchd): add mentioning of PR author in comment.
+        body = textwrap.dedent(
+            """
+        This PR currently has a merge conflict. Please resolve this and then re-add the `automerge` label.
+        """
+        )
+        return await self.create_comment(body)
 
 
 @app.on_event("startup")
