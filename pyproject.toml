@@ -19,8 +19,8 @@ sentry-asgi = "^0.1.5"
 fastapi = "^0.17.0"
 ujson = "^1.35"
 arrow = "^0.13.2"
-asyncio_redis = "^0.15.1"
 databases = "^0.2.2"
+asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"

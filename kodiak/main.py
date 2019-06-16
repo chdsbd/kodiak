@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import typing
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -9,7 +10,7 @@ import asyncio_redis
 import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
-from asyncio_redis.replies import BlockingPopReply
+from asyncio_redis.replies import BlockingZPopReply
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sentry_asgi import SentryMiddleware
@@ -60,7 +61,7 @@ async def repo_queue_consumer(
     log.info("start repo_consumer")
     while True:
         log.info("block for new event")
-        webhook_event_json: BlockingPopReply = await connection.blpop([queue_name])
+        webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
         pull_request = PR(
             owner=webhook_event.repo_owner,
@@ -160,8 +161,10 @@ class RedisWebhookQueue:
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
         key = self.get_queue_key(event)
-        await self.connection.sadd(QUEUE_SET_NAME, [key])
-        await self.connection.rpush(key, [event.json()])
+        transaction = await self.connection.multi()
+        await transaction.sadd(QUEUE_SET_NAME, [key])
+        await transaction.zadd(key, {event.json(): time.time()})
+        await transaction.exec()
 
         self.start_worker(key)
 

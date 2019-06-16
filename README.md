@@ -102,7 +102,8 @@ Kodiak won't merge PRs if branch protection is disabled.
    **Self Hosted**
 
    You can run the `Dockerfile` provided in the repo on your platform of choice
-   or you could use the Heroku app configuration below:
+   or you could use the Heroku app configuration below. Redis >=5 is required
+   for operation.
 
    ```shell
    # a unique name for the heroku app
@@ -127,6 +128,9 @@ Kodiak won't merge PRs if branch protection is disabled.
 
    # configure app environment (this can also be done through the Heroku web ui)
    heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
+
+   # Redis v5 is required and provided by RedisCloud
+   heroku addons:create -a $APP_NAME rediscloud:30 --wait
 
    # release app
    heroku container:release web -a $APP_NAME
