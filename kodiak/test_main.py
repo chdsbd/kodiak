@@ -91,6 +91,7 @@ async def test_deleting_branch_after_merge(
 
     event_response.pull_request.state = queries.PullRequestState.MERGED
     event_response.pull_request.labels = labels
+    event_response.config.merge.delete_branch_on_merge = True
 
     class FakePR(PR):
         async def get_event(self) -> typing.Optional[queries.EventInfoResponse]:
