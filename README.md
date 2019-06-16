@@ -2,6 +2,8 @@
 
 A bot to automatically merge GitHub PRs
 
+[![install](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/button-small.svg?v=123)](https://github.com/apps/kodiakhq/installations/new)
+
 ## Why?
 
 Enabling the "require branches be up to date" feature on GitHub repositories is
