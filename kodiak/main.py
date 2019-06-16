@@ -399,7 +399,7 @@ class PR:
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MergeConflict:
-            await self.set_status(summary="merge conflict")
+            await self.set_status(summary="🛑 cannot merge", detail="merge conflict")
             await self.notify_pr_creator()
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
