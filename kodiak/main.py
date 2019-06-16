@@ -396,6 +396,9 @@ class PR:
         except NotQueueable as e:
             await self.set_status(summary="cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except MergeConflict:
+            await self.notify_pr_creator()
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
@@ -416,6 +419,7 @@ class PR:
                     installation_id=self.installation_id,
                     branch=self.event.pull_request.headRefName,
                 )
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
 
     async def update(self) -> None:
         async with self.Client() as client:
@@ -456,8 +460,9 @@ class PR:
         """
         remove the PR label specified by `label_id` for a given `pr_number`
         """
+        self.log.info("deleting label", label=label)
         async with self.Client() as client:
-            headers = client.get_headers(self.installation_id)
+            headers = await client.get_headers(self.installation_id)
             res = await client.session.delete(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
                 headers=headers,
@@ -468,8 +473,9 @@ class PR:
         """
         create a comment on the speicifed `pr_number` with the given `body` as text.
         """
+        self.log.info("creating comment", body=body)
         async with self.Client() as client:
-            headers = client.get_headers(self.installation_id)
+            headers = await client.get_headers(self.installation_id)
             res = await client.session.post(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/comments",
                 json=dict(body=body),
@@ -486,12 +492,14 @@ class PR:
         comment instead of multiple comments on each consecutive PR push.
         """
 
-        event = await self.get_event()
+        event = self.event
         if not event:
             return False
-        if not await self.delete_label(label=event.config.merge.automerge_label):
+        label = event.config.merge.automerge_label
+        if not await self.delete_label(label=label):
             return False
 
+        # TODO(sbdchd): add mentioning of PR author in comment.
         body = textwrap.dedent(
             """
         This PR currently has a merge conflict. Please resolve this and then re-add the `automerge` label.
