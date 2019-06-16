@@ -132,6 +132,7 @@ class RedisWebhookQueue:
         self.connection = await asyncio_redis.Pool.create(
             host=conf.REDIS_URL.hostname or "localhost",
             port=conf.REDIS_URL.port or 6379,
+            password=conf.REDIS_URL.password or None,
             db=redis_db,
             poolsize=10,
         )
