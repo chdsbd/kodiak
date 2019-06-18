@@ -134,7 +134,7 @@ class RedisWebhookQueue:
             port=conf.REDIS_URL.port or 6379,
             password=conf.REDIS_URL.password or None,
             db=redis_db,
-            poolsize=10,
+            poolsize=conf.REDIS_POOL_SIZE,
         )
         # restart workers for queues
         queues = await self.connection.smembers(QUEUE_SET_NAME)
