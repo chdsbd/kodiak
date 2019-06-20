@@ -118,9 +118,7 @@ async def test_deleting_branch_after_merge(
             self.app_identifier = app_identifier
             self.session = http.Session()
 
-        async def delete_branch(
-            self, owner: str, repo: str, installation_id: str, branch: str
-        ) -> bool:
+        async def delete_branch(self, branch: str) -> bool:
             nonlocal called
             called = True
             return True

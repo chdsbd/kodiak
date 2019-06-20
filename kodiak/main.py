@@ -228,10 +228,10 @@ async def status_event(status_event: events.StatusEvent) -> None:
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
-    async with Client() as client:
-        prs = await client.get_pull_requests_for_sha(
-            owner=owner, repo=repo, installation_id=installation_id, sha=sha
-        )
+    async with Client(
+        owner=owner, repo=repo, installation_id=installation_id
+    ) as client:
+        prs = await client.get_pull_requests_for_sha(sha=sha)
         if prs is None:
             logger.warning("problem finding prs for sha")
             return None
@@ -330,20 +330,17 @@ class PR:
         return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
 
     async def get_event(self) -> typing.Optional[EventInfoResponse]:
-        async with self.Client() as client:
-            default_branch_name = await client.get_default_branch_name(
-                owner=self.owner, repo=self.repo, installation_id=self.installation_id
-            )
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
+            default_branch_name = await client.get_default_branch_name()
             if default_branch_name is None:
                 return None
             return await client.get_event_info(
-                owner=self.owner,
-                repo=self.repo,
                 config_file_expression=create_git_revision_expression(
                     branch=default_branch_name, file_path=CONFIG_FILE_PATH
                 ),
                 pr_number=self.number,
-                installation_id=self.installation_id,
             )
 
     async def set_status(
@@ -357,14 +354,13 @@ class PR:
         else:
             message = summary
         assert self.event is not None
-        async with self.Client() as client:
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
             await client.create_notification(
-                owner=self.owner,
-                repo=self.repo,
                 head_sha=self.event.pull_request.latest_sha,
                 message=message,
                 summary=None,
-                installation_id=self.installation_id,
             )
 
     async def mergeability(
@@ -418,47 +414,42 @@ class PR:
                 summary="🛑 cannot merge", detail="branch merged already"
             )
             if self.event.config.merge.delete_branch_on_merge:
-                async with self.Client() as client:
+                async with self.Client(
+                    owner=self.owner,
+                    repo=self.repo,
+                    installation_id=self.installation_id,
+                ) as client:
                     await client.delete_branch(
-                        owner=self.owner,
-                        repo=self.repo,
-                        installation_id=self.installation_id,
-                        branch=self.event.pull_request.headRefName,
+                        branch=self.event.pull_request.headRefName
                     )
             return MergeabilityResponse.NOT_MERGEABLE, self.event
 
     async def update(self) -> None:
-        async with self.Client() as client:
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
             self.log.info("update")
             event = await self.get_event()
             if event is None:
                 self.log.warning("problem")
                 return
             await client.merge_branch(
-                owner=self.owner,
-                repo=self.repo,
-                installation_id=self.installation_id,
-                head=event.pull_request.baseRefName,
-                base=event.pull_request.headRefName,
+                head=event.pull_request.baseRefName, base=event.pull_request.headRefName
             )
 
     async def trigger_mergeability_check(self) -> None:
-        async with self.Client() as client:
-            await client.get_pull_request(
-                owner=self.owner,
-                repo=self.repo,
-                number=self.number,
-                installation_id=self.installation_id,
-            )
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
+            await client.get_pull_request(number=self.number)
 
     async def merge(self, event: EventInfoResponse) -> bool:
-        async with self.Client() as client:
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
             res = await client.merge_pull_request(
-                owner=self.owner,
-                repo=self.repo,
                 number=self.number,
                 body=get_merge_body(event.config, event.pull_request),
-                installation_id=self.installation_id,
             )
             return not res.status_code > 300
 
@@ -467,7 +458,9 @@ class PR:
         remove the PR label specified by `label_id` for a given `pr_number`
         """
         self.log.info("deleting label", label=label)
-        async with self.Client() as client:
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
             headers = await client.get_headers(self.installation_id)
             res = await client.session.delete(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
@@ -480,7 +473,9 @@ class PR:
         create a comment on the speicifed `pr_number` with the given `body` as text.
         """
         self.log.info("creating comment", body=body)
-        async with self.Client() as client:
+        async with self.Client(
+            owner=self.owner, repo=self.repo, installation_id=self.installation_id
+        ) as client:
             headers = await client.get_headers(self.installation_id)
             res = await client.session.post(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/comments",

@@ -36,7 +36,13 @@ def private_key() -> str:
 
 @pytest.mark.asyncio
 async def test_generate_jwt(private_key: str) -> None:
-    async with Client(private_key=private_key, app_identifier="29196") as api:
+    async with Client(
+        repo="foo",
+        owner="foo",
+        installation_id="foo",
+        private_key=private_key,
+        app_identifier="29196",
+    ) as api:
         assert api.generate_jwt() is not None
 
 
