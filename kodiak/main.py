@@ -47,13 +47,15 @@ WEBHOOK_QUEUE_NAME = "kodiak_webhooks"
 REPO_WORKERS: typing.MutableMapping[str, asyncio.Task] = {}
 
 MERGE_RETRY_RATE_SECONDS = 2
+WAITING_ON_MERGABILITY = 1
 
 
+# TODO(chdsbd): Convert this into a celery task and remove the block pop stuff
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
 ) -> typing.NoReturn:
     """
-    Worker for a repo
+    Worker for webhook events
 
     Pull webhook events off redis queue and process for mergeability.
     """
@@ -63,6 +65,7 @@ async def repo_queue_consumer(
     log.info("start repo_consumer")
     while True:
         log.info("block for new event")
+
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
         pull_request = PR(
@@ -72,6 +75,31 @@ async def repo_queue_consumer(
             installation_id=webhook_event.installation_id,
         )
 
+        asyncio.create_task(check_pull_request(pull_request, connection))
+
+
+async def check_pull_request(pull_request: PR, connection: RedisConnection) -> None:
+    """
+    worker task that is dispatched to handle a given event independently of other events
+    """
+    # get initial state without lock
+
+    log = pull_request.log
+    try:
+        event = await pull_request.mergeability()
+    except NotMergeable:
+        return
+    except NeedsRefresh:
+        # trigger a git mergeability check on Github's end and poll for result
+        log.info("needs refresh")
+        await pull_request.trigger_mergeability_check()
+    except NeedsUpdate:
+        pass
+    except Wait:
+        pass
+
+    key = f"{pull_request.owner}/{pull_request.repo}"
+    async with connection.lock(key) as lock:
         while True:
             # there are two exits to this loop:
             # - OK MergeabilityResponse
@@ -79,34 +107,36 @@ async def repo_queue_consumer(
             #
             # otherwise we continue to poll the Github API for a status change
             # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
-            m_res, event = await pull_request.mergeability()
-            log = log.bind(res=m_res)
-            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-                log.info("cannot merge")
+            try:
+                event = await pull_request.mergeability()
+            except NotMergeable:
                 break
-            if m_res == MergeabilityResponse.NEEDS_UPDATE:
+            except NeedsUpdate:
                 # update pull request and poll for result
                 log.info("update pull request and don't attempt to merge")
                 await pull_request.update()
+                await asyncio.sleep(WAITING_ON_MERGABILITY)
                 continue
-            elif m_res == MergeabilityResponse.NEED_REFRESH:
+            except NeedsRefresh:
                 # trigger a git mergeability check on Github's end and poll for result
                 log.info("needs refresh")
                 await pull_request.trigger_mergeability_check()
+                await asyncio.sleep(WAITING_ON_MERGABILITY)
                 continue
-            elif m_res == MergeabilityResponse.WAIT:
+            except Wait:
                 # continuously poll until we either get an OK or a failure for mergeability
                 log.info("waiting for status checks")
+                await asyncio.sleep(WAITING_ON_MERGABILITY)
                 continue
-            elif m_res == MergeabilityResponse.OK:
-                # continue to try and merge
-                pass
-            else:
-                raise Exception("Unknown MergeabilityResponse")
+
+            assert event is not None, "only None in Exception cases"
 
             retries = 5
             while retries:
                 log.info("merge")
+                # check that we still have the lock
+                if not await lock.is_active():
+                    break
                 if await pull_request.merge(event):
                     # success merging
                     break
@@ -289,6 +319,22 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     return merge_body
 
 
+class NotMergeable(BaseException):
+    pass
+
+
+class NeedsUpdate(BaseException):
+    pass
+
+
+class NeedsRefresh(BaseException):
+    pass
+
+
+class Wait(BaseException):
+    pass
+
+
 @dataclass(init=False, repr=False, eq=False)
 class PR:
     number: int
@@ -363,17 +409,15 @@ class PR:
                 summary=None,
             )
 
-    async def mergeability(
-        self
-    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
+    async def mergeability(self) -> typing.Optional[EventInfoResponse]:
         self.log.info("get_event")
         self.event = await self.get_event()
         if self.event is None:
             self.log.info("no event")
-            return MergeabilityResponse.NOT_MERGEABLE, None
+            raise NotMergeable
         if not self.event.head_exists:
             self.log.info("branch deleted")
-            return MergeabilityResponse.NOT_MERGEABLE, None
+            raise NotMergeable
         try:
             self.log.info("check mergeable")
             mergeable(
@@ -389,26 +433,26 @@ class PR:
                 valid_merge_methods=self.event.valid_merge_methods,
             )
             self.log.info("okay")
-            return MergeabilityResponse.OK, self.event
+            return self.event
         except MissingAppID:
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
+            raise NotMergeable
         except NotQueueable as e:
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
+            raise NotMergeable
         except MergeConflict:
             await self.set_status(summary="🛑 cannot merge", detail="merge conflict")
             if self.event.config.merge.notify_on_conflict:
                 await self.notify_pr_creator()
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
+            raise NotMergeable
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
-            return MergeabilityResponse.NEED_REFRESH, self.event
+            raise NeedsRefresh
         except WaitingForChecks:
             await self.set_status(summary="⏳ waiting for checks")
-            return MergeabilityResponse.WAIT, self.event
+            raise Wait
         except NeedsBranchUpdate:
             await self.set_status(summary="⏭ need update")
-            return MergeabilityResponse.NEEDS_UPDATE, self.event
+            raise NeedsUpdate
         except BranchMerged:
             await self.set_status(
                 summary="🛑 cannot merge", detail="branch merged already"
@@ -422,7 +466,7 @@ class PR:
                     await client.delete_branch(
                         branch=self.event.pull_request.headRefName
                     )
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
+            raise NotMergeable
 
     async def update(self) -> None:
         async with self.Client(
