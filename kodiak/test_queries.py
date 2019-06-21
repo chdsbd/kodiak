@@ -54,9 +54,7 @@ async def test_get_default_branch_name_error(mock_client: typing.Type[Client]) -
             return dict(data=None, errors=[{"test": 123}])
 
     async with MockClient() as client:
-        res = await client.get_default_branch_name(
-            owner="recipeyak", repo="recipeyak", installation_id="23049845"
-        )
+        res = await client.get_default_branch_name()
         assert res is None
 
 
