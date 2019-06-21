@@ -36,7 +36,13 @@ def private_key() -> str:
 
 @pytest.mark.asyncio
 async def test_generate_jwt(private_key: str) -> None:
-    async with Client(private_key=private_key, app_identifier="29196") as api:
+    async with Client(
+        repo="foo",
+        owner="foo",
+        installation_id="foo",
+        private_key=private_key,
+        app_identifier="29196",
+    ) as api:
         assert api.generate_jwt() is not None
 
 
@@ -48,9 +54,7 @@ async def test_get_default_branch_name_error(mock_client: typing.Type[Client]) -
             return dict(data=None, errors=[{"test": 123}])
 
     async with MockClient() as client:
-        res = await client.get_default_branch_name(
-            owner="recipeyak", repo="recipeyak", installation_id="23049845"
-        )
+        res = await client.get_default_branch_name()
         assert res is None
 
 
@@ -179,6 +183,7 @@ async def test_get_event_info_blocked(
     blocked_response: dict,
     block_event: EventInfoResponse,
 ) -> None:
+    # TODO(sbdchd): we should use monkeypatching
     # mypy doesn't handle this circular type
     class MockClient(mock_client):  # type: ignore
         async def send_query(
@@ -194,11 +199,7 @@ async def test_get_event_info_blocked(
 
     async with MockClient() as client:
         res = await client.get_event_info(
-            owner="recipeyak",
-            repo="recipeyak",
-            config_file_expression="master:.kodiak.toml",
-            pr_number=100,
-            installation_id="928788A24C8C",
+            config_file_expression="master:.kodiak.toml", pr_number=100
         )
         assert res is not None
         assert res == block_event

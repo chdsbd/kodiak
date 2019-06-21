@@ -334,11 +334,19 @@ class Client:
     # TODO(chdsbd): Remove non-github app features
     def __init__(
         self,
+        *,
+        owner: str,
+        repo: str,
+        installation_id: str,
         token: typing.Optional[str] = None,
         private_key: typing.Optional[str] = None,
         private_key_path: typing.Optional[Path] = None,
         app_identifier: typing.Optional[str] = None,
     ):
+
+        self.owner = owner
+        self.repo = repo
+        self.installation_id = installation_id
         env_path_str = conf.GITHUB_PRIVATE_KEY_PATH
         env_path: typing.Optional[Path] = None
         if env_path_str is not None:
@@ -445,13 +453,11 @@ class Client:
             return None
         return typing.cast(GraphQLResponse, res.json())
 
-    async def get_default_branch_name(
-        self, owner: str, repo: str, installation_id: str
-    ) -> typing.Optional[str]:
+    async def get_default_branch_name(self) -> typing.Optional[str]:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
-            variables=dict(owner=owner, repo=repo),
-            installation_id=installation_id,
+            variables=dict(owner=self.owner, repo=self.repo),
+            installation_id=self.installation_id,
         )
         if res is None:
             return None
@@ -463,28 +469,25 @@ class Client:
         return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
 
     async def get_event_info(
-        self,
-        owner: str,
-        repo: str,
-        config_file_expression: str,
-        pr_number: int,
-        installation_id: str,
+        self, config_file_expression: str, pr_number: int
     ) -> typing.Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
 
         This is basically the "do-all-the-things" query
         """
-        log = logger.bind(repo=f"{owner}/{repo}", pr=pr_number, install=installation_id)
+        log = logger.bind(
+            repo=f"{self.owner}/{self.repo}", pr=pr_number, install=self.installation_id
+        )
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
             variables=dict(
-                owner=owner,
-                repo=repo,
+                owner=self.owner,
+                repo=self.repo,
                 configFileExpression=config_file_expression,
                 PRNumber=pr_number,
             ),
-            installation_id=installation_id,
+            installation_id=self.installation_id,
         )
         if res is None:
             return None
@@ -637,12 +640,14 @@ class Client:
         )
 
     async def get_pull_requests_for_sha(
-        self, owner: str, repo: str, installation_id: str, sha: str
+        self, sha: str
     ) -> typing.Optional[typing.List[events.BasePullRequest]]:
-        log = logger.bind(repo=f"{owner}/{repo}", install=installation_id, sha=sha)
-        headers = await self.get_headers(installation_id)
+        log = logger.bind(
+            repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
+        )
+        headers = await self.get_headers(self.installation_id)
         res = await self.session.get(
-            f"https://api.github.com/repos/{owner}/{repo}/pulls?state=open&sort=updated&head={sha}",
+            f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
             headers=headers,
         )
         if res.status_code != 200:
@@ -650,19 +655,19 @@ class Client:
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
-    async def delete_branch(
-        self, owner: str, repo: str, installation_id: str, branch: str
-    ) -> bool:
+    async def delete_branch(self, branch: str) -> bool:
         """
         delete a branch by name
         """
         log = logger.bind(
-            repo=f"{owner}/{repo}", install=installation_id, branch=branch
+            repo=f"{self.owner}/{self.repo}",
+            install=self.installation_id,
+            branch=branch,
         )
-        headers = await self.get_headers(installation_id)
+        headers = await self.get_headers(self.installation_id)
         ref = f"heads/{branch}"
         res = await self.session.delete(
-            f"https://api.github.com/repos/{owner}/{repo}/git/refs/{ref}",
+            f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
             headers=headers,
         )
         if res.status_code != 204:
@@ -670,44 +675,32 @@ class Client:
             return False
         return True
 
-    async def merge_branch(
-        self, owner: str, repo: str, installation_id: str, head: str, base: str
-    ) -> http.Response:
-        headers = await self.get_headers(installation_id)
+    async def merge_branch(self, head: str, base: str) -> http.Response:
+        headers = await self.get_headers(self.installation_id)
         return await self.session.post(
-            f"https://api.github.com/repos/{owner}/{repo}/merges",
+            f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
             json=dict(head=head, base=base),
             headers=headers,
         )
 
-    async def get_pull_request(
-        self, owner: str, repo: str, number: int, installation_id: str
-    ) -> typing.Optional[dict]:
-        headers = await self.get_headers(installation_id)
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}"
+    async def get_pull_request(self, number: int) -> typing.Optional[dict]:
+        headers = await self.get_headers(self.installation_id)
+        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
         res = await self.session.get(url, headers=headers)
         if not res.ok:
             return None
         return typing.cast(dict, res.json())
 
-    async def merge_pull_request(
-        self, owner: str, repo: str, number: int, body: dict, installation_id: str
-    ) -> http.Response:
-        headers = await self.get_headers(installation_id)
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{number}/merge"
+    async def merge_pull_request(self, number: int, body: dict) -> http.Response:
+        headers = await self.get_headers(self.installation_id)
+        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
         return await self.session.put(url, headers=headers, json=body)
 
     async def create_notification(
-        self,
-        owner: str,
-        repo: str,
-        head_sha: str,
-        message: str,
-        installation_id: str,
-        summary: typing.Optional[str] = None,
+        self, head_sha: str, message: str, summary: typing.Optional[str] = None
     ) -> http.Response:
-        headers = await self.get_headers(installation_id)
-        url = f"https://api.github.com/repos/{owner}/{repo}/check-runs"
+        headers = await self.get_headers(self.installation_id)
+        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
         body = dict(
             name=CHECK_RUN_NAME,
             head_sha=head_sha,

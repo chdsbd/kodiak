@@ -141,6 +141,9 @@ def mock_client(
             app_identifier: typing.Optional[str] = None,
         ) -> None:
             super().__init__(
+                installation_id="foo",
+                owner="foo",
+                repo="foo",
                 token="abc123",
                 private_key=private_key,
                 private_key_path=private_key_path,

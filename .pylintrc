@@ -178,6 +178,7 @@ disable=print-statement,
         too-many-locals,
         no-method-argument,
         too-many-statements,
+        too-many-instance-attributes,
         # inaccurate
         c-extension-no-member,
         blacklisted-name,
