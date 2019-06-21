@@ -185,6 +185,7 @@ async def test_get_event_info_blocked(
     blocked_response: dict,
     block_event: EventInfoResponse,
 ) -> None:
+    # TODO(sbdchd): we should use monkeypatching
     # mypy doesn't handle this circular type
     class MockClient(mock_client):  # type: ignore
         async def send_query(
@@ -200,11 +201,7 @@ async def test_get_event_info_blocked(
 
     async with MockClient() as client:
         res = await client.get_event_info(
-            owner="recipeyak",
-            repo="recipeyak",
-            config_file_expression="master:.kodiak.toml",
-            pr_number=100,
-            installation_id="928788A24C8C",
+            config_file_expression="master:.kodiak.toml", pr_number=100
         )
         assert res is not None
         assert res == block_event

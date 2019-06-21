@@ -107,6 +107,9 @@ async def test_deleting_branch_after_merge(
     class FakeClient(queries.Client):
         def __init__(
             self,
+            owner: str,
+            repo: str,
+            installation_id: str,
             token: typing.Optional[str] = None,
             private_key: typing.Optional[str] = None,
             private_key_path: typing.Optional[Path] = None,
