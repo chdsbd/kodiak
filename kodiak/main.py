@@ -103,10 +103,11 @@ async def pr_check_worker(
     #   + NEED_REFRESH - assume okay
     #   + WAIT - assume checks pass
     #   + OK - we've got the green
-    redis_webhook_queue.enqueue_for_repo(event=webhook_event_json)
+    await redis_webhook_queue.enqueue_for_repo(event=webhook_event)
 
 
 # TODO(chdsbd): Generalize this event processor boilerplate
+
 
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
