@@ -204,6 +204,12 @@ def mergeable(
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
                 raise NotQueueable("missing required review count")
 
+        if branch_protection.requiresCommitSignatures:
+            if not valid_signature:
+                raise NotQueueable("missing required signature")
+
+        required = set()
+        passing = set()
         if branch_protection.requiresStatusChecks:
             failing_contexts: typing.List[str] = []
             pending_contexts: typing.List[str] = []
@@ -241,17 +247,27 @@ def mergeable(
                 # is a similar question for the review counting.
                 raise NotQueueable("failing required status checks")
             passing = set(passing_contexts)
-            if len(required - passing) > 0:
-                raise WaitingForChecks("missing required status checks")
 
-        if branch_protection.requiresCommitSignatures:
-            if not valid_signature:
-                raise NotQueueable("missing required signature")
-        if (
+        need_branch_update = (
             branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
-        ):
-            raise NeedsBranchUpdate("behind branch. need update")
+        )
+        wait_for_checks = (
+            branch_protection.requiresStatusChecks and len(required - passing) > 0
+        )
+
+        # prioritize branch updates over waiting for status checks to complete
+        if config.optimistic_updates:
+            if need_branch_update:
+                raise NeedsBranchUpdate("behind branch. need update")
+            if wait_for_checks:
+                raise WaitingForChecks("missing required status checks")
+        else:
+            if wait_for_checks:
+                raise WaitingForChecks("missing required status checks")
+            if need_branch_update:
+                raise NeedsBranchUpdate("behind branch. need update")
+
         raise NotQueueable("Could not determine why PR is blocked")
 
     # okay to merge

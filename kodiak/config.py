@@ -57,6 +57,8 @@ class Merge(BaseModel):
     block_on_reviews_requested: bool = False
     # comment on merge conflict and remove automerge label
     notify_on_conflict: bool = True
+    # don't wait for status checks to run before updating branch
+    optimistic_updates: bool = True
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
 

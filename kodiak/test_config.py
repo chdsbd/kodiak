@@ -48,6 +48,7 @@ def test_config_parsing_opposite() -> None:
             delete_branch_on_merge=True,
             block_on_reviews_requested=True,
             notify_on_conflict=False,
+            optimistic_updates=False,
             message=MergeMessage(
                 title=MergeTitleStyle.pull_request_title,
                 body=MergeBodyStyle.pull_request_body,
