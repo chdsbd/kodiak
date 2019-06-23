@@ -64,33 +64,46 @@ async def webhook_event_consumer(*, connection: RedisConnection) -> typing.NoRet
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin(
             [WEBHOOK_QUEUE_NAME]
         )
-        webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-        pull_request = PR(
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
-            installation_id=webhook_event.installation_id,
+
+        # process event in separate task to increase concurrency
+        asyncio.create_task(
+            bee(webhook_event_json=webhook_event_json, connection=connection)
         )
 
-        # trigger status updates
-        m_res, event = await pull_request.mergeability()
-        log = log.bind(res=m_res)
-        if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-            continue
-        if m_res not in (
-            MergeabilityResponse.NEEDS_UPDATE,
-            MergeabilityResponse.NEED_REFRESH,
-            MergeabilityResponse.WAIT,
-            MergeabilityResponse.OK,
-        ):
-            raise Exception("Unknown MergeabilityResponse")
 
-        # The following responses are okay to add to merge queue:
-        #   + NEEDS_UPDATE - okay for merging
-        #   + NEED_REFRESH - assume okay
-        #   + WAIT - assume checks pass
-        #   + OK - we've got the green
-        redis_webhook_queue.enqueue_for_repo(event=webhook_event_json)
+async def bee(
+    *, webhook_event_json: BlockingZPopReply, connection: RedisConnection
+) -> None:
+    """
+    check status of PR
+    If PR can be merged, add to its repo's merge queue
+    """
+    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    pull_request = PR(
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        number=webhook_event.pull_request_number,
+        installation_id=webhook_event.installation_id,
+    )
+    # trigger status updates
+    m_res, event = await pull_request.mergeability()
+    log = log.bind(res=m_res)
+    if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+        return
+    if m_res not in (
+        MergeabilityResponse.NEEDS_UPDATE,
+        MergeabilityResponse.NEED_REFRESH,
+        MergeabilityResponse.WAIT,
+        MergeabilityResponse.OK,
+    ):
+        raise Exception("Unknown MergeabilityResponse")
+
+    # The following responses are okay to add to merge queue:
+    #   + NEEDS_UPDATE - okay for merging
+    #   + NEED_REFRESH - assume okay
+    #   + WAIT - assume checks pass
+    #   + OK - we've got the green
+    redis_webhook_queue.enqueue_for_repo(event=webhook_event_json)
 
 
 # TODO: Generalize this event processor boilerplate
