@@ -10,7 +10,6 @@ import arrow
 import jwt
 import requests_async as http
 import structlog
-from jsonpath_rw import parse
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from requests_async import Response
@@ -226,14 +225,6 @@ class EventInfoResponse:
     check_runs: typing.List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
-
-
-def get_values(expr: str, data: typing.Dict) -> typing.List[typing.Any]:
-    return [match.value for match in parse(expr).find(data)]
-
-
-def get_value(expr: str, data: typing.Dict) -> typing.Optional[typing.Any]:
-    return next(iter(get_values(expr, data)), None)
 
 
 MERGE_PR_MUTATION = """
@@ -498,9 +489,10 @@ class Client:
             log.error("could not fetch event info", res=res)
             return None
 
-        config_str: typing.Optional[str] = get_value(
-            expr="repository.object.text", data=data
-        )
+        try:
+            config_str: typing.Optional[str] = str(data["repository"]["object"]["text"])
+        except (KeyError, TypeError):
+            config_str = None
 
         if config_str is None:
             log.warning("could not find configuration file")
@@ -512,29 +504,42 @@ class Client:
             log.warning("could not parse configuration")
             return None
 
-        repo_dict: typing.Dict = get_value(expr="repository", data=data) or {}
+        try:
+            repo_dict = data["repository"]
+        except (KeyError, TypeError):
+            repo_dict = {}
+
         repo_info = RepoInfo(
             merge_commit_allowed=repo_dict.get("mergeCommitAllowed", False),
             rebase_merge_allowed=repo_dict.get("rebaseMergeAllowed", False),
             squash_merge_allowed=repo_dict.get("squashMergeAllowed", False),
         )
 
-        pull_request: typing.Optional[dict] = get_value(
-            expr="repository.pullRequest", data=data
-        )
+        try:
+            pull_request = data["repository"]["pullRequest"]
+        except (KeyError, TypeError):
+            pull_request = None
+
         if pull_request is None:
             log.warning("Could not find PR")
             return None
 
-        labels: typing.List[str] = get_values(
-            expr="repository.pullRequest.labels.nodes[*].name", data=data
-        )
+        try:
+            labels = [
+                l["name"] for l in data["repository"]["pullRequest"]["labels"]["nodes"]
+            ]
+        except (KeyError, TypeError):
+            labels = []
 
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = labels
-        sha: typing.Optional[str] = get_value(
-            expr="repository.pullRequest.commits.nodes[0].commit.oid", data=data
-        )
+
+        try:
+            sha = data["repository"]["pullRequest"]["commits"]["nodes"][0]["commit"][
+                "oid"
+            ]
+        except (KeyError, TypeError):
+            sha = None
 
         pull_request["latest_sha"] = sha
         pull_request["number"] = pr_number
@@ -544,9 +549,12 @@ class Client:
             log.warning("Could not parse pull request")
             return None
 
-        branch_protection_dicts: typing.List[dict] = get_values(
-            expr="repository.branchProtectionRules.nodes[*]", data=data
-        )
+        try:
+            branch_protection_dicts: typing.List[dict] = data["repository"][
+                "branchProtectionRules"
+            ]["nodes"]
+        except:
+            branch_protection_dicts = []
 
         def find_branch_protection(
             response_data: typing.List[dict], ref_name: str
@@ -568,13 +576,20 @@ class Client:
             log.warning("Could not find branch protection")
             return None
 
-        review_requests_count: int = get_value(
-            expr="repository.pullRequest.reviewRequests.totalCount", data=data
-        ) or 0
+        try:
+            review_requests_count: int = data["repository"]["pullRequest"][
+                "reviewRequests"
+            ]["totalCount"]
+        except (KeyError, TypeError):
+            review_requests_count = 0
 
-        review_dicts: typing.List[dict] = get_values(
-            expr="repository.pullRequest.reviews.nodes[*]", data=data
-        )
+        try:
+            review_dicts: typing.List[dict] = data["repository"]["pullRequest"][
+                "reviews"
+            ]["nodes"]
+        except (KeyError, TypeError):
+            review_dicts = []
+
         reviews: typing.List[PRReview] = []
         for review_dict in review_dicts:
             try:
@@ -582,10 +597,12 @@ class Client:
             except ValueError:
                 log.warning("Could not parse PRReview")
 
-        commit_status_dicts: typing.List[dict] = get_values(
-            expr="repository.pullRequest.commits.nodes[0].commit.status.contexts[*]",
-            data=data,
-        )
+        try:
+            commit_status_dicts: typing.List[dict] = data["repository"]["pullRequest"][
+                "commits"
+            ]["nodes"][0]["commit"]["status"]["contexts"]
+        except (KeyError, TypeError):
+            commit_status_dicts = []
 
         status_contexts: typing.List[StatusContext] = []
         for commit_status in commit_status_dicts:
@@ -594,10 +611,15 @@ class Client:
             except ValueError:
                 log.warning("Could not parse StatusContext")
 
-        check_run_dicts: typing.List[dict] = get_values(
-            expr="repository.pullRequest.commits.nodes[*].commit.checkSuites.nodes[*].checkRuns.nodes[*]",
-            data=data,
-        )
+        try:
+            check_run_dicts: typing.List[dict] = []
+            for l in data["repository"]["pullRequest"]["commmits"]["nodes"]:
+                for csNode in l["commit"]["checkSuites"]["nodes"]:
+                    for crNode in csNode["checkRuns"]["nodes"]:
+                        check_run_dicts.append(crNode)
+        except (KeyError, TypeError):
+            check_run_dicts = []
+
         check_runs: typing.List[CheckRun] = []
         for check_run_dict in check_run_dicts:
             try:
@@ -605,25 +627,37 @@ class Client:
             except ValueError:
                 log.warning("Could not parse CheckRun")
 
-        valid_signature = (
-            get_value(
-                expr="repository.pullRequest.commits.nodes[0].commit.signature.isValid",
-                data=data,
+        try:
+            valid_signature = bool(
+                data["repository"]["pullRequest"]["commits"]["nodes"][0]["commit"][
+                    "signature"
+                ]["isValid"]
             )
-            or False
-        )
+        except (KeyError, TypeError):
+            valid_signature = False
 
         valid_merge_methods: typing.List[MergeMethod] = []
-        if get_value(expr="repository.mergeCommitAllowed", data=data):
-            valid_merge_methods.append(MergeMethod.merge)
-        if get_value(expr="repository.rebaseMergeAllowed", data=data):
-            valid_merge_methods.append(MergeMethod.rebase)
-        if get_value(expr="repository.squashMergeAllowed", data=data):
-            valid_merge_methods.append(MergeMethod.squash)
 
-        head_exists = bool(
-            get_value(expr="repository.pullRequest.headRef.id", data=data)
-        )
+        try:
+            if data["repository"]["mergeCommitAllowed"]:
+                valid_merge_methods.append(MergeMethod.merge)
+        except (KeyError, TypeError):
+            pass
+        try:
+            if data["repository"]["rebaseMergeAllowed"]:
+                valid_merge_methods.append(MergeMethod.rebase)
+        except (KeyError, TypeError):
+            pass
+        try:
+            if data["repository"]["squashMergeAllowed"]:
+                valid_merge_methods.append(MergeMethod.squash)
+        except (KeyError, TypeError):
+            pass
+
+        try:
+            head_exists = bool(data["repository"]["pullRequest"]["headRef"]["id"])
+        except (KeyError, TypeError):
+            head_exists = False
 
         return EventInfoResponse(
             config=config,
