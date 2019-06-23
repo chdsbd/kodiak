@@ -65,16 +65,10 @@ async def webhook_event_consumer(*, connection: RedisConnection) -> typing.NoRet
             [WEBHOOK_QUEUE_NAME]
         )
         # process event in separate task to increase concurrency
-        asyncio.create_task(
-            pr_check_worker(
-                webhook_event_json=webhook_event_json, connection=connection
-            )
-        )
+        asyncio.create_task(pr_check_worker(webhook_event_json=webhook_event_json))
 
 
-async def pr_check_worker(
-    *, webhook_event_json: BlockingZPopReply, connection: RedisConnection
-) -> None:
+async def pr_check_worker(*, webhook_event_json: BlockingZPopReply) -> None:
     """
     check status of PR
     If PR can be merged, add to its repo's merge queue
