@@ -106,14 +106,13 @@ async def pr_check_worker(
     redis_webhook_queue.enqueue_for_repo(event=webhook_event_json)
 
 
-# TODO: Generalize this event processor boilerplate
-
+# TODO(chdsbd): Generalize this event processor boilerplate
 
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
 ) -> typing.NoReturn:
     """
-    Worker for a repo
+    Worker for a repo given by :queue_name:
 
     Pull webhook events off redis queue and process for mergeability.
 
@@ -143,7 +142,7 @@ async def repo_queue_consumer(
             # otherwise we continue to poll the Github API for a status change
             # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
 
-            # TODO: Replace enum response with exceptions
+            # TODO(chdsbd): Replace enum response with exceptions
             m_res, event = await pull_request.mergeability()
             log = log.bind(res=m_res)
             if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
@@ -241,9 +240,19 @@ class RedisWebhookQueue:
         return f"kodiak_repo_queue:{event.repo_owner}/{event.repo_name}"
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
+        """
+        add :event: to webhook queue
+        """
         await self.connection.zadd(WEBHOOK_QUEUE_NAME, {event.json(): time.time()})
 
     async def enqueue_for_repo(self, *, event: WebhookEvent) -> None:
+        """
+        1. get the corresponding repo queue for event
+        2. add key to QUEUE_SET_NAME so on restart we can recreate the
+        worker for the queue.
+        3. add event
+        4. start worker (will create new worker if one does not exist)
+        """
         key = self.get_queue_key(event)
         transaction = await self.connection.multi()
         await transaction.sadd(QUEUE_SET_NAME, [key])
