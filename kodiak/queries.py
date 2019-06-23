@@ -491,13 +491,13 @@ class Client:
 
         try:
             repository: dict = data["repository"]
-        except IndexError:
+        except (KeyError, TypeError):
             log.warning("could not find repository")
             return None
 
         try:
             config_str: typing.Optional[str] = repository["object"]["text"]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             config_str = None
 
         if config_str is None:
@@ -518,7 +518,7 @@ class Client:
 
         try:
             pull_request: dict = repository["pullRequest"]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             log.warning("Could not find PR")
             return None
 
@@ -526,7 +526,7 @@ class Client:
             nodes = pull_request["labels"]["nodes"]
             get_names = (node.get("name") for node in nodes)
             labels = [label for label in get_names if label is not None]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             labels = []
 
         # update the dictionary to match what we need for parsing
@@ -551,7 +551,7 @@ class Client:
             branch_protection_dicts: typing.List[dict] = repository[
                 "branchProtectionRules"
             ]["nodes"]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             branch_protection_dicts = []
 
         def find_branch_protection(
@@ -560,7 +560,7 @@ class Client:
             for rule in branch_protection_dicts:
                 try:
                     nodes = rule["matchingRefs"]["nodes"]
-                except (IndexError, KeyError, TypeError):
+                except (KeyError, TypeError):
                     nodes = []
                 for node in nodes:
                     if node["name"] == ref_name:
@@ -580,12 +580,12 @@ class Client:
 
         try:
             review_requests_count: int = pull_request["reviewRequests"]["totalCount"]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             review_requests_count = 0
 
         try:
             review_dicts: typing.List[dict] = pull_request["reviews"]["nodes"]
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             review_dicts = []
 
         reviews: typing.List[PRReview] = []
@@ -617,7 +617,7 @@ class Client:
                     check_run_nodes = check_run_node["checkRuns"]["nodes"]
                     for check_run in check_run_nodes:
                         check_run_dicts.append(check_run)
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             pass
 
         check_runs: typing.List[CheckRun] = []
@@ -646,7 +646,7 @@ class Client:
 
         try:
             head_exists = bool(pull_request["headRef"]["id"])
-        except (IndexError, KeyError, TypeError):
+        except (KeyError, TypeError):
             head_exists = False
 
         return EventInfoResponse(
