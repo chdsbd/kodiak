@@ -64,14 +64,15 @@ async def webhook_event_consumer(*, connection: RedisConnection) -> typing.NoRet
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin(
             [WEBHOOK_QUEUE_NAME]
         )
-
         # process event in separate task to increase concurrency
         asyncio.create_task(
-            bee(webhook_event_json=webhook_event_json, connection=connection)
+            pr_check_worker(
+                webhook_event_json=webhook_event_json, connection=connection
+            )
         )
 
 
-async def bee(
+async def pr_check_worker(
     *, webhook_event_json: BlockingZPopReply, connection: RedisConnection
 ) -> None:
     """
@@ -87,7 +88,6 @@ async def bee(
     )
     # trigger status updates
     m_res, event = await pull_request.mergeability()
-    log = log.bind(res=m_res)
     if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
         return
     if m_res not in (
@@ -444,6 +444,7 @@ class PR:
                 summary=None,
             )
 
+    # TODO(chdsbd): Move set_status updates out of this method
     async def mergeability(
         self
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
