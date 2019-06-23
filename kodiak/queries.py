@@ -313,6 +313,162 @@ class TokenResponse(BaseModel):
 
 installation_cache: typing.MutableMapping[str, typing.Optional[TokenResponse]] = dict()
 
+# TODO(sbdchd): pass logging via TLS or async equivalent
+
+
+def get_repo(*, data: dict) -> typing.Optional[dict]:
+    try:
+        return typing.cast(dict, data["repository"])
+    except (KeyError, TypeError):
+        return None
+
+
+def get_config_str(*, repo: dict) -> typing.Optional[str]:
+    try:
+        return typing.cast(str, repo["object"]["text"])
+    except (KeyError, TypeError):
+        return None
+
+
+def get_pull_request(*, repo: dict) -> typing.Optional[dict]:
+    try:
+        return typing.cast(dict, repo["pullRequest"])
+    except (KeyError, TypeError):
+        logger.warning("Could not find PR")
+        return None
+
+
+def get_labels(*, pr: dict) -> typing.List[str]:
+    try:
+        nodes = pr["labels"]["nodes"]
+        get_names = (node.get("name") for node in nodes)
+        return [label for label in get_names if label is not None]
+    except (KeyError, TypeError):
+        return []
+
+
+def get_sha(*, pr: dict) -> typing.Optional[str]:
+    try:
+        return typing.cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
+    except (IndexError, KeyError, TypeError):
+        return None
+
+
+def get_branch_protection_dicts(*, repo: dict) -> typing.List[dict]:
+    try:
+        return typing.cast(typing.List[dict], repo["branchProtectionRules"]["nodes"])
+    except (KeyError, TypeError):
+        return []
+
+
+def get_branch_protection(
+    *, repo: dict, ref_name: str
+) -> typing.Optional[BranchProtectionRule]:
+    for rule in get_branch_protection_dicts(repo=repo):
+        try:
+            nodes = rule["matchingRefs"]["nodes"]
+        except (KeyError, TypeError):
+            nodes = []
+        for node in nodes:
+            if node["name"] == ref_name:
+                try:
+                    return BranchProtectionRule.parse_obj(rule)
+                except ValueError:
+                    logger.warning("Could not parse branch protection")
+                    return None
+    return None
+
+
+def get_review_requests_count(*, pr: dict) -> int:
+    try:
+        return typing.cast(int, pr["reviewRequests"]["totalCount"])
+    except (KeyError, TypeError):
+        return 0
+
+
+def get_review_dicts(*, pr: dict) -> typing.List[dict]:
+    try:
+        return typing.cast(typing.List[dict], pr["reviews"]["nodes"])
+    except (KeyError, TypeError):
+        return []
+
+
+def get_reviews(*, pr: dict) -> typing.List[PRReview]:
+    review_dicts = get_review_dicts(pr=pr)
+    reviews: typing.List[PRReview] = []
+    for review_dict in review_dicts:
+        try:
+            reviews.append(PRReview.parse_obj(review_dict))
+        except ValueError:
+            logger.warning("Could not parse PRReview")
+    return reviews
+
+
+def get_status_contexts(*, pr: dict) -> typing.List[StatusContext]:
+    try:
+        commit_status_dicts: typing.List[dict] = pr["commits"]["nodes"][0]["commit"][
+            "status"
+        ]["contexts"]
+    except (IndexError, KeyError, TypeError):
+        commit_status_dicts = []
+
+    status_contexts: typing.List[StatusContext] = []
+    for commit_status in commit_status_dicts:
+        try:
+            status_contexts.append(StatusContext.parse_obj(commit_status))
+        except ValueError:
+            logger.warning("Could not parse StatusContext")
+
+    return status_contexts
+
+
+def get_check_runs(*, pr: dict) -> typing.List[CheckRun]:
+    check_run_dicts: typing.List[dict] = []
+    try:
+        for commit_node in pr["commits"]["nodes"]:
+            check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
+            for check_run_node in check_suite_nodes:
+                check_run_nodes = check_run_node["checkRuns"]["nodes"]
+                for check_run in check_run_nodes:
+                    check_run_dicts.append(check_run)
+    except (KeyError, TypeError):
+        pass
+
+    check_runs: typing.List[CheckRun] = []
+    for check_run_dict in check_run_dicts:
+        try:
+            check_runs.append(CheckRun.parse_obj(check_run_dict))
+        except ValueError:
+            logger.warning("Could not parse CheckRun")
+    return check_runs
+
+
+def get_valid_signature(*, pr: dict) -> bool:
+    try:
+        return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
+    except (IndexError, KeyError, TypeError):
+        return False
+
+
+def get_head_exists(*, pr: dict) -> bool:
+    try:
+        return bool(pr["headRef"]["id"])
+    except (KeyError, TypeError):
+        return False
+
+
+def get_valid_merge_methods(*, repo: dict) -> typing.List[MergeMethod]:
+    valid_merge_methods: typing.List[MergeMethod] = []
+    if repo.get("mergeCommitAllowed"):
+        valid_merge_methods.append(MergeMethod.merge)
+
+    if repo.get("rebaseMergeAllowed"):
+        valid_merge_methods.append(MergeMethod.rebase)
+
+    if repo.get("squashMergeAllowed"):
+        valid_merge_methods.append(MergeMethod.squash)
+    return valid_merge_methods
+
 
 class Client:
     token: typing.Optional[str]
@@ -489,18 +645,13 @@ class Client:
             log.error("could not fetch event info", res=res)
             return None
 
-        try:
-            repository: dict = data["repository"]
-        except (KeyError, TypeError):
+        repository = get_repo(data=data)
+        if not repository:
             log.warning("could not find repository")
             return None
 
-        try:
-            config_str: typing.Optional[str] = repository["object"]["text"]
-        except (KeyError, TypeError):
-            config_str = None
-
-        if config_str is None:
+        config_str = get_config_str(repo=repository)
+        if not config_str:
             log.warning("could not find configuration file")
             return None
 
@@ -510,36 +661,14 @@ class Client:
             log.warning("could not parse configuration")
             return None
 
-        repo_info = RepoInfo(
-            merge_commit_allowed=repository.get("mergeCommitAllowed", False),
-            rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
-            squash_merge_allowed=repository.get("squashMergeAllowed", False),
-        )
-
-        try:
-            pull_request: dict = repository["pullRequest"]
-        except (KeyError, TypeError):
+        pull_request = get_pull_request(repo=repository)
+        if not pull_request:
             log.warning("Could not find PR")
             return None
 
-        try:
-            nodes = pull_request["labels"]["nodes"]
-            get_names = (node.get("name") for node in nodes)
-            labels = [label for label in get_names if label is not None]
-        except (KeyError, TypeError):
-            labels = []
-
         # update the dictionary to match what we need for parsing
-        pull_request["labels"] = labels
-
-        try:
-            sha: typing.Optional[str] = pull_request["commits"]["nodes"][0]["commit"][
-                "oid"
-            ]
-        except (IndexError, KeyError, TypeError):
-            sha = None
-
-        pull_request["latest_sha"] = sha
+        pull_request["labels"] = get_labels(pr=pull_request)
+        pull_request["latest_sha"] = get_sha(pr=pull_request)
         pull_request["number"] = pr_number
         try:
             pr = PullRequest.parse_obj(pull_request)
@@ -547,120 +676,29 @@ class Client:
             log.warning("Could not parse pull request")
             return None
 
-        try:
-            branch_protection_dicts: typing.List[dict] = repository[
-                "branchProtectionRules"
-            ]["nodes"]
-        except (KeyError, TypeError):
-            branch_protection_dicts = []
-
-        def find_branch_protection(
-            response_data: typing.List[dict], ref_name: str
-        ) -> typing.Optional[BranchProtectionRule]:
-            for rule in branch_protection_dicts:
-                try:
-                    nodes = rule["matchingRefs"]["nodes"]
-                except (KeyError, TypeError):
-                    nodes = []
-                for node in nodes:
-                    if node["name"] == ref_name:
-                        try:
-                            return BranchProtectionRule.parse_obj(rule)
-                        except ValueError:
-                            log.warning("Could not parse branch protection")
-                            return None
-            return None
-
-        branch_protection = find_branch_protection(
-            branch_protection_dicts, pr.baseRefName
+        branch_protection = get_branch_protection(
+            repo=repository, ref_name=pr.baseRefName
         )
         if branch_protection is None:
             log.warning("Could not find branch protection")
             return None
 
-        try:
-            review_requests_count: int = pull_request["reviewRequests"]["totalCount"]
-        except (KeyError, TypeError):
-            review_requests_count = 0
-
-        try:
-            review_dicts: typing.List[dict] = pull_request["reviews"]["nodes"]
-        except (KeyError, TypeError):
-            review_dicts = []
-
-        reviews: typing.List[PRReview] = []
-        for review_dict in review_dicts:
-            try:
-                reviews.append(PRReview.parse_obj(review_dict))
-            except ValueError:
-                log.warning("Could not parse PRReview")
-
-        try:
-            commit_status_dicts: typing.List[dict] = pull_request["commits"]["nodes"][
-                0
-            ]["commit"]["status"]["contexts"]
-        except (IndexError, KeyError, TypeError):
-            commit_status_dicts = []
-
-        status_contexts: typing.List[StatusContext] = []
-        for commit_status in commit_status_dicts:
-            try:
-                status_contexts.append(StatusContext.parse_obj(commit_status))
-            except ValueError:
-                log.warning("Could not parse StatusContext")
-
-        check_run_dicts: typing.List[dict] = []
-        try:
-            for commit_node in pull_request["commits"]["nodes"]:
-                check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
-                for check_run_node in check_suite_nodes:
-                    check_run_nodes = check_run_node["checkRuns"]["nodes"]
-                    for check_run in check_run_nodes:
-                        check_run_dicts.append(check_run)
-        except (KeyError, TypeError):
-            pass
-
-        check_runs: typing.List[CheckRun] = []
-        for check_run_dict in check_run_dicts:
-            try:
-                check_runs.append(CheckRun.parse_obj(check_run_dict))
-            except ValueError:
-                log.warning("Could not parse CheckRun")
-
-        try:
-            valid_signature = bool(
-                pull_request["commits"]["nodes"][0]["commit"]["signature"]["isValid"]
-            )
-        except (IndexError, KeyError, TypeError):
-            valid_signature = False
-
-        valid_merge_methods: typing.List[MergeMethod] = []
-        if repository.get("mergeCommitAllowed"):
-            valid_merge_methods.append(MergeMethod.merge)
-
-        if repository.get("rebaseMergeAllowed"):
-            valid_merge_methods.append(MergeMethod.rebase)
-
-        if repository.get("squashMergeAllowed"):
-            valid_merge_methods.append(MergeMethod.squash)
-
-        try:
-            head_exists = bool(pull_request["headRef"]["id"])
-        except (KeyError, TypeError):
-            head_exists = False
-
         return EventInfoResponse(
             config=config,
             pull_request=pr,
-            repo=repo_info,
+            repo=RepoInfo(
+                merge_commit_allowed=repository.get("mergeCommitAllowed", False),
+                rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
+                squash_merge_allowed=repository.get("squashMergeAllowed", False),
+            ),
             branch_protection=branch_protection,
-            review_requests_count=review_requests_count,
-            reviews=reviews,
-            status_contexts=status_contexts,
-            check_runs=check_runs,
-            head_exists=head_exists,
-            valid_signature=valid_signature,
-            valid_merge_methods=valid_merge_methods,
+            review_requests_count=get_review_requests_count(pr=pull_request),
+            reviews=get_reviews(pr=pull_request),
+            status_contexts=get_status_contexts(pr=pull_request),
+            check_runs=get_check_runs(pr=pull_request),
+            head_exists=get_head_exists(pr=pull_request),
+            valid_signature=get_valid_signature(pr=pull_request),
+            valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
     async def get_pull_requests_for_sha(
