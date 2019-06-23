@@ -318,21 +318,21 @@ installation_cache: typing.MutableMapping[str, typing.Optional[TokenResponse]] =
 
 def get_repo(*, data: dict) -> typing.Optional[dict]:
     try:
-        return data["repository"]
+        return typing.cast(dict, data["repository"])
     except (KeyError, TypeError):
         return None
 
 
 def get_config_str(*, repo: dict) -> typing.Optional[str]:
     try:
-        return repo["object"]["text"]
+        return typing.cast(str, repo["object"]["text"])
     except (KeyError, TypeError):
         return None
 
 
 def get_pull_request(*, repo: dict) -> typing.Optional[dict]:
     try:
-        return repo["pullRequest"]
+        return typing.cast(dict, repo["pullRequest"])
     except (KeyError, TypeError):
         logger.warning("Could not find PR")
         return None
@@ -349,14 +349,14 @@ def get_labels(*, pr: dict) -> typing.List[str]:
 
 def get_sha(*, pr: dict) -> typing.Optional[str]:
     try:
-        return pr["commits"]["nodes"][0]["commit"]["oid"]
+        return typing.cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
 
 
 def get_branch_protection_dicts(*, repo: dict) -> typing.List[dict]:
     try:
-        return repo["branchProtectionRules"]["nodes"]
+        return typing.cast(typing.List[dict], repo["branchProtectionRules"]["nodes"])
     except (KeyError, TypeError):
         return []
 
@@ -381,14 +381,14 @@ def get_branch_protection(
 
 def get_review_requests_count(*, pr: dict) -> int:
     try:
-        return pr["reviewRequests"]["totalCount"]
+        return typing.cast(int, pr["reviewRequests"]["totalCount"])
     except (KeyError, TypeError):
         return 0
 
 
 def get_review_dicts(*, pr: dict) -> typing.List[dict]:
     try:
-        return pr["reviews"]["nodes"]
+        return typing.cast(typing.List[dict], pr["reviews"]["nodes"])
     except (KeyError, TypeError):
         return []
 
