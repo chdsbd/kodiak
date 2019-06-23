@@ -71,6 +71,7 @@ asyncio = "*"
 reference = "12dbc66bc2bcefcf7cdbe46de7dbce5bcdefe1aa"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
+
 [[package]]
 category = "dev"
 description = "Atomic file writes."
@@ -178,8 +179,9 @@ version = "0.2.2"
 sqlalchemy = "*"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Better living through Python with decorators"
+marker = "python_version >= \"3.4\""
 name = "decorator"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
@@ -345,19 +347,6 @@ version = "0.13.3"
 parso = ">=0.3.0"
 
 [[package]]
-category = "main"
-description = "A robust and significantly extended implementation of JSONPath for Python, with a clear AST for metaprogramming."
-name = "jsonpath-rw"
-optional = false
-python-versions = "*"
-version = "1.4.0"
-
-[package.dependencies]
-decorator = "*"
-ply = "*"
-six = "*"
-
-[[package]]
 category = "dev"
 description = "A fast and thorough lazy object proxy."
 name = "lazy-object-proxy"
@@ -454,14 +443,6 @@ version = "0.12.0"
 
 [package.dependencies]
 importlib-metadata = ">=0.12"
-
-[[package]]
-category = "main"
-description = "Python Lex & Yacc"
-name = "ply"
-optional = false
-python-versions = "*"
-version = "3.11"
 
 [[package]]
 category = "dev"
@@ -826,7 +807,7 @@ python-versions = ">=2.7"
 version = "0.5.1"
 
 [metadata]
-content-hash = "131d0cd9323555ab60b49a0b0a57458e8cc123e8a09fc5793ae3837aa11387c2"
+content-hash = "4f3971e29406cff026f171f9c5702e99926b515bffd18862beb734f5e238dee5"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -863,7 +844,6 @@ ipython = ["54c5a8aa1eadd269ac210b96923688ccf01ebb2d0f21c18c3c717909583579a8", "
 ipython-genutils = ["72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8", "eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"]
 isort = ["c40744b6bc5162bbb39c1257fe298b7a393861d50978b565f3ccd9cb9de0182a", "f57abacd059dc3bd666258d1efb0377510a89777fda3e3274e3c01f7c03ae22d"]
 jedi = ["2bb0603e3506f708e792c7f4ad8fc2a7a9d9c2d292a358fbbd58da531695595b", "2c6bcd9545c7d6440951b12b44d373479bf18123a401a52025cf98563fbd826c"]
-jsonpath-rw = ["05c471281c45ae113f6103d1268ec7a4831a2e96aa80de45edc89b11fac4fbec"]
 lazy-object-proxy = ["159a745e61422217881c4de71f9eafd9d703b93af95618635849fe469a283661", "23f63c0821cc96a23332e45dfaa83266feff8adc72b9bcaef86c202af765244f", "3b11be575475db2e8a6e11215f5aa95b9ec14de658628776e10d96fa0b4dac13", "3f447aff8bc61ca8b42b73304f6a44fa0d915487de144652816f950a3f1ab821", "4ba73f6089cd9b9478bc0a4fa807b47dbdb8fad1d8f31a0f0a5dbf26a4527a71", "4f53eadd9932055eac465bd3ca1bd610e4d7141e1278012bd1f28646aebc1d0e", "64483bd7154580158ea90de5b8e5e6fc29a16a9b4db24f10193f0c1ae3f9d1ea", "6f72d42b0d04bfee2397aa1862262654b56922c20a9bb66bb76b6f0e5e4f9229", "7c7f1ec07b227bdc561299fa2328e85000f90179a2f44ea30579d38e037cb3d4", "7c8b1ba1e15c10b13cad4171cfa77f5bb5ec2580abc5a353907780805ebe158e", "8559b94b823f85342e10d3d9ca4ba5478168e1ac5658a8a2f18c991ba9c52c20", "a262c7dfb046f00e12a2bdd1bafaed2408114a89ac414b0af8755c696eb3fc16", "acce4e3267610c4fdb6632b3886fe3f2f7dd641158a843cf6b6a68e4ce81477b", "be089bb6b83fac7f29d357b2dc4cf2b8eb8d98fe9d9ff89f9ea6012970a853c7", "bfab710d859c779f273cc48fb86af38d6e9210f38287df0069a63e40b45a2f5c", "c10d29019927301d524a22ced72706380de7cfc50f767217485a912b4c8bd82a", "dd6e2b598849b3d7aee2295ac765a578879830fb8966f70be8cd472e6069932e", "e408f1eacc0a68fed0c08da45f31d0ebb38079f043328dce69ff133b95c29dc1"]
 mccabe = ["ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42", "dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"]
 more-itertools = ["2112d2ca570bb7c3e53ea1a35cd5df42bb0fd10c45f0fb97178679c3c03d64c7", "c3e4748ba1aad8dba30a4886b0b1a2004f9a863837b8654e7059eebf727afa5a"]
@@ -874,7 +854,6 @@ parso = ["17cc2d7a945eb42c3569d4564cdf49bde221bc2b552af3eca9c1aad517dcdd33", "2e
 pexpect = ["2094eefdfcf37a1fdbfb9aa090862c1a4878e5c7e0e7e7088bdb511c558e5cd1", "9e2c1fd0e6ee3a49b28f95d4b33bc389c89b20af6a1255906e90ff1262ce62eb"]
 pickleshare = ["87683d47965c1da65cdacaf31c8441d12b8044cdec9aca500cd78fc2c683afca", "9649af414d74d4df115d5d718f82acb59c9d418196b7b4290ed47a12ce62df56"]
 pluggy = ["0825a152ac059776623854c1543d65a4ad408eb3d33ee114dff91e57ec6ae6fc", "b9817417e95936bf75d85d3f8767f7df6cdde751fc40aed3bb3074cbcb77757c"]
-ply = ["00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3", "096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"]
 prompt-toolkit = ["11adf3389a996a6d45cc277580d0d53e8a5afd281d0c9ec71b28e6f121463780", "2519ad1d8038fd5fc8e770362237ad0364d16a7650fb5724af6997ed5515e3c1", "977c6583ae813a37dc1c2e1b715892461fcbdaa57f6fc62f33a528c4886c8f55"]
 ptyprocess = ["923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0", "d7cc528d76e76342423ca640335bd3633420dc1366f258cb31d05e865ef5ca1f"]
 py = ["64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa", "dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"]
