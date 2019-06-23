@@ -538,7 +538,7 @@ class Client:
             sha = data["repository"]["pullRequest"]["commits"]["nodes"][0]["commit"][
                 "oid"
             ]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, IndexError):
             sha = None
 
         pull_request["latest_sha"] = sha
@@ -553,7 +553,7 @@ class Client:
             branch_protection_dicts: typing.List[dict] = data["repository"][
                 "branchProtectionRules"
             ]["nodes"]
-        except:
+        except (KeyError, TypeError):
             branch_protection_dicts = []
 
         def find_branch_protection(
@@ -601,7 +601,7 @@ class Client:
             commit_status_dicts: typing.List[dict] = data["repository"]["pullRequest"][
                 "commits"
             ]["nodes"][0]["commit"]["status"]["contexts"]
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, IndexError):
             commit_status_dicts = []
 
         status_contexts: typing.List[StatusContext] = []
@@ -633,7 +633,7 @@ class Client:
                     "signature"
                 ]["isValid"]
             )
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, IndexError):
             valid_signature = False
 
         valid_merge_methods: typing.List[MergeMethod] = []
