@@ -1,24 +1,24 @@
 digraph Kodiak {
 
-    "GitHub"[shape=doublecircle]
+  "GitHub"[shape=doublecircle]
 
-    "GitHub" -> "HTTP Webhook"[label="HTTP events", weight=0]
+  "GitHub" -> "HTTP Webhook"[label="HTTP events", weight=0]
 
 
-	subgraph cluster_kodiak {
-		label = "Kodiak";
+  subgraph cluster_kodiak {
+    label = "Kodiak"
 
-		"HTTP Webhook" -> Redis[label="write event to queue", weight=0]
-		Redis[shape=cylinder]
+    "HTTP Webhook" -> Redis[label="write event to queue", weight=0]
+    Redis[shape=cylinder]
 
-		"Repo Queue Worker" -> Redis [label="pull off mergeable\n PRs and merge"]
+    "Repo Queue Worker" -> Redis [label="pull off mergeable\n PRs and merge"]
     "Repo Queue Worker" -> "GitHub"
     "Async Worker" -> "GitHub"
 
-		"Async Worker" -> Redis[label="write any mergeable PRs\nto per repo queue"]
+    "Async Worker" -> Redis[label="write any mergeable PRs\nto per repo queue"]
 
-		"Event Queue Worker" -> Redis[label="Left blocking pop \nfrom event queue"]
-		"Event Queue Worker" -> "Async Worker"[style="dashed", label="create async task \nfor each event"]
-	}
+    "Event Queue Worker" -> Redis[label="Left blocking pop \nfrom event queue"]
+    "Event Queue Worker" -> "Async Worker"[style="dashed", label="create async task \nfor each event"]
+  }
 
 }
