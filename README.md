@@ -165,7 +165,7 @@ Kodiak won't merge PRs if branch protection is disabled.
 | [Autorebase](https://github.com/tibdex/autorebase)                    | ✅                             | ✅           | ✅                   | ❌                          | ✅          | ✅                                                                            | TypeScript |
 | [Auto Merge](https://github.com/SvanBoxel/auto-merge)                 | ❌                             | ✅           | ❌                   | ❌                          | ✅          | ❌                                                                            | JavaScript |
 | [Always Be Closing](https://github.com/marketplace/always-be-closing) | 🤷‍                            | ✅           | ✅                   | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
-| [Mergify](https://github.com/Mergifyio/mergify-engine)                | ❌                             | ✅           | ✅                   | ❌                          | ✅          | 🤷✅                                                                          | Python     |
+| [Mergify](https://github.com/Mergifyio/mergify-engine)                | ❌                             | ✅           | ✅                   | ❌                          | ✅          | ✅                                                                            | Python     |
 
 Works With GitHub Integration:
 
