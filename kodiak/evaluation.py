@@ -257,11 +257,13 @@ def mergeable(
         )
 
         # prioritize branch updates over waiting for status checks to complete
-        if config.optimistic_updates:
+        if config.merge.optimistic_updates:
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
             if wait_for_checks:
                 raise WaitingForChecks("missing required status checks")
+        # almost the same as the pervious case, but we prioritize status checks
+        # over branch updates.
         else:
             if wait_for_checks:
                 raise WaitingForChecks("missing required status checks")
