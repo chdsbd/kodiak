@@ -208,8 +208,8 @@ def mergeable(
             if not valid_signature:
                 raise NotQueueable("missing required signature")
 
-        required = set()
-        passing = set()
+        required: typing.Set[str] = set()
+        passing: typing.Set[str] = set()
         if branch_protection.requiresStatusChecks:
             failing_contexts: typing.List[str] = []
             pending_contexts: typing.List[str] = []
