@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import List
 
 import pytest
 
@@ -816,4 +817,53 @@ def test_app_id(
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[],
+        )
+
+
+def test_config_merge_optimistic_updates(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    """
+    If optimisitc_updates are enabled, branch updates should be prioritized over
+    waiting for running status checks to complete.
+
+    Otherwise, status checks should be checked before updating.
+    """
+    config.merge.method = MergeMethod.merge
+    branch_protection.requiredApprovingReviewCount = 0
+
+    branch_protection.requiresStrictStatusChecks = True
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/lint", "ci/test"]
+    contexts: List[StatusContext] = []
+
+    config.merge.optimistic_updates = True
+    with pytest.raises(NeedsBranchUpdate):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=contexts,
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.merge],
+        )
+    config.merge.optimistic_updates = False
+    with pytest.raises(WaitingForChecks):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=contexts,
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.merge],
         )
