@@ -75,6 +75,7 @@ Kodiak won't merge PRs if branch protection is disabled.
    delete_branch_on_merge = true # default: false
    block_on_reviews_requested = false # default: false
    notify_on_conflict = true # default: true
+   optimistic_updates = true # default: true
 
    [merge.message]
    title = "pull_request_title" # default: "github_default"

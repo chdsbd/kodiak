@@ -10,6 +10,7 @@ method = "squash" # default: "merge"
 delete_branch_on_merge = true # default: False
 block_on_reviews_requested = true # default: false
 notify_on_conflict = false # default: true
+optimistic_updates = false # default: true
 
 [merge.message]
 title = "pull_request_title" # default: "github_default"
