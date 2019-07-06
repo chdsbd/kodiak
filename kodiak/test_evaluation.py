@@ -829,7 +829,6 @@ def test_config_merge_optimistic_updates(
 
     Otherwise, status checks should be checked before updating.
     """
-    config.merge.method = MergeMethod.merge
     branch_protection.requiredApprovingReviewCount = 0
 
     branch_protection.requiresStrictStatusChecks = True
@@ -851,7 +850,7 @@ def test_config_merge_optimistic_updates(
             contexts=contexts,
             check_runs=[],
             valid_signature=False,
-            valid_merge_methods=[MergeMethod.merge],
+            valid_merge_methods=[MergeMethod.squash],
         )
     config.merge.optimistic_updates = False
     with pytest.raises(WaitingForChecks):
@@ -865,5 +864,5 @@ def test_config_merge_optimistic_updates(
             contexts=contexts,
             check_runs=[],
             valid_signature=False,
-            valid_merge_methods=[MergeMethod.merge],
+            valid_merge_methods=[MergeMethod.squash],
         )
