@@ -867,6 +867,7 @@ def test_config_merge_optimistic_updates(
             valid_merge_methods=[MergeMethod.squash],
         )
 
+
 def test_merge_state_status_draft(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
 ) -> None:
