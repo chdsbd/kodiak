@@ -204,9 +204,8 @@ def mergeable(
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
                 raise NotQueueable("missing required review count")
 
-        if branch_protection.requiresCommitSignatures:
-            if not valid_signature:
-                raise NotQueueable("missing required signature")
+        if branch_protection.requiresCommitSignatures and not valid_signature:
+            raise NotQueueable("missing required signature")
 
         required: typing.Set[str] = set()
         passing: typing.Set[str] = set()
