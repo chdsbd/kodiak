@@ -131,6 +131,9 @@ def mergeable(
     ):
         raise NotQueueable("title matches blacklist_title_regex")
 
+    if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
+        raise NotQueueable("pull request is in draft state")
+
     if config.merge.method not in valid_merge_methods:
         # TODO: This is a fatal configuration error. We should provide some notification of this issue
         log.error(

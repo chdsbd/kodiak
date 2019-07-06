@@ -866,3 +866,28 @@ def test_config_merge_optimistic_updates(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+def test_merge_state_status_draft(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    """
+    If optimisitc_updates are enabled, branch updates should be prioritized over
+    waiting for running status checks to complete.
+
+    Otherwise, status checks should be checked before updating.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.DRAFT
+
+    with pytest.raises(NotQueueable, match="draft state"):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=[],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
