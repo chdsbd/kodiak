@@ -18,6 +18,7 @@ logger = structlog.get_logger()
 
 
 WEBHOOK_QUEUE_NAME = "kodiak_webhooks"
+QUEUE_SET_NAME = "kodiak_repo_set"
 
 WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}
 
@@ -164,9 +165,6 @@ async def repo_queue_consumer(
                 await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
             else:
                 log.error("Exhausted attempts to merge pull request")
-
-
-QUEUE_SET_NAME = "kodiak_repo_set"
 
 
 class RedisWebhookQueue:
