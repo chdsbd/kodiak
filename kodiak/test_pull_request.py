@@ -14,9 +14,8 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
+from kodiak.pull_request import PR, MergeabilityResponse, get_merge_body
 from kodiak.queries import EventInfoResponse
-
-from .main import PR, MergeabilityResponse, get_merge_body
 
 
 def test_read_main(client: TestClient) -> None:
