@@ -473,7 +473,6 @@ def get_valid_merge_methods(*, repo: dict) -> typing.List[MergeMethod]:
 class Client:
     token: typing.Optional[str]
     session: http.Session
-    entered: bool = False
     private_key: typing.Optional[str]
     private_key_path: typing.Optional[Path]
     app_identifier: typing.Optional[str]
@@ -518,7 +517,6 @@ class Client:
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
 
     async def __aenter__(self) -> "Client":
-        self.entered = True
         return self
 
     async def __aexit__(
@@ -578,9 +576,6 @@ class Client:
         remaining_retries: int = 4,
     ) -> typing.Optional[GraphQLResponse]:
         log = logger.bind(install=installation_id)
-        assert (
-            self.entered
-        ), "Client must be used in an async context manager. `async with Client() as api: ..."
 
         if installation_id:
             token = await self.get_token_for_install(installation_id=installation_id)
@@ -772,3 +767,16 @@ class Client:
             output=dict(title=message, summary=summary or ""),
         )
         return await self.session.post(url, headers=headers, json=body)
+
+CLIENT_CACHE: typing.MutableMapping[str, Client] = {}
+
+async def get_client_for_org(*, owner: str, repo: str, installation_id: str) -> Client:
+    client = CLIENT_CACHE.get(installation_id)
+    if client is None:
+        client = Client(owner=owner,repo=repo,installation_id=installation_id)
+        CLIENT_CACHE[installation_id] = client
+    return client
+
+async def close_clients() -> None:
+    for client in CLIENT_CACHE.values():
+        await client.session.close()
