@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -10,6 +11,7 @@ import arrow
 import jwt
 import requests_async as http
 import structlog
+from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from requests_async import Response
@@ -471,121 +473,41 @@ def get_valid_merge_methods(*, repo: dict) -> typing.List[MergeMethod]:
 
 
 class Client:
-    token: typing.Optional[str]
     session: http.Session
-    private_key: typing.Optional[str]
-    private_key_path: typing.Optional[Path]
-    app_identifier: typing.Optional[str]
+    throttler: Throttler
 
     # TODO(chdsbd): Remove non-github app features
     def __init__(
-        self,
-        *,
-        owner: str,
-        repo: str,
-        installation_id: str,
-        token: typing.Optional[str] = None,
-        private_key: typing.Optional[str] = None,
-        private_key_path: typing.Optional[Path] = None,
-        app_identifier: typing.Optional[str] = None,
+        self, *, owner: str, repo: str, installation_id: str, throttler: Throttler
     ):
 
         self.owner = owner
         self.repo = repo
         self.installation_id = installation_id
-        env_path_str = conf.GITHUB_PRIVATE_KEY_PATH
-        env_path: typing.Optional[Path] = None
-        if env_path_str is not None:
-            env_path = Path(env_path_str)
-
-        self.private_key_path = env_path or private_key_path
-        self.private_key = None
-        if self.private_key_path is not None:
-            self.private_key = self.private_key_path.read_text()
-        self.private_key = self.private_key or private_key or conf.GITHUB_PRIVATE_KEY
-
-        self.token = token or conf.GITHUB_TOKEN
-        self.app_identifier = app_identifier or conf.GITHUB_APP_ID
-        assert (self.token is not None) or (
-            self.private_key is not None and self.app_identifier is not None
-        ), "missing token or secret key and app_identifier. Github's GraphQL endpoint requires authentication."
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
         self.session = http.Session()
+        self.throttler = throttler
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
-
-    async def __aenter__(self) -> "Client":
-        return self
-
-    async def __aexit__(
-        self, exc_type: typing.Any, exc_value: typing.Any, traceback: typing.Any
-    ) -> None:
-        await self.session.close()
-
-    async def get_headers(self, installation_id: str) -> typing.Mapping[str, str]:
-        token = await self.get_token_for_install(installation_id=installation_id)
-        return dict(
-            Authorization=f"token {token}",
-            Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
-        )
-
-    def generate_jwt(self) -> str:
-        """
-        Create an authentication token to make application requests.
-        https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-a-github-app
-
-        This is different from authenticating as an installation
-        """
-        assert (
-            self.private_key is not None and self.app_identifier is not None
-        ), "we need a private key and app_identifier to generate a JWT"
-        issued_at = int(datetime.now().timestamp())
-        expiration = int((datetime.now() + timedelta(minutes=10)).timestamp())
-        payload = dict(iat=issued_at, exp=expiration, iss=self.app_identifier)
-        return jwt.encode(
-            payload=payload, key=self.private_key, algorithm="RS256"
-        ).decode()
-
-    async def get_token_for_install(self, installation_id: str) -> str:
-        """
-        https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
-        """
-        token = installation_cache.get(installation_id)
-        if token is not None and not token.expired:
-            return token.token
-        app_token = self.generate_jwt()
-        res = await http.post(
-            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
-            headers=dict(
-                Accept="application/vnd.github.machine-man-preview+json",
-                Authorization=f"Bearer {app_token}",
-            ),
-        )
-        assert res.status_code < 300
-        token_response = TokenResponse(**res.json())
-        installation_cache[installation_id] = token_response
-        return token_response.token
 
     async def send_query(
         self,
         query: str,
         variables: typing.Mapping[str, typing.Union[str, int, None]],
-        installation_id: typing.Optional[str] = None,
+        installation_id: str,
         remaining_retries: int = 4,
     ) -> typing.Optional[GraphQLResponse]:
         log = logger.bind(install=installation_id)
 
-        if installation_id:
-            token = await self.get_token_for_install(installation_id=installation_id)
-        else:
-            token = self.token or self.generate_jwt()
+        token = await get_token_for_install(installation_id=installation_id)
         self.session.headers["Authorization"] = f"Bearer {token}"
-        res = await self.session.post(
-            "https://api.github.com/graphql",
-            json=(dict(query=query, variables=variables)),
-        )
+        async with self.throttler:
+            res = await self.session.post(
+                "https://api.github.com/graphql",
+                json=(dict(query=query, variables=variables)),
+            )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
         rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
@@ -702,11 +624,12 @@ class Client:
         log = logger.bind(
             repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
         )
-        headers = await self.get_headers(self.installation_id)
-        res = await self.session.get(
-            f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
-            headers=headers,
-        )
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            res = await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
+                headers=headers,
+            )
         if res.status_code != 200:
             log.error("problem finding prs", res=res, res_json=res.json())
             return None
@@ -721,42 +644,46 @@ class Client:
             install=self.installation_id,
             branch=branch,
         )
-        headers = await self.get_headers(self.installation_id)
+        headers = await get_headers(installation_id=self.installation_id)
         ref = f"heads/{branch}"
-        res = await self.session.delete(
-            f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
-            headers=headers,
-        )
+        async with self.throttler:
+            res = await self.session.delete(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
+                headers=headers,
+            )
         if res.status_code != 204:
             log.error("problem deleting branch", res=res, res_json=res.json())
             return False
         return True
 
     async def merge_branch(self, head: str, base: str) -> http.Response:
-        headers = await self.get_headers(self.installation_id)
-        return await self.session.post(
-            f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
-            json=dict(head=head, base=base),
-            headers=headers,
-        )
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
+                json=dict(head=head, base=base),
+                headers=headers,
+            )
 
     async def get_pull_request(self, number: int) -> typing.Optional[dict]:
-        headers = await self.get_headers(self.installation_id)
+        headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
-        res = await self.session.get(url, headers=headers)
+        async with self.throttler:
+            res = await self.session.get(url, headers=headers)
         if not res.ok:
             return None
         return typing.cast(dict, res.json())
 
     async def merge_pull_request(self, number: int, body: dict) -> http.Response:
-        headers = await self.get_headers(self.installation_id)
+        headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
-        return await self.session.put(url, headers=headers, json=body)
+        async with self.throttler:
+            return await self.session.put(url, headers=headers, json=body)
 
     async def create_notification(
         self, head_sha: str, message: str, summary: typing.Optional[str] = None
     ) -> http.Response:
-        headers = await self.get_headers(self.installation_id)
+        headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
         body = dict(
             name=CHECK_RUN_NAME,
@@ -766,17 +693,73 @@ class Client:
             conclusion="neutral",
             output=dict(title=message, summary=summary or ""),
         )
-        return await self.session.post(url, headers=headers, json=body)
+        async with self.throttler:
+            return await self.session.post(url, headers=headers, json=body)
 
+
+# TODO: We probably don't need this client cache. We can probably simplify on just having a throttler cache
 CLIENT_CACHE: typing.MutableMapping[str, Client] = {}
+# installation_id => Throttler
+THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(lambda: Throttler(rate_limit=1))
+
 
 async def get_client_for_org(*, owner: str, repo: str, installation_id: str) -> Client:
     client = CLIENT_CACHE.get(installation_id)
     if client is None:
-        client = Client(owner=owner,repo=repo,installation_id=installation_id)
+        throttler = THROTTLER_CACHE[installation_id]
+        client = Client(
+            owner=owner, repo=repo, installation_id=installation_id, throttler=throttler
+        )
         CLIENT_CACHE[installation_id] = client
     return client
+
 
 async def close_clients() -> None:
     for client in CLIENT_CACHE.values():
         await client.session.close()
+
+
+def generate_jwt(*, private_key: str, app_identifier: str) -> str:
+    """
+    Create an authentication token to make application requests.
+    https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-a-github-app
+
+    This is different from authenticating as an installation
+    """
+    issued_at = int(datetime.now().timestamp())
+    expiration = int((datetime.now() + timedelta(minutes=10)).timestamp())
+    payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
+    return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
+
+
+async def get_token_for_install(*, installation_id: str) -> str:
+    """
+    https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
+    """
+    token = installation_cache.get(installation_id)
+    if token is not None and not token.expired:
+        return token.token
+    app_token = generate_jwt(
+        private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
+    )
+    # this is rate limited by our application rate limit. We shouldn't hit this often so it's probably not worthy of throttling.
+    # STATSD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    res = await http.post(
+        f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+        headers=dict(
+            Accept="application/vnd.github.machine-man-preview+json",
+            Authorization=f"Bearer {app_token}",
+        ),
+    )
+    assert res.status_code < 300
+    token_response = TokenResponse(**res.json())
+    installation_cache[installation_id] = token_response
+    return token_response.token
+
+
+async def get_headers(*, installation_id: str) -> typing.Mapping[str, str]:
+    token = await get_token_for_install(installation_id=installation_id)
+    return dict(
+        Authorization=f"token {token}",
+        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+    )

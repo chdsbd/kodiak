@@ -7,7 +7,7 @@ from sentry_asgi import SentryMiddleware
 
 from kodiak import queries
 from kodiak.github import Webhook, events
-from kodiak.queries import get_client_for_org, close_clients
+from kodiak.queries import close_clients, get_client_for_org
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
 sentry_sdk.init()

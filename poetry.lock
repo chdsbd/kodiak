@@ -73,6 +73,14 @@ type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
 
 [[package]]
+category = "main"
+description = "Simple, easy-to-use throttler for asyncio"
+name = "asyncio-throttle"
+optional = false
+python-versions = ">=3.5"
+version = "0.1.1"
+
+[[package]]
 category = "dev"
 description = "Atomic file writes."
 name = "atomicwrites"
@@ -807,7 +815,7 @@ python-versions = ">=2.7"
 version = "0.5.1"
 
 [metadata]
-content-hash = "4f3971e29406cff026f171f9c5702e99926b515bffd18862beb734f5e238dee5"
+content-hash = "4c240501046e6bc05c8f69a1c32a78598a524113c85b348956d3ca595f946700"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -818,6 +826,7 @@ asn1crypto = ["2f1adbb7546ed199e3c90ef23ec95c5cf3585bac7d11fb7eb562a3fe89c64e87"
 astroid = ["6560e1e1749f68c64a4b5dee4e091fce798d2f0d84ebe638cf0e0585a343acf4", "b65db1bbaac9f9f4d190199bb8680af6f6f84fd3769a5ea883df8a91fe68b4c4"]
 asyncio = ["83360ff8bc97980e4ff25c964c7bd3923d333d177aa4f7fb736b019f26c7cb41", "b62c9157d36187eca799c378e572c969f0da87cd5fc42ca372d92cdb06e7e1de", "c46a87b48213d7464f22d9a497b9eef8c1928b68320a2fa94240f969f6fec08c", "c4d18b22701821de07bd6aea8b53d21449ec0ec5680645e5317062ea21817d2d"]
 asyncio-redis = []
+asyncio-throttle = ["a01a56f3671e961253cf262918f3e0741e222fc50d57d981ba5c801f284eccfe"]
 atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
 attrs = ["69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79", "f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"]
 backcall = ["38ecd85be2c1e78f77fd91700c76e14667dc21e2713b63876c0eb901196e01e4", "bbbf4b1e5cd2bdb08f915895b51081c041bac22394fdfcfdfbe9f14b77c08bf2"]

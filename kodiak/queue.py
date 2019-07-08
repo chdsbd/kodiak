@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 import kodiak.app_config as conf
 from kodiak.pull_request import PR, MergeabilityResponse
+from kodiak.queries import get_client_for_org
 
 logger = structlog.get_logger()
 
@@ -65,11 +66,17 @@ async def pr_check_worker(
     If PR can be merged, add to its repo's merge queue
     """
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    client = await get_client_for_org(
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        installation_id=webhook_event.installation_id,
+    )
     pull_request = PR(
         owner=webhook_event.repo_owner,
         repo=webhook_event.repo_name,
         number=webhook_event.pull_request_number,
         installation_id=webhook_event.installation_id,
+        client=client,
     )
     # trigger status updates
     m_res, event = await pull_request.mergeability()
@@ -113,11 +120,17 @@ async def repo_queue_consumer(
         log.info("block for new repo event")
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+        client = await get_client_for_org(
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            installation_id=webhook_event.installation_id,
+        )
         pull_request = PR(
             owner=webhook_event.repo_owner,
             repo=webhook_event.repo_name,
             number=webhook_event.pull_request_number,
             installation_id=webhook_event.installation_id,
+            client=client,
         )
 
         while True:
