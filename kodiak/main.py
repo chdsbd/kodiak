@@ -7,7 +7,7 @@ from sentry_asgi import SentryMiddleware
 
 from kodiak import queries
 from kodiak.github import Webhook, events
-from kodiak.queries import close_clients, get_client_for_org
+from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
 sentry_sdk.init()
@@ -64,22 +64,22 @@ async def status_event(status_event: events.StatusEvent) -> None:
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
-    api_client = await get_client_for_org(
+    async with Client(
         owner=owner, repo=repo, installation_id=installation_id
-    )
-    prs = await api_client.get_pull_requests_for_sha(sha=sha)
-    if prs is None:
-        logger.warning("problem finding prs for sha")
-        return None
-    for pr in prs:
-        await redis_webhook_queue.enqueue(
-            event=WebhookEvent(
-                repo_owner=owner,
-                repo_name=repo,
-                pull_request_number=pr.number,
-                installation_id=str(installation_id),
+    ) as api_client:
+        prs = await api_client.get_pull_requests_for_sha(sha=sha)
+        if prs is None:
+            logger.warning("problem finding prs for sha")
+            return None
+        for pr in prs:
+            await redis_webhook_queue.enqueue(
+                event=WebhookEvent(
+                    repo_owner=owner,
+                    repo_name=repo,
+                    pull_request_number=pr.number,
+                    installation_id=str(installation_id),
+                )
             )
-        )
 
 
 @webhook()
@@ -98,8 +98,3 @@ async def pr_review(review: events.PullRequestReviewEvent) -> None:
 @app.on_event("startup")
 async def startup() -> None:
     await redis_webhook_queue.create()
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    await close_clients()

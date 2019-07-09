@@ -476,10 +476,7 @@ class Client:
     session: http.Session
     throttler: Throttler
 
-    # TODO(chdsbd): Remove non-github app features
-    def __init__(
-        self, *, owner: str, repo: str, installation_id: str, throttler: Throttler
-    ):
+    def __init__(self, *, owner: str, repo: str, installation_id: str):
 
         self.owner = owner
         self.repo = repo
@@ -487,10 +484,20 @@ class Client:
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
         self.session = http.Session()
-        self.throttler = throttler
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+
+    async def __aenter__(self) -> Client:
+        self.throttler = await get_thottler_for_installation(
+            installation_id=self.installation_id
+        )
+        return self
+
+    async def __aexit__(
+        self, exc_type: typing.Any, exc_value: typing.Any, traceback: typing.Any
+    ) -> None:
+        await self.session.close()
 
     async def send_query(
         self,
@@ -697,26 +704,14 @@ class Client:
             return await self.session.post(url, headers=headers, json=body)
 
 
-# TODO: We probably don't need this client cache. We can probably simplify on just having a throttler cache
-CLIENT_CACHE: typing.MutableMapping[str, Client] = {}
 # installation_id => Throttler
-THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(lambda: Throttler(rate_limit=1))
+THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(
+    lambda: Throttler(rate_limit=1)
+)
 
 
-async def get_client_for_org(*, owner: str, repo: str, installation_id: str) -> Client:
-    client = CLIENT_CACHE.get(installation_id)
-    if client is None:
-        throttler = THROTTLER_CACHE[installation_id]
-        client = Client(
-            owner=owner, repo=repo, installation_id=installation_id, throttler=throttler
-        )
-        CLIENT_CACHE[installation_id] = client
-    return client
-
-
-async def close_clients() -> None:
-    for client in CLIENT_CACHE.values():
-        await client.session.close()
+async def get_thottler_for_installation(*, installation_id: str) -> Throttler:
+    return THROTTLER_CACHE[installation_id]
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
