@@ -706,7 +706,7 @@ class Client:
 
 # installation_id => Throttler
 THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(
-    lambda: Throttler(rate_limit=1)
+    lambda: Throttler(rate_limit=5000 / 60 / 60)
 )
 
 
