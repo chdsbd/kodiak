@@ -706,6 +706,7 @@ class Client:
 
 # installation_id => Throttler
 THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(
+    # TODO(chdsbd): Store rate limits in redis and update via http rate limit response headers
     lambda: Throttler(rate_limit=5000 / 60 / 60)
 )
 
