@@ -9,7 +9,6 @@ import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
-from asyncio_throttle import Throttler
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
