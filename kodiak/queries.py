@@ -23,6 +23,7 @@ from kodiak.github import events
 logger = structlog.get_logger()
 
 CHECK_RUN_NAME = "kodiakhq: status"
+APPLICATION_ID = "kodiak"
 
 
 class ErrorLocation(TypedDict):
@@ -737,15 +738,19 @@ async def get_token_for_install(*, installation_id: str) -> str:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
-    # this is rate limited by our application rate limit. We shouldn't hit this often so it's probably not worthy of throttling.
-    # STATSD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    res = await http.post(
-        f"https://api.github.com/app/installations/{installation_id}/access_tokens",
-        headers=dict(
-            Accept="application/vnd.github.machine-man-preview+json",
-            Authorization=f"Bearer {app_token}",
-        ),
-    )
+    throttler = await get_thottler_for_installation(
+            # this isn't a real installation ID, but it provides rate limiting
+            # for our GithubApp instead of the installations we typically act as
+            installation_id=APPLICATION_ID
+        )
+    async with throttler:
+        res = await http.post(
+            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+            headers=dict(
+                Accept="application/vnd.github.machine-man-preview+json",
+                Authorization=f"Bearer {app_token}",
+            ),
+        )
     assert res.status_code < 300
     token_response = TokenResponse(**res.json())
     installation_cache[installation_id] = token_response
