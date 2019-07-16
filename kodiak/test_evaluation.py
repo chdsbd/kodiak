@@ -821,7 +821,10 @@ def test_app_id(
 
 
 def test_config_merge_optimistic_updates(
-    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    check_run: CheckRun,
 ) -> None:
     """
     If optimisitc_updates are enabled, branch updates should be prioritized over
@@ -849,6 +852,20 @@ def test_config_merge_optimistic_updates(
             reviews=[],
             contexts=contexts,
             check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    check_run.conclusion = CheckConclusionState.FAILURE
+    with pytest.raises(NotQueueable):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=contexts,
+            check_runs=[check_run],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
