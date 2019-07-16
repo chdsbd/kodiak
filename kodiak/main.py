@@ -66,8 +66,8 @@ async def status_event(status_event: events.StatusEvent) -> None:
     installation_id = str(status_event.installation.id)
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
-    ) as client:
-        prs = await client.get_pull_requests_for_sha(sha=sha)
+    ) as api_client:
+        prs = await api_client.get_pull_requests_for_sha(sha=sha)
         if prs is None:
             logger.warning("problem finding prs for sha")
             return None

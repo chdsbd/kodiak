@@ -13,12 +13,13 @@ from pydantic import BaseModel
 
 import kodiak.app_config as conf
 from kodiak.pull_request import PR, MergeabilityResponse
+from kodiak.queries import Client
 
 logger = structlog.get_logger()
 
 
-WEBHOOK_QUEUE_NAME = "kodiak_webhooks"
-QUEUE_SET_NAME = "kodiak_repo_set"
+MERGE_QUEUE_NAMES = "kodiak_merge_queue_names"
+WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 
 WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}
 
@@ -33,7 +34,7 @@ class WebhookEvent(BaseModel):
 
 
 async def webhook_event_consumer(
-    *, connection: RedisConnection, webhook_queue: RedisWebhookQueue
+    *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
 ) -> typing.NoReturn:
     """
     Worker to process incoming webhook events from redis
@@ -41,54 +42,43 @@ async def webhook_event_consumer(
     1. process mergeability information and update github check status for pr
     2. enqueue pr into repo queue for merging, if mergeability passed
     """
-    log = logger.bind(queue=WEBHOOK_QUEUE_NAME)
+    log = logger.bind(queue=queue_name)
     log.info("start webhook event consumer")
 
     while True:
         log.info("block for new webhook event")
-        webhook_event_json: BlockingZPopReply = await connection.bzpopmin(
-            [WEBHOOK_QUEUE_NAME]
-        )
-        # process event in separate task to increase concurrency
-        asyncio.create_task(
-            pr_check_worker(
-                webhook_event_json=webhook_event_json, webhook_queue=webhook_queue
+        webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+        webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+        async with Client(
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            installation_id=webhook_event.installation_id,
+        ) as api_client:
+            pull_request = PR(
+                owner=webhook_event.repo_owner,
+                repo=webhook_event.repo_name,
+                number=webhook_event.pull_request_number,
+                installation_id=webhook_event.installation_id,
+                client=api_client,
             )
-        )
+            # trigger status updates
+            m_res, event = await pull_request.mergeability()
+            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+                continue
+            if m_res not in (
+                MergeabilityResponse.NEEDS_UPDATE,
+                MergeabilityResponse.NEED_REFRESH,
+                MergeabilityResponse.WAIT,
+                MergeabilityResponse.OK,
+            ):
+                raise Exception("Unknown MergeabilityResponse")
 
-
-async def pr_check_worker(
-    *, webhook_event_json: BlockingZPopReply, webhook_queue: RedisWebhookQueue
-) -> None:
-    """
-    check status of PR
-    If PR can be merged, add to its repo's merge queue
-    """
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-    pull_request = PR(
-        owner=webhook_event.repo_owner,
-        repo=webhook_event.repo_name,
-        number=webhook_event.pull_request_number,
-        installation_id=webhook_event.installation_id,
-    )
-    # trigger status updates
-    m_res, event = await pull_request.mergeability()
-    if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-        return
-    if m_res not in (
-        MergeabilityResponse.NEEDS_UPDATE,
-        MergeabilityResponse.NEED_REFRESH,
-        MergeabilityResponse.WAIT,
-        MergeabilityResponse.OK,
-    ):
-        raise Exception("Unknown MergeabilityResponse")
-
-    # The following responses are okay to add to merge queue:
-    #   + NEEDS_UPDATE - okay for merging
-    #   + NEED_REFRESH - assume okay
-    #   + WAIT - assume checks pass
-    #   + OK - we've got the green
-    await webhook_queue.enqueue_for_repo(event=webhook_event)
+            # The following responses are okay to add to merge queue:
+            #   + NEEDS_UPDATE - okay for merging
+            #   + NEED_REFRESH - assume okay
+            #   + WAIT - assume checks pass
+            #   + OK - we've got the green
+            await webhook_queue.enqueue_for_repo(event=webhook_event)
 
 
 # TODO(chdsbd): Generalize this event processor boilerplate
@@ -113,58 +103,64 @@ async def repo_queue_consumer(
         log.info("block for new repo event")
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-        pull_request = PR(
+        async with Client(
             owner=webhook_event.repo_owner,
             repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
             installation_id=webhook_event.installation_id,
-        )
+        ) as api_client:
+            pull_request = PR(
+                owner=webhook_event.repo_owner,
+                repo=webhook_event.repo_name,
+                number=webhook_event.pull_request_number,
+                installation_id=webhook_event.installation_id,
+                client=api_client,
+            )
 
-        while True:
-            # there are two exits to this loop:
-            # - OK MergeabilityResponse
-            # - NOT_MERGEABLE MergeabilityResponse
-            #
-            # otherwise we continue to poll the Github API for a status change
-            # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
+            while True:
+                # there are two exits to this loop:
+                # - OK MergeabilityResponse
+                # - NOT_MERGEABLE MergeabilityResponse
+                #
+                # otherwise we continue to poll the Github API for a status change
+                # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
 
-            # TODO(chdsbd): Replace enum response with exceptions
-            m_res, event = await pull_request.mergeability()
-            log = log.bind(res=m_res)
-            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-                log.info("cannot merge")
-                break
-            if m_res == MergeabilityResponse.NEEDS_UPDATE:
-                # update pull request and poll for result
-                log.info("update pull request and don't attempt to merge")
-                await pull_request.update()
-                continue
-            elif m_res == MergeabilityResponse.NEED_REFRESH:
-                # trigger a git mergeability check on Github's end and poll for result
-                log.info("needs refresh")
-                await pull_request.trigger_mergeability_check()
-                continue
-            elif m_res == MergeabilityResponse.WAIT:
-                # continuously poll until we either get an OK or a failure for mergeability
-                log.info("waiting for status checks")
-                continue
-            elif m_res == MergeabilityResponse.OK:
-                # continue to try and merge
-                pass
-            else:
-                raise Exception("Unknown MergeabilityResponse")
-
-            retries = 5
-            while retries:
-                log.info("merge")
-                if await pull_request.merge(event):
-                    # success merging
+                # TODO(chdsbd): Replace enum response with exceptions
+                m_res, event = await pull_request.mergeability()
+                log = log.bind(res=m_res)
+                if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+                    log.info("cannot merge")
                     break
-                retries -= 1
-                log.info("retry merge")
-                await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
-            else:
-                log.error("Exhausted attempts to merge pull request")
+                if m_res == MergeabilityResponse.NEEDS_UPDATE:
+                    # update pull request and poll for result
+                    log.info("update pull request and don't attempt to merge")
+                    await pull_request.update()
+                    continue
+                elif m_res == MergeabilityResponse.NEED_REFRESH:
+                    # trigger a git mergeability check on Github's end and poll for result
+                    log.info("needs refresh")
+                    await pull_request.trigger_mergeability_check()
+                    continue
+                elif m_res == MergeabilityResponse.WAIT:
+                    # continuously poll until we either get an OK or a failure for mergeability
+                    log.info("waiting for status checks")
+                    continue
+                elif m_res == MergeabilityResponse.OK:
+                    # continue to try and merge
+                    pass
+                else:
+                    raise Exception("Unknown MergeabilityResponse")
+
+                retries = 5
+                while retries:
+                    log.info("merge")
+                    if await pull_request.merge(event):
+                        # success merging
+                        break
+                    retries -= 1
+                    log.info("retry merge")
+                    await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
+                else:
+                    log.error("Exhausted attempts to merge pull request")
 
 
 class RedisWebhookQueue:
@@ -185,18 +181,24 @@ class RedisWebhookQueue:
         )
 
         # restart repo workers
-        queues = await self.connection.smembers(QUEUE_SET_NAME)
-        for result in queues:
-            queue_name = await result
+        merge_queues, webhook_queues = await asyncio.gather(
+            self.connection.smembers(MERGE_QUEUE_NAMES),
+            self.connection.smembers(WEBHOOK_QUEUE_NAMES),
+        )
+        for merge_result in merge_queues:
+            queue_name = await merge_result
             self.start_repo_worker(queue_name)
 
-        # start webhook worker
-        self.start_webhook_worker()
+        for webhook_result in webhook_queues:
+            queue_name = await webhook_result
+            self.start_webhook_worker(queue_name=queue_name)
 
-    def start_webhook_worker(self) -> None:
+    def start_webhook_worker(self, *, queue_name: str) -> None:
         self._start_worker(
-            WEBHOOK_QUEUE_NAME,
-            webhook_event_consumer(connection=self.connection, webhook_queue=self),
+            queue_name,
+            webhook_event_consumer(
+                connection=self.connection, webhook_queue=self, queue_name=queue_name
+            ),
         )
 
     def start_repo_worker(self, queue_name: str) -> None:
@@ -219,28 +221,38 @@ class RedisWebhookQueue:
         # create new task for queue
         WORKER_TASKS[key] = asyncio.create_task(fut)
 
-    @staticmethod
-    def get_queue_key(event: WebhookEvent) -> str:
-        return f"kodiak_repo_queue:{event.repo_owner}/{event.repo_name}"
-
     async def enqueue(self, *, event: WebhookEvent) -> None:
         """
         add :event: to webhook queue
         """
-        await self.connection.zadd(WEBHOOK_QUEUE_NAME, {event.json(): time.time()})
+        queue_name = get_webhook_queue_name(event)
+        transaction = await self.connection.multi()
+        await transaction.sadd(WEBHOOK_QUEUE_NAMES, [queue_name])
+        await transaction.zadd(queue_name, {event.json(): time.time()})
+        await transaction.exec()
+
+        self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(self, *, event: WebhookEvent) -> None:
         """
         1. get the corresponding repo queue for event
-        2. add key to QUEUE_SET_NAME so on restart we can recreate the
+        2. add key to MERGE_QUEUE_NAMES so on restart we can recreate the
         worker for the queue.
         3. add event
         4. start worker (will create new worker if one does not exist)
         """
-        key = self.get_queue_key(event)
+        key = get_merge_queue_name(event)
         transaction = await self.connection.multi()
-        await transaction.sadd(QUEUE_SET_NAME, [key])
+        await transaction.sadd(MERGE_QUEUE_NAMES, [key])
         await transaction.zadd(key, {event.json(): time.time()})
         await transaction.exec()
 
         self.start_repo_worker(key)
+
+
+def get_merge_queue_name(event: WebhookEvent) -> str:
+    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}"
+
+
+def get_webhook_queue_name(event: WebhookEvent) -> str:
+    return f"webhook:{event.installation_id}"

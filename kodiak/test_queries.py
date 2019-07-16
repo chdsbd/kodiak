@@ -4,6 +4,7 @@ from pathlib import Path
 
 import arrow
 import pytest
+from pytest_mock import MockFixture
 
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
@@ -25,6 +26,7 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
 )
+from kodiak.test_utils import wrap_future
 
 
 @pytest.fixture
@@ -35,27 +37,17 @@ def private_key() -> str:
 
 
 @pytest.mark.asyncio
-async def test_generate_jwt(private_key: str) -> None:
-    async with Client(
-        repo="foo",
-        owner="foo",
-        installation_id="foo",
-        private_key=private_key,
-        app_identifier="29196",
-    ) as api:
-        assert api.generate_jwt() is not None
+async def test_get_default_branch_name_error(
+    api_client: Client, mocker: MockFixture
+) -> None:
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
+    )
 
-
-@pytest.mark.asyncio
-async def test_get_default_branch_name_error(mock_client: typing.Type[Client]) -> None:
-    # TODO(chdsbd): Using patching instead of inheritance
-    class MockClient(mock_client):  # type: ignore
-        async def send_query(*args: typing.Any, **kwargs: typing.Any) -> dict:
-            return dict(data=None, errors=[{"test": 123}])
-
-    async with MockClient() as client:
-        res = await client.get_default_branch_name()
-        assert res is None
+    res = await api_client.get_default_branch_name()
+    assert res is None
 
 
 @pytest.fixture
@@ -179,27 +171,26 @@ def block_event() -> EventInfoResponse:
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
-    mock_client: typing.Type[Client],
+    api_client: Client,
     blocked_response: dict,
     block_event: EventInfoResponse,
+    mocker: MockFixture,
 ) -> None:
     # TODO(sbdchd): we should use monkeypatching
     # mypy doesn't handle this circular type
-    class MockClient(mock_client):  # type: ignore
-        async def send_query(
-            self,
-            query: str,
-            variables: typing.Mapping[str, typing.Union[str, int, None]],
-            installation_id: typing.Optional[str] = None,
-            remaining_retries: int = 4,
-        ) -> GraphQLResponse:
-            return GraphQLResponse(
+
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(
+            GraphQLResponse(
                 data=blocked_response.get("data"), errors=blocked_response.get("errors")
             )
+        ),
+    )
 
-    async with MockClient() as client:
-        res = await client.get_event_info(
-            config_file_expression="master:.kodiak.toml", pr_number=100
-        )
-        assert res is not None
-        assert res == block_event
+    res = await api_client.get_event_info(
+        config_file_expression="master:.kodiak.toml", pr_number=100
+    )
+    assert res is not None
+    assert res == block_event

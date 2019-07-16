@@ -1,13 +1,13 @@
-import typing
 from datetime import datetime
-from pathlib import Path
 
 import pytest
+from pytest_mock import MockFixture
 from starlette.testclient import TestClient
 
 from kodiak import queries
 from kodiak.config import V1
 from kodiak.main import app
+from kodiak.queries import Client
 
 
 @pytest.fixture
@@ -129,28 +129,7 @@ def event_response(
 
 
 @pytest.fixture
-def mock_client(
-    event_response: queries.EventInfoResponse
-) -> typing.Type[queries.Client]:
-    class MockClient(queries.Client):
-        def __init__(
-            self,
-            token: typing.Optional[str] = None,
-            private_key: typing.Optional[str] = None,
-            private_key_path: typing.Optional[Path] = None,
-            app_identifier: typing.Optional[str] = None,
-        ) -> None:
-            super().__init__(
-                installation_id="foo",
-                owner="foo",
-                repo="foo",
-                token="abc123",
-                private_key=private_key,
-                private_key_path=private_key_path,
-                app_identifier=app_identifier,
-            )
-
-        async def send_query(*args: typing.Any, **kwargs: typing.Any) -> None:
-            raise NotImplementedError
-
-    return MockClient
+def api_client(mocker: MockFixture) -> Client:
+    client = Client(installation_id="foo", owner="foo", repo="foo")
+    mocker.patch.object(client, "send_query")
+    return client
