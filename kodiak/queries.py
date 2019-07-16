@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import typing
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -19,6 +18,7 @@ from starlette import status
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.github import events
+from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
 
@@ -702,17 +702,6 @@ class Client:
         )
         async with self.throttler:
             return await self.session.post(url, headers=headers, json=body)
-
-
-# installation_id => Throttler
-THROTTLER_CACHE: typing.Mapping[str, Throttler] = defaultdict(
-    # TODO(chdsbd): Store rate limits in redis and update via http rate limit response headers
-    lambda: Throttler(rate_limit=5000 / 60 / 60)
-)
-
-
-async def get_thottler_for_installation(*, installation_id: str) -> Throttler:
-    return THROTTLER_CACHE[installation_id]
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
