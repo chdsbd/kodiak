@@ -739,10 +739,10 @@ async def get_token_for_install(*, installation_id: str) -> str:
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
     throttler = await get_thottler_for_installation(
-            # this isn't a real installation ID, but it provides rate limiting
-            # for our GithubApp instead of the installations we typically act as
-            installation_id=APPLICATION_ID
-        )
+        # this isn't a real installation ID, but it provides rate limiting
+        # for our GithubApp instead of the installations we typically act as
+        installation_id=APPLICATION_ID
+    )
     async with throttler:
         res = await http.post(
             f"https://api.github.com/app/installations/{installation_id}/access_tokens",
