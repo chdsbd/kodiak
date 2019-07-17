@@ -44,7 +44,7 @@ class GraphQLResponse(TypedDict):
 
 
 @dataclass
-class ServerError(BaseException):
+class ServerError(Exception):
     response: Response
 
 

@@ -35,7 +35,7 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-class Queueable(BaseException):
+class Queueable(Exception):
     pass
 
 
@@ -51,25 +51,30 @@ class WaitingForChecks(Queueable):
     pass
 
 
-class NotQueueable(BaseException):
+class NotQueueable(Exception):
     pass
 
 
-class MissingAppID(BaseException):
+class MissingAppID(Exception):
     """
     Application app_id doesn't match configuration
 
     We do _not_ want to display this message to users as it could clobber
     another instance of kodiak.
     """
+    def __str__(self) -> str:
+        return "missing Github app id"
 
 
-class BranchMerged(BaseException):
+
+class BranchMerged(Exception):
     """branch has already been merged"""
 
+class MergeConflict(Exception):
+    """Merge conflict in PR."""
+    def __str__(self) -> str:
+        return "merge conflict"
 
-class MergeConflict(BaseException):
-    """Merge conflict in the PR."""
 
 
 def review_status(reviews: typing.List[PRReview]) -> PRReviewState:

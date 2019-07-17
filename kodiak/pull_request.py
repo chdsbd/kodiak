@@ -150,16 +150,13 @@ class PR:
                 valid_merge_methods=self.event.valid_merge_methods,
             )
             self.log.info("okay")
+            await self.set_status(summary="⛴ ready to merge")
             return MergeabilityResponse.OK, self.event
-        except MissingAppID:
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
-        except NotQueueable as e:
+        except (NotQueueable, MissingAppID, MergeConflict) as e:
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
-        except MergeConflict:
-            await self.set_status(summary="🛑 cannot merge", detail="merge conflict")
-            if self.event.config.merge.notify_on_conflict:
-                await self.notify_pr_creator()
+            if isinstance(e, MergeConflict):
+                if self.event.config.merge.notify_on_conflict:
+                    await self.notify_pr_creator()
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
