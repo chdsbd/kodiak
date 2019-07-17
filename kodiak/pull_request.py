@@ -158,7 +158,7 @@ class PR:
                 and self.event.config.merge.notify_on_conflict
             ):
                 await self.notify_pr_creator()
-            
+
             if (
                 isinstance(e, BranchMerged)
                 and self.event.config.merge.delete_branch_on_merge
