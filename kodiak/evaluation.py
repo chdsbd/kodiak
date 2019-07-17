@@ -35,7 +35,7 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-class Queueable(Exception):
+class Queueable(BaseException):
     pass
 
 
@@ -51,11 +51,11 @@ class WaitingForChecks(Queueable):
     pass
 
 
-class NotQueueable(Exception):
+class NotQueueable(BaseException):
     pass
 
 
-class MissingAppID(Exception):
+class MissingAppID(BaseException):
     """
     Application app_id doesn't match configuration
 
@@ -67,12 +67,12 @@ class MissingAppID(Exception):
         return "missing Github app id"
 
 
-class BranchMerged(Exception):
+class BranchMerged(BaseException):
     """branch has already been merged"""
 
 
-class MergeConflict(Exception):
-    """Merge conflict in PR."""
+class MergeConflict(BaseException):
+    """Merge conflict in the PR."""
 
     def __str__(self) -> str:
         return "merge conflict"
