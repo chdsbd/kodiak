@@ -153,12 +153,12 @@ class PR:
             await self.set_status(summary="⛴ ready to merge")
             return MergeabilityResponse.OK, self.event
         except (NotQueueable, MissingAppID, MergeConflict, BranchMerged) as e:
-            await self.set_status(summary="🛑 cannot merge", detail=str(e))
             if (
                 isinstance(e, MergeConflict)
                 and self.event.config.merge.notify_on_conflict
             ):
                 await self.notify_pr_creator()
+            
             if (
                 isinstance(e, BranchMerged)
                 and self.event.config.merge.delete_branch_on_merge
@@ -167,6 +167,7 @@ class PR:
                     branch=self.event.pull_request.headRefName
                 )
 
+            await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
