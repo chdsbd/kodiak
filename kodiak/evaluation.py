@@ -70,6 +70,9 @@ class MissingAppID(BaseException):
 class BranchMerged(BaseException):
     """branch has already been merged"""
 
+    def __str__(self) -> str:
+        return str(self.__doc__)
+
 
 class MergeConflict(BaseException):
     """Merge conflict in the PR."""
