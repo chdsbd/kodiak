@@ -62,19 +62,20 @@ class MissingAppID(Exception):
     We do _not_ want to display this message to users as it could clobber
     another instance of kodiak.
     """
+
     def __str__(self) -> str:
         return "missing Github app id"
-
 
 
 class BranchMerged(Exception):
     """branch has already been merged"""
 
+
 class MergeConflict(Exception):
     """Merge conflict in PR."""
+
     def __str__(self) -> str:
         return "merge conflict"
-
 
 
 def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
