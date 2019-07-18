@@ -100,8 +100,8 @@ async def webhook_event_consumer(
             if is_merging:
                 continue
             count = 1
-            for event in webhook_event_jsons:
-                if event == webhook_event_json.value:
+            for event_json in webhook_event_jsons:
+                if event_json == webhook_event_json.value:
                     position = inflection.ordinalize(count)
                     await pull_request.set_status(
                         f"📦 enqueued for merge (position={position})"
