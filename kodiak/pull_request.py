@@ -92,6 +92,7 @@ class PR:
         self.repo = repo
         self.installation_id = installation_id
         self.client = client
+        self.event = None
         self.log = logger.bind(repo=f"{owner}/{repo}#{number}")
 
     def __repr__(self) -> str:
@@ -118,6 +119,8 @@ class PR:
             message = f"{summary} ({detail})"
         else:
             message = summary
+        if self.event is None:
+            self.event = await self.get_event()
         assert self.event is not None
         await self.client.create_notification(
             head_sha=self.event.pull_request.latest_sha, message=message, summary=None
@@ -125,7 +128,7 @@ class PR:
 
     # TODO(chdsbd): Move set_status updates out of this method
     async def mergeability(
-        self
+        self, merging: bool = False
     ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
         self.log.info("get_event")
         self.event = await self.get_event()
@@ -150,7 +153,6 @@ class PR:
                 valid_merge_methods=self.event.valid_merge_methods,
             )
             self.log.info("okay")
-            await self.set_status(summary="⛴ ready to merge")
             return MergeabilityResponse.OK, self.event
         except (NotQueueable, MissingAppID, MergeConflict, BranchMerged) as e:
             if (
@@ -173,10 +175,16 @@ class PR:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
         except WaitingForChecks:
-            await self.set_status(summary="⏳ waiting for checks")
+            if merging:
+                await self.set_status(
+                    summary="⛴ attempting to merge PR", detail="waiting for checks"
+                )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            await self.set_status(summary="⏭ need update")
+            if merging:
+                await self.set_status(
+                    summary="⛴ attempting to merge PR", detail="updating branch"
+                )
             return MergeabilityResponse.NEEDS_UPDATE, self.event
 
     async def update(self) -> None:

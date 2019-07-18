@@ -32,6 +32,12 @@ class WebhookEvent(BaseModel):
     pull_request_number: int
     installation_id: str
 
+    def get_merge_queue_name(self) -> str:
+        return get_merge_queue_name(self)
+
+    def get_merge_target_queue_name(self) -> str:
+        return self.get_merge_queue_name() + ":target"
+
 
 async def webhook_event_consumer(
     *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
@@ -61,9 +67,17 @@ async def webhook_event_consumer(
                 installation_id=webhook_event.installation_id,
                 client=api_client,
             )
+            is_merging = (
+                await connection.get(webhook_event.get_merge_target_queue_name())
+                == webhook_event.json()
+            )
             # trigger status updates
             m_res, event = await pull_request.mergeability()
             if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+                # remove ineligible events from the merge queue
+                await connection.zrem(
+                    webhook_event.get_merge_queue_name(), [webhook_event.json()]
+                )
                 continue
             if m_res not in (
                 MergeabilityResponse.NEEDS_UPDATE,
@@ -73,6 +87,9 @@ async def webhook_event_consumer(
             ):
                 raise Exception("Unknown MergeabilityResponse")
 
+            # don't clobber statuses set in the merge loop
+            if not is_merging:
+                await pull_request.set_status("📦 enqueued for merge")
             # The following responses are okay to add to merge queue:
             #   + NEEDS_UPDATE - okay for merging
             #   + NEED_REFRESH - assume okay
@@ -103,6 +120,10 @@ async def repo_queue_consumer(
         log.info("block for new repo event")
         webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
         webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+        # mark this PR as being merged currently. we check this elsewhere to set proper status codes
+        await connection.set(
+            webhook_event.get_merge_target_queue_name(), webhook_event.json()
+        )
         async with Client(
             owner=webhook_event.repo_owner,
             repo=webhook_event.repo_name,
@@ -116,6 +137,8 @@ async def repo_queue_consumer(
                 client=api_client,
             )
 
+            # mark that we're working on this PR
+            await pull_request.set_status(summary="⛴ attempting to merge PR")
             while True:
                 # there are two exits to this loop:
                 # - OK MergeabilityResponse
@@ -125,7 +148,7 @@ async def repo_queue_consumer(
                 # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
 
                 # TODO(chdsbd): Replace enum response with exceptions
-                m_res, event = await pull_request.mergeability()
+                m_res, event = await pull_request.mergeability(merging=True)
                 log = log.bind(res=m_res)
                 if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
                     log.info("cannot merge")
