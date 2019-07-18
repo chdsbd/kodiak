@@ -38,9 +38,6 @@ class WebhookEvent(BaseModel):
     def get_merge_target_queue_name(self) -> str:
         return self.get_merge_queue_name() + ":target"
 
-    def get_webhook_queue_name(self) -> str:
-        return get_webhook_queue_name(self)
-
 
 async def webhook_event_consumer(
     *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
