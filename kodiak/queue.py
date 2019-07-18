@@ -5,6 +5,7 @@ import time
 import typing
 
 import asyncio_redis
+import inflection
 import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
@@ -88,14 +89,25 @@ async def webhook_event_consumer(
                 raise Exception("Unknown MergeabilityResponse")
 
             # don't clobber statuses set in the merge loop
-            if not is_merging:
-                await pull_request.set_status("📦 enqueued for merge")
             # The following responses are okay to add to merge queue:
             #   + NEEDS_UPDATE - okay for merging
             #   + NEED_REFRESH - assume okay
             #   + WAIT - assume checks pass
             #   + OK - we've got the green
-            await webhook_queue.enqueue_for_repo(event=webhook_event)
+            webhook_event_jsons = await webhook_queue.enqueue_for_repo(
+                event=webhook_event
+            )
+            if is_merging:
+                continue
+            count = 1
+            for event in webhook_event_jsons:
+                if event == webhook_event_json.value:
+                    position = inflection.ordinalize(count)
+                    await pull_request.set_status(
+                        f"📦 enqueued for merge (position={position})"
+                    )
+                    continue
+                count += 1
 
 
 # TODO(chdsbd): Generalize this event processor boilerplate
@@ -251,12 +263,14 @@ class RedisWebhookQueue:
         queue_name = get_webhook_queue_name(event)
         transaction = await self.connection.multi()
         await transaction.sadd(WEBHOOK_QUEUE_NAMES, [queue_name])
-        await transaction.zadd(queue_name, {event.json(): time.time()})
+        await transaction.zadd(
+            queue_name, {event.json(): time.time()}, only_if_not_exists=True
+        )
         await transaction.exec()
 
         self.start_webhook_worker(queue_name=queue_name)
 
-    async def enqueue_for_repo(self, *, event: WebhookEvent) -> None:
+    async def enqueue_for_repo(self, *, event: WebhookEvent) -> typing.List[str]:
         """
         1. get the corresponding repo queue for event
         2. add key to MERGE_QUEUE_NAMES so on restart we can recreate the
@@ -267,10 +281,19 @@ class RedisWebhookQueue:
         key = get_merge_queue_name(event)
         transaction = await self.connection.multi()
         await transaction.sadd(MERGE_QUEUE_NAMES, [key])
-        await transaction.zadd(key, {event.json(): time.time()})
+        await transaction.zadd(
+            key, {event.json(): time.time()}, only_if_not_exists=True
+        )
+        future_results = await transaction.zrange(key, 0, 1000)
         await transaction.exec()
 
         self.start_repo_worker(key)
+        results = await future_results
+        dictionary = await results.asdict()
+        kvs = sorted(
+            ((key, value) for key, value in dictionary.items()), key=lambda x: x[1]
+        )
+        return [key for key, value in kvs]
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
