@@ -40,6 +40,18 @@ class WebhookEvent(BaseModel):
         return self.get_merge_queue_name() + ":target"
 
 
+T = typing.TypeVar("T")
+
+
+def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
+    count = 0
+    for item in x:
+        if item == v:
+            return count
+        count += 1
+    return None
+
+
 async def webhook_event_consumer(
     *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
 ) -> typing.NoReturn:
@@ -99,15 +111,15 @@ async def webhook_event_consumer(
             )
             if is_merging:
                 continue
-            count = 1
-            for event_json in webhook_event_jsons:
-                if event_json == webhook_event_json.value:
-                    position = inflection.ordinalize(count)
-                    await pull_request.set_status(
-                        f"📦 enqueued for merge (position={position})"
-                    )
-                    continue
-                count += 1
+
+            position = find_position(webhook_event_jsons, webhook_event_json.value)
+            if position is None:
+                continue
+            # use 1-based indexing
+            humanized_position = inflection.ordinalize(position + 1)
+            await pull_request.set_status(
+                f"📦 enqueued for merge (position={humanized_position})"
+            )
 
 
 # TODO(chdsbd): Generalize this event processor boilerplate
