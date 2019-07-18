@@ -289,6 +289,14 @@ version = "0.18"
 zipp = ">=0.5"
 
 [[package]]
+category = "main"
+description = "A port of Ruby on Rails inflector to Python"
+name = "inflection"
+optional = false
+python-versions = "*"
+version = "0.3.1"
+
+[[package]]
 category = "dev"
 description = "IPython-enabled pdb"
 name = "ipdb"
@@ -815,7 +823,7 @@ python-versions = ">=2.7"
 version = "0.5.1"
 
 [metadata]
-content-hash = "4c240501046e6bc05c8f69a1c32a78598a524113c85b348956d3ca595f946700"
+content-hash = "94a835554002f8a730b4697095508b5e7ff97a1c01d5315bcf3d048869c38b1f"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -848,6 +856,7 @@ httpcore = ["e3d5d110f49012dd3f1980ba5779f91170457cde43851e531e56e6eb08f05357"]
 httptools = ["e00cbd7ba01ff748e494248183abc6e153f49181169d8a3d41bb49132ca01dfc"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 importlib-metadata = ["6dfd58dfe281e8d240937776065dd3624ad5469c835248219bd16cf2e12dbeb7", "cb6ee23b46173539939964df59d3d72c3e0c1b5d54b84f1d8a7e912fe43612db"]
+inflection = ["18ea7fb7a7d152853386523def08736aa8c32636b047ade55f7578c4edeb16ca"]
 ipdb = ["dce2112557edfe759742ca2d0fee35c59c97b0cc7a05398b791079d78f1519ce"]
 ipython = ["54c5a8aa1eadd269ac210b96923688ccf01ebb2d0f21c18c3c717909583579a8", "e840810029224b56cd0d9e7719dc3b39cf84d577f8ac686547c8ba7a06eeab26"]
 ipython-genutils = ["72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8", "eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"]
