@@ -154,7 +154,7 @@ class PR:
             )
             self.log.info("okay")
             return MergeabilityResponse.OK, self.event
-        except (NotQueueable, MissingAppID, MergeConflict, BranchMerged) as e:
+        except (NotQueueable, MergeConflict, BranchMerged) as e:
             if (
                 isinstance(e, MergeConflict)
                 and self.event.config.merge.notify_on_conflict
@@ -170,6 +170,8 @@ class PR:
                 )
 
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
