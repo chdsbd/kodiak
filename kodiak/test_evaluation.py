@@ -894,6 +894,7 @@ def test_merge_state_status_draft(
             valid_merge_methods=[MergeMethod.squash],
         )
 
+
 def test_missing_branch_protection(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
 ) -> None:
@@ -914,6 +915,7 @@ def test_missing_branch_protection(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
 
 def test_missing_branch_protection_config_ignore_missing_branch_protection(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
