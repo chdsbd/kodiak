@@ -146,7 +146,7 @@ def test_blacklist_title_match(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
-        assert merge.blacklist_title_regex in e_info.value.message
+    assert config.merge.blacklist_title_regex in e_info.value.message
 
 
 def test_bad_merge_method_config(
@@ -918,7 +918,7 @@ def test_missing_branch_protection(
 
 
 def test_missing_branch_protection_config_ignore_missing_branch_protection(
-    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+    pull_request: PullRequest, config: V1
 ) -> None:
     """
     If branch protection is missing but ignore_missing_branch_protection is

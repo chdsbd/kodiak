@@ -1,6 +1,7 @@
 import re
 import typing
 from collections import defaultdict
+from typing import Optional
 
 import structlog
 
@@ -100,7 +101,7 @@ def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
 def mergeable(
     config: config.V1,
     pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
+    branch_protection: Optional[BranchProtectionRule],
     review_requests_count: int,
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
