@@ -132,7 +132,7 @@ def test_blacklist_title_match(
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted title should not be mergeable
-    with pytest.raises(NotQueueable, match="blacklist_title"):
+    with pytest.raises(NotQueueable, match="blacklist_title") as e_info:
         config.merge.blacklist_title_regex = "^WIP:.*"
         pull_request.title = "WIP: add fleeb to plumbus"
         mergeable(
@@ -146,6 +146,7 @@ def test_blacklist_title_match(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert config.merge.blacklist_title_regex in str(e_info.value)
 
 
 def test_bad_merge_method_config(
@@ -882,6 +883,26 @@ def test_merge_state_status_draft(
     with pytest.raises(NotQueueable, match="draft state"):
         mergeable(
             app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=[],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_missing_branch_protection(pull_request: PullRequest, config: V1) -> None:
+    """
+    We don't want to do anything if branch protection is missing
+    """
+
+    branch_protection = None
+    with pytest.raises(NotQueueable, match="missing branch protection"):
+        mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,

@@ -1,6 +1,7 @@
 import re
 import typing
 from collections import defaultdict
+from typing import Optional
 
 import structlog
 
@@ -100,7 +101,7 @@ def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
 def mergeable(
     config: config.V1,
     pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
+    branch_protection: Optional[BranchProtectionRule],
     review_requests_count: int,
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
@@ -124,6 +125,11 @@ def mergeable(
     # if our app_id from the environment matches the configuration.
     if config.app_id is not None and config.app_id != app_id:
         raise MissingAppID("missing required app_id")
+
+    if branch_protection is None:
+        raise NotQueueable(
+            f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
+        )
 
     if config.merge.automerge_label not in pull_request.labels:
         raise NotQueueable(
