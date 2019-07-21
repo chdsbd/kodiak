@@ -127,3 +127,21 @@ def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
     )
     expected = dict(merge_method="squash")
     assert actual == expected
+
+
+def test_get_merge_body_strip_html_comments(pull_request: queries.PullRequest) -> None:
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body, strip_html_comments=True
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = dict(merge_method="squash", commit_message="hello world")
+    assert actual == expected
