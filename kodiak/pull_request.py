@@ -33,13 +33,25 @@ class MergeabilityResponse(Enum):
     WAIT = auto()
 
 
-def strip_html_comments(message: str) -> str:
+def strip_html_comments_from_markdown(message: str) -> str:
+    """
+    1. parse string into a markdown AST
+    2. find the HTML nodes
+    3. parse HTML nodes into HTML
+    4. find comments in HTML
+    5. slice out comments from original message
+    """
     return message
 
 
-def get_body_content(body_type: BodyText, pull_request: PullRequest) -> str:
+def get_body_content(
+    body_type: BodyText, strip_html_comments: bool, pull_request: PullRequest
+) -> str:
     if body_type == BodyText.markdown:
-        return pull_request.body
+        body = pull_request.body
+        if strip_html_comments:
+            body = strip_html_comments_from_markdown(body)
+        return body
     if body_type == BodyText.plain_text:
         return pull_request.bodyText
     if body_type == BodyText.html:
@@ -51,8 +63,6 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     merge_body: dict = {"merge_method": config.merge.method.value}
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(config.merge.message.body_type, pull_request)
-        if config.merge.message.strip_html_comments:
-            body = strip_html_comments(body)
         merge_body.update(dict(commit_message=body))
     if config.merge.message.title == MergeTitleStyle.pull_request_title:
         merge_body.update(dict(commit_title=pull_request.title))
