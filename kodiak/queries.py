@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import typing
-from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from typing import Optional
 
 import arrow
 import jwt
