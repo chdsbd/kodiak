@@ -17,3 +17,4 @@ title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"
 include_pr_number = false # default: true
 body_type = "plain_text" # default: "markdown"
+strip_html_comments = true # default: false

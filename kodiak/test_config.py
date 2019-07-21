@@ -54,6 +54,7 @@ def test_config_parsing_opposite() -> None:
                 body=MergeBodyStyle.pull_request_body,
                 include_pr_number=False,
                 body_type=BodyText.plain_text,
+                strip_html_comments=True
             ),
         ),
     )
