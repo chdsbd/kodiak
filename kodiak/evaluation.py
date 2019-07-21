@@ -7,6 +7,15 @@ import structlog
 
 from kodiak import config
 from kodiak.config import MergeMethod
+from kodiak.errors import (
+    BranchMerged,
+    MergeConflict,
+    MissingAppID,
+    MissingGithubMergeabilityState,
+    NeedsBranchUpdate,
+    NotQueueable,
+    WaitingForChecks,
+)
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -34,52 +43,6 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     if cfg.merge.method == config.MergeMethod.rebase:
         return repo.rebase_merge_allowed
     raise TypeError("Unknown value")
-
-
-class Queueable(BaseException):
-    pass
-
-
-class MissingGithubMergeabilityState(Queueable):
-    """Github hasn't evaluated if this PR can be merged without conflicts yet"""
-
-
-class NeedsBranchUpdate(Queueable):
-    pass
-
-
-class WaitingForChecks(Queueable):
-    pass
-
-
-class NotQueueable(BaseException):
-    pass
-
-
-class MissingAppID(BaseException):
-    """
-    Application app_id doesn't match configuration
-
-    We do _not_ want to display this message to users as it could clobber
-    another instance of kodiak.
-    """
-
-    def __str__(self) -> str:
-        return "missing Github app id"
-
-
-class BranchMerged(BaseException):
-    """branch has already been merged"""
-
-    def __str__(self) -> str:
-        return str(self.__doc__)
-
-
-class MergeConflict(BaseException):
-    """Merge conflict in the PR."""
-
-    def __str__(self) -> str:
-        return "merge conflict"
 
 
 def review_status(reviews: typing.List[PRReview]) -> PRReviewState:

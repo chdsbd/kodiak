@@ -4,7 +4,7 @@ from typing import List
 import pytest
 
 from kodiak.config import V1, MergeMethod
-from kodiak.evaluation import (
+from kodiak.errors import (
     BranchMerged,
     MergeConflict,
     MissingAppID,
@@ -12,8 +12,8 @@ from kodiak.evaluation import (
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
-    mergeable,
 )
+from kodiak.evaluation import mergeable
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
