@@ -62,7 +62,11 @@ def get_body_content(
 def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     merge_body: dict = {"merge_method": config.merge.method.value}
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
-        body = get_body_content(config.merge.message.body_type, pull_request)
+        body = get_body_content(
+            config.merge.message.body_type,
+            config.merge.message.strip_html_comments,
+            pull_request,
+        )
         merge_body.update(dict(commit_message=body))
     if config.merge.message.title == MergeTitleStyle.pull_request_title:
         merge_body.update(dict(commit_title=pull_request.title))
