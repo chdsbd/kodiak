@@ -138,7 +138,7 @@ def mergeable(
         and re.search(config.merge.blacklist_title_regex, pull_request.title)
         is not None
     ):
-        raise NotQueueable("title matches blacklist_title_regex")
+        raise NotQueueable(f"title matches blacklist_title_regex: {config.merge.blacklist_title_regex!r}")
 
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
         raise NotQueueable("pull request is in draft state")
