@@ -13,7 +13,6 @@ import structlog
 from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
-from requests_async import Response
 from starlette import status
 
 import kodiak.app_config as conf
@@ -42,11 +41,6 @@ class GraphQLError(TypedDict):
 class GraphQLResponse(TypedDict):
     data: typing.Optional[typing.Dict[typing.Any, typing.Any]]
     errors: typing.Optional[typing.List[GraphQLError]]
-
-
-@dataclass
-class ServerError(BaseException):
-    response: Response
 
 
 DEFAULT_BRANCH_NAME_QUERY = """

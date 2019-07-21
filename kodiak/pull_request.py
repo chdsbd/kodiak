@@ -8,7 +8,7 @@ import structlog
 import kodiak.app_config as conf
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
-from kodiak.evaluation import (
+from kodiak.errors import (
     BranchMerged,
     MergeConflict,
     MissingAppID,
@@ -16,8 +16,8 @@ from kodiak.evaluation import (
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
-    mergeable,
 )
+from kodiak.evaluation import mergeable
 from kodiak.queries import EventInfoResponse, PullRequest, get_headers
 
 logger = structlog.get_logger()
