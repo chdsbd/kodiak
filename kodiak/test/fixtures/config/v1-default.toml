@@ -10,7 +10,6 @@ delete_branch_on_merge = false
 block_on_reviews_requested = false
 notify_on_conflict = true
 optimistic_updates = true
-ignore_missing_branch_protection = true
 
 [merge.message]
 title = "github_default"

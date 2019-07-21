@@ -915,26 +915,3 @@ def test_missing_branch_protection(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
-
-
-def test_missing_branch_protection_config_ignore_missing_branch_protection(
-    pull_request: PullRequest, config: V1
-) -> None:
-    """
-    If branch protection is missing but ignore_missing_branch_protection is
-    enabled, continue on anyway
-    """
-
-    branch_protection = None
-    config.merge.ignore_missing_branch_protection = True
-    mergeable(
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests_count=0,
-        reviews=[],
-        contexts=[],
-        check_runs=[],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-    )
