@@ -14,18 +14,15 @@ class Queueable(KodiakException):
     pass
 
 
-# TODO(sbdchd): do these need to inherit from Queueable?
-
-
-class MissingGithubMergeabilityState(Queueable):
+class MissingGithubMergeabilityState(KodiakException):
     """Github hasn't evaluated if this PR can be merged without conflicts yet"""
 
 
-class NeedsBranchUpdate(Queueable):
+class NeedsBranchUpdate(KodiakException):
     pass
 
 
-class WaitingForChecks(Queueable):
+class WaitingForChecks(KodiakException):
     pass
 
 
