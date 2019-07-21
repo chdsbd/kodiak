@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -219,7 +220,7 @@ class EventInfoResponse:
     config: V1
     pull_request: PullRequest
     repo: RepoInfo
-    branch_protection: BranchProtectionRule
+    branch_protection: Optional[BranchProtectionRule]
     review_requests_count: int
     head_exists: bool
     reviews: typing.List[PRReview] = field(default_factory=list)
@@ -603,9 +604,6 @@ class Client:
         branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
-        if branch_protection is None:
-            log.warning("Could not find branch protection")
-            return None
 
         return EventInfoResponse(
             config=config,

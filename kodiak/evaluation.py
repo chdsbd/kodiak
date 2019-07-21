@@ -125,6 +125,11 @@ def mergeable(
     if config.app_id is not None and config.app_id != app_id:
         raise MissingAppID("missing required app_id")
 
+    if branch_protection is None:
+        raise NotQueueable(
+            f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
+        )
+
     if config.merge.automerge_label not in pull_request.labels:
         raise NotQueueable(
             f"missing automerge_label: {repr(config.merge.automerge_label)}"
