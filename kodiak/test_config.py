@@ -49,6 +49,7 @@ def test_config_parsing_opposite() -> None:
             block_on_reviews_requested=True,
             notify_on_conflict=False,
             optimistic_updates=False,
+            ignore_missing_branch_protection=True,
             message=MergeMessage(
                 title=MergeTitleStyle.pull_request_title,
                 body=MergeBodyStyle.pull_request_body,

@@ -61,6 +61,8 @@ class Merge(BaseModel):
     optimistic_updates: bool = True
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
+    # enable kodiak even if branch protection is missing
+    ignore_missing_branch_protection: bool = False
 
 
 class InvalidVersion(ValueError):
