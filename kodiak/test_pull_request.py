@@ -141,6 +141,24 @@ def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
             "hello <span>  <p>  <!-- testing --> hello<!-- 123 --></p></span>world",
             "hello <span>  <p>   hello</p></span>world",
         ),
+        (
+            """\
+this is an example comment message with a comment from a PR template
+
+<!--
+- bullet one
+- bullet two
+- bullet three
+  + sub bullet one
+  + sub bullet two
+-->
+""",
+            """\
+this is an example comment message with a comment from a PR template
+
+
+""",
+        ),
     ],
 )
 def test_get_merge_body_strip_html_comments(
