@@ -13,7 +13,13 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
-from kodiak.pull_request import PR, MergeabilityResponse, get_merge_body
+from kodiak.pull_request import (
+    PR,
+    MergeabilityResponse,
+    get_merge_body,
+    join_adjacent_spans,
+    strip_html_comments_from_markdown,
+)
 from kodiak.test_utils import wrap_future
 
 
@@ -179,3 +185,43 @@ def test_get_merge_body_strip_html_comments(
     )
     expected = dict(merge_method="squash", commit_message="hello world")
     assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "original,stripped",
+    [
+        (
+            """\
+Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
+
+Totam dolor [exercitationem laborum](https://numquam.com)
+
+<!--
+- Voluptatem voluptas officiis
+- Voluptates nulla tempora
+- Officia distinctio ut ab
+  + Est ut voluptatum consequuntur recusandae aspernatur
+  + Quidem debitis atque dolorum est enim
+-->
+""",
+            """\
+Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
+
+Totam dolor [exercitationem laborum](https://numquam.com)
+
+
+""",
+        ),
+        (
+            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n<!--\r\n- Voluptatem voluptas officiis\r\n- Voluptates nulla tempora\r\n- Officia distinctio ut ab\r\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\r\n  + Quidem debitis atque dolorum est enim\r\n-->',
+            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n',
+        ),
+    ],
+)
+def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
+    assert strip_html_comments_from_markdown(original) == stripped
+
+
+@pytest.mark.parametrize("before,after", [([(0, 1), (1, 3), (4, 5)], [(0, 3), (4, 5)])])
+def test_join_adjacent_spans(before: str, after: str) -> None:
+    assert join_adjacent_spans(before) == after

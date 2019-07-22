@@ -58,21 +58,21 @@ class CommentHTMLParser(HTMLParser):
 
 html_parser = CommentHTMLParser()
 
-def join_adjacent_spans(spans):
-    new_spans = []
+
+def join_adjacent_spans(spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    new_spans: List[Tuple[int, int]] = []
     for i in range(len(spans)):
         cur_start, cur_end = spans[i]
         if not new_spans:
             new_spans.append([cur_start, cur_end])
             continue
 
-        prev_start, prev_end = new_spans[- 1]
+        prev_start, prev_end = new_spans[-1]
         if prev_end == cur_start:
-            new_spans[- 1][1] = cur_end
+            new_spans[-1][1] = cur_end
         else:
             new_spans.append([cur_start, cur_end])
     return list(tuple(span) for span in new_spans)
-
 
 
 def strip_html_comments_from_markdown(message: str) -> str:
@@ -83,13 +83,18 @@ def strip_html_comments_from_markdown(message: str) -> str:
     4. find comments in HTML
     5. slice out comments from original message
     """
-    html_node_positions = find_html_positions(message)
+    # HACK(chdsbd): Remove carriage returns so find_html_positions can process html correctly
+    # TODO(chdsbd): Improve markdown_html_finder so we don't need this hack and join_adjacent_spans
+    message = message.replace("\r\n", "\n")
+    html_node_positions = join_adjacent_spans(find_html_positions(message))
     comment_locations = []
-    for start, end in html_node_positions:
-        html_text = message[start:end]
+    for html_start, html_end in html_node_positions:
+        html_text = message[html_start:html_end]
         html_parser.feed(html_text)
         for comment_start, comment_end in html_parser.comments:
-            comment_locations.append((start + comment_start, start + comment_end))
+            comment_locations.append(
+                (html_start + comment_start, html_start + comment_end)
+            )
         html_parser.reset()
 
     new_message = message
