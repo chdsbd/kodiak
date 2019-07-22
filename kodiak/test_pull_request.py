@@ -239,5 +239,5 @@ def test_strip_html_comments_from_markdown_dont_remove_carriage_returns(
 
 
 @pytest.mark.parametrize("before,after", [([(0, 1), (1, 3), (4, 5)], [(0, 3), (4, 5)])])
-def test_join_adjacent_spans(before: str, after: str) -> None:
+def test_join_adjacent_spans(before: List[Tuple[int,int]], after: List[Tuple[int,int]]) -> None:
     assert join_adjacent_spans(before) == after
