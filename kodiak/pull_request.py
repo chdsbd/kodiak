@@ -59,22 +59,6 @@ class CommentHTMLParser(HTMLParser):
 html_parser = CommentHTMLParser()
 
 
-def join_adjacent_spans(spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-    new_spans: List[Tuple[int, int]] = []
-    for i in range(len(spans)):  # pylint: disable=consider-using-enumerate
-        cur_start, cur_end = spans[i]
-        if not new_spans:
-            new_spans.append((cur_start, cur_end))
-            continue
-
-        prev_start, prev_end = new_spans[-1]
-        if prev_end == cur_start:
-            new_spans[-1] = (prev_start, cur_end)
-        else:
-            new_spans.append((cur_start, cur_end))
-    return new_spans
-
-
 def strip_html_comments_from_markdown(message: str) -> str:
     """
     1. parse string into a markdown AST
@@ -83,10 +67,11 @@ def strip_html_comments_from_markdown(message: str) -> str:
     4. find comments in HTML
     5. slice out comments from original message
     """
-    # HACK(chdsbd): Remove carriage returns so find_html_positions can process html correctly
-    # TODO(chdsbd): Improve markdown_html_finder so we don't need this hack and join_adjacent_spans
-    message = message.replace("\r\n", "\n")
-    html_node_positions = join_adjacent_spans(find_html_positions(message))
+    # NOTE(chdsbd): Remove carriage returns so find_html_positions can process
+    # html correctly. pulldown-cmark doesn't handle carriage returns well.
+    # remark-parse also doesn't handle carriage returns:
+    # https://github.com/remarkjs/remark/issues/195#issuecomment-230760892
+    html_node_positions = find_html_positions(message)
     comment_locations = []
     for html_start, html_end in html_node_positions:
         html_text = message[html_start:html_end]

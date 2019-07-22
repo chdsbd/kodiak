@@ -18,7 +18,6 @@ from kodiak.pull_request import (
     PR,
     MergeabilityResponse,
     get_merge_body,
-    join_adjacent_spans,
     strip_html_comments_from_markdown,
 )
 from kodiak.test_utils import wrap_future
@@ -223,7 +222,6 @@ def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None
     assert strip_html_comments_from_markdown(original) == stripped
 
 
-@pytest.mark.skip(reason="we have some hacks to make this work right now")
 @pytest.mark.parametrize(
     "original,stripped",
     [
@@ -237,10 +235,3 @@ def test_strip_html_comments_from_markdown_dont_remove_carriage_returns(
     original: str, stripped: str
 ) -> None:
     assert strip_html_comments_from_markdown(original) == stripped
-
-
-@pytest.mark.parametrize("before,after", [([(0, 1), (1, 3), (4, 5)], [(0, 3), (4, 5)])])
-def test_join_adjacent_spans(
-    before: List[Tuple[int, int]], after: List[Tuple[int, int]]
-) -> None:
-    assert join_adjacent_spans(before) == after
