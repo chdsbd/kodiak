@@ -64,15 +64,15 @@ def join_adjacent_spans(spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     for i in range(len(spans)):
         cur_start, cur_end = spans[i]
         if not new_spans:
-            new_spans.append([cur_start, cur_end])
+            new_spans.append((cur_start, cur_end))
             continue
 
         prev_start, prev_end = new_spans[-1]
         if prev_end == cur_start:
-            new_spans[-1][1] = cur_end
+            new_spans[-1] = (prev_start, cur_end)
         else:
-            new_spans.append([cur_start, cur_end])
-    return list(tuple(span) for span in new_spans)
+            new_spans.append((cur_start, cur_end))
+    return new_spans
 
 
 def strip_html_comments_from_markdown(message: str) -> str:
