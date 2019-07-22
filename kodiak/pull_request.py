@@ -36,7 +36,7 @@ class MergeabilityResponse(Enum):
     WAIT = auto()
 
 
-class MyHTMLParser(HTMLParser):
+class CommentHTMLParser(HTMLParser):
     # define this attribute to make mypy accept `self.offset`
     offset: int
 
@@ -56,7 +56,7 @@ class MyHTMLParser(HTMLParser):
         super().reset()
 
 
-html_parser = MyHTMLParser()
+html_parser = CommentHTMLParser()
 
 
 def strip_html_comments_from_markdown(message: str) -> str:
