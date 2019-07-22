@@ -61,7 +61,7 @@ html_parser = CommentHTMLParser()
 
 def join_adjacent_spans(spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     new_spans: List[Tuple[int, int]] = []
-    for i in range(len(spans)):
+    for i in range(len(spans)):  # pylint: disable=consider-using-enumerate
         cur_start, cur_end = spans[i]
         if not new_spans:
             new_spans.append((cur_start, cur_end))
