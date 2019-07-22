@@ -58,6 +58,22 @@ class CommentHTMLParser(HTMLParser):
 
 html_parser = CommentHTMLParser()
 
+def join_adjacent_spans(spans):
+    new_spans = []
+    for i in range(len(spans)):
+        cur_start, cur_end = spans[i]
+        if not new_spans:
+            new_spans.append([cur_start, cur_end])
+            continue
+
+        prev_start, prev_end = new_spans[- 1]
+        if prev_end == cur_start:
+            new_spans[- 1][1] = cur_end
+        else:
+            new_spans.append([cur_start, cur_end])
+    return list(tuple(span) for span in new_spans)
+
+
 
 def strip_html_comments_from_markdown(message: str) -> str:
     """
@@ -69,8 +85,7 @@ def strip_html_comments_from_markdown(message: str) -> str:
     """
     html_node_positions = find_html_positions(message)
     comment_locations = []
-    for span in html_node_positions:
-        start, end = span
+    for start, end in html_node_positions:
         html_text = message[start:end]
         html_parser.feed(html_text)
         for comment_start, comment_end in html_parser.comments:
@@ -78,8 +93,8 @@ def strip_html_comments_from_markdown(message: str) -> str:
         html_parser.reset()
 
     new_message = message
-    for start, end in reversed(comment_locations):
-        new_message = new_message[:start] + new_message[end:]
+    for comment_start, comment_end in reversed(comment_locations):
+        new_message = new_message[:comment_start] + new_message[comment_end:]
     return new_message
 
 
@@ -89,7 +104,7 @@ def get_body_content(
     if body_type == BodyText.markdown:
         body = pull_request.body
         if strip_html_comments:
-            body = strip_html_comments_from_markdown(body)
+            return strip_html_comments_from_markdown(body)
         return body
     if body_type == BodyText.plain_text:
         return pull_request.bodyText
