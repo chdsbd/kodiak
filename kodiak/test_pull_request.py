@@ -1,5 +1,4 @@
 import typing
-from typing import List, Tuple
 
 import pytest
 from pytest_mock import MockFixture
