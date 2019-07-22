@@ -129,7 +129,23 @@ def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
     assert actual == expected
 
 
-def test_get_merge_body_strip_html_comments(pull_request: queries.PullRequest) -> None:
+@pytest.mark.parametrize(
+    "original,stripped",
+    [
+        ("hello <!-- testing -->world", "hello world"),
+        (
+            "hello <span>  <p>  <!-- testing --> hello</p></span>world",
+            "hello <span>  <p>   hello</p></span>world",
+        ),
+        (
+            "hello <span>  <p>  <!-- testing --> hello<!-- 123 --></p></span>world",
+            "hello <span>  <p>   hello</p></span>world",
+        ),
+    ],
+)
+def test_get_merge_body_strip_html_comments(
+    pull_request: queries.PullRequest, original: str, stripped: str
+) -> None:
     pull_request.body = "hello <!-- testing -->world"
     actual = get_merge_body(
         V1(
