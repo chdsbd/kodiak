@@ -38,6 +38,7 @@ class MergeMessage(BaseModel):
     body: MergeBodyStyle = MergeBodyStyle.github_default
     include_pr_number: bool = True
     body_type: BodyText = BodyText.markdown
+    strip_html_comments: bool = False
 
 
 class Merge(BaseModel):

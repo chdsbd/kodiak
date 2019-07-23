@@ -16,3 +16,4 @@ title = "github_default"
 body = "github_default"
 include_pr_number = true
 body_type = "markdown"
+strip_html_comments = false

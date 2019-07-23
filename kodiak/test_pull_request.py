@@ -13,7 +13,12 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
-from kodiak.pull_request import PR, MergeabilityResponse, get_merge_body
+from kodiak.pull_request import (
+    PR,
+    MergeabilityResponse,
+    get_merge_body,
+    strip_html_comments_from_markdown,
+)
 from kodiak.test_utils import wrap_future
 
 
@@ -127,3 +132,90 @@ def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
     )
     expected = dict(merge_method="squash")
     assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "original,stripped",
+    [
+        ("hello <!-- testing -->world", "hello world"),
+        (
+            "hello <span>  <p>  <!-- testing --> hello</p></span>world",
+            "hello <span>  <p>   hello</p></span>world",
+        ),
+        (
+            "hello <span>  <p>  <!-- testing --> hello<!-- 123 --></p></span>world",
+            "hello <span>  <p>   hello</p></span>world",
+        ),
+        (
+            """\
+this is an example comment message with a comment from a PR template
+
+<!--
+- bullet one
+- bullet two
+- bullet three
+  + sub bullet one
+  + sub bullet two
+-->
+""",
+            """\
+this is an example comment message with a comment from a PR template
+
+
+""",
+        ),
+    ],
+)
+def test_get_merge_body_strip_html_comments(
+    pull_request: queries.PullRequest, original: str, stripped: str
+) -> None:
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body, strip_html_comments=True
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = dict(merge_method="squash", commit_message="hello world")
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "original,stripped",
+    [
+        (
+            """\
+Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
+
+Totam dolor [exercitationem laborum](https://numquam.com)
+
+<!--
+- Voluptatem voluptas officiis
+- Voluptates nulla tempora
+- Officia distinctio ut ab
+  + Est ut voluptatum consequuntur recusandae aspernatur
+  + Quidem debitis atque dolorum est enim
+-->
+""",
+            """\
+Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
+
+Totam dolor [exercitationem laborum](https://numquam.com)
+
+
+""",
+        ),
+        (
+            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n<!--\r\n- Voluptatem voluptas officiis\r\n- Voluptates nulla tempora\r\n- Officia distinctio ut ab\r\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\r\n  + Quidem debitis atque dolorum est enim\r\n-->',
+            "Non dolor velit vel quia mollitia.\n\nVoluptates nulla tempora.\n\n",
+        ),
+    ],
+)
+def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
+    assert strip_html_comments_from_markdown(original) == stripped
