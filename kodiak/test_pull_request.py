@@ -212,26 +212,10 @@ Totam dolor [exercitationem laborum](https://numquam.com)
 """,
         ),
         (
-            'Non dolor velit vel quia mollitia.\n\nVoluptates nulla tempora.\n\n<!--\n- Voluptatem voluptas officiis\n- Voluptates nulla tempora\n- Officia distinctio ut ab\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\n  + Quidem debitis atque dolorum est enim\n-->',
+            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n<!--\r\n- Voluptatem voluptas officiis\r\n- Voluptates nulla tempora\r\n- Officia distinctio ut ab\r\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\r\n  + Quidem debitis atque dolorum est enim\r\n-->',
             "Non dolor velit vel quia mollitia.\n\nVoluptates nulla tempora.\n\n",
         ),
     ],
 )
 def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
     assert strip_html_comments_from_markdown(original) == stripped
-
-
-@pytest.mark.parametrize(
-    "original,stripped",
-    [
-        (
-            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n<!--\r\n- Voluptatem voluptas officiis\r\n- Voluptates nulla tempora\r\n- Officia distinctio ut ab\r\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\r\n  + Quidem debitis atque dolorum est enim\r\n-->',
-            "Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n",
-        )
-    ],
-)
-def test_strip_html_comments_from_markdown_error_carriage_returns(
-    original: str, stripped: str
-) -> None:
-    with pytest.raises(ValueError, match="carriage returns are unsupported"):
-        assert strip_html_comments_from_markdown(original) == stripped

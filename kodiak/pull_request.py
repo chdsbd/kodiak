@@ -59,7 +59,7 @@ class CommentHTMLParser(HTMLParser):
 html_parser = CommentHTMLParser()
 
 
-def strip_html_comments_from_markdown(message: str) -> str:
+def strip_html_comments_from_markdown(raw_message: str) -> str:
     """
     1. parse string into a markdown AST
     2. find the HTML nodes
@@ -71,6 +71,7 @@ def strip_html_comments_from_markdown(message: str) -> str:
     # html correctly. pulldown-cmark doesn't handle carriage returns well.
     # remark-parse also doesn't handle carriage returns:
     # https://github.com/remarkjs/remark/issues/195#issuecomment-230760892
+    message = raw_message.replace("\r", "")
     html_node_positions = find_html_positions(message)
     comment_locations = []
     for html_start, html_end in html_node_positions:
