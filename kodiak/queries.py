@@ -70,6 +70,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         requiredStatusCheckContexts
         requiresStrictStatusChecks
         requiresCommitSignatures
+        requiresCodeOwnerReviews
       }
     }
     mergeCommitAllowed
@@ -241,6 +242,7 @@ class BranchProtectionRule(BaseModel):
     requiredStatusCheckContexts: typing.List[str]
     requiresStrictStatusChecks: bool
     requiresCommitSignatures: bool
+    requiresCodeOwnerReviews: bool
 
 
 class PRReviewState(Enum):
