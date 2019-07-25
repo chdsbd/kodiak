@@ -98,6 +98,7 @@ def test_missing_automerge_label(
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
 
+
 def test_require_automerge_label_false(
     pull_request: PullRequest,
     config: V1,
