@@ -232,12 +232,13 @@ def mergeable(
 
             failing = set(failing_contexts)
             # we have failing statuses that are required
-            if len(required - failing) < len(required):
+            failing_required_status_checks = failing & required
+            if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-                failing_required_status_checks = failing & required
+
                 raise NotQueueable(
                     f"failing required status checks: {failing_required_status_checks!r}"
                 )
