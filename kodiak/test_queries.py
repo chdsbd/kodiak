@@ -105,7 +105,7 @@ def block_event() -> EventInfoResponse:
         ],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
-        requiresCodeOwnerReviews=False
+        requiresCodeOwnerReviews=False,
     )
 
     return EventInfoResponse(

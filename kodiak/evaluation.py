@@ -98,7 +98,9 @@ def mergeable(
             '"Require signed commits" branch protection is not supported. See Kodiak README for more info.'
         )
     if branch_protection.requiresCodeOwnerReviews:
-        raise NotQueueable('"Require review from Code Owners" not supported. See Kodiak README for more info.')
+        raise NotQueueable(
+            '"Require review from Code Owners" not supported. See Kodiak README for more info.'
+        )
 
     if (
         config.merge.require_automerge_label

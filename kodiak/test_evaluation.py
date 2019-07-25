@@ -68,7 +68,7 @@ def branch_protection() -> BranchProtectionRule:
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
-        requiresCodeOwnerReviews=False
+        requiresCodeOwnerReviews=False,
     )
 
 
@@ -967,6 +967,7 @@ def test_requires_commit_signatures(
             valid_merge_methods=[MergeMethod.squash],
         )
 
+
 def test_requires_code_owner_reviews(
     pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
 ) -> None:
@@ -976,7 +977,9 @@ def test_requires_code_owner_reviews(
     PR for merge if requiresCodeOwnerReviews is enabled.
     """
     branch_protection.requiresCodeOwnerReviews = True
-    with pytest.raises(NotQueueable, match='"Require review from Code Owners" not supported.'):
+    with pytest.raises(
+        NotQueueable, match='"Require review from Code Owners" not supported.'
+    ):
         mergeable(
             app_id="1234",
             config=config,

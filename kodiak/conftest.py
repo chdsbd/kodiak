@@ -82,7 +82,7 @@ def branch_protection() -> queries.BranchProtectionRule:
         requiredStatusCheckContexts=["ci/example"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
-        requiresCodeOwnerReviews=False
+        requiresCodeOwnerReviews=False,
     )
 
 
