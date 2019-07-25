@@ -271,7 +271,10 @@ class PR:
         res = await self.client.merge_pull_request(
             number=self.number, body=get_merge_body(event.config, event.pull_request)
         )
-        return not res.status_code > 300
+        if res.status_code > 300:
+            self.log.error("could not merge PR", res=res, res_json=res.json())
+            return False
+        return True
 
     async def delete_label(self, label: str) -> bool:
         """
