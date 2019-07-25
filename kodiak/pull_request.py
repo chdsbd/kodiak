@@ -3,7 +3,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum, auto
 from html.parser import HTMLParser
-from typing import List, Tuple
+from typing import List, Optional, Tuple, cast
 
 import structlog
 from markdown_html_finder import find_html_positions
@@ -254,15 +254,19 @@ class PR:
                 )
             return MergeabilityResponse.NEEDS_UPDATE, self.event
 
-    async def update(self) -> None:
+    async def update(self) -> Optional[dict]:
         self.log.info("update")
         event = await self.get_event()
         if event is None:
             self.log.warning("problem")
-            return
-        await self.client.merge_branch(
+            return None
+        res = await self.client.merge_branch(
             head=event.pull_request.baseRefName, base=event.pull_request.headRefName
         )
+        if res.status_code > 300:
+            self.log.error("could not update branch", res=res, res_json=res.json())
+            return cast(dict, res.json())
+        return None
 
     async def trigger_mergeability_check(self) -> None:
         await self.client.get_pull_request(number=self.number)
