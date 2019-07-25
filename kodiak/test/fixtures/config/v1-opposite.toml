@@ -4,6 +4,7 @@ app_id = 12345 # default: None
 
 [merge]
 automerge_label = "mergeit!" # default: "automerge"
+require_automerge_label = false # default: true
 blacklist_title_regex = "" # default: "^WIP:.*"
 blacklist_labels = ["wip", "block-merge"] # default: []
 method = "squash" # default: "merge"
