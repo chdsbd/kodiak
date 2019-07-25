@@ -24,7 +24,7 @@ WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 
 WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}
 
-MERGE_RETRY_RATE_SECONDS = 2
+RETRY_RATE_SECONDS = 2
 
 
 class WebhookEvent(BaseModel):
@@ -190,7 +190,7 @@ async def repo_queue_consumer(
                             break
                         retries -= 1
                         log.info("retry update branch")
-                        await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
+                        await asyncio.sleep(RETRY_RATE_SECONDS)
                     pull_request.set_status(summary="🛑 could not update branch: {res}")
                     api_error = True
                     continue
@@ -217,7 +217,7 @@ async def repo_queue_consumer(
                         break
                     retries -= 1
                     log.info("retry merge")
-                    await asyncio.sleep(MERGE_RETRY_RATE_SECONDS)
+                    await asyncio.sleep(RETRY_RATE_SECONDS)
                 else:
                     log.error("Exhausted attempts to merge pull request")
 
