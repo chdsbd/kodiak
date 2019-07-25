@@ -475,7 +475,7 @@ def test_missing_required_context(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
-    with pytest.raises(WaitingForChecks) as e :
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
