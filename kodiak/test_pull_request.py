@@ -134,6 +134,38 @@ def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
     assert actual == expected
 
 
+@pytest.mark.asyncio
+async def test_attempting_to_notify_pr_author_with_no_automerge_label(
+    api_client: queries.Client,
+    mocker: MockFixture,
+    event_response: queries.EventInfoResponse,
+) -> None:
+    """
+    ensure that when Kodiak encounters a merge conflict it doesn't notify
+    the user if an automerge label isn't required.
+    """
+
+    pr = PR(
+        number=123,
+        owner="ghost",
+        repo="ghost",
+        installation_id="abc123",
+        client=api_client,
+    )
+
+    event_response.config.merge.require_automerge_label = False
+    pr.event = event_response
+
+    create_comment = mocker.patch.object(
+        PR, "create_comment", return_value=wrap_future(None)
+    )
+    # mock to ensure we have a chance of hitting the create_comment call
+    mocker.patch.object(PR, "delete_label", return_value=wrap_future(True))
+
+    assert await pr.notify_pr_creator() is False
+    assert not create_comment.called
+
+
 @pytest.mark.parametrize(
     "original,stripped",
     [
