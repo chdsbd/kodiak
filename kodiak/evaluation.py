@@ -183,11 +183,11 @@ def mergeable(
                 reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0
-            for review_list in reviews_by_author.values():
+            for author_name, review_list in reviews_by_author.items():
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable(f"blocking review by {review.author.login!r}")
+                    raise NotQueueable(f"blocking review by {author_name!r}")
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
