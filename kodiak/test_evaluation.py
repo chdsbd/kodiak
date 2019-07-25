@@ -198,8 +198,8 @@ def test_bad_merge_method_config(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge],
         )
-    assert config.merge.method in str(e.value)
-    assert repr(MergeMethod.merge) in str(e.value)
+    assert str(config.merge.method) in str(e.value)
+    assert str(MergeMethod.merge) in str(e.value)
 
 
 def test_merged(
