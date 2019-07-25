@@ -319,8 +319,8 @@ class PR:
 
         # TODO(sbdchd): add mentioning of PR author in comment.
         body = textwrap.dedent(
-            """
-        This PR currently has a merge conflict. Please resolve this and then re-add the `automerge` label.
+            f"""
+        This PR currently has a merge conflict. Please resolve this and then re-add the `{label}` label.
         """
         )
         return await self.create_comment(body)
