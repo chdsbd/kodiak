@@ -102,9 +102,7 @@ def mergeable(
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
     ):
-        raise NotQueueable(
-            f"missing automerge_label: {config.merge.automerge_label!r}"
-        )
+        raise NotQueueable(f"missing automerge_label: {config.merge.automerge_label!r}")
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
         log.info("missing required blacklist labels")

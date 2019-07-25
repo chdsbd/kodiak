@@ -359,7 +359,7 @@ def test_missing_review_count(
         )
 
     assert str(branch_protection.requiredApprovingReviewCount) in str(e.value)
-    assert '1' in str(e.value), "we have one review passed via the reviews arg"
+    assert "1" in str(e.value), "we have one review passed via the reviews arg"
 
 
 def test_failing_contexts(
