@@ -84,8 +84,8 @@ def test_missing_automerge_label(
     context: StatusContext,
 ) -> None:
     pull_request.labels = ["bug"]
-    config.merge.automerge_label = "automerge"
-    with pytest.raises(NotQueueable, match="missing automerge_label"):
+    config.merge.automerge_label = "lgtm"
+    with pytest.raises(NotQueueable, match="missing automerge_label") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -97,6 +97,7 @@ def test_missing_automerge_label(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert config.merge.automerge_label in str(e.value)
 
 
 def test_require_automerge_label_false(
@@ -184,7 +185,7 @@ def test_bad_merge_method_config(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merge method"):
+    with pytest.raises(NotQueueable, match="merge method") as e:
         config.merge.method = MergeMethod.squash
         mergeable(
             config=config,
@@ -197,6 +198,8 @@ def test_bad_merge_method_config(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge],
         )
+    assert config.merge.method in str(e.value)
+    assert repr(MergeMethod.merge) in str(e.value)
 
 
 def test_merged(
@@ -318,7 +321,7 @@ def test_blocking_review(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="blocking review") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -330,6 +333,7 @@ def test_blocking_review(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert review.author.login in str(e.value)
 
 
 def test_missing_review_count(
@@ -341,7 +345,7 @@ def test_missing_review_count(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
-    with pytest.raises(NotQueueable, match="missing required review count"):
+    with pytest.raises(NotQueueable, match="missing required review count") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -353,6 +357,9 @@ def test_missing_review_count(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+    assert str(branch_protection.requiredApprovingReviewCount) in str(e.value)
+    assert '1' in str(e.value), "we have one review passed via the reviews arg"
 
 
 def test_failing_contexts(

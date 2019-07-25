@@ -103,7 +103,7 @@ def mergeable(
         and config.merge.automerge_label not in pull_request.labels
     ):
         raise NotQueueable(
-            f"missing automerge_label: {repr(config.merge.automerge_label)}"
+            f"missing automerge_label: {config.merge.automerge_label!r}"
         )
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
@@ -123,15 +123,17 @@ def mergeable(
         raise NotQueueable("pull request is in draft state")
 
     if config.merge.method not in valid_merge_methods:
-        # TODO: This is a fatal configuration error. We should provide some notification of this issue
         log.error(
             "invalid configuration. Merge method not possible",
             configured_merge_method=config.merge.method,
             valid_merge_methods=valid_merge_methods,
         )
-        raise NotQueueable("invalid merge methods")
+        raise NotQueueable(
+            f"configured merge method {config.merge.method!r} is invalid. Valid methods are {valid_merge_methods!r}"
+        )
 
     if config.merge.block_on_reviews_requested and review_requests_count:
+        # TODO(chdsbd): Fetch reviewer names and display them here
         raise NotQueueable("reviews requested")
 
     if pull_request.state == PullRequestState.MERGED:
@@ -187,13 +189,15 @@ def mergeable(
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable("blocking review")
+                    raise NotQueueable(f"blocking review by {review.author.login!r}")
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                raise NotQueueable("missing required review count")
+                raise NotQueueable(
+                    f"missing required review count {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
+                )
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
             raise NotQueueable("missing required signature")
