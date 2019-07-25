@@ -99,6 +99,33 @@ def test_missing_automerge_label(
         )
 
 
+def test_require_automerge_label_false(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    """
+    If the automerge_label is missing, but we have require_automerge_label set
+    to false, enqueue the PR for merge
+    """
+    pull_request.labels = []
+    config.merge.automerge_label = "automerge"
+    config.merge.require_automerge_label = False
+    mergeable(
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests_count=0,
+        reviews=[review],
+        contexts=[context],
+        check_runs=[],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
+    )
+
+
 def test_blacklisted(
     pull_request: PullRequest,
     config: V1,

@@ -94,7 +94,10 @@ def mergeable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
         )
 
-    if config.merge.automerge_label not in pull_request.labels:
+    if (
+        config.merge.require_automerge_label
+        and config.merge.automerge_label not in pull_request.labels
+    ):
         raise NotQueueable(
             f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )

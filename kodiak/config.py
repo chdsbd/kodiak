@@ -44,6 +44,8 @@ class MergeMessage(BaseModel):
 class Merge(BaseModel):
     # label to enable merging of pull request.
     automerge_label: str = "automerge"
+    # if disabled, kodiak won't require a label to queue a PR for merge
+    require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to
     # disable check.
     blacklist_title_regex: str = "^WIP:.*"

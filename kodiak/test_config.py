@@ -42,6 +42,7 @@ def test_config_parsing_opposite() -> None:
         app_id="12345",
         merge=Merge(
             automerge_label="mergeit!",
+            require_automerge_label=False,
             blacklist_title_regex="",
             blacklist_labels=["wip", "block-merge"],
             method=MergeMethod.squash,
