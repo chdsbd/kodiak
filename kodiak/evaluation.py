@@ -248,10 +248,10 @@ def mergeable(
             branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         )
-        wait_for_checks = (
-            branch_protection.requiresStatusChecks and len(required - passing) > 0
-        )
         missing_required_status_checks = required - passing
+        wait_for_checks = (
+            branch_protection.requiresStatusChecks and missing_required_status_checks
+        )
 
         # prioritize branch updates over waiting for status checks to complete
         if config.merge.optimistic_updates:
