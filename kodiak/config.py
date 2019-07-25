@@ -21,6 +21,7 @@ class MergeTitleStyle(Enum):
 class MergeBodyStyle(Enum):
     github_default = "github_default"
     pull_request_body = "pull_request_body"
+    empty = "empty"
 
 
 class BodyText(Enum):
