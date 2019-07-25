@@ -126,7 +126,7 @@ def test_require_automerge_label_false(
     )
 
 
-def test_blacklisted(
+def test_blacklist_labels(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
@@ -134,7 +134,7 @@ def test_blacklisted(
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted label should not be mergeable
-    with pytest.raises(NotQueueable, match="blacklist"):
+    with pytest.raises(NotQueueable, match="blacklist") as e:
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.automerge_label = "automerge"
         config.merge.blacklist_labels = ["dont-merge"]
@@ -149,6 +149,7 @@ def test_blacklisted(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert "dont-merge" in str(e.value)
 
 
 def test_blacklist_title_match(
