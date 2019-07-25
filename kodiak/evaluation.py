@@ -93,6 +93,10 @@ def mergeable(
         raise NotQueueable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
         )
+    if branch_protection.requiresCommitSignatures:
+        raise NotQueueable(
+            '"Require signed commits" not branch protection is not supported. See Kodiak README for more info.'
+        )
 
     if (
         config.merge.require_automerge_label
