@@ -485,6 +485,7 @@ def test_missing_required_context(
             valid_merge_methods=[MergeMethod.squash],
         )
 
+
 @pytest.mark.skip(reason="remove in future PR after hotfix 1/2")
 def test_requires_signature(
     pull_request: PullRequest,
