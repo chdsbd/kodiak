@@ -59,7 +59,7 @@ updated when their targets were updated.
 
 - Kodiak requires branch protection to be enabled to function,
   Kodiak won't merge PRs if branch protection is disabled.
-- Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
+- Due to limitations with the GitHub API, Kodiak doesn't support [requiring
   signed commits](https://help.github.com/en/articles/about-required-commit-signing) (see [kodiak#89](https://github.com/chdsbd/kodiak/issues/89)) or [requiring reviews from Code Owners](https://help.github.com/en/articles/enabling-required-reviews-for-pull-requests) (see [kodiak#87](https://github.com/chdsbd/kodiak/issues/87)).
 
 
