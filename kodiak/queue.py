@@ -194,7 +194,7 @@ async def repo_queue_consumer(
                         await asyncio.sleep(RETRY_RATE_SECONDS)
                     log.error("failed to update branch")
                     await pull_request.set_status(
-                        summary="🛑 could not update branch: {res}"
+                        summary=f"🛑 could not update branch: {res}"
                     )
                     # break to find next PR to try and merge
                     break
