@@ -162,7 +162,7 @@ async def test_attempting_to_notify_pr_author_with_no_automerge_label(
     # mock to ensure we have a chance of hitting the create_comment call
     mocker.patch.object(PR, "delete_label", return_value=wrap_future(True))
 
-    assert await pr.notify_pr_creator() == False
+    assert await pr.notify_pr_creator() is False
     assert not create_comment.called
 
 
