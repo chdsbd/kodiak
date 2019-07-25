@@ -59,9 +59,9 @@ updated when their targets were updated.
 
 - Kodiak requires branch protection to be enabled to function,
   Kodiak won't merge PRs if branch protection is disabled.
-- Due to limitations with the GitHub API, Kodiak doesn't support [requiring
-  signed commits](https://help.github.com/en/articles/about-required-commit-signing) (see [kodiak#89](https://github.com/chdsbd/kodiak/issues/89)) or [requiring reviews from Code Owners](https://help.github.com/en/articles/enabling-required-reviews-for-pull-requests) (see [kodiak#87](https://github.com/chdsbd/kodiak/issues/87)).
-
+- Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
+  signed commits](https://help.github.com/en/articles/about-required-commit-signing).
+  See [kodiak#89](https://github.com/chdsbd/kodiak/issues/89).
 
 1. Create a `.kodiak.toml` file in the root of your repository on the default
    branch with the following contents (see [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples):
