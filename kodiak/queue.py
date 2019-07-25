@@ -163,8 +163,7 @@ async def repo_queue_consumer(
 
             # mark that we're working on this PR
             await pull_request.set_status(summary="⛴ attempting to merge PR")
-            api_error = False
-            while not api_error:
+            while True:
                 # there are two exits to this loop:
                 # - OK MergeabilityResponse
                 # - NOT_MERGEABLE MergeabilityResponse
@@ -182,18 +181,21 @@ async def repo_queue_consumer(
                     # update pull request and poll for result
                     log.info("update pull request and don't attempt to merge")
 
+                    # try multiple times in case of intermittent failure
                     retries = 5
                     while retries:
                         log.info("update branch")
                         res = await pull_request.update()
+                        # if res is None:
                         if res is None:
                             break
                         retries -= 1
                         log.info("retry update branch")
                         await asyncio.sleep(RETRY_RATE_SECONDS)
+                    log.error("failed to update branch")
                     pull_request.set_status(summary="🛑 could not update branch: {res}")
-                    api_error = True
-                    continue
+                    # break to find next PR to try and merge
+                    break
                 elif m_res == MergeabilityResponse.NEED_REFRESH:
                     # trigger a git mergeability check on Github's end and poll for result
                     log.info("needs refresh")
