@@ -97,6 +97,8 @@ def mergeable(
         raise NotQueueable(
             '"Require signed commits" branch protection is not supported. See Kodiak README for more info.'
         )
+    if branch_protection.requiresCodeOwnerReviews:
+        raise NotQueueable('"Require review from Code Owners" not supported. See Kodiak README for more info.')
 
     if (
         config.merge.require_automerge_label
@@ -106,7 +108,7 @@ def mergeable(
             f"missing automerge_label: {repr(config.merge.automerge_label)}"
         )
     if not set(pull_request.labels).isdisjoint(config.merge.blacklist_labels):
-        log.info("missing required blacklist labels")
+        log.info("has blacklist labels")
         raise NotQueueable("has blacklist labels")
 
     if (

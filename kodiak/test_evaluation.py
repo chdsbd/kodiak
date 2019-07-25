@@ -68,6 +68,7 @@ def branch_protection() -> BranchProtectionRule:
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
+        requiresCodeOwnerReviews=False
     )
 
 
@@ -953,6 +954,29 @@ def test_requires_commit_signatures(
     """
     branch_protection.requiresCommitSignatures = True
     with pytest.raises(NotQueueable, match='"Require signed commits" not supported.'):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests_count=0,
+            reviews=[],
+            contexts=[],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+def test_requires_code_owner_reviews(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    """
+    It is currently not possible to get code owner review information through
+    the Github API. We should display a warning to this effect and not queue a
+    PR for merge if requiresCodeOwnerReviews is enabled.
+    """
+    branch_protection.requiresCodeOwnerReviews = True
+    with pytest.raises(NotQueueable, match='"Require review from Code Owners" not supported.'):
         mergeable(
             app_id="1234",
             config=config,
