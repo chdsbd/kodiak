@@ -95,7 +95,7 @@ def mergeable(
         )
     if branch_protection.requiresCommitSignatures:
         raise NotQueueable(
-            '"Require signed commits" not branch protection is not supported. See Kodiak README for more info.'
+            '"Require signed commits" branch protection is not supported. See Kodiak README for more info.'
         )
 
     if (
