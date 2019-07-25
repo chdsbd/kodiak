@@ -310,6 +310,10 @@ class PR:
         event = self.event
         if not event:
             return False
+
+        if not event.config.merge.require_automerge_label:
+            return False
+
         label = event.config.merge.automerge_label
         if not await self.delete_label(label=label):
             return False
