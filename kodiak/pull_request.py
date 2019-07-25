@@ -244,7 +244,8 @@ class PR:
         except WaitingForChecks as e:
             if merging:
                 await self.set_status(
-                    summary="⛴ attempting to merge PR", detail=f"waiting for checks: {e.checks!r}"
+                    summary="⛴ attempting to merge PR",
+                    detail=f"waiting for checks: {e.checks!r}",
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
