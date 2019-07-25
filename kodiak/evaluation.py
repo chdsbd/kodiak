@@ -106,7 +106,7 @@ def mergeable(
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
         log.info("missing required blacklist labels")
-        raise NotQueueable(f"has blacklist labels: {blacklist_labels!r}")
+        raise NotQueueable(f"has blacklist_labels: {blacklist_labels!r}")
 
     if (
         config.merge.blacklist_title_regex
