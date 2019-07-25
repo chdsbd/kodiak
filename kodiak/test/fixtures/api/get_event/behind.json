@@ -22,7 +22,8 @@
               "WIP (beta)"
             ],
             "requiresStrictStatusChecks": true,
-            "requiresCommitSignatures": false
+            "requiresCommitSignatures": false,
+            "requiresCodeOwnerReviews": false
           }
         ]
       },
