@@ -365,7 +365,7 @@ def test_failing_contexts(
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -377,6 +377,7 @@ def test_failing_contexts(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "ci/backend" in str(e.value)
 
 
 def test_passing_checks(
@@ -420,7 +421,7 @@ def test_incomplete_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = None
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -432,6 +433,7 @@ def test_incomplete_checks(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"wip-app"}
 
 
 def test_failing_checks(
@@ -448,7 +450,7 @@ def test_failing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -460,6 +462,7 @@ def test_failing_checks(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "wip-app" in str(e.value)
 
 
 def test_missing_required_context(
@@ -472,7 +475,7 @@ def test_missing_required_context(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e :
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -484,6 +487,7 @@ def test_missing_required_context(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"ci/frontend"}
 
 
 @pytest.mark.skip(reason="remove in future PR after hotfix 1/2")

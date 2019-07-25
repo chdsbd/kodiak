@@ -234,7 +234,8 @@ def mergeable(
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-                raise NotQueueable("failing required status checks")
+                failing_required_status_checks = failing & required
+                raise NotQueueable("failing required status checks: {failing_required_status_checks!r}")
             passing = set(passing_contexts)
 
         need_branch_update = (
