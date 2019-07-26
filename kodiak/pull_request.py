@@ -208,6 +208,10 @@ class PR:
         if not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
+        if not isinstance(self.event.config, V1):
+            # TODO
+            self.set_status("Invalid configuration", detail=str(self.event.config))
+            return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
             mergeable(
@@ -278,6 +282,12 @@ class PR:
         await self.client.get_pull_request(number=self.number)
 
     async def merge(self, event: EventInfoResponse) -> bool:
+        if not isinstance(
+            event.config, V1
+        ):
+            self.log.error("we should never have a config error when we call merge")
+            return False
+
         res = await self.client.merge_pull_request(
             number=self.number, body=get_merge_body(event.config, event.pull_request)
         )
@@ -322,6 +332,9 @@ class PR:
 
         event = self.event
         if not event:
+            return False
+        if not isinstance(event.config, V1):
+            self.log.error("config attribute was not a config")
             return False
 
         if not event.config.merge.require_automerge_label:

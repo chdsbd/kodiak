@@ -4,12 +4,14 @@ import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 import arrow
 import jwt
+import pydantic
 import requests_async as http
 import structlog
+import toml
 from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
@@ -211,7 +213,7 @@ class RepoInfo:
 
 @dataclass
 class EventInfoResponse:
-    config: V1
+    config: Union[V1, pydantic.ValidationError, toml.TomlDecodeError]
     pull_request: PullRequest
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]

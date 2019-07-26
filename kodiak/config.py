@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 from enum import Enum
+from typing import Union
 
 import toml
 from pydantic import BaseModel, ValidationError, validator
