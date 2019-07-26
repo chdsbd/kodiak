@@ -121,13 +121,9 @@ def mergeable(
         raise NotQueueable("pull request is in draft state")
 
     if config.merge.method not in valid_merge_methods:
-        log.error(
-            "invalid configuration. Merge method not possible",
-            configured_merge_method=config.merge.method,
-            valid_merge_methods=valid_merge_methods,
-        )
+        valid_merge_methods_str = [method.value for method in valid_merge_methods]
         raise NotQueueable(
-            f"configured merge method {config.merge.method!r} is invalid. Valid methods are {valid_merge_methods!r}"
+            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}"
         )
 
     if config.merge.block_on_reviews_requested and review_requests_count:
