@@ -24,6 +24,7 @@ asyncio-throttle = "^0.1.1"
 inflection = "^0.3.1"
 markdown-html-finder = "^0.2.0"
 structlog-sentry = "^1.1"
+markupsafe = "^1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"

@@ -1,6 +1,8 @@
+import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
+import pydantic
 import pytest
 import toml
 
@@ -95,17 +97,27 @@ def test_config_parsing_opposite(config_fixture_name: str, expected_config: V1) 
     assert actual == expected_config
 
 
+def test_config_schema() -> None:
+    schema_path = load_config_fixture("config-schema.json")
+    assert json.loads(V1.schema_json()) == json.loads(
+        schema_path.read_text()
+    ), "schema shouldn't change unexpectedly."
+
+
 def test_bad_file() -> None:
-    with pytest.raises(toml.TomlDecodeError):
-        V1.parse_toml("something[invalid[")
+    res = V1.parse_toml("something[invalid[")
+    assert isinstance(res, toml.TomlDecodeError)
 
-    with pytest.raises(ValueError):
-        # we should raise an error when we try to parse a different version
-        V1.parse_toml("version = 20")
+    res = V1.parse_toml("version = 20")
+    assert isinstance(res, pydantic.ValidationError)
 
-    with pytest.raises(ValueError):
-        # we should always require that the version is specified, even if we provide defaults for everything else
-        V1.parse_toml("")
+    # we should raise an error when we try to parse a different version
+    res = V1.parse_toml("version = 20")
+    assert isinstance(res, pydantic.ValidationError)
 
-    with pytest.raises(ValueError):
-        V1.parse_toml("merge.automerge_label = 123")
+    # we should always require that the version is specified, even if we provide defaults for everything else
+    res = V1.parse_toml("")
+    assert isinstance(res, pydantic.ValidationError)
+
+    res = V1.parse_toml("merge.automerge_label = 123")
+    assert isinstance(res, pydantic.ValidationError)
