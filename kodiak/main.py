@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import sentry_sdk
 import structlog
+import logging
+import sys
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+
 from fastapi import FastAPI
 from sentry_asgi import SentryMiddleware
 
@@ -10,7 +15,28 @@ from kodiak.github import Webhook, events
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
-sentry_sdk.init()
+
+# configure structlog to send messages through std logging so that warnings and
+# errors will be reported to sentry
+sentry_sdk.init(
+    integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.WARNING)]
+)
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
 
 app = FastAPI()
 app.add_middleware(SentryMiddleware)
