@@ -220,7 +220,7 @@ class PR:
         if not isinstance(self.event.config, V1):
 
             await self.set_status(
-                "Invalid configuration",
+                "🚨 Invalid configuration",
                 detail='Click "Details" for more info.',
                 markdown_content=get_markdown_for_config(
                     self.event.config,
