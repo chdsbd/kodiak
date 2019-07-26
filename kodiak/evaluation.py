@@ -102,12 +102,11 @@ def mergeable(
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
     ):
-        raise NotQueueable(
-            f"missing automerge_label: {repr(config.merge.automerge_label)}"
-        )
-    if not set(pull_request.labels).isdisjoint(config.merge.blacklist_labels):
+        raise NotQueueable(f"missing automerge_label: {config.merge.automerge_label!r}")
+    blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
+    if blacklist_labels:
         log.info("missing required blacklist labels")
-        raise NotQueueable("has blacklist labels")
+        raise NotQueueable(f"has blacklist_labels: {blacklist_labels!r}")
 
     if (
         config.merge.blacklist_title_regex
@@ -122,15 +121,13 @@ def mergeable(
         raise NotQueueable("pull request is in draft state")
 
     if config.merge.method not in valid_merge_methods:
-        # TODO: This is a fatal configuration error. We should provide some notification of this issue
-        log.error(
-            "invalid configuration. Merge method not possible",
-            configured_merge_method=config.merge.method,
-            valid_merge_methods=valid_merge_methods,
+        valid_merge_methods_str = [method.value for method in valid_merge_methods]
+        raise NotQueueable(
+            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}"
         )
-        raise NotQueueable("invalid merge methods")
 
     if config.merge.block_on_reviews_requested and review_requests_count:
+        # TODO(chdsbd): Fetch reviewer names and display them here
         raise NotQueueable("reviews requested")
 
     if pull_request.state == PullRequestState.MERGED:
@@ -182,17 +179,19 @@ def mergeable(
                 reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0
-            for review_list in reviews_by_author.values():
+            for author_name, review_list in reviews_by_author.items():
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable("blocking review")
+                    raise NotQueueable(f"changes requested by {author_name!r}")
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                raise NotQueueable("missing required review count")
+                raise NotQueueable(
+                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
+                )
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
             raise NotQueueable("missing required signature")
@@ -229,20 +228,25 @@ def mergeable(
 
             failing = set(failing_contexts)
             # we have failing statuses that are required
-            if len(required - failing) < len(required):
+            failing_required_status_checks = failing & required
+            if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-                raise NotQueueable("failing required status checks")
+
+                raise NotQueueable(
+                    f"failing required status checks: {failing_required_status_checks!r}"
+                )
             passing = set(passing_contexts)
 
         need_branch_update = (
             branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         )
+        missing_required_status_checks = required - passing
         wait_for_checks = (
-            branch_protection.requiresStatusChecks and len(required - passing) > 0
+            branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
         # prioritize branch updates over waiting for status checks to complete
@@ -250,12 +254,12 @@ def mergeable(
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
             if wait_for_checks:
-                raise WaitingForChecks("missing required status checks")
+                raise WaitingForChecks(missing_required_status_checks)
         # almost the same as the pervious case, but we prioritize status checks
         # over branch updates.
         else:
             if wait_for_checks:
-                raise WaitingForChecks("missing required status checks")
+                raise WaitingForChecks(missing_required_status_checks)
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
 

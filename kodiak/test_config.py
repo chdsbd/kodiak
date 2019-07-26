@@ -28,39 +28,71 @@ def test_config_default() -> None:
     assert actual == expected
 
 
-def test_config_parsing_opposite() -> None:
+@pytest.mark.parametrize(
+    "config_fixture_name,expected_config",
+    [
+        (
+            "v1-opposite.1.toml",
+            V1(
+                version=1,
+                app_id="12345",
+                merge=Merge(
+                    automerge_label="mergeit!",
+                    require_automerge_label=False,
+                    blacklist_title_regex="",
+                    blacklist_labels=["wip", "block-merge"],
+                    method=MergeMethod.squash,
+                    delete_branch_on_merge=True,
+                    block_on_reviews_requested=True,
+                    notify_on_conflict=False,
+                    optimistic_updates=False,
+                    message=MergeMessage(
+                        title=MergeTitleStyle.pull_request_title,
+                        body=MergeBodyStyle.pull_request_body,
+                        include_pr_number=False,
+                        body_type=BodyText.plain_text,
+                        strip_html_comments=True,
+                    ),
+                ),
+            ),
+        ),
+        (
+            "v1-opposite.2.toml",
+            V1(
+                version=1,
+                app_id="12345",
+                merge=Merge(
+                    automerge_label="mergeit!",
+                    require_automerge_label=False,
+                    blacklist_title_regex="",
+                    blacklist_labels=["wip", "block-merge"],
+                    method=MergeMethod.squash,
+                    delete_branch_on_merge=True,
+                    block_on_reviews_requested=True,
+                    notify_on_conflict=False,
+                    optimistic_updates=False,
+                    message=MergeMessage(
+                        title=MergeTitleStyle.pull_request_title,
+                        body=MergeBodyStyle.empty,
+                        include_pr_number=False,
+                        body_type=BodyText.plain_text,
+                        strip_html_comments=True,
+                    ),
+                ),
+            ),
+        ),
+    ],
+)
+def test_config_parsing_opposite(config_fixture_name: str, expected_config: V1) -> None:
     """
     parse config with all opposite settings so we can ensure the config is
     correctly formatted.
     """
-    file_path = load_config_fixture("v1-opposite.toml")
+    file_path = load_config_fixture(config_fixture_name)
     loaded = toml.load(file_path)
     actual = V1.parse_obj(cast(Dict[Any, Any], loaded))
 
-    expected = V1(
-        version=1,
-        app_id="12345",
-        merge=Merge(
-            automerge_label="mergeit!",
-            require_automerge_label=False,
-            blacklist_title_regex="",
-            blacklist_labels=["wip", "block-merge"],
-            method=MergeMethod.squash,
-            delete_branch_on_merge=True,
-            block_on_reviews_requested=True,
-            notify_on_conflict=False,
-            optimistic_updates=False,
-            message=MergeMessage(
-                title=MergeTitleStyle.pull_request_title,
-                body=MergeBodyStyle.pull_request_body,
-                include_pr_number=False,
-                body_type=BodyText.plain_text,
-                strip_html_comments=True,
-            ),
-        ),
-    )
-
-    assert actual == expected
+    assert actual == expected_config
 
 
 def test_bad_file() -> None:

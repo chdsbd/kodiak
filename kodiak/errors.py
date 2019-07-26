@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Set
 
 from requests_async import Response
 
@@ -23,7 +24,9 @@ class NeedsBranchUpdate(KodiakException):
 
 
 class WaitingForChecks(KodiakException):
-    pass
+    def __init__(self, checks: Set[str]):
+        self.checks = checks
+        super().__init__()
 
 
 class NotQueueable(KodiakException):

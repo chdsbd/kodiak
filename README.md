@@ -53,15 +53,17 @@ updated when their targets were updated.
 
 5. The pull request is merged 🎉
 
-## Setup
-
-**Warnings:**
-
-- Kodiak requires branch protection to be enabled to function,
+## Known issues
+- Kodiak intentionally requires branch protection to be enabled to function,
   Kodiak won't merge PRs if branch protection is disabled.
 - Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
   signed commits](https://help.github.com/en/articles/about-required-commit-signing).
-  See [kodiak#89](https://github.com/chdsbd/kodiak/issues/89).
+  ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
+- Kodiak doesn't display config parsing errors at the moment. Please see [README#setup](https://github.com/chdsbd/kodiak#setup) and [kodiak/test/fixtures/config](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config) for examples.  ([kodiak#102](https://github.com/chdsbd/kodiak/issues/102))
+- Kodiak doesn't handling updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
+- Github [closing issue keywords](https://help.github.com/en/articles/closing-issues-using-keywords) do not work. This seems to be a bug with Github and bot users.
+
+## Setup
 
 1. Create a `.kodiak.toml` file in the root of your repository on the default
    branch with the following contents (see [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples):

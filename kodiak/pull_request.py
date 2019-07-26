@@ -3,7 +3,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum, auto
 from html.parser import HTMLParser
-from typing import List, Tuple
+from typing import List, Optional, Tuple, cast
 
 import structlog
 from markdown_html_finder import find_html_positions
@@ -104,6 +104,9 @@ def get_body_content(
     raise Exception(f"Unknown body_type: {body_type}")
 
 
+EMPTY_STRING = ""
+
+
 def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     merge_body: dict = {"merge_method": config.merge.method.value}
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
@@ -113,6 +116,8 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
             pull_request,
         )
         merge_body.update(dict(commit_message=body))
+    if config.merge.message.body == MergeBodyStyle.empty:
+        merge_body.update(dict(commit_message=EMPTY_STRING))
     if config.merge.message.title == MergeTitleStyle.pull_request_title:
         merge_body.update(dict(commit_title=pull_request.title))
     if config.merge.message.include_pr_number and merge_body.get("commit_title"):
@@ -241,10 +246,11 @@ class PR:
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
-        except WaitingForChecks:
+        except WaitingForChecks as e:
             if merging:
                 await self.set_status(
-                    summary="⛴ attempting to merge PR", detail="waiting for checks"
+                    summary="⛴ attempting to merge PR",
+                    detail=f"waiting for checks: {e.checks!r}",
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
@@ -254,15 +260,19 @@ class PR:
                 )
             return MergeabilityResponse.NEEDS_UPDATE, self.event
 
-    async def update(self) -> None:
+    async def update(self) -> Optional[dict]:
         self.log.info("update")
         event = await self.get_event()
         if event is None:
             self.log.warning("problem")
-            return
-        await self.client.merge_branch(
+            return None
+        res = await self.client.merge_branch(
             head=event.pull_request.baseRefName, base=event.pull_request.headRefName
         )
+        if res.status_code > 300:
+            self.log.error("could not update branch", res=res, res_json=res.json())
+            return cast(dict, res.json())
+        return None
 
     async def trigger_mergeability_check(self) -> None:
         await self.client.get_pull_request(number=self.number)
