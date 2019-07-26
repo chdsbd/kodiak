@@ -1,21 +1,18 @@
 from __future__ import annotations
 
+import logging
+
 import sentry_sdk
 import structlog
-import logging
-import sys
-from sentry_sdk.integrations.logging import LoggingIntegration
-
-
 from fastapi import FastAPI
 from sentry_asgi import SentryMiddleware
+from sentry_sdk.integrations.logging import LoggingIntegration
+from structlog_sentry import SentryProcessor
 
 from kodiak import queries
 from kodiak.github import Webhook, events
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
-from structlog_sentry import SentryProcessor
-
 
 # disable sentry logging middleware
 sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
