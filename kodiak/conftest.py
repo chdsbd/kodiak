@@ -111,7 +111,23 @@ def context(status_context: queries.StatusContext) -> queries.StatusContext:
 
 
 @pytest.fixture
+def config_file_expression() -> str:
+    return "master:.kodiak.toml"
+
+
+@pytest.fixture
+def config_str() -> str:
+    return """\
+version = 1
+[merge]
+method = "squash"
+"""
+
+
+@pytest.fixture
 def event_response(
+    config_str: str,
+    config_file_expression: str,
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
@@ -120,8 +136,8 @@ def event_response(
     config: V1,
 ) -> queries.EventInfoResponse:
     return queries.EventInfoResponse(
-        config_str="version = 1",
-        config_file_expression="master:.kodiak.toml",
+        config_str=config_str,
+        config_file_expression=config_file_expression,
         config=config,
         pull_request=pull_request,
         repo=repo,
