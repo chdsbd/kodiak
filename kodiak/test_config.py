@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Dict, cast
 
@@ -94,6 +95,13 @@ def test_config_parsing_opposite(config_fixture_name: str, expected_config: V1) 
     actual = V1.parse_obj(cast(Dict[Any, Any], loaded))
 
     assert actual == expected_config
+
+
+def test_config_schema():
+    schema_path = load_config_fixture("config-schema.json")
+    assert json.loads(V1.schema_json()) == json.loads(
+        schema_path.read_text()
+    ), "schema shouldn't change unexpectedly."
 
 
 def test_bad_file() -> None:
