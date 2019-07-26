@@ -1,8 +1,8 @@
 from typing import Union
 
+import markupsafe
 import pydantic
 import toml
-from markupsafe import escape
 
 
 def get_markdown_for_config(
@@ -10,11 +10,11 @@ def get_markdown_for_config(
     config_str: str,
     git_path: str,
 ) -> str:
-    config_escaped = escape(config_str)
+    config_escaped = markupsafe.escape(config_str)
     if isinstance(error, pydantic.ValidationError):
         error_escaped = f"# pretty \n{error}\n\n\n# json \n{error.json()}"
     else:
-        error_escaped = escape(repr(error))
+        error_escaped = markupsafe.escape(repr(error))
     line_count = config_str.count("\n") + 1
     return f"""\
 You have an invalid Kodiak configuration file.

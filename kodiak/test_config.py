@@ -111,7 +111,7 @@ def test_bad_file() -> None:
     res = V1.parse_toml("version = 20")
     assert isinstance(res, pydantic.ValidationError)
 
-    # we should raise an error when we try to parse a different version
+    # we should return an error when we try to parse a different version
     res = V1.parse_toml("version = 20")
     assert isinstance(res, pydantic.ValidationError)
 

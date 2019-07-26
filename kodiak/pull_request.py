@@ -188,6 +188,13 @@ class PR:
     ) -> None:
         """
         Display a message to a user through a github check
+
+        `summary` and `detail` work to build the message displayed alongside
+        other status checks on the PR. They format a message like: '<summary> (<detail>)'
+
+        `markdown_content` is the message displayed on the detail view for a
+        status check. This detail view is accessible via the "Details" link
+        alongside the summary/detail content.
         """
         if detail is not None:
             message = f"{summary} ({detail})"
