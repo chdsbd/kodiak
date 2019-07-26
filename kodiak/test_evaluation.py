@@ -185,7 +185,7 @@ def test_bad_merge_method_config(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merge method") as e:
+    with pytest.raises(NotQueueable, match="merge.method") as e:
         config.merge.method = MergeMethod.squash
         mergeable(
             config=config,
@@ -324,7 +324,7 @@ def test_blocking_review(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
-    with pytest.raises(NotQueueable, match="blocking review") as e:
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -348,7 +348,7 @@ def test_missing_review_count(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
-    with pytest.raises(NotQueueable, match="missing required review count") as e:
+    with pytest.raises(NotQueueable, match="missing required reviews") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -660,7 +660,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -672,6 +672,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "chdsbd" in str(e.value)
 
 
 def test_regression_mishandling_multiple_reviews_okay_reviews(
