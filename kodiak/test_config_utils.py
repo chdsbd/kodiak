@@ -1,5 +1,6 @@
-from kodiak.config import V1
 from pathlib import Path
+
+from kodiak.config import V1
 
 from .config_utils import get_markdown_for_config
 
