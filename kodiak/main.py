@@ -14,13 +14,13 @@ from kodiak import queries
 from kodiak.github import Webhook, events
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
+from structlog_sentry import SentryProcessor
 
 
-# configure structlog to send messages through std logging so that warnings and
-# errors will be reported to sentry
-sentry_sdk.init(
-    integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.WARNING)]
-)
+# disable sentry logging middleware
+sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
+
+# enable sentry processing of structlog output
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -30,6 +30,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        SentryProcessor(level=logging.WARNING),
         structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
     ],
     context_class=dict,
