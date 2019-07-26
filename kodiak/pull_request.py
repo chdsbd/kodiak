@@ -246,10 +246,11 @@ class PR:
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
-        except WaitingForChecks:
+        except WaitingForChecks as e:
             if merging:
                 await self.set_status(
-                    summary="⛴ attempting to merge PR", detail="waiting for checks"
+                    summary="⛴ attempting to merge PR",
+                    detail=f"waiting for checks: {e.checks!r}",
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:

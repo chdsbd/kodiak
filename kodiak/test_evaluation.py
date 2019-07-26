@@ -84,8 +84,8 @@ def test_missing_automerge_label(
     context: StatusContext,
 ) -> None:
     pull_request.labels = ["bug"]
-    config.merge.automerge_label = "automerge"
-    with pytest.raises(NotQueueable, match="missing automerge_label"):
+    config.merge.automerge_label = "lgtm"
+    with pytest.raises(NotQueueable, match="missing automerge_label") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -97,6 +97,7 @@ def test_missing_automerge_label(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert config.merge.automerge_label in str(e.value)
 
 
 def test_require_automerge_label_false(
@@ -126,7 +127,7 @@ def test_require_automerge_label_false(
     )
 
 
-def test_blacklisted(
+def test_blacklist_labels(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
@@ -134,7 +135,7 @@ def test_blacklisted(
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted label should not be mergeable
-    with pytest.raises(NotQueueable, match="blacklist"):
+    with pytest.raises(NotQueueable, match="blacklist") as e:
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.automerge_label = "automerge"
         config.merge.blacklist_labels = ["dont-merge"]
@@ -149,6 +150,7 @@ def test_blacklisted(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert "dont-merge" in str(e.value)
 
 
 def test_blacklist_title_match(
@@ -183,7 +185,7 @@ def test_bad_merge_method_config(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merge method"):
+    with pytest.raises(NotQueueable, match="merge.method") as e:
         config.merge.method = MergeMethod.squash
         mergeable(
             config=config,
@@ -196,6 +198,11 @@ def test_bad_merge_method_config(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge],
         )
+    assert config.merge.method.value in str(e.value)
+    assert MergeMethod.merge.value in str(e.value)
+    assert "<MergeMethod" not in str(
+        e.value
+    ), "we don't want the repr value, we want the simple str value"
 
 
 def test_merged(
@@ -317,7 +324,7 @@ def test_blocking_review(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -329,6 +336,7 @@ def test_blocking_review(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert review.author.login in str(e.value)
 
 
 def test_missing_review_count(
@@ -340,7 +348,7 @@ def test_missing_review_count(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
-    with pytest.raises(NotQueueable, match="missing required review count"):
+    with pytest.raises(NotQueueable, match="missing required reviews") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -352,6 +360,9 @@ def test_missing_review_count(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+    assert str(branch_protection.requiredApprovingReviewCount) in str(e.value)
+    assert "1" in str(e.value), "we have one review passed via the reviews arg"
 
 
 def test_failing_contexts(
@@ -365,7 +376,7 @@ def test_failing_contexts(
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -377,6 +388,7 @@ def test_failing_contexts(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "ci/backend" in str(e.value)
 
 
 def test_passing_checks(
@@ -420,7 +432,7 @@ def test_incomplete_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = None
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -432,6 +444,7 @@ def test_incomplete_checks(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"wip-app"}
 
 
 def test_failing_checks(
@@ -448,7 +461,7 @@ def test_failing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -460,6 +473,7 @@ def test_failing_checks(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "wip-app" in str(e.value)
 
 
 def test_missing_required_context(
@@ -472,7 +486,7 @@ def test_missing_required_context(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -484,6 +498,7 @@ def test_missing_required_context(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"ci/frontend"}
 
 
 @pytest.mark.skip(reason="remove in future PR after hotfix 1/2")
@@ -645,7 +660,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -657,6 +672,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "chdsbd" in str(e.value)
 
 
 def test_regression_mishandling_multiple_reviews_okay_reviews(
