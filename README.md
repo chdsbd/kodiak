@@ -61,6 +61,7 @@ updated when their targets were updated.
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
 - Kodiak doesn't display config parsing errors at the moment. Please see [README#setup](https://github.com/chdsbd/kodiak#setup) and [kodiak/test/fixtures/config](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config) for examples.  ([kodiak#102](https://github.com/chdsbd/kodiak/issues/102))
 - Kodiak doesn't handling updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
+- Github [closing issue keywords](https://help.github.com/en/articles/closing-issues-using-keywords) do not work. This seems to be a bug with Github and bot users.
 
 ## Setup
 
