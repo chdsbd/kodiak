@@ -69,6 +69,13 @@ def blocked_response() -> dict:
 
 @pytest.fixture
 def block_event() -> EventInfoResponse:
+    config_file_expression = "master:.kodiak.toml"
+    config_str = """\
+version = 1
+[merge]
+automerge_label = "automerge"
+method = "squash"
+"""
     config = V1(
         version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
@@ -109,6 +116,8 @@ def block_event() -> EventInfoResponse:
 
     return EventInfoResponse(
         config=config,
+        config_str=config_str,
+        config_file_expression=config_file_expression,
         head_exists=True,
         pull_request=pr,
         repo=rep_info,

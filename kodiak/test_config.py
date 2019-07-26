@@ -97,7 +97,7 @@ def test_config_parsing_opposite(config_fixture_name: str, expected_config: V1) 
     assert actual == expected_config
 
 
-def test_config_schema():
+def test_config_schema() -> None:
     schema_path = load_config_fixture("config-schema.json")
     assert json.loads(V1.schema_json()) == json.loads(
         schema_path.read_text()

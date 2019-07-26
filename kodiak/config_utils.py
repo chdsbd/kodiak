@@ -1,12 +1,8 @@
-import json
-from pprint import pformat
 from typing import Union
 
 import pydantic
 import toml
 from markupsafe import escape
-
-from kodiak.config import V1
 
 
 def get_markdown_for_config(

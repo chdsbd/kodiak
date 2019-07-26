@@ -120,10 +120,12 @@ def event_response(
     config: V1,
 ) -> queries.EventInfoResponse:
     return queries.EventInfoResponse(
-        config,
-        pull_request,
-        repo,
-        branch_protection,
+        config_str="version = 1",
+        config_file_expression="master:.kodiak.toml",
+        config=config,
+        pull_request=pull_request,
+        repo=repo,
+        branch_protection=branch_protection,
         head_exists=True,
         review_requests_count=0,
         reviews=[review],
