@@ -104,6 +104,9 @@ def get_body_content(
     raise Exception(f"Unknown body_type: {body_type}")
 
 
+EMPTY_STRING = ""
+
+
 def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     merge_body: dict = {"merge_method": config.merge.method.value}
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
@@ -113,6 +116,8 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
             pull_request,
         )
         merge_body.update(dict(commit_message=body))
+    if config.merge.message.body == MergeBodyStyle.empty:
+        merge_body.update(dict(commit_message=EMPTY_STRING))
     if config.merge.message.title == MergeTitleStyle.pull_request_title:
         merge_body.update(dict(commit_title=pull_request.title))
     if config.merge.message.include_pr_number and merge_body.get("commit_title"):

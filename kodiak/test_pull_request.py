@@ -218,6 +218,22 @@ def test_get_merge_body_strip_html_comments(
     assert actual == expected
 
 
+def test_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
+    pull_request.body = "hello world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(body=MergeBodyStyle.empty),
+            ),
+        ),
+        pull_request,
+    )
+    expected = dict(merge_method="squash", commit_message="")
+    assert actual == expected
+
+
 @pytest.mark.parametrize(
     "original,stripped",
     [
