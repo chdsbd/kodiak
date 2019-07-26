@@ -4,7 +4,7 @@ import typing
 from enum import Enum
 
 import toml
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationError, validator
 
 
 class MergeMethod(str, Enum):
@@ -88,5 +88,10 @@ class V1(BaseModel):
         return v
 
     @classmethod
-    def parse_toml(cls, content: str) -> V1:
-        return cls.parse_obj(typing.cast(dict, toml.loads(content)))
+    def parse_toml(
+        cls, content: str
+    ) -> Union[V1, toml.TomlDecodeError, ValidationError]:
+        try:
+            return cls.parse_obj(typing.cast(dict, toml.loads(content)))
+        except (toml.TomlDecodeError, ValidationError) as e:
+            return e
