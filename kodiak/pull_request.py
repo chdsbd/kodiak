@@ -222,7 +222,11 @@ class PR:
             await self.set_status(
                 "Invalid configuration",
                 detail='Click "Details" for more info.',
-                markdown_content=get_markdown_for_config(self.event.config, self.event.config_str, self.event.config_file_expression),
+                markdown_content=get_markdown_for_config(
+                    self.event.config,
+                    self.event.config_str,
+                    self.event.config_file_expression,
+                ),
             )
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
