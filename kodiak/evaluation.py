@@ -183,14 +183,14 @@ def mergeable(
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable(f"blocking review by {author_name!r}")
+                    raise NotQueueable(f"changes requested by {author_name!r}")
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
                 raise NotQueueable(
-                    f"missing required review count {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
+                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
                 )
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
