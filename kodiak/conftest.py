@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Union
 
+import pydantic
 import pytest
+import toml
 from pytest_mock import MockFixture
 from starlette.testclient import TestClient
 
@@ -43,7 +46,9 @@ def config_file() -> str:
 
 
 @pytest.fixture
-def config(config_file: str) -> V1:
+def config(
+    config_file: str
+) -> Union[V1, pydantic.ValidationError, toml.TomlDecodeError]:
     return V1.parse_toml(config_file)
 
 
