@@ -8,7 +8,7 @@ import structlog
 from markdown_html_finder import find_html_positions
 
 import kodiak.app_config as conf
-from kodiak import queries
+from kodiak import messages, queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
@@ -220,7 +220,9 @@ class PR:
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        if not self.event.head_exists:
+        # PRs from forks will always appear deleted because the v4 api doesn't
+        # return head information for forks like the v3 api does.
+        if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
         if not isinstance(self.event.config, V1):
@@ -281,6 +283,12 @@ class PR:
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
+            if self.event.pull_request.isCrossRepository:
+                await self.set_status(
+                    summary='🚨 forks cannot updated via the github api. Click "Details" for more info',
+                    markdown_content=messages.FORKS_CANNOT_BE_UPDATED,
+                )
+                return MergeabilityResponse.NOT_MERGEABLE, self.event
             if merging:
                 await self.set_status(
                     summary="⛴ attempting to merge PR", detail="updating branch"

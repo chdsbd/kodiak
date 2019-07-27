@@ -40,6 +40,7 @@ def pull_request() -> PullRequest:
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
+        isCrossRepository=True,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
         baseRefName="master",
