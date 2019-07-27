@@ -38,7 +38,14 @@
           "nodes": [
             {
               "requestedReviewer": {
+                "__typename": "User",
                 "login": "ghost"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Team",
+                "name": "ghost-team"
               }
             }
           ]

@@ -83,6 +83,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       reviewRequests(first: 100) {
         nodes {
           requestedReviewer {
+            __typename
             ... on User {
               login
             }
@@ -281,12 +282,9 @@ class PRReview(BaseModel):
     authorAssociation: CommentAuthorAssociation
 
 
-class PRReviewRequestAuthor(BaseModel):
-    login: str
-
-
-class PRReviewRequest(BaseModel):
-    author: PRReviewAuthor
+@dataclass
+class PRReviewRequest:
+    name: str
 
 
 class StatusState(Enum):
@@ -401,10 +399,22 @@ def get_review_requests_dicts(*, pr: dict) -> typing.List[dict]:
 
 
 def get_requested_reviews(*, pr: dict) -> typing.List[PRReviewRequest]:
+    """
+    parse from: https://developer.github.com/v4/union/requestedreviewer/
+    """
     review_requests: typing.List[PRReviewRequest] = []
     for request_dict in get_review_requests_dicts(pr=pr):
         try:
-            review_requests.append(PRReviewRequest.parse_obj(request_dict))
+            request = request_dict["requestedReviewer"]
+            typename = request["__typename"]
+            if typename == "User":
+                name = request["login"]
+            elif typename == "Team":
+                name = request["name"]
+            else:
+                logger.warning("unhandled PRReviewRequst parse case: %s", request_dict)
+                continue
+            review_requests.append(PRReviewRequest(name=name))
         except ValueError:
             logger.warning("Could not parse PRReviewRequst")
     return review_requests

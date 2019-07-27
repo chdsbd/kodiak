@@ -21,6 +21,7 @@ from kodiak.queries import (
     PRReviewAuthor,
     PRReviewState,
     PullRequest,
+    PRReviewRequest,
     PullRequestState,
     RepoInfo,
     StatusContext,
@@ -113,7 +114,10 @@ def block_event() -> EventInfoResponse:
         pull_request=pr,
         repo=rep_info,
         branch_protection=branch_protection,
-        review_requests=[],
+        review_requests=[
+            PRReviewRequest(name="ghost"),
+            PRReviewRequest(name="ghost-team"),
+        ],
         reviews=[
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,

@@ -128,7 +128,7 @@ def mergeable(
         )
 
     if config.merge.block_on_reviews_requested and review_requests:
-        names = [r.author.login for r in review_requests]
+        names = [r.name for r in review_requests]
         raise NotQueueable(f"reviews requested: {names!r}")
 
     if pull_request.state == PullRequestState.MERGED:

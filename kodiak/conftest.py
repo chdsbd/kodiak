@@ -97,7 +97,7 @@ def review() -> queries.PRReview:
 
 @pytest.fixture
 def review_request() -> queries.PRReviewRequest:
-    return queries.PRReviewRequest(author=queries.PRReviewAuthor(login="ghost"))
+    return queries.PRReviewRequest(name="ghost")
 
 
 @pytest.fixture
