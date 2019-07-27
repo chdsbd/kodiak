@@ -223,6 +223,11 @@ class PullRequest(BaseModel):
 
 
 @dataclass
+class AssignableUser:
+    name: str
+
+
+@dataclass
 class RepoInfo:
     merge_commit_allowed: bool
     rebase_merge_allowed: bool
@@ -236,6 +241,7 @@ class EventInfoResponse:
     config_file_expression: str
     pull_request: PullRequest
     repo: RepoInfo
+    assignable_users: List[AssignableUser]
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
@@ -334,6 +340,16 @@ def get_repo(*, data: dict) -> Optional[dict]:
         return cast(dict, data["repository"])
     except (KeyError, TypeError):
         return None
+
+
+def get_assignable_users(*, repo: dict) -> List[AssignableUser]:
+    try:
+        return [
+            AssignableUser(name=node["login"])
+            for node in repo["assignableUsers"]["nodes"]
+        ]
+    except (KeyError, TypeError):
+        return []
 
 
 def get_config_str(*, repo: dict) -> Optional[str]:
@@ -630,6 +646,8 @@ class Client:
             repo=repository, ref_name=pr.baseRefName
         )
 
+        assignable_users = get_assignable_users(repo=repository)
+
         return EventInfoResponse(
             config=config,
             config_str=config_str,
@@ -641,6 +659,7 @@ class Client:
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
             ),
             branch_protection=branch_protection,
+            assignable_users=assignable_users,
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=get_reviews(pr=pull_request),
             status_contexts=get_status_contexts(pr=pull_request),
