@@ -90,6 +90,9 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
             ... on Team {
               name
             }
+            ... on Mannequin {
+              login
+            }
           }
         }
       }
@@ -407,16 +410,13 @@ def get_requested_reviews(*, pr: dict) -> typing.List[PRReviewRequest]:
         try:
             request = request_dict["requestedReviewer"]
             typename = request["__typename"]
-            if typename == "User":
+            if typename in {"User", "Mannequin"}:
                 name = request["login"]
-            elif typename == "Team":
-                name = request["name"]
             else:
-                logger.warning("unhandled PRReviewRequst parse case: %s", request_dict)
-                continue
+                name = request["name"]
             review_requests.append(PRReviewRequest(name=name))
         except ValueError:
-            logger.warning("Could not parse PRReviewRequst")
+            logger.warning("Could not parse PRReviewRequest")
     return review_requests
 
 
