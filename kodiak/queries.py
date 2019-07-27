@@ -58,6 +58,12 @@ query ($owner: String!, $repo: String!) {
 GET_EVENT_INFO_QUERY = """
 query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
+    assignableUsers(first: 100) {
+      nodes {
+        login
+      }
+      totalCount
+    }
     branchProtectionRules(first: 100) {
       nodes {
         matchingRefs(first: 100) {
