@@ -15,7 +15,6 @@ from kodiak.queries import (
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
-    AssignableUser,
     MergeStateStatus,
     PRReview,
     PRReviewAuthor,
@@ -115,11 +114,6 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
         head_exists=True,
         pull_request=pr,
         repo=rep_info,
-        assignable_users=[
-            AssignableUser(name="ghost"),
-            AssignableUser(name="kodiak"),
-            AssignableUser(name="walrus"),
-        ],
         branch_protection=branch_protection,
         review_requests=[
             PRReviewRequest(name="ghost"),

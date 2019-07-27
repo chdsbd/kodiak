@@ -1,20 +1,6 @@
 {
   "data": {
     "repository": {
-      "assignableUsers": {
-        "nodes": [
-          {
-            "login": "ghost"
-          },
-          {
-            "login": "kodiak"
-          },
-          {
-            "login": "walrus"
-          }
-        ],
-        "totalCount": 3
-      },
       "branchProtectionRules": {
         "nodes": [
           {
