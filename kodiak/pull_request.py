@@ -8,7 +8,7 @@ import structlog
 from markdown_html_finder import find_html_positions
 
 import kodiak.app_config as conf
-from kodiak import queries, messages
+from kodiak import messages, queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (

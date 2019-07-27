@@ -60,6 +60,7 @@ def pull_request() -> queries.PullRequest:
         mergeStateStatus=queries.MergeStateStatus.BEHIND,
         state=queries.PullRequestState.OPEN,
         mergeable=queries.MergeableState.MERGEABLE,
+        isCrossRepository=False,
         labels=[],
         latest_sha="abcd",
         baseRefName="some-branch",

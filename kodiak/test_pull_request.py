@@ -82,6 +82,33 @@ async def test_deleting_branch_after_merge(
     assert delete_branch.called == expected
 
 
+@pytest.mark.asyncio
+async def test_cross_repo_missing_head(
+    event_response: queries.EventInfoResponse, mocker: MockFixture
+) -> None:
+    """
+    if a repository is from a fork (isCrossRepository), we will not be able to
+    see head information do to a problem with the v4 api failing to return head
+    information for forks, unlike the v3 api.
+    """
+
+    event_response.head_exists = False
+    event_response.pull_request.isCrossRepository = True
+    mergeable = mocker.patch("kodiak.pull_request.mergeable")
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    pr = PR(
+        number=123,
+        owner="tester",
+        repo="repo",
+        installation_id="abc",
+        client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
+    )
+    await pr.mergeability()
+    assert (
+        mergeable.call_count == 1
+    ), "we should not return early from mergeability when head is missing and isCrossRepository is true, because the head could still be there."
+
+
 def test_pr(api_client: queries.Client) -> None:
     a = PR(
         number=123,
