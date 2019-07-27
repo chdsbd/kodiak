@@ -1,9 +1,19 @@
 import hashlib
 import hmac
 import inspect
-import typing
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import (
+    Any,
+    Callable,
+    List,
+    MutableMapping,
+    Optional,
+    Type,
+    Union,
+    cast,
+    get_type_hints,
+)
 
 import structlog
 from fastapi import FastAPI, Header, HTTPException
@@ -19,7 +29,7 @@ SECRET_KEY = config("SECRET_KEY")
 log = structlog.get_logger()
 
 
-def valid_event(arg: typing.Any) -> bool:
+def valid_event(arg: Any) -> bool:
     return arg in events.event_registry.values()
 
 
@@ -30,18 +40,15 @@ class UnsupportType(TypeError):
         )
 
 
-DecoratorFunc = typing.Union[
-    typing.Callable[[events.GithubEvent], None],
-    typing.Callable[[typing.Union[events.GithubEvent]], None],
+DecoratorFunc = Union[
+    Callable[[events.GithubEvent], None], Callable[[Union[events.GithubEvent]], None]
 ]
 
 
 @dataclass(init=False)
 class Webhook:
 
-    event_mapping: typing.MutableMapping[
-        typing.Type[events.GithubEvent], typing.List[typing.Callable]
-    ]
+    event_mapping: MutableMapping[Type[events.GithubEvent], List[Callable]]
 
     def __init__(self, app: FastAPI, path: str = "/api/github/hook"):
         self.event_mapping = defaultdict(list)
@@ -65,8 +72,8 @@ class Webhook:
         # FastAPI allows x_github_event to be nullable and we cannot type it as
         # Optional in the function definition
         # https://github.com/tiangolo/fastapi/issues/179
-        github_event = typing.cast(typing.Optional[str], x_github_event)
-        github_signature = typing.cast(typing.Optional[str], x_hub_signature)
+        github_event = cast(Optional[str], x_github_event)
+        github_signature = cast(Optional[str], x_hub_signature)
         expected_sha = hmac.new(
             key=SECRET_KEY.encode(), msg=(await request.body()), digestmod=hashlib.sha1
         ).hexdigest()
@@ -106,17 +113,15 @@ class Webhook:
         return None
 
     def register_events(
-        self,
-        func: typing.Callable,
-        events: typing.List[typing.Type[events.GithubEvent]],
+        self, func: Callable, events: List[Type[events.GithubEvent]]
     ) -> None:
         for event in events:
             self.event_mapping[event].append(func)
 
-    def __call__(self) -> typing.Callable:
+    def __call__(self) -> Callable:
         def decorator(func: DecoratorFunc) -> DecoratorFunc:
             arg_count = func.__code__.co_argcount
-            annotations = typing.get_type_hints(func)
+            annotations = get_type_hints(func)
             if arg_count != 1 or len(annotations) not in {1, 2}:
                 raise TypeError(
                     f"invalid number of arguments '{arg_count}'. Only one argument should be provided."
@@ -125,7 +130,7 @@ class Webhook:
             typehints = list(annotations.values())[0]
 
             # we have a union of types
-            if getattr(typehints, "__origin__", None) == typing.Union:
+            if getattr(typehints, "__origin__", None) == Union:
                 for type in typehints.__args__:
                     if not valid_event(type):
                         raise UnsupportType(typehints)

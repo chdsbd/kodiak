@@ -1,20 +1,20 @@
 """
 Schemas for Github webhook events. These models are incomplete.
 """
-import typing
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, MutableMapping, Optional, Type
 
 import pydantic
 from pydantic import UrlStr
 from typing_extensions import Literal
 
-AnyDict = typing.Dict[typing.Any, typing.Any]
+AnyDict = Dict[Any, Any]
 
-event_registry: typing.MutableMapping[str, typing.Type["GithubEvent"]] = dict()
+event_registry: MutableMapping[str, Type["GithubEvent"]] = dict()
 
 
-def register(cls: typing.Type["GithubEvent"]) -> typing.Type["GithubEvent"]:
+def register(cls: Type["GithubEvent"]) -> Type["GithubEvent"]:
     event_registry[cls._event_name] = cls
     return cls
 
@@ -22,7 +22,7 @@ def register(cls: typing.Type["GithubEvent"]) -> typing.Type["GithubEvent"]:
 class HookConfiguration(pydantic.BaseModel):
     url: UrlStr
     content_type: str
-    insecure_url: typing.Optional[str]
+    insecure_url: Optional[str]
 
 
 class Hook(pydantic.BaseModel):
@@ -32,7 +32,7 @@ class Hook(pydantic.BaseModel):
 
     id: int
     name: str
-    events: typing.List[str]
+    events: List[str]
     active: bool
     config: HookConfiguration
     updated_at: datetime
@@ -41,12 +41,12 @@ class Hook(pydantic.BaseModel):
 
 class Installation(pydantic.BaseModel):
     id: int
-    node_id: typing.Optional[str]
+    node_id: Optional[str]
 
 
 class GithubEvent(pydantic.BaseModel):
     _event_name: str
-    installation: typing.Optional[Installation]
+    installation: Optional[Installation]
 
 
 @register
@@ -82,13 +82,13 @@ class Repo(pydantic.BaseModel):
     full_name: str
     owner: User
     private: bool
-    description: typing.Optional[str]
+    description: Optional[str]
     fork: bool
     url: UrlStr
     created_at: datetime
     updated_at: datetime
     pushed_at: datetime
-    homepage: typing.Optional[str]
+    homepage: Optional[str]
     default_branch: str
 
 
@@ -127,19 +127,19 @@ class BasePullRequest(pydantic.BaseModel):
     locked: bool
     title: str
     user: User
-    body: typing.Optional[str]
+    body: Optional[str]
     created_at: datetime
     updated_at: datetime
-    closed_at: typing.Optional[datetime]
-    merged_at: typing.Optional[datetime]
-    merge_commit_sha: typing.Optional[str]
-    assignee: typing.Optional[User]
-    assignees: typing.List[User]
-    requested_reviewers: typing.List[User]
+    closed_at: Optional[datetime]
+    merged_at: Optional[datetime]
+    merge_commit_sha: Optional[str]
+    assignee: Optional[User]
+    assignees: List[User]
+    requested_reviewers: List[User]
     # TODO: get response for requested_teams
-    requested_teams: typing.List[typing.Any]
-    labels: typing.List[Label]
-    milestone: typing.Optional[Milestone]
+    requested_teams: List[Any]
+    labels: List[Label]
+    milestone: Optional[Milestone]
     head: CompareBranch
     base: CompareBranch
 
@@ -163,7 +163,7 @@ class PullRequest(BasePullRequest):
     mergeable: bool
     rebaseable: bool
     mergeable_state: MergeableState
-    merged_by: typing.Optional[User]
+    merged_by: Optional[User]
     comments: int
     review_comments: int
     maintainer_can_modify: bool
@@ -214,7 +214,7 @@ class PullRequestReview(pydantic.BaseModel):
     id: int
     node_id: str
     user: User
-    body: typing.Optional[str]
+    body: Optional[str]
     commit_id: str
     submitted_at: datetime
     state: str
@@ -280,8 +280,8 @@ class CheckRun(pydantic.BaseModel):
     url: UrlStr
     status: CheckRunStatus
     name: str
-    conclusion: typing.Optional[CheckRunConclusion]
-    pull_requests: typing.List[CheckRunPR]
+    conclusion: Optional[CheckRunConclusion]
+    pull_requests: List[CheckRunPR]
 
     def to_status(self) -> Literal["pending", "success", "failure"]:
         if self.status is None:
@@ -334,9 +334,9 @@ class Commit(pydantic.BaseModel):
     sha: str
     node_id: str
     url: UrlStr
-    author: typing.Optional[User]
-    committer: typing.Optional[User]
-    parents: typing.List[Tree]
+    author: Optional[User]
+    committer: Optional[User]
+    parents: List[Tree]
 
 
 class Branch(pydantic.BaseModel):
@@ -361,12 +361,12 @@ class StatusEvent(GithubEvent):
     id: int
     sha: str
     name: str
-    target_url: typing.Optional[UrlStr]
+    target_url: Optional[UrlStr]
     context: str
-    description: typing.Optional[str]
+    description: Optional[str]
     state: StatusEventState
     commit: Commit
-    branches: typing.List[Branch]
+    branches: List[Branch]
     created_at: datetime
     updated_at: datetime
     repository: Repo
@@ -381,7 +381,7 @@ class PushEventCommitter(pydantic.BaseModel):
 
 class PushEventPusher(pydantic.BaseModel):
     name: str
-    email: typing.Optional[str]
+    email: Optional[str]
 
 
 class PushEventCommit(pydantic.BaseModel):
@@ -393,9 +393,9 @@ class PushEventCommit(pydantic.BaseModel):
     message: str
     author: PushEventCommitter
     committer: PushEventCommitter
-    added: typing.List[str]
-    removed: typing.List[str]
-    modified: typing.List[str]
+    added: List[str]
+    removed: List[str]
+    modified: List[str]
 
 
 @register
@@ -411,10 +411,10 @@ class PushEvent(GithubEvent):
     created: bool
     deleted: bool
     forced: bool
-    base_ref: typing.Optional[str]
+    base_ref: Optional[str]
     compare: UrlStr
-    commits: typing.List[PushEventCommit]
-    head_commit: typing.Optional[PushEventCommit]
+    commits: List[PushEventCommit]
+    head_commit: Optional[PushEventCommit]
     repository: Repo
     pusher: PushEventPusher
     sender: User

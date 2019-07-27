@@ -1,7 +1,6 @@
 import re
-import typing
 from collections import defaultdict
-from typing import Optional
+from typing import List, MutableMapping, Optional, Set
 
 import structlog
 
@@ -46,7 +45,7 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
+def review_status(reviews: List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
     """
@@ -66,13 +65,13 @@ def mergeable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
-    review_requests: typing.List[PRReviewRequest],
-    reviews: typing.List[PRReview],
-    contexts: typing.List[StatusContext],
-    check_runs: typing.List[CheckRun],
+    review_requests: List[PRReviewRequest],
+    reviews: List[PRReview],
+    contexts: List[StatusContext],
+    check_runs: List[CheckRun],
     valid_signature: bool,
-    valid_merge_methods: typing.List[MergeMethod],
-    app_id: typing.Optional[str] = None,
+    valid_merge_methods: List[MergeMethod],
+    app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
         config=config,
@@ -170,9 +169,7 @@ def mergeable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
-            reviews_by_author: typing.MutableMapping[
-                str, typing.List[PRReview]
-            ] = defaultdict(list)
+            reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
                 # only reviews by members with write access count towards mergeability
                 if review.authorAssociation == CommentAuthorAssociation.NONE:
@@ -197,12 +194,12 @@ def mergeable(
         if branch_protection.requiresCommitSignatures and not valid_signature:
             raise NotQueueable("missing required signature")
 
-        required: typing.Set[str] = set()
-        passing: typing.Set[str] = set()
+        required: Set[str] = set()
+        passing: Set[str] = set()
         if branch_protection.requiresStatusChecks:
-            failing_contexts: typing.List[str] = []
-            pending_contexts: typing.List[str] = []
-            passing_contexts: typing.List[str] = []
+            failing_contexts: List[str] = []
+            pending_contexts: List[str] = []
+            passing_contexts: List[str] = []
             required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):

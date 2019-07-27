@@ -1,4 +1,4 @@
-import typing
+from typing import List
 
 import pytest
 from pytest_mock import MockFixture
@@ -47,7 +47,7 @@ def test_mergeability_response_coverage() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("labels,expected", [(["automerge"], True), ([], False)])
 async def test_deleting_branch_after_merge(
-    labels: typing.List[str],
+    labels: List[str],
     expected: bool,
     event_response: queries.EventInfoResponse,
     mocker: MockFixture,
