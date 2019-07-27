@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import arrow
 import jwt
@@ -35,14 +34,14 @@ class ErrorLocation(TypedDict):
 
 class GraphQLError(TypedDict):
     message: str
-    locations: typing.List[ErrorLocation]
-    type: typing.Optional[str]
-    path: typing.Optional[typing.List[str]]
+    locations: List[ErrorLocation]
+    type: Optional[str]
+    path: Optional[List[str]]
 
 
 class GraphQLResponse(TypedDict):
-    data: typing.Optional[typing.Dict[typing.Any, typing.Any]]
-    errors: typing.Optional[typing.List[GraphQLError]]
+    data: Optional[Dict[Any, Any]]
+    errors: Optional[List[GraphQLError]]
 
 
 DEFAULT_BRANCH_NAME_QUERY = """
@@ -197,7 +196,7 @@ class PullRequest(BaseModel):
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState
-    labels: typing.List[str]
+    labels: List[str]
     # the SHA of the most recent commit
     latest_sha: str
     baseRefName: str
@@ -221,11 +220,11 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests_count: int
     head_exists: bool
-    reviews: typing.List[PRReview] = field(default_factory=list)
-    status_contexts: typing.List[StatusContext] = field(default_factory=list)
-    check_runs: typing.List[CheckRun] = field(default_factory=list)
+    reviews: List[PRReview] = field(default_factory=list)
+    status_contexts: List[StatusContext] = field(default_factory=list)
+    check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
-    valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
+    valid_merge_methods: List[MergeMethod] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -240,9 +239,9 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 
 class BranchProtectionRule(BaseModel):
     requiresApprovingReviews: bool
-    requiredApprovingReviewCount: typing.Optional[int]
+    requiredApprovingReviewCount: Optional[int]
     requiresStatusChecks: bool
-    requiredStatusCheckContexts: typing.List[str]
+    requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
     requiresCommitSignatures: bool
 
@@ -300,7 +299,7 @@ class CheckConclusionState(Enum):
 
 class CheckRun(BaseModel):
     name: str
-    conclusion: typing.Optional[CheckConclusionState]
+    conclusion: Optional[CheckConclusionState]
 
 
 class TokenResponse(BaseModel):
@@ -312,34 +311,34 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-installation_cache: typing.MutableMapping[str, typing.Optional[TokenResponse]] = dict()
+installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
 
-def get_repo(*, data: dict) -> typing.Optional[dict]:
+def get_repo(*, data: dict) -> Optional[dict]:
     try:
-        return typing.cast(dict, data["repository"])
+        return cast(dict, data["repository"])
     except (KeyError, TypeError):
         return None
 
 
-def get_config_str(*, repo: dict) -> typing.Optional[str]:
+def get_config_str(*, repo: dict) -> Optional[str]:
     try:
-        return typing.cast(str, repo["object"]["text"])
+        return cast(str, repo["object"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_pull_request(*, repo: dict) -> typing.Optional[dict]:
+def get_pull_request(*, repo: dict) -> Optional[dict]:
     try:
-        return typing.cast(dict, repo["pullRequest"])
+        return cast(dict, repo["pullRequest"])
     except (KeyError, TypeError):
         logger.warning("Could not find PR")
         return None
 
 
-def get_labels(*, pr: dict) -> typing.List[str]:
+def get_labels(*, pr: dict) -> List[str]:
     try:
         nodes = pr["labels"]["nodes"]
         get_names = (node.get("name") for node in nodes)
@@ -348,23 +347,23 @@ def get_labels(*, pr: dict) -> typing.List[str]:
         return []
 
 
-def get_sha(*, pr: dict) -> typing.Optional[str]:
+def get_sha(*, pr: dict) -> Optional[str]:
     try:
-        return typing.cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
+        return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
 
 
-def get_branch_protection_dicts(*, repo: dict) -> typing.List[dict]:
+def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
     try:
-        return typing.cast(typing.List[dict], repo["branchProtectionRules"]["nodes"])
+        return cast(List[dict], repo["branchProtectionRules"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
 def get_branch_protection(
     *, repo: dict, ref_name: str
-) -> typing.Optional[BranchProtectionRule]:
+) -> Optional[BranchProtectionRule]:
     for rule in get_branch_protection_dicts(repo=repo):
         try:
             nodes = rule["matchingRefs"]["nodes"]
@@ -382,21 +381,21 @@ def get_branch_protection(
 
 def get_review_requests_count(*, pr: dict) -> int:
     try:
-        return typing.cast(int, pr["reviewRequests"]["totalCount"])
+        return cast(int, pr["reviewRequests"]["totalCount"])
     except (KeyError, TypeError):
         return 0
 
 
-def get_review_dicts(*, pr: dict) -> typing.List[dict]:
+def get_review_dicts(*, pr: dict) -> List[dict]:
     try:
-        return typing.cast(typing.List[dict], pr["reviews"]["nodes"])
+        return cast(List[dict], pr["reviews"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_reviews(*, pr: dict) -> typing.List[PRReview]:
+def get_reviews(*, pr: dict) -> List[PRReview]:
     review_dicts = get_review_dicts(pr=pr)
-    reviews: typing.List[PRReview] = []
+    reviews: List[PRReview] = []
     for review_dict in review_dicts:
         try:
             reviews.append(PRReview.parse_obj(review_dict))
@@ -405,15 +404,15 @@ def get_reviews(*, pr: dict) -> typing.List[PRReview]:
     return reviews
 
 
-def get_status_contexts(*, pr: dict) -> typing.List[StatusContext]:
+def get_status_contexts(*, pr: dict) -> List[StatusContext]:
     try:
-        commit_status_dicts: typing.List[dict] = pr["commits"]["nodes"][0]["commit"][
-            "status"
-        ]["contexts"]
+        commit_status_dicts: List[dict] = pr["commits"]["nodes"][0]["commit"]["status"][
+            "contexts"
+        ]
     except (IndexError, KeyError, TypeError):
         commit_status_dicts = []
 
-    status_contexts: typing.List[StatusContext] = []
+    status_contexts: List[StatusContext] = []
     for commit_status in commit_status_dicts:
         try:
             status_contexts.append(StatusContext.parse_obj(commit_status))
@@ -423,8 +422,8 @@ def get_status_contexts(*, pr: dict) -> typing.List[StatusContext]:
     return status_contexts
 
 
-def get_check_runs(*, pr: dict) -> typing.List[CheckRun]:
-    check_run_dicts: typing.List[dict] = []
+def get_check_runs(*, pr: dict) -> List[CheckRun]:
+    check_run_dicts: List[dict] = []
     try:
         for commit_node in pr["commits"]["nodes"]:
             check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
@@ -435,7 +434,7 @@ def get_check_runs(*, pr: dict) -> typing.List[CheckRun]:
     except (KeyError, TypeError):
         pass
 
-    check_runs: typing.List[CheckRun] = []
+    check_runs: List[CheckRun] = []
     for check_run_dict in check_run_dicts:
         try:
             check_runs.append(CheckRun.parse_obj(check_run_dict))
@@ -458,8 +457,8 @@ def get_head_exists(*, pr: dict) -> bool:
         return False
 
 
-def get_valid_merge_methods(*, repo: dict) -> typing.List[MergeMethod]:
-    valid_merge_methods: typing.List[MergeMethod] = []
+def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
+    valid_merge_methods: List[MergeMethod] = []
     if repo.get("mergeCommitAllowed"):
         valid_merge_methods.append(MergeMethod.merge)
 
@@ -493,18 +492,16 @@ class Client:
         )
         return self
 
-    async def __aexit__(
-        self, exc_type: typing.Any, exc_value: typing.Any, traceback: typing.Any
-    ) -> None:
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         await self.session.close()
 
     async def send_query(
         self,
         query: str,
-        variables: typing.Mapping[str, typing.Union[str, int, None]],
+        variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
         remaining_retries: int = 4,
-    ) -> typing.Optional[GraphQLResponse]:
+    ) -> Optional[GraphQLResponse]:
         log = logger.bind(install=installation_id)
 
         token = await get_token_for_install(installation_id=installation_id)
@@ -521,9 +518,9 @@ class Client:
         if res.status_code != status.HTTP_200_OK:
             log.error("github api request error", res=res)
             return None
-        return typing.cast(GraphQLResponse, res.json())
+        return cast(GraphQLResponse, res.json())
 
-    async def get_default_branch_name(self) -> typing.Optional[str]:
+    async def get_default_branch_name(self) -> Optional[str]:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
             variables=dict(owner=self.owner, repo=self.repo),
@@ -536,11 +533,11 @@ class Client:
         if errors is not None or data is None:
             logger.error("could not fetch default branch name", res=res)
             return None
-        return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
+        return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
-    ) -> typing.Optional[EventInfoResponse]:
+    ) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -623,7 +620,7 @@ class Client:
 
     async def get_pull_requests_for_sha(
         self, sha: str
-    ) -> typing.Optional[typing.List[events.BasePullRequest]]:
+    ) -> Optional[List[events.BasePullRequest]]:
         log = logger.bind(
             repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
         )
@@ -668,14 +665,14 @@ class Client:
                 headers=headers,
             )
 
-    async def get_pull_request(self, number: int) -> typing.Optional[dict]:
+    async def get_pull_request(self, number: int) -> Optional[dict]:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
         async with self.throttler:
             res = await self.session.get(url, headers=headers)
         if not res.ok:
             return None
-        return typing.cast(dict, res.json())
+        return cast(dict, res.json())
 
     async def merge_pull_request(self, number: int, body: dict) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
@@ -684,7 +681,7 @@ class Client:
             return await self.session.put(url, headers=headers, json=body)
 
     async def create_notification(
-        self, head_sha: str, message: str, summary: typing.Optional[str] = None
+        self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
@@ -742,7 +739,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     return token_response.token
 
 
-async def get_headers(*, installation_id: str) -> typing.Mapping[str, str]:
+async def get_headers(*, installation_id: str) -> Mapping[str, str]:
     token = await get_token_for_install(installation_id=installation_id)
     return dict(
         Authorization=f"token {token}",

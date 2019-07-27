@@ -1,6 +1,6 @@
 import json
-import typing
 from pathlib import Path
+from typing import cast
 
 import arrow
 import pytest
@@ -52,7 +52,7 @@ async def test_get_default_branch_name_error(
 
 @pytest.fixture
 def blocked_response() -> dict:
-    return typing.cast(
+    return cast(
         dict,
         json.loads(
             (

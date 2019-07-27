@@ -1,5 +1,4 @@
 import textwrap
-import typing
 from dataclasses import dataclass
 from enum import Enum, auto
 from html.parser import HTMLParser
@@ -137,7 +136,7 @@ class PR:
     repo: str
     installation_id: str
     log: structlog.BoundLogger
-    event: typing.Optional[EventInfoResponse]
+    event: Optional[EventInfoResponse]
     client: queries.Client
 
     def __eq__(self, b: object) -> bool:
@@ -169,7 +168,7 @@ class PR:
     def __repr__(self) -> str:
         return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
 
-    async def get_event(self) -> typing.Optional[EventInfoResponse]:
+    async def get_event(self) -> Optional[EventInfoResponse]:
         default_branch_name = await self.client.get_default_branch_name()
         if default_branch_name is None:
             return None
@@ -183,8 +182,8 @@ class PR:
     async def set_status(
         self,
         summary: str,
-        detail: typing.Optional[str] = None,
-        markdown_content: typing.Optional[str] = None,
+        detail: Optional[str] = None,
+        markdown_content: Optional[str] = None,
     ) -> None:
         """
         Display a message to a user through a github check
@@ -215,7 +214,7 @@ class PR:
     # TODO(chdsbd): Move set_status updates out of this method
     async def mergeability(
         self, merging: bool = False
-    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
+    ) -> Tuple[MergeabilityResponse, Optional[EventInfoResponse]]:
         self.log.info("get_event")
         self.event = await self.get_event()
         if self.event is None:
@@ -328,7 +327,7 @@ class PR:
             f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
             headers=headers,
         )
-        return typing.cast(bool, res.status_code != 204)
+        return cast(bool, res.status_code != 204)
 
     async def create_comment(self, body: str) -> bool:
         """
@@ -341,7 +340,7 @@ class PR:
             json=dict(body=body),
             headers=headers,
         )
-        return typing.cast(bool, res.status_code != 200)
+        return cast(bool, res.status_code != 200)
 
     async def notify_pr_creator(self) -> bool:
         """
