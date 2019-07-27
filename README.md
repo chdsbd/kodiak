@@ -59,9 +59,7 @@ updated when their targets were updated.
 - Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
   signed commits](https://help.github.com/en/articles/about-required-commit-signing).
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
-- Kodiak doesn't display config parsing errors at the moment. Please see [README#setup](https://github.com/chdsbd/kodiak#setup) and [kodiak/test/fixtures/config](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config) for examples.  ([kodiak#102](https://github.com/chdsbd/kodiak/issues/102))
 - Kodiak doesn't handling updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
-- Github [closing issue keywords](https://help.github.com/en/articles/closing-issues-using-keywords) do not work. This seems to be a bug with Github and bot users.
 
 ## Setup
 
@@ -100,13 +98,15 @@ updated when their targets were updated.
 
    The current [permissions](https://developer.github.com/v3/apps/permissions/) that are required to use the GitHub App are:
 
-   | name                      | level      | reason                            |
-   | ------------------------- | ---------- | --------------------------------- |
-   | repository administration | read-only  | branch protection info            |
-   | checks                    | read/write | PR mergeability and status report |
-   | repository contents       | read/write | update PRs, read configuration    |
-   | pull requests             | read/write | PR mergeability, merge PR         |
-   | commit statuses           | read-only  | PR mergeability                   |
+   | name                      | level      | reason                                     |
+   | ------------------------- | ---------- | ------------------------------------------ |
+   | repository administration | read-only  | branch protection info                     |
+   | checks                    | read/write | PR mergeability and status report          |
+   | repository contents       | read/write | update PRs, read configuration             |
+   | issues                    | read/write | support [closing issues using keywords][0] |
+   | pull requests             | read/write | PR mergeability, merge PR                  |
+   | commit statuses           | read-only  | PR mergeability                            |
+
 
    The necessary event subscriptions are:
 
@@ -307,3 +307,5 @@ docker tag cdignam/kodiak:$GIT_SHA registry.heroku.com/$APP_NAME/web
 docker push registry.heroku.com/$APP_NAME/web
 heroku container:release -a $APP_NAME web
 ```
+
+[0]: https://help.github.com/en/articles/closing-issues-using-keywords
