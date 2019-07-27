@@ -4,7 +4,7 @@ import pytest
 from pytest_mock import MockFixture
 from starlette.testclient import TestClient
 
-from kodiak import queries
+from kodiak import messages, queries
 from kodiak.config import (
     V1,
     Merge,
@@ -19,6 +19,7 @@ from kodiak.pull_request import (
     get_merge_body,
     strip_html_comments_from_markdown,
 )
+from kodiak.queries import MergeStateStatus
 from kodiak.test_utils import wrap_future
 
 
@@ -94,8 +95,12 @@ async def test_cross_repo_missing_head(
 
     event_response.head_exists = False
     event_response.pull_request.isCrossRepository = True
-    mergeable = mocker.patch("kodiak.pull_request.mergeable")
+    event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+    event_response.pull_request.labels = ["automerge"]
+    event_response.branch_protection.requiresApprovingReviews = False
+    event_response.branch_protection.requiresStrictStatusChecks = True
     mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    set_status = mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
     pr = PR(
         number=123,
         owner="tester",
@@ -104,9 +109,11 @@ async def test_cross_repo_missing_head(
         client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
     )
     await pr.mergeability()
-    assert (
-        mergeable.call_count == 1
-    ), "we should not return early from mergeability when head is missing and isCrossRepository is true, because the head could still be there."
+
+    assert set_status.call_count == 1
+    set_status.assert_called_with(
+        summary=mocker.ANY, markdown_content=messages.FORKS_CANNOT_BE_UPDATED
+    )
 
 
 def test_pr(api_client: queries.Client) -> None:
