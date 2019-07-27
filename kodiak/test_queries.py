@@ -117,6 +117,7 @@ def block_event() -> EventInfoResponse:
         review_requests=[
             PRReviewRequest(name="ghost"),
             PRReviewRequest(name="ghost-team"),
+            PRReviewRequest(name="ghost-mannequin"),
         ],
         reviews=[
             PRReview(

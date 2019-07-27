@@ -47,6 +47,12 @@
                 "__typename": "Team",
                 "name": "ghost-team"
               }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Mannequin",
+                "login": "ghost-mannequin"
+              }
             }
           ]
         },
