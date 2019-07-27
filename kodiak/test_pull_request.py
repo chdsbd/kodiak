@@ -95,7 +95,7 @@ async def test_cross_repo_missing_head(
 
     event_response.head_exists = False
     event_response.pull_request.isCrossRepository = True
-    event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+    assert event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     event_response.pull_request.labels = ["automerge"]
     assert event_response.branch_protection is not None
     event_response.branch_protection.requiresApprovingReviews = False
