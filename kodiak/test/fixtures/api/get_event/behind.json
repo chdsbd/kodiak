@@ -35,7 +35,26 @@
         "state": "OPEN",
         "mergeable": "MERGEABLE",
         "reviewRequests": {
-          "totalCount": 0
+          "nodes": [
+            {
+              "requestedReviewer": {
+                "__typename": "User",
+                "login": "ghost"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Team",
+                "name": "ghost-team"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Mannequin",
+                "login": "ghost-mannequin"
+              }
+            }
+          ]
         },
         "title": "Update README.md",
         "body": "",

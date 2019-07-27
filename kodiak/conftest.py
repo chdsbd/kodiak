@@ -101,6 +101,11 @@ def review() -> queries.PRReview:
 
 
 @pytest.fixture
+def review_request() -> queries.PRReviewRequest:
+    return queries.PRReviewRequest(name="ghost")
+
+
+@pytest.fixture
 def status_context() -> queries.StatusContext:
     return queries.StatusContext(context="ci/api", state=queries.StatusState.SUCCESS)
 
@@ -143,7 +148,7 @@ def event_response(
         repo=repo,
         branch_protection=branch_protection,
         head_exists=True,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[review],
         status_contexts=[status_context],
         valid_signature=True,

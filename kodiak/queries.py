@@ -83,7 +83,20 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       state
       mergeable
       reviewRequests(first: 100) {
-        totalCount
+        nodes {
+          requestedReviewer {
+            __typename
+            ... on User {
+              login
+            }
+            ... on Team {
+              name
+            }
+            ... on Mannequin {
+              login
+            }
+          }
+        }
       }
       title
       body
@@ -219,7 +232,7 @@ class EventInfoResponse:
     pull_request: PullRequest
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
-    review_requests_count: int
+    review_requests: typing.List[PRReviewRequest]
     head_exists: bool
     reviews: typing.List[PRReview] = field(default_factory=list)
     status_contexts: typing.List[StatusContext] = field(default_factory=list)
@@ -274,6 +287,11 @@ class PRReview(BaseModel):
     createdAt: datetime
     author: PRReviewAuthor
     authorAssociation: CommentAuthorAssociation
+
+
+@dataclass
+class PRReviewRequest:
+    name: str
 
 
 class StatusState(Enum):
@@ -380,11 +398,30 @@ def get_branch_protection(
     return None
 
 
-def get_review_requests_count(*, pr: dict) -> int:
+def get_review_requests_dicts(*, pr: dict) -> typing.List[dict]:
     try:
-        return typing.cast(int, pr["reviewRequests"]["totalCount"])
+        return typing.cast(typing.List[dict], pr["reviewRequests"]["nodes"])
     except (KeyError, TypeError):
-        return 0
+        return []
+
+
+def get_requested_reviews(*, pr: dict) -> typing.List[PRReviewRequest]:
+    """
+    parse from: https://developer.github.com/v4/union/requestedreviewer/
+    """
+    review_requests: typing.List[PRReviewRequest] = []
+    for request_dict in get_review_requests_dicts(pr=pr):
+        try:
+            request = request_dict["requestedReviewer"]
+            typename = request["__typename"]
+            if typename in {"User", "Mannequin"}:
+                name = request["login"]
+            else:
+                name = request["name"]
+            review_requests.append(PRReviewRequest(name=name))
+        except ValueError:
+            logger.warning("Could not parse PRReviewRequest")
+    return review_requests
 
 
 def get_review_dicts(*, pr: dict) -> typing.List[dict]:
@@ -612,7 +649,7 @@ class Client:
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
             ),
             branch_protection=branch_protection,
-            review_requests_count=get_review_requests_count(pr=pull_request),
+            review_requests=get_requested_reviews(pr=pull_request),
             reviews=get_reviews(pr=pull_request),
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),

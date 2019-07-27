@@ -24,6 +24,7 @@ from kodiak.queries import (
     MergeableState,
     MergeStateStatus,
     PRReview,
+    PRReviewRequest,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -65,7 +66,7 @@ def mergeable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
-    review_requests_count: int,
+    review_requests: typing.List[PRReviewRequest],
     reviews: typing.List[PRReview],
     contexts: typing.List[StatusContext],
     check_runs: typing.List[CheckRun],
@@ -77,7 +78,7 @@ def mergeable(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=review_requests_count,
+        review_requests=review_requests,
         reviews=reviews,
         contexts=contexts,
         valid_signature=valid_signature,
@@ -126,9 +127,9 @@ def mergeable(
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}"
         )
 
-    if config.merge.block_on_reviews_requested and review_requests_count:
-        # TODO(chdsbd): Fetch reviewer names and display them here
-        raise NotQueueable("reviews requested")
+    if config.merge.block_on_reviews_requested and review_requests:
+        names = [r.name for r in review_requests]
+        raise NotQueueable(f"reviews requested: {names!r}")
 
     if pull_request.state == PullRequestState.MERGED:
         raise BranchMerged()
