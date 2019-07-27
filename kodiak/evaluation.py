@@ -19,7 +19,6 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommentAuthorAssociation,
     MergeableState,
     MergeStateStatus,
     PRReview,
@@ -171,9 +170,8 @@ def mergeable(
         ):
             reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
-                # only reviews by members with write access count towards mergeability
-                if review.authorAssociation == CommentAuthorAssociation.NONE:
-                    continue
+                # TODO(chdsbd): Check if user is in assignableUsers
+                assert False
                 reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0

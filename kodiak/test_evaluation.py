@@ -18,7 +18,6 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommentAuthorAssociation,
     MergeableState,
     MergeStateStatus,
     PRReview,
@@ -645,25 +644,21 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="kodiak"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
     with pytest.raises(NotQueueable, match="changes requested") as e:
@@ -699,25 +694,21 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -752,19 +743,16 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.DISMISSED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -799,13 +787,11 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
             author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.NONE,
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
             author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):

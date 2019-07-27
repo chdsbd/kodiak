@@ -96,7 +96,6 @@ def review() -> queries.PRReview:
         state=queries.PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
         author=queries.PRReviewAuthor(login="ghost"),
-        authorAssociation=queries.CommentAuthorAssociation.CONTRIBUTOR,
     )
 
 
