@@ -88,7 +88,7 @@ async def test_cross_repo_missing_head(
 ) -> None:
     """
     if a repository is from a fork (isCrossRepository), we will not be able to
-    see head information do to a problem with the v4 api failing to return head
+    see head information due to a problem with the v4 api failing to return head
     information for forks, unlike the v3 api.
     """
 
