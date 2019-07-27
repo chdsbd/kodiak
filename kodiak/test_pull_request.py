@@ -97,6 +97,7 @@ async def test_cross_repo_missing_head(
     event_response.pull_request.isCrossRepository = True
     event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     event_response.pull_request.labels = ["automerge"]
+    assert event_response.branch_protection is not None
     event_response.branch_protection.requiresApprovingReviews = False
     event_response.branch_protection.requiresStrictStatusChecks = True
     mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
