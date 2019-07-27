@@ -215,7 +215,7 @@ class PR:
                 app_id=conf.GITHUB_APP_ID,
                 pull_request=self.event.pull_request,
                 branch_protection=self.event.branch_protection,
-                review_requests_count=self.event.review_requests_count,
+                review_requests=self.event.review_requests,
                 reviews=self.event.reviews,
                 contexts=self.event.status_contexts,
                 check_runs=self.event.check_runs,

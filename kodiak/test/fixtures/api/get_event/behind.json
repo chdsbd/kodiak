@@ -35,7 +35,13 @@
         "state": "OPEN",
         "mergeable": "MERGEABLE",
         "reviewRequests": {
-          "totalCount": 0
+          "nodes": [
+            {
+              "requestedReviewer": {
+                "login": "ghost"
+              }
+            }
+          ]
         },
         "title": "Update README.md",
         "body": "",

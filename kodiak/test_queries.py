@@ -113,7 +113,7 @@ def block_event() -> EventInfoResponse:
         pull_request=pr,
         repo=rep_info,
         branch_protection=branch_protection,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
@@ -176,9 +176,6 @@ async def test_get_event_info_blocked(
     block_event: EventInfoResponse,
     mocker: MockFixture,
 ) -> None:
-    # TODO(sbdchd): we should use monkeypatching
-    # mypy doesn't handle this circular type
-
     mocker.patch.object(
         api_client,
         "send_query",
