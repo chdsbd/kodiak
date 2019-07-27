@@ -273,16 +273,6 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
-class CommentAuthorAssociation(Enum):
-    COLLABORATOR = "COLLABORATOR"
-    CONTRIBUTOR = "CONTRIBUTOR"
-    FIRST_TIMER = "FIRST_TIMER"
-    FIRST_TIME_CONTRIBUTOR = "FIRST_TIME_CONTRIBUTOR"
-    MEMBER = "MEMBER"
-    NONE = "NONE"
-    OWNER = "OWNER"
-
-
 class PRReviewAuthor(BaseModel):
     login: str
 
@@ -291,7 +281,6 @@ class PRReview(BaseModel):
     state: PRReviewState
     createdAt: datetime
     author: PRReviewAuthor
-    authorAssociation: CommentAuthorAssociation
 
 
 @dataclass
