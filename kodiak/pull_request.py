@@ -220,6 +220,8 @@ class PR:
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
+        # PRs from forks will always appear deleted because the v4 api doesn't
+        # return head information for forks like the v3 api does.
         if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
