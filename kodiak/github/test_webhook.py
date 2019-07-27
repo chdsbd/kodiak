@@ -1,7 +1,7 @@
 import inspect
 import json
-import typing
 from pathlib import Path
+from typing import Tuple, Type, Union
 
 import pytest
 from fastapi import FastAPI
@@ -79,7 +79,7 @@ def test_union(webhook: Webhook) -> None:
     """
 
     @webhook()
-    def push(data: typing.Union[events.PullRequestEvent, events.PushEvent]) -> None:
+    def push(data: Union[events.PullRequestEvent, events.PushEvent]) -> None:
         pass
 
     for event in (events.PullRequestEvent, events.PushEvent):
@@ -123,11 +123,11 @@ def test_invalid_union(webhook: Webhook) -> None:
     ):
 
         @webhook()
-        def push(event: typing.Union[events.PullRequestEvent, int]) -> None:
+        def push(event: Union[events.PullRequestEvent, int]) -> None:
             pass
 
 
-def get_body_and_hash(data: dict) -> typing.Tuple[bytes, str]:
+def get_body_and_hash(data: dict) -> Tuple[bytes, str]:
     import hmac
     import hashlib
     import os
@@ -145,7 +145,7 @@ def get_body_and_hash(data: dict) -> typing.Tuple[bytes, str]:
 def test_event_parsing(
     client: TestClient,
     webhook: Webhook,
-    event: typing.Type[events.GithubEvent],
+    event: Type[events.GithubEvent],
     file_name: str,
 ) -> None:
     """Test all of the events we have"""
