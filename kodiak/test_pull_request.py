@@ -59,6 +59,7 @@ async def test_deleting_branch_after_merge(
 
     event_response.pull_request.state = queries.PullRequestState.MERGED
     event_response.pull_request.labels = labels
+    assert isinstance(event_response.config, V1)
     event_response.config.merge.delete_branch_on_merge = True
 
     mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
@@ -152,7 +153,7 @@ async def test_attempting_to_notify_pr_author_with_no_automerge_label(
         installation_id="abc123",
         client=api_client,
     )
-
+    assert isinstance(event_response.config, V1)
     event_response.config.merge.require_automerge_label = False
     pr.event = event_response
 

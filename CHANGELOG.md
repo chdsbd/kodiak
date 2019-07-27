@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.5.0 - 2019-07-26
+
+### Added
+- configuration for redis connection pool size (#57)
+- `merge.optimistic_updates` configuration to prioritize updates over status checks (#64)
+- Internal rate limiting of API calls to Github (#70)
+- Improve status check messages when PR is being merged (#72)
+- Add queue position information to status messages (#74)
+- Display more information in status checks (#77, #112)
+    + has blacklist labels reports the blacklist labels
+    + invalid merge method displays the configured merge method and the valid merge methods
+    + blocking review shows first blocking user
+    + missing required review count shows review count and required review count
+    + failing required status checks displays the failing status checks
+    + waiting on status checks now reports the status checks we are waiting for
+- Display status messaging for missing branch protection (#78)
+- Add `merge.message.strip_html_comments` configuration option to strip comments from (#80)
+    + This is useful for stripping HTML comments created by PR templates when the `markdown` `body_type` is used.
+- Add `require_automerge_label` to configure requirement of `automerge_label` for working on PR (#82)
+    + This overrides and disables `notify_on_conflict` (#86)
+- Add status message warning for unsupported `requiresCommitSignatures` branch protection configuration (#90, #91)
+    + This is a limitation of the Github API as Kodiak is not able to created signed commits when merging a PR.
+- Add status message reporting of update branch failures (#94)
+- Add "Known issues" section to README (#105, #114)
+- Add `'empty'` configuration option for `merge.message.body` to truncate PR body on merge (#111)
+- Display configuration parsing errors with details page when kodiak cannot parse a configuration file (#116, #125)
+
+
+### Fixed
+- Support PRs in draft state (#68)
+- Fix bug where `require_automerge_label` would trigger kodiak to make an infinite loop of comments (#86)
+- Fix poor status message templating on update branch failure case (#110)
+
 ## 0.4.0 - 2019-06-16
 
 ### Added

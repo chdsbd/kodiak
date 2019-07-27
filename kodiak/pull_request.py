@@ -11,6 +11,7 @@ from markdown_html_finder import find_html_positions
 import kodiak.app_config as conf
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
+from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
     BranchMerged,
     MergeConflict,
@@ -180,20 +181,35 @@ class PR:
         )
 
     async def set_status(
-        self, summary: str, detail: typing.Optional[str] = None
+        self,
+        summary: str,
+        detail: typing.Optional[str] = None,
+        markdown_content: typing.Optional[str] = None,
     ) -> None:
         """
         Display a message to a user through a github check
+
+        `summary` and `detail` work to build the message displayed alongside
+        other status checks on the PR. They format a message like: '<summary> (<detail>)'
+
+        `markdown_content` is the message displayed on the detail view for a
+        status check. This detail view is accessible via the "Details" link
+        alongside the summary/detail content.
         """
         if detail is not None:
             message = f"{summary} ({detail})"
         else:
             message = summary
         if self.event is None:
+            self.log.info("missing event. attempting to fetch it.")
             self.event = await self.get_event()
-        assert self.event is not None
+        if self.event is None:
+            self.log.error("could not fetch event")
+            return
         await self.client.create_notification(
-            head_sha=self.event.pull_request.latest_sha, message=message, summary=None
+            head_sha=self.event.pull_request.latest_sha,
+            message=message,
+            summary=markdown_content,
         )
 
     # TODO(chdsbd): Move set_status updates out of this method
@@ -207,6 +223,18 @@ class PR:
             return MergeabilityResponse.NOT_MERGEABLE, None
         if not self.event.head_exists:
             self.log.info("branch deleted")
+            return MergeabilityResponse.NOT_MERGEABLE, None
+        if not isinstance(self.event.config, V1):
+
+            await self.set_status(
+                "🚨 Invalid configuration",
+                detail='Click "Details" for more info.',
+                markdown_content=get_markdown_for_config(
+                    self.event.config,
+                    self.event.config_str,
+                    self.event.config_file_expression,
+                ),
+            )
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
@@ -278,6 +306,10 @@ class PR:
         await self.client.get_pull_request(number=self.number)
 
     async def merge(self, event: EventInfoResponse) -> bool:
+        if not isinstance(event.config, V1):
+            self.log.error("we should never have a config error when we call merge")
+            return False
+
         res = await self.client.merge_pull_request(
             number=self.number, body=get_merge_body(event.config, event.pull_request)
         )
@@ -322,6 +354,9 @@ class PR:
 
         event = self.event
         if not event:
+            return False
+        if not isinstance(event.config, V1):
+            self.log.error("config attribute was not a config")
             return False
 
         if not event.config.merge.require_automerge_label:

@@ -69,7 +69,7 @@ def blocked_response() -> dict:
 
 
 @pytest.fixture
-def block_event() -> EventInfoResponse:
+def block_event(config_file_expression: str, config_str: str) -> EventInfoResponse:
     config = V1(
         version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
@@ -110,6 +110,8 @@ def block_event() -> EventInfoResponse:
 
     return EventInfoResponse(
         config=config,
+        config_str=config_str,
+        config_file_expression=config_file_expression,
         head_exists=True,
         pull_request=pr,
         repo=rep_info,

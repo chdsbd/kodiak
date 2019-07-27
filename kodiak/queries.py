@@ -4,12 +4,14 @@ import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 import arrow
 import jwt
+import pydantic
 import requests_async as http
 import structlog
+import toml
 from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
@@ -224,7 +226,9 @@ class RepoInfo:
 
 @dataclass
 class EventInfoResponse:
-    config: V1
+    config: Union[V1, pydantic.ValidationError, toml.TomlDecodeError]
+    config_str: str
+    config_file_expression: str
     pull_request: PullRequest
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
@@ -607,20 +611,18 @@ class Client:
             return None
 
         config_str = get_config_str(repo=repository)
-        if not config_str:
+        if config_str is None:
+            # NOTE(chdsbd): we don't want to show a message for this as the lack
+            # of a config allows kodiak to be selectively installed
             log.warning("could not find configuration file")
-            return None
-
-        try:
-            config = V1.parse_toml(config_str)
-        except ValueError:
-            log.warning("could not parse configuration")
             return None
 
         pull_request = get_pull_request(repo=repository)
         if not pull_request:
             log.warning("Could not find PR")
             return None
+
+        config = V1.parse_toml(config_str)
 
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = get_labels(pr=pull_request)
@@ -638,6 +640,8 @@ class Client:
 
         return EventInfoResponse(
             config=config,
+            config_str=config_str,
+            config_file_expression=config_file_expression,
             pull_request=pr,
             repo=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
