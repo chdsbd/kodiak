@@ -1,6 +1,20 @@
 {
   "data": {
     "repository": {
+      "assignableUsers": {
+        "nodes": [
+          {
+            "login": "ghost"
+          },
+          {
+            "login": "kodiak"
+          },
+          {
+            "login": "walrus"
+          }
+        ],
+        "totalCount": 3
+      },
       "branchProtectionRules": {
         "nodes": [
           {
@@ -67,40 +81,35 @@
               "state": "COMMENTED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:29:52Z",
               "state": "CHANGES_REQUESTED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:30:52Z",
               "state": "COMMENTED",
               "author": {
                 "login": "kodiak"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:43:17Z",
               "state": "APPROVED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-23T15:13:29Z",
               "state": "APPROVED",
               "author": {
                 "login": "walrus"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             }
           ],
           "totalCount": 2
