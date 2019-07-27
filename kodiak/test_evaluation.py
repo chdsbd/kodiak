@@ -595,7 +595,7 @@ def test_block_on_reviews_requested(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
-    assert "reviews requested: ['ghost']" == str(e.value)
+    assert str(e.value) == "reviews requested: ['ghost']"
 
 
 def test_regression_error_before_update(
