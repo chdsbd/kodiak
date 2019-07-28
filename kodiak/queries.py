@@ -4,17 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import (
-    Any,
-    Dict,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import arrow
 import jwt
@@ -244,7 +234,7 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
-    reviews: List[PRReviewWithPermission] = field(default_factory=list)
+    reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
@@ -278,29 +268,27 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
-class PRReviewAuthor(BaseModel):
+class PRReviewAuthorSchema(BaseModel):
     login: str
 
 
-class PRReview(BaseModel):
+@dataclass
+class PRReviewAuthor:
+    login: str
+    permission: Permission
+
+
+class PRReviewSchema(BaseModel):
     state: PRReviewState
     createdAt: datetime
-    author: PRReviewAuthor
+    author: PRReviewAuthorSchema
 
 
 @dataclass
-class PRReviewWithPermission:
-    """
-    Container for repository reviews with the associated user's repo permission
-
-    We use PRReview to parse the PRReview from the grapql query response, but we
-    use this for passing around the app.
-    """
-
+class PRReview:
     state: PRReviewState
     createdAt: datetime
-    username: str
-    permission: Permission
+    author: PRReviewAuthor
 
 
 @dataclass
@@ -456,14 +444,14 @@ def get_review_dicts(*, pr: dict) -> List[dict]:
         return []
 
 
-def get_reviews(*, pr: dict) -> List[PRReview]:
+def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
     review_dicts = get_review_dicts(pr=pr)
-    reviews: List[PRReview] = []
+    reviews: List[PRReviewSchema] = []
     for review_dict in review_dicts:
         try:
-            reviews.append(PRReview.parse_obj(review_dict))
+            reviews.append(PRReviewSchema.parse_obj(review_dict))
         except ValueError:
-            logger.warning("Could not parse PRReview")
+            logger.warning("Could not parse PRReviewSchema")
     return reviews
 
 
@@ -613,8 +601,8 @@ class Client:
             return Permission.NONE
 
     async def get_reviewers_and_permissions(
-        self, *, reviews: List[PRReview]
-    ) -> List[PRReviewWithPermission]:
+        self, *, reviews: List[PRReviewSchema]
+    ) -> List[PRReview]:
         reviewer_names = {review.author.login for review in reviews}
 
         requests = [
@@ -628,11 +616,13 @@ class Client:
         }
 
         return [
-            PRReviewWithPermission(
+            PRReview(
                 state=review.state,
                 createdAt=review.createdAt,
-                username=review.author.login,
-                permission=user_permission_mapping[review.author.login],
+                author=PRReviewAuthor(
+                    login=review.author.login,
+                    permission=user_permission_mapping[review.author.login],
+                ),
             )
             for review in reviews
         ]

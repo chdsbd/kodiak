@@ -10,7 +10,7 @@ from starlette.testclient import TestClient
 from kodiak import queries
 from kodiak.config import V1
 from kodiak.main import app
-from kodiak.queries import Client, Permission
+from kodiak.queries import Client
 
 
 @pytest.fixture
@@ -91,12 +91,13 @@ def branch_protection() -> queries.BranchProtectionRule:
 
 
 @pytest.fixture
-def review() -> queries.PRReviewWithPermission:
-    return queries.PRReviewWithPermission(
+def review() -> queries.PRReview:
+    return queries.PRReview(
         state=queries.PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
-        username="ghost",
-        permission=queries.Permission.WRITE,
+        author=queries.PRReviewAuthor(
+            login="ghost", permission=queries.Permission.WRITE
+        ),
     )
 
 
@@ -136,7 +137,7 @@ def event_response(
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
-    review: queries.PRReviewWithPermission,
+    review: queries.PRReview,
     status_context: queries.StatusContext,
     config: V1,
 ) -> queries.EventInfoResponse:

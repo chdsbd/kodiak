@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import List, Mapping, MutableMapping, Optional, Set
+from typing import List, MutableMapping, Optional, Set
 
 import structlog
 
@@ -25,7 +25,6 @@ from kodiak.queries import (
     PRReview,
     PRReviewRequest,
     PRReviewState,
-    PRReviewWithPermission,
     PullRequest,
     PullRequestState,
     RepoInfo,
@@ -46,7 +45,7 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-def review_status(reviews: List[PRReviewWithPermission]) -> PRReviewState:
+def review_status(reviews: List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
     """
@@ -67,7 +66,7 @@ def mergeable(
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
-    reviews: List[PRReviewWithPermission],
+    reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
     valid_signature: bool,
@@ -170,13 +169,11 @@ def mergeable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
-            reviews_by_author: MutableMapping[
-                str, List[PRReviewWithPermission]
-            ] = defaultdict(list)
+            reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
-                if review.permission not in {Permission.ADMIN, Permission.WRITE}:
+                if review.author.permission not in {Permission.ADMIN, Permission.WRITE}:
                     continue
-                reviews_by_author[review.username].append(review)
+                reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0
             for author_name, review_list in reviews_by_author.items():
