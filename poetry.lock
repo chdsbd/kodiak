@@ -209,11 +209,11 @@ description = "FastAPI framework, high performance, easy to learn, fast to code,
 name = "fastapi"
 optional = false
 python-versions = ">=3.6"
-version = "0.17.0"
+version = "0.33.0"
 
 [package.dependencies]
-pydantic = ">=0.17,<=0.23.0"
-starlette = "0.11.1"
+pydantic = "0.30"
+starlette = ">=0.11.1,<=0.12.0"
 
 [[package]]
 category = "dev"
@@ -528,7 +528,7 @@ description = "Data validation and settings management using python 3.6 type hin
 name = "pydantic"
 optional = false
 python-versions = ">=3.6"
-version = "0.23"
+version = "0.30"
 
 [[package]]
 category = "dev"
@@ -597,7 +597,7 @@ six = ">=1.10.0"
 wcwidth = "*"
 
 [package.dependencies.more-itertools]
-python = ">=2.8"
+python = ">2.7"
 version = ">=4.0.0"
 
 [[package]]
@@ -661,22 +661,11 @@ requests = ">=2.0.0,<3.0.0"
 
 [[package]]
 category = "main"
-description = "Sentry integration for ASGI frameworks."
-name = "sentry-asgi"
-optional = false
-python-versions = "*"
-version = "0.1.5"
-
-[package.dependencies]
-sentry-sdk = "*"
-
-[[package]]
-category = "main"
 description = "Python client for Sentry (https://getsentry.com)"
 name = "sentry-sdk"
 optional = false
 python-versions = "*"
-version = "0.8.1"
+version = "0.10.2"
 
 [package.dependencies]
 certifi = "*"
@@ -704,7 +693,7 @@ description = "The little ASGI library that shines."
 name = "starlette"
 optional = false
 python-versions = ">=3.6"
-version = "0.11.1"
+version = "0.12.0"
 
 [[package]]
 category = "main"
@@ -716,17 +705,6 @@ version = "19.1.0"
 
 [package.dependencies]
 six = "*"
-
-[[package]]
-category = "main"
-description = ""
-name = "structlog-sentry"
-optional = false
-python-versions = "*"
-version = "1.1.0"
-
-[package.dependencies]
-sentry-sdk = "*"
 
 [[package]]
 category = "main"
@@ -850,7 +828,7 @@ python-versions = ">=2.7"
 version = "0.5.1"
 
 [metadata]
-content-hash = "1239afb4677d741544df1ccddc49b40c0ec6bb5ad85bb21edae3091d2ad927c6"
+content-hash = "721a8c045794d110ea294a13b51d225521d4c01eead014f94c7326394881bfda"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -875,7 +853,7 @@ cryptography = ["24b61e5fcb506424d3ec4e18bca995833839bf13c59fc43e530e488f28d46b8
 databases = ["d365cff2035c5177ef5fd8c5abf6671da01189521da64848a01251c870daf48f"]
 decorator = ["86156361c50488b84a3f148056ea716ca587df2f0de1d34750d35c21312725de", "f069f3a01830ca754ba5258fde2278454a0b5b79e0d7f5c13b3b97e57d4acff6"]
 entrypoints = ["589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19", "c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"]
-fastapi = ["cda06381cc355d0d338911b41c82fe55803caa901753b2692dc8b2e3324f2a22", "f99cbd0bf5a51b0dc08572ac97f47b6d3e7dec8a202e836ccc34dfee9c8cecdc"]
+fastapi = ["15f2c34f6760aeb6a6bd27fa10efffdf1cb779850f3cc9ff47fff5222df48c48", "eea852115ce3730ee79e2af14f7d2d5f987bd5834817713013d677339da488d5"]
 flake8 = ["859996073f341f2670741b51ec1e67a01da142831aa1fdc6242dbf88dffbe661", "a796a115208f5c03b18f332f7c11729812c8c3ded6c46319c59b53efd3819da8"]
 flake8-pie = ["0a53441beaca3ffb91e9aae46a1012cf3dd112f415eefa8d7ab2440878b1247a", "fbdd5d5a931426de70cecd391779baa5195d00ed17ab3eae122b228aaa568c75"]
 h11 = ["acca6a44cb52a32ab442b1779adf0875c443c689e9e028f8d831a3769f9c5208", "f2b1ca39bfed357d1f19ac732913d5f9faa54a5062eca7d2ec3a916cfb7ae4c7"]
@@ -906,7 +884,7 @@ ptyprocess = ["923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0"
 py = ["64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa", "dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"]
 pycodestyle = ["95a2219d12372f05704562a14ec30bc76b05a5b297b21a5dfe3f6fac3491ae56", "e40a936c9a450ad81df37f549d676d127b1b66000a6c500caa2b085bc0ca976c"]
 pycparser = ["a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"]
-pydantic = ["1205cd1213e8acee40a9ad7160b24de74484fd79ec3f09150b255896a3f506ab", "58b71804e9a6b4e1ccf8b3dbbca8c0f9cf4b494e5bea219a96e2e2ecb5af688e"]
+pydantic = ["0b7998c6e4106e57317a511a17ec8b3c99a20f037daa9687e2cffb48f20e36d3", "239a05529f01ff096e0b4b3ae8b0fd891dc1571ddca6fe4c013ed1c46646d8bf", "2408cbfd8aadf61a5a8062734615dc5f54bc01fcb37ad476260d0c8288915607", "427c0935683913a45ee5225ce4cd2ebbde376b7b06d4287f7f6c6d3158ef0408", "5b8900778c30e55ee418f6a375b922873d806232021ac0be13d0123fd922557b", "cb4351bae00636b59cdaafe75013955c3002f842878b93625f7a68202c8d218a"]
 pyflakes = ["17dbeb2e3f4d772725c777fabc446d5634d1038f234e77343108ce445ea69ce0", "d976835886f8c5b31d47970ed689944a0262b5f3afa00a5a7b4dc81e5449f8a2"]
 pygments = ["71e430bc85c88a430f000ac1d9b331d2407f681d6f6aec95e8bcfbc3df5b0127", "881c4c157e45f30af185c1ffe8d549d48ac9127433f2c380c24b84572ad66297"]
 pyjwt = ["5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e", "8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"]
@@ -918,13 +896,11 @@ pytest-mock = ["43ce4e9dd5074993e7c021bb1c22cbb5363e612a2b5a76bc6d956775b10758b7
 python-dateutil = ["7e6584c74aeed623791615e26efd690f29817a27c73085b78e4bad02493df2fb", "c89805f6f4d64db21ed966fda138f8a5ed7a4fdbc1a8ee329ce1b74e3c74da9e"]
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
 requests-async = ["484221fb41ccc47b475cdc2634b37884ca78ca291160664e9b8b8c5e53fdd4af"]
-sentry-asgi = ["c72d45e980f3e499f06a02498d3ad91f3599f11bbe2fa45e53b0a47e2a50459a"]
-sentry-sdk = ["7e42d54c877cca716932fa96ff4778d222b150e56c63032dea86f400179e425c", "f137cfb8bf709f69fa4634a7debd13284a3a590c374846285875be41d1fe87a8"]
+sentry-sdk = ["d491aa6399eaa3eded433972751a9770180730fd8b4c225b0b7f49c4fa2af70b", "d68003cdffbbfcadaa2c445b72e1050b0a44406f94199866f192986c016b23f5"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
 sqlalchemy = ["c7fef198b43ef31dfd783d094fd5ee435ce8717592e6784c45ba337254998017"]
-starlette = ["9d48b35d1fc7521d59ae53c421297ab3878d3c7cd4b75266d77f6c73cccb78bb"]
+starlette = ["d313433ef5cc38e0a276b59688ca2b11b8f031c78808c1afdf9d55cb86f34590"]
 structlog = ["5feae03167620824d3ae3e8915ea8589fc28d1ad6f3edf3cc90ed7c7cb33fab5", "db441b81c65b0f104a7ce5d86c5432be099956b98b8a2c8be0b3fb3a7a0b1536"]
-structlog-sentry = ["0e45b7f3ca1597da42e7c8f685e55be7cdd8e6411ee8a5f71881b2ade1a7e9c5"]
 toml = ["229f81c57791a41d65e399fc06bf0848bab550a9dfd5ed66df18ce5f05e73d5c", "235682dd292d5899d361a811df37e04a8828a5b1da3115886b73cf81ebc9100e", "f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"]
 traitlets = ["9c4bd2d267b7153df9152698efb1050a5d84982d3384a37b2c1f7723ba3e7835", "c6cb5e6f57c5a9bdaa40fa71ce7b4af30298fbab9ece9815b5d995ab6217c7d9"]
 typed-ast = ["132eae51d6ef3ff4a8c47c393a4ef5ebf0d1aecc96880eb5d6c8ceab7017cc9b", "18141c1484ab8784006c839be8b985cfc82a2e9725837b0ecfa0203f71c4e39d", "2baf617f5bbbfe73fd8846463f5aeafc912b5ee247f410700245d68525ec584a", "3d90063f2cbbe39177e9b4d888e45777012652d6110156845b828908c51ae462", "4304b2218b842d610aa1a1d87e1dc9559597969acc62ce717ee4dfeaa44d7eee", "4983ede548ffc3541bae49a82675996497348e55bafd1554dc4e4a5d6eda541a", "5315f4509c1476718a4825f45a203b82d7fdf2a6f5f0c8f166435975b1c9f7d4", "6cdfb1b49d5345f7c2b90d638822d16ba62dc82f7616e9b4caa10b72f3f16649", "7b325f12635598c604690efd7a0197d0b94b7d7778498e76e0710cd582fd1c7a", "8d3b0e3b8626615826f9a626548057c5275a9733512b137984a68ba1598d3d2f", "8f8631160c79f53081bd23446525db0bc4c5616f78d04021e6e434b286493fd7", "912de10965f3dc89da23936f1cc4ed60764f712e5fa603a09dd904f88c996760", "b010c07b975fe853c65d7bbe9d4ac62f1c69086750a574f6292597763781ba18", "c908c10505904c48081a5415a1e295d8403e353e0c14c42b6d67f8f97fae6616", "c94dd3807c0c0610f7c76f078119f4ea48235a953512752b9175f9f98f5ae2bd", "ce65dee7594a84c466e79d7fb7d3303e7295d16a83c22c7c4037071b059e2c21", "eaa9cfcb221a8a4c2889be6f93da141ac777eb8819f077e1d09fb12d00a09a93", "f3376bc31bad66d46d44b4e6522c5c21976bf9bca4ef5987bb2bf727f4506cbb", "f9202fa138544e13a4ec1a6792c35834250a85958fde1251b6a22e07d1260ae7"]
