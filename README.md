@@ -67,21 +67,15 @@ updated when their targets were updated.
    branch with the following contents (see [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples):
 
    ```toml
-   # Minimal config. version is the only required field. 
-   version = 1
-   ```
-
-
-   ```toml
-   # Complex config. version is the only required field.
+   # version is the only required field
    version = 1
 
    # the following settings can be omitted since they have defaults
 
    [merge]
    automerge_label = "automerge" # default: "automerge"
-   blacklist_title_regex = "^WIP.*" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
-   blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
+   blacklist_title_regex = "^WIP.*" # default: "^WIP.*"
+   blacklist_labels = [] # default: []
    method = "squash" # default: "merge", options: "merge", "squash", "rebase"
    delete_branch_on_merge = true # default: false
    block_on_reviews_requested = false # default: false
@@ -90,11 +84,10 @@ updated when their targets were updated.
    dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
    [merge.message]
-   title = "pull_request_title" # default: "github_default", options: "github_default", "pull_request_title"
-   body = "pull_request_body" # default: "github_default", options: "github_default", "pull_request_body", "empty"
+   title = "pull_request_title" # default: "github_default"
+   body = "pull_request_body" # default: "github_default"
    include_pr_number = false # default: true
-   body_type = "markdown" # default: "markdown", options: "plain_text", "markdown", "html"
-   strip_html_comments = false # default: false
+   body_type = "markdown" # default: "markdown"
    ```
 
 2. Setup Kodiak
