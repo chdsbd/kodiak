@@ -1,19 +1,54 @@
 from __future__ import annotations
 
+import logging
+import sys
+
 import sentry_sdk
 import structlog
 from fastapi import FastAPI
-from sentry_asgi import SentryMiddleware
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from sentry_sdk.integrations.logging import LoggingIntegration
 
+from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
+from kodiak.logging import SentryProcessor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
-sentry_sdk.init()
+# for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
+logging.basicConfig(
+    stream=sys.stdout,
+    level=conf.LOGGING_LEVEL,
+    format="%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s",
+)
+
+# disable sentry logging middleware as the structlog processor provides more
+# info via the extra data field
+# TODO(sbdchd): waiting on https://github.com/getsentry/sentry-python/pull/444
+# to be merged & released to remove `# type: ignore`
+sentry_sdk.init(
+    integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
+)
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        SentryProcessor(level=logging.WARNING),
+        structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
 
 app = FastAPI()
-app.add_middleware(SentryMiddleware)
+app.add_middleware(SentryAsgiMiddleware)
 
 webhook = Webhook(app)
 logger = structlog.get_logger()

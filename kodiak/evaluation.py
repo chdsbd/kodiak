@@ -1,7 +1,6 @@
 import re
-import typing
 from collections import defaultdict
-from typing import Optional
+from typing import List, MutableMapping, Optional, Set
 
 import structlog
 
@@ -20,10 +19,11 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommentAuthorAssociation,
     MergeableState,
     MergeStateStatus,
+    Permission,
     PRReview,
+    PRReviewRequest,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -45,7 +45,7 @@ async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
     raise TypeError("Unknown value")
 
 
-def review_status(reviews: typing.List[PRReview]) -> PRReviewState:
+def review_status(reviews: List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
     """
@@ -65,19 +65,19 @@ def mergeable(
     config: config.V1,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
-    review_requests_count: int,
-    reviews: typing.List[PRReview],
-    contexts: typing.List[StatusContext],
-    check_runs: typing.List[CheckRun],
+    review_requests: List[PRReviewRequest],
+    reviews: List[PRReview],
+    contexts: List[StatusContext],
+    check_runs: List[CheckRun],
     valid_signature: bool,
-    valid_merge_methods: typing.List[MergeMethod],
-    app_id: typing.Optional[str] = None,
+    valid_merge_methods: List[MergeMethod],
+    app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=review_requests_count,
+        review_requests=review_requests,
         reviews=reviews,
         contexts=contexts,
         valid_signature=valid_signature,
@@ -102,12 +102,11 @@ def mergeable(
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
     ):
-        raise NotQueueable(
-            f"missing automerge_label: {repr(config.merge.automerge_label)}"
-        )
-    if not set(pull_request.labels).isdisjoint(config.merge.blacklist_labels):
-        log.info("has blacklist labels")
-        raise NotQueueable("has blacklist labels")
+        raise NotQueueable(f"missing automerge_label: {config.merge.automerge_label!r}")
+    blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
+    if blacklist_labels:
+        log.info("missing required blacklist labels")
+        raise NotQueueable(f"has blacklist_labels: {blacklist_labels!r}")
 
     if (
         config.merge.blacklist_title_regex
@@ -122,16 +121,14 @@ def mergeable(
         raise NotQueueable("pull request is in draft state")
 
     if config.merge.method not in valid_merge_methods:
-        # TODO: This is a fatal configuration error. We should provide some notification of this issue
-        log.error(
-            "invalid configuration. Merge method not possible",
-            configured_merge_method=config.merge.method,
-            valid_merge_methods=valid_merge_methods,
+        valid_merge_methods_str = [method.value for method in valid_merge_methods]
+        raise NotQueueable(
+            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}"
         )
-        raise NotQueueable("invalid merge methods")
 
-    if config.merge.block_on_reviews_requested and review_requests_count:
-        raise NotQueueable("reviews requested")
+    if config.merge.block_on_reviews_requested and review_requests:
+        names = [r.name for r in review_requests]
+        raise NotQueueable(f"reviews requested: {names!r}")
 
     if pull_request.state == PullRequestState.MERGED:
         raise BranchMerged()
@@ -172,37 +169,36 @@ def mergeable(
             branch_protection.requiresApprovingReviews
             and branch_protection.requiredApprovingReviewCount
         ):
-            reviews_by_author: typing.MutableMapping[
-                str, typing.List[PRReview]
-            ] = defaultdict(list)
+            reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
-                # only reviews by members with write access count towards mergeability
-                if review.authorAssociation == CommentAuthorAssociation.NONE:
+                if review.author.permission not in {Permission.ADMIN, Permission.WRITE}:
                     continue
                 reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0
-            for review_list in reviews_by_author.values():
+            for author_name, review_list in reviews_by_author.items():
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable("blocking review")
+                    raise NotQueueable(f"changes requested by {author_name!r}")
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                raise NotQueueable("missing required review count")
+                raise NotQueueable(
+                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
+                )
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
             raise NotQueueable("missing required signature")
 
-        required: typing.Set[str] = set()
-        passing: typing.Set[str] = set()
+        required: Set[str] = set()
+        passing: Set[str] = set()
         if branch_protection.requiresStatusChecks:
-            failing_contexts: typing.List[str] = []
-            pending_contexts: typing.List[str] = []
-            passing_contexts: typing.List[str] = []
+            failing_contexts: List[str] = []
+            pending_contexts: List[str] = []
+            passing_contexts: List[str] = []
             required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):
@@ -229,20 +225,25 @@ def mergeable(
 
             failing = set(failing_contexts)
             # we have failing statuses that are required
-            if len(required - failing) < len(required):
+            failing_required_status_checks = failing & required
+            if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-                raise NotQueueable("failing required status checks")
+
+                raise NotQueueable(
+                    f"failing required status checks: {failing_required_status_checks!r}"
+                )
             passing = set(passing_contexts)
 
         need_branch_update = (
             branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         )
+        missing_required_status_checks = required - passing
         wait_for_checks = (
-            branch_protection.requiresStatusChecks and len(required - passing) > 0
+            branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
         # prioritize branch updates over waiting for status checks to complete
@@ -250,12 +251,12 @@ def mergeable(
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
             if wait_for_checks:
-                raise WaitingForChecks("missing required status checks")
+                raise WaitingForChecks(missing_required_status_checks)
         # almost the same as the pervious case, but we prioritize status checks
         # over branch updates.
         else:
             if wait_for_checks:
-                raise WaitingForChecks("missing required status checks")
+                raise WaitingForChecks(missing_required_status_checks)
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
 

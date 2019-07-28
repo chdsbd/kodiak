@@ -1,5 +1,4 @@
 import textwrap
-import typing
 from dataclasses import dataclass
 from enum import Enum, auto
 from html.parser import HTMLParser
@@ -9,8 +8,9 @@ import structlog
 from markdown_html_finder import find_html_positions
 
 import kodiak.app_config as conf
-from kodiak import queries
+from kodiak import messages, queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
+from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
     BranchMerged,
     MergeConflict,
@@ -104,6 +104,9 @@ def get_body_content(
     raise Exception(f"Unknown body_type: {body_type}")
 
 
+EMPTY_STRING = ""
+
+
 def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
     merge_body: dict = {"merge_method": config.merge.method.value}
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
@@ -113,6 +116,8 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> dict:
             pull_request,
         )
         merge_body.update(dict(commit_message=body))
+    if config.merge.message.body == MergeBodyStyle.empty:
+        merge_body.update(dict(commit_message=EMPTY_STRING))
     if config.merge.message.title == MergeTitleStyle.pull_request_title:
         merge_body.update(dict(commit_title=pull_request.title))
     if config.merge.message.include_pr_number and merge_body.get("commit_title"):
@@ -131,7 +136,7 @@ class PR:
     repo: str
     installation_id: str
     log: structlog.BoundLogger
-    event: typing.Optional[EventInfoResponse]
+    event: Optional[EventInfoResponse]
     client: queries.Client
 
     def __eq__(self, b: object) -> bool:
@@ -163,7 +168,7 @@ class PR:
     def __repr__(self) -> str:
         return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
 
-    async def get_event(self) -> typing.Optional[EventInfoResponse]:
+    async def get_event(self) -> Optional[EventInfoResponse]:
         default_branch_name = await self.client.get_default_branch_name()
         if default_branch_name is None:
             return None
@@ -175,33 +180,62 @@ class PR:
         )
 
     async def set_status(
-        self, summary: str, detail: typing.Optional[str] = None
+        self,
+        summary: str,
+        detail: Optional[str] = None,
+        markdown_content: Optional[str] = None,
     ) -> None:
         """
         Display a message to a user through a github check
+
+        `summary` and `detail` work to build the message displayed alongside
+        other status checks on the PR. They format a message like: '<summary> (<detail>)'
+
+        `markdown_content` is the message displayed on the detail view for a
+        status check. This detail view is accessible via the "Details" link
+        alongside the summary/detail content.
         """
         if detail is not None:
             message = f"{summary} ({detail})"
         else:
             message = summary
         if self.event is None:
+            self.log.info("missing event. attempting to fetch it.")
             self.event = await self.get_event()
-        assert self.event is not None
+        if self.event is None:
+            self.log.error("could not fetch event")
+            return
         await self.client.create_notification(
-            head_sha=self.event.pull_request.latest_sha, message=message, summary=None
+            head_sha=self.event.pull_request.latest_sha,
+            message=message,
+            summary=markdown_content,
         )
 
     # TODO(chdsbd): Move set_status updates out of this method
     async def mergeability(
         self, merging: bool = False
-    ) -> typing.Tuple[MergeabilityResponse, typing.Optional[EventInfoResponse]]:
+    ) -> Tuple[MergeabilityResponse, Optional[EventInfoResponse]]:
         self.log.info("get_event")
         self.event = await self.get_event()
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        if not self.event.head_exists:
+        # PRs from forks will always appear deleted because the v4 api doesn't
+        # return head information for forks like the v3 api does.
+        if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
             self.log.info("branch deleted")
+            return MergeabilityResponse.NOT_MERGEABLE, None
+        if not isinstance(self.event.config, V1):
+
+            await self.set_status(
+                "🚨 Invalid configuration",
+                detail='Click "Details" for more info.',
+                markdown_content=get_markdown_for_config(
+                    self.event.config,
+                    self.event.config_str,
+                    self.event.config_file_expression,
+                ),
+            )
             return MergeabilityResponse.NOT_MERGEABLE, None
         try:
             self.log.info("check mergeable")
@@ -210,7 +244,7 @@ class PR:
                 app_id=conf.GITHUB_APP_ID,
                 pull_request=self.event.pull_request,
                 branch_protection=self.event.branch_protection,
-                review_requests_count=self.event.review_requests_count,
+                review_requests=self.event.review_requests,
                 reviews=self.event.reviews,
                 contexts=self.event.status_contexts,
                 check_runs=self.event.check_runs,
@@ -241,13 +275,20 @@ class PR:
         except MissingGithubMergeabilityState:
             self.log.info("missing mergeability state, need refresh")
             return MergeabilityResponse.NEED_REFRESH, self.event
-        except WaitingForChecks:
+        except WaitingForChecks as e:
             if merging:
                 await self.set_status(
-                    summary="⛴ attempting to merge PR", detail="waiting for checks"
+                    summary="⛴ attempting to merge PR",
+                    detail=f"waiting for checks: {e.checks!r}",
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
+            if self.event.pull_request.isCrossRepository:
+                await self.set_status(
+                    summary='🚨 forks cannot updated via the github api. Click "Details" for more info',
+                    markdown_content=messages.FORKS_CANNOT_BE_UPDATED,
+                )
+                return MergeabilityResponse.NOT_MERGEABLE, self.event
             if merging:
                 await self.set_status(
                     summary="⛴ attempting to merge PR", detail="updating branch"
@@ -272,6 +313,10 @@ class PR:
         await self.client.get_pull_request(number=self.number)
 
     async def merge(self, event: EventInfoResponse) -> bool:
+        if not isinstance(event.config, V1):
+            self.log.error("we should never have a config error when we call merge")
+            return False
+
         res = await self.client.merge_pull_request(
             number=self.number, body=get_merge_body(event.config, event.pull_request)
         )
@@ -290,7 +335,7 @@ class PR:
             f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{self.number}/labels/{label}",
             headers=headers,
         )
-        return typing.cast(bool, res.status_code != 204)
+        return cast(bool, res.status_code != 204)
 
     async def create_comment(self, body: str) -> bool:
         """
@@ -303,7 +348,7 @@ class PR:
             json=dict(body=body),
             headers=headers,
         )
-        return typing.cast(bool, res.status_code != 200)
+        return cast(bool, res.status_code != 200)
 
     async def notify_pr_creator(self) -> bool:
         """
@@ -316,6 +361,9 @@ class PR:
 
         event = self.event
         if not event:
+            return False
+        if not isinstance(event.config, V1):
+            self.log.error("config attribute was not a config")
             return False
 
         if not event.config.merge.require_automerge_label:

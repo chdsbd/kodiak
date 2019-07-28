@@ -18,11 +18,12 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommentAuthorAssociation,
     MergeableState,
     MergeStateStatus,
+    Permission,
     PRReview,
     PRReviewAuthor,
+    PRReviewRequest,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -39,6 +40,7 @@ def pull_request() -> PullRequest:
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
+        isCrossRepository=True,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
         baseRefName="master",
@@ -82,22 +84,24 @@ def test_missing_automerge_label(
     config: V1,
     branch_protection: BranchProtectionRule,
     review: PRReview,
+    review_request: PRReviewRequest,
     context: StatusContext,
 ) -> None:
     pull_request.labels = ["bug"]
-    config.merge.automerge_label = "automerge"
-    with pytest.raises(NotQueueable, match="missing automerge_label"):
+    config.merge.automerge_label = "lgtm"
+    with pytest.raises(NotQueueable, match="missing automerge_label") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert config.merge.automerge_label in str(e.value)
 
 
 def test_require_automerge_label_false(
@@ -118,7 +122,7 @@ def test_require_automerge_label_false(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[review],
         contexts=[context],
         check_runs=[],
@@ -127,7 +131,7 @@ def test_require_automerge_label_false(
     )
 
 
-def test_blacklisted(
+def test_blacklist_labels(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
@@ -135,7 +139,7 @@ def test_blacklisted(
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted label should not be mergeable
-    with pytest.raises(NotQueueable, match="blacklist"):
+    with pytest.raises(NotQueueable, match="blacklist") as e:
         pull_request.labels = ["automerge", "dont-merge"]
         config.merge.automerge_label = "automerge"
         config.merge.blacklist_labels = ["dont-merge"]
@@ -143,13 +147,14 @@ def test_blacklisted(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
         )
+    assert "dont-merge" in str(e.value)
 
 
 def test_blacklist_title_match(
@@ -167,7 +172,7 @@ def test_blacklist_title_match(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -184,19 +189,24 @@ def test_bad_merge_method_config(
     review: PRReview,
     context: StatusContext,
 ) -> None:
-    with pytest.raises(NotQueueable, match="merge method"):
+    with pytest.raises(NotQueueable, match="merge.method") as e:
         config.merge.method = MergeMethod.squash
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.merge],
         )
+    assert config.merge.method.value in str(e.value)
+    assert MergeMethod.merge.value in str(e.value)
+    assert "<MergeMethod" not in str(
+        e.value
+    ), "we don't want the repr value, we want the simple str value"
 
 
 def test_merged(
@@ -212,7 +222,7 @@ def test_merged(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -234,7 +244,7 @@ def test_closed(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -256,7 +266,7 @@ def test_merge_conflict(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -278,7 +288,7 @@ def test_need_update(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -300,7 +310,7 @@ def test_missing_mergeability_state(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -318,18 +328,49 @@ def test_blocking_review(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.CHANGES_REQUESTED
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert review.author.login in str(e.value)
+
+
+def test_requires_review_read_user(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    """
+    A PR that requires review should not be satisfied by a read only user.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    review.state = PRReviewState.APPROVED
+    review.author.permission = Permission.READ
+    branch_protection.requiredApprovingReviewCount = 1
+    branch_protection.requiresApprovingReviews = True
+    with pytest.raises(NotQueueable, match="missing required reviews") as e:
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    assert "0/1" in str(e.value)
 
 
 def test_missing_review_count(
@@ -341,18 +382,21 @@ def test_missing_review_count(
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredApprovingReviewCount = 2
-    with pytest.raises(NotQueueable, match="missing required review count"):
+    with pytest.raises(NotQueueable, match="missing required reviews") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+    assert str(branch_protection.requiredApprovingReviewCount) in str(e.value)
+    assert "1" in str(e.value), "we have one review passed via the reviews arg"
 
 
 def test_failing_contexts(
@@ -366,18 +410,19 @@ def test_failing_contexts(
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "ci/backend" in str(e.value)
 
 
 def test_passing_checks(
@@ -398,7 +443,7 @@ def test_passing_checks(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[review],
         contexts=[context],
         check_runs=[check_run],
@@ -421,18 +466,19 @@ def test_incomplete_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = None
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[check_run],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"wip-app"}
 
 
 def test_failing_checks(
@@ -449,18 +495,19 @@ def test_failing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks"):
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[check_run],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "wip-app" in str(e.value)
 
 
 def test_missing_required_context(
@@ -473,18 +520,19 @@ def test_missing_required_context(
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "ci/frontend"]
     context.context = "ci/backend"
-    with pytest.raises(WaitingForChecks, match="missing required status checks"):
+    with pytest.raises(WaitingForChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert e.value.checks == {"ci/frontend"}
 
 
 @pytest.mark.skip(reason="remove in future PR after hotfix 1/2")
@@ -502,7 +550,7 @@ def test_requires_signature(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -522,7 +570,7 @@ def test_unknown_blockage(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],
@@ -549,7 +597,7 @@ def test_dont_update_before_block(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[review],
             contexts=[context],
             check_runs=[],
@@ -564,20 +612,22 @@ def test_block_on_reviews_requested(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     context: StatusContext,
+    review_request: PRReviewRequest,
 ) -> None:
     config.merge.block_on_reviews_requested = True
-    with pytest.raises(NotQueueable, match="reviews requested"):
+    with pytest.raises(NotQueueable) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=[review],
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert str(e.value) == "reviews requested: ['ghost']"
 
 
 def test_regression_error_before_update(
@@ -586,6 +636,7 @@ def test_regression_error_before_update(
     branch_protection: BranchProtectionRule,
     review: PRReview,
     check_run: CheckRun,
+    review_request: PRReviewRequest,
 ) -> None:
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
@@ -599,7 +650,7 @@ def test_regression_error_before_update(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=[review],
             check_runs=[check_run],
             contexts=contexts,
@@ -614,6 +665,7 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
     branch_protection: BranchProtectionRule,
     check_run: CheckRun,
     context: StatusContext,
+    review_request: PRReviewRequest,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresApprovingReviews = True
@@ -624,40 +676,37 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
         PRReview(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="kodiak"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="kodiak", permission=Permission.WRITE),
         ),
     ]
-    with pytest.raises(NotQueueable, match="blocking review"):
+    with pytest.raises(NotQueueable, match="changes requested") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=reviews,
             check_runs=[check_run],
             contexts=[context],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+    assert "chdsbd" in str(e.value)
 
 
 def test_regression_mishandling_multiple_reviews_okay_reviews(
@@ -666,6 +715,7 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
     branch_protection: BranchProtectionRule,
     check_run: CheckRun,
     context: StatusContext,
+    review_request: PRReviewRequest,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresApprovingReviews = True
@@ -676,26 +726,22 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
         PRReview(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -703,7 +749,7 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=reviews,
             check_runs=[check_run],
             contexts=[context],
@@ -718,6 +764,7 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
     branch_protection: BranchProtectionRule,
     check_run: CheckRun,
     context: StatusContext,
+    review_request: PRReviewRequest,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresApprovingReviews = True
@@ -728,20 +775,17 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
         PRReview(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.DISMISSED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -749,7 +793,7 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=reviews,
             check_runs=[check_run],
             contexts=[context],
@@ -764,6 +808,7 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
     branch_protection: BranchProtectionRule,
     check_run: CheckRun,
     context: StatusContext,
+    review_request: PRReviewRequest,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresApprovingReviews = True
@@ -774,14 +819,12 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
         PRReview(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
-            authorAssociation=CommentAuthorAssociation.NONE,
+            author=PRReviewAuthor(login="chdsbd", permission=Permission.NONE),
         ),
         PRReview(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
-            authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+            author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -789,7 +832,7 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=1,
+            review_requests=[review_request],
             reviews=reviews,
             check_runs=[check_run],
             contexts=[context],
@@ -809,7 +852,7 @@ def test_passing(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[review],
         contexts=[context],
         check_runs=[],
@@ -828,7 +871,7 @@ def test_app_id(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],
@@ -841,7 +884,7 @@ def test_app_id(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],
@@ -875,7 +918,7 @@ def test_config_merge_optimistic_updates(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=contexts,
             check_runs=[],
@@ -889,7 +932,7 @@ def test_config_merge_optimistic_updates(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=contexts,
             check_runs=[],
@@ -915,7 +958,7 @@ def test_merge_state_status_draft(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],
@@ -935,7 +978,7 @@ def test_missing_branch_protection(pull_request: PullRequest, config: V1) -> Non
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],
@@ -959,7 +1002,7 @@ def test_requires_commit_signatures(
             config=config,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests_count=0,
+            review_requests=[],
             reviews=[],
             contexts=[],
             check_runs=[],

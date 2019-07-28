@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Union
 
+import pydantic
 import pytest
+import toml
 from pytest_mock import MockFixture
 from starlette.testclient import TestClient
 
@@ -43,7 +46,9 @@ def config_file() -> str:
 
 
 @pytest.fixture
-def config(config_file: str) -> V1:
+def config(
+    config_file: str
+) -> Union[V1, pydantic.ValidationError, toml.TomlDecodeError]:
     return V1.parse_toml(config_file)
 
 
@@ -55,6 +60,7 @@ def pull_request() -> queries.PullRequest:
         mergeStateStatus=queries.MergeStateStatus.BEHIND,
         state=queries.PullRequestState.OPEN,
         mergeable=queries.MergeableState.MERGEABLE,
+        isCrossRepository=False,
         labels=[],
         latest_sha="abcd",
         baseRefName="some-branch",
@@ -91,9 +97,15 @@ def review() -> queries.PRReview:
     return queries.PRReview(
         state=queries.PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
-        author=queries.PRReviewAuthor(login="ghost"),
-        authorAssociation=queries.CommentAuthorAssociation.CONTRIBUTOR,
+        author=queries.PRReviewAuthor(
+            login="ghost", permission=queries.Permission.WRITE
+        ),
     )
+
+
+@pytest.fixture
+def review_request() -> queries.PRReviewRequest:
+    return queries.PRReviewRequest(name="ghost")
 
 
 @pytest.fixture
@@ -107,7 +119,23 @@ def context(status_context: queries.StatusContext) -> queries.StatusContext:
 
 
 @pytest.fixture
+def config_file_expression() -> str:
+    return "master:.kodiak.toml"
+
+
+@pytest.fixture
+def config_str() -> str:
+    return """\
+version = 1
+[merge]
+method = "squash"
+"""
+
+
+@pytest.fixture
 def event_response(
+    config_str: str,
+    config_file_expression: str,
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
@@ -116,12 +144,14 @@ def event_response(
     config: V1,
 ) -> queries.EventInfoResponse:
     return queries.EventInfoResponse(
-        config,
-        pull_request,
-        repo,
-        branch_protection,
+        config_str=config_str,
+        config_file_expression=config_file_expression,
+        config=config,
+        pull_request=pull_request,
+        repo=repo,
+        branch_protection=branch_protection,
         head_exists=True,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[review],
         status_contexts=[status_context],
         valid_signature=True,

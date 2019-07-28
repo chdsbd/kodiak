@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import typing
 from enum import Enum
+from typing import List, Optional, Union, cast
 
 import toml
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationError, validator
 
 
 class MergeMethod(str, Enum):
@@ -21,6 +21,7 @@ class MergeTitleStyle(Enum):
 class MergeBodyStyle(Enum):
     github_default = "github_default"
     pull_request_body = "pull_request_body"
+    empty = "empty"
 
 
 class BodyText(Enum):
@@ -50,7 +51,7 @@ class Merge(BaseModel):
     # disable check.
     blacklist_title_regex: str = "^WIP:.*"
     # labels to block merging of pull request
-    blacklist_labels: typing.List[str] = []
+    blacklist_labels: List[str] = []
     # action to take when attempting to merge PR. An error will occur if method
     # is disabled for repository
     method: MergeMethod = MergeMethod.merge
@@ -77,7 +78,7 @@ class V1(BaseModel):
     # kodiak, but also run the development version on a specific repo. By
     # setting _app_id to the development github app ID, we can prevent the
     # production kodiak instance from interfering.
-    app_id: typing.Optional[str]
+    app_id: Optional[str]
     merge: Merge = Merge()
 
     @validator("version", pre=True, always=True)
@@ -87,5 +88,10 @@ class V1(BaseModel):
         return v
 
     @classmethod
-    def parse_toml(cls, content: str) -> V1:
-        return cls.parse_obj(typing.cast(dict, toml.loads(content)))
+    def parse_toml(
+        cls, content: str
+    ) -> Union[V1, toml.TomlDecodeError, ValidationError]:
+        try:
+            return cls.parse_obj(cast(dict, toml.loads(content)))
+        except (toml.TomlDecodeError, ValidationError) as e:
+            return e

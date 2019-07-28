@@ -186,6 +186,8 @@ disable=print-statement,
         len-as-condition,
         useless-return,
         protected-access,
+        no-self-argument,
+        no-name-in-module,,
         # handled by flake8
         unused-import,
         unused-variable

@@ -35,8 +35,28 @@
         "mergeStateStatus": "BEHIND",
         "state": "OPEN",
         "mergeable": "MERGEABLE",
+        "isCrossRepository": false,
         "reviewRequests": {
-          "totalCount": 0
+          "nodes": [
+            {
+              "requestedReviewer": {
+                "__typename": "User",
+                "login": "ghost"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Team",
+                "name": "ghost-team"
+              }
+            },
+            {
+              "requestedReviewer": {
+                "__typename": "Mannequin",
+                "login": "ghost-mannequin"
+              }
+            }
+          ]
         },
         "title": "Update README.md",
         "body": "",
@@ -49,40 +69,35 @@
               "state": "COMMENTED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:29:52Z",
               "state": "CHANGES_REQUESTED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:30:52Z",
               "state": "COMMENTED",
               "author": {
                 "login": "kodiak"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-22T15:43:17Z",
               "state": "APPROVED",
               "author": {
                 "login": "ghost"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             },
             {
               "createdAt": "2019-05-23T15:13:29Z",
               "state": "APPROVED",
               "author": {
                 "login": "walrus"
-              },
-              "authorAssociation": "CONTRIBUTOR"
+              }
             }
           ],
           "totalCount": 2

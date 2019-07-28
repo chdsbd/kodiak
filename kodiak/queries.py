@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import typing
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import arrow
 import jwt
+import pydantic
 import requests_async as http
 import structlog
+import toml
 from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
@@ -33,14 +35,14 @@ class ErrorLocation(TypedDict):
 
 class GraphQLError(TypedDict):
     message: str
-    locations: typing.List[ErrorLocation]
-    type: typing.Optional[str]
-    path: typing.Optional[typing.List[str]]
+    locations: List[ErrorLocation]
+    type: Optional[str]
+    path: Optional[List[str]]
 
 
 class GraphQLResponse(TypedDict):
-    data: typing.Optional[typing.Dict[typing.Any, typing.Any]]
-    errors: typing.Optional[typing.List[GraphQLError]]
+    data: Optional[Dict[Any, Any]]
+    errors: Optional[List[GraphQLError]]
 
 
 DEFAULT_BRANCH_NAME_QUERY = """
@@ -81,8 +83,22 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       mergeStateStatus
       state
       mergeable
+      isCrossRepository
       reviewRequests(first: 100) {
-        totalCount
+        nodes {
+          requestedReviewer {
+            __typename
+            ... on User {
+              login
+            }
+            ... on Team {
+              name
+            }
+            ... on Mannequin {
+              login
+            }
+          }
+        }
       }
       title
       body
@@ -196,7 +212,8 @@ class PullRequest(BaseModel):
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState
-    labels: typing.List[str]
+    isCrossRepository: bool
+    labels: List[str]
     # the SHA of the most recent commit
     latest_sha: str
     baseRefName: str
@@ -212,17 +229,19 @@ class RepoInfo:
 
 @dataclass
 class EventInfoResponse:
-    config: V1
+    config: Union[V1, pydantic.ValidationError, toml.TomlDecodeError]
+    config_str: str
+    config_file_expression: str
     pull_request: PullRequest
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
-    review_requests_count: int
+    review_requests: List[PRReviewRequest]
     head_exists: bool
-    reviews: typing.List[PRReview] = field(default_factory=list)
-    status_contexts: typing.List[StatusContext] = field(default_factory=list)
-    check_runs: typing.List[CheckRun] = field(default_factory=list)
+    reviews: List[PRReview] = field(default_factory=list)
+    status_contexts: List[StatusContext] = field(default_factory=list)
+    check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
-    valid_merge_methods: typing.List[MergeMethod] = field(default_factory=list)
+    valid_merge_methods: List[MergeMethod] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -237,9 +256,9 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 
 class BranchProtectionRule(BaseModel):
     requiresApprovingReviews: bool
-    requiredApprovingReviewCount: typing.Optional[int]
+    requiredApprovingReviewCount: Optional[int]
     requiresStatusChecks: bool
-    requiredStatusCheckContexts: typing.List[str]
+    requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
     requiresCommitSignatures: bool
     requiresCodeOwnerReviews: bool
@@ -253,25 +272,32 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
-class CommentAuthorAssociation(Enum):
-    COLLABORATOR = "COLLABORATOR"
-    CONTRIBUTOR = "CONTRIBUTOR"
-    FIRST_TIMER = "FIRST_TIMER"
-    FIRST_TIME_CONTRIBUTOR = "FIRST_TIME_CONTRIBUTOR"
-    MEMBER = "MEMBER"
-    NONE = "NONE"
-    OWNER = "OWNER"
-
-
-class PRReviewAuthor(BaseModel):
+class PRReviewAuthorSchema(BaseModel):
     login: str
 
 
-class PRReview(BaseModel):
+@dataclass
+class PRReviewAuthor:
+    login: str
+    permission: Permission
+
+
+class PRReviewSchema(BaseModel):
+    state: PRReviewState
+    createdAt: datetime
+    author: PRReviewAuthorSchema
+
+
+@dataclass
+class PRReview:
     state: PRReviewState
     createdAt: datetime
     author: PRReviewAuthor
-    authorAssociation: CommentAuthorAssociation
+
+
+@dataclass
+class PRReviewRequest:
+    name: str
 
 
 class StatusState(Enum):
@@ -298,7 +324,18 @@ class CheckConclusionState(Enum):
 
 class CheckRun(BaseModel):
     name: str
-    conclusion: typing.Optional[CheckConclusionState]
+    conclusion: Optional[CheckConclusionState]
+
+
+class Permission(Enum):
+    """
+    https://developer.github.com/v3/repos/collaborators/#review-a-users-permission-level
+    """
+
+    ADMIN = "admin"
+    WRITE = "write"
+    READ = "read"
+    NONE = "none"
 
 
 class TokenResponse(BaseModel):
@@ -310,34 +347,34 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-installation_cache: typing.MutableMapping[str, typing.Optional[TokenResponse]] = dict()
+installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
 
-def get_repo(*, data: dict) -> typing.Optional[dict]:
+def get_repo(*, data: dict) -> Optional[dict]:
     try:
-        return typing.cast(dict, data["repository"])
+        return cast(dict, data["repository"])
     except (KeyError, TypeError):
         return None
 
 
-def get_config_str(*, repo: dict) -> typing.Optional[str]:
+def get_config_str(*, repo: dict) -> Optional[str]:
     try:
-        return typing.cast(str, repo["object"]["text"])
+        return cast(str, repo["object"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_pull_request(*, repo: dict) -> typing.Optional[dict]:
+def get_pull_request(*, repo: dict) -> Optional[dict]:
     try:
-        return typing.cast(dict, repo["pullRequest"])
+        return cast(dict, repo["pullRequest"])
     except (KeyError, TypeError):
         logger.warning("Could not find PR")
         return None
 
 
-def get_labels(*, pr: dict) -> typing.List[str]:
+def get_labels(*, pr: dict) -> List[str]:
     try:
         nodes = pr["labels"]["nodes"]
         get_names = (node.get("name") for node in nodes)
@@ -346,23 +383,23 @@ def get_labels(*, pr: dict) -> typing.List[str]:
         return []
 
 
-def get_sha(*, pr: dict) -> typing.Optional[str]:
+def get_sha(*, pr: dict) -> Optional[str]:
     try:
-        return typing.cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
+        return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
 
 
-def get_branch_protection_dicts(*, repo: dict) -> typing.List[dict]:
+def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
     try:
-        return typing.cast(typing.List[dict], repo["branchProtectionRules"]["nodes"])
+        return cast(List[dict], repo["branchProtectionRules"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
 def get_branch_protection(
     *, repo: dict, ref_name: str
-) -> typing.Optional[BranchProtectionRule]:
+) -> Optional[BranchProtectionRule]:
     for rule in get_branch_protection_dicts(repo=repo):
         try:
             nodes = rule["matchingRefs"]["nodes"]
@@ -378,40 +415,59 @@ def get_branch_protection(
     return None
 
 
-def get_review_requests_count(*, pr: dict) -> int:
+def get_review_requests_dicts(*, pr: dict) -> List[dict]:
     try:
-        return typing.cast(int, pr["reviewRequests"]["totalCount"])
-    except (KeyError, TypeError):
-        return 0
-
-
-def get_review_dicts(*, pr: dict) -> typing.List[dict]:
-    try:
-        return typing.cast(typing.List[dict], pr["reviews"]["nodes"])
+        return cast(List[dict], pr["reviewRequests"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_reviews(*, pr: dict) -> typing.List[PRReview]:
+def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
+    """
+    parse from: https://developer.github.com/v4/union/requestedreviewer/
+    """
+    review_requests: List[PRReviewRequest] = []
+    for request_dict in get_review_requests_dicts(pr=pr):
+        try:
+            request = request_dict["requestedReviewer"]
+            typename = request["__typename"]
+            if typename in {"User", "Mannequin"}:
+                name = request["login"]
+            else:
+                name = request["name"]
+            review_requests.append(PRReviewRequest(name=name))
+        except ValueError:
+            logger.warning("Could not parse PRReviewRequest")
+    return review_requests
+
+
+def get_review_dicts(*, pr: dict) -> List[dict]:
+    try:
+        return cast(List[dict], pr["reviews"]["nodes"])
+    except (KeyError, TypeError):
+        return []
+
+
+def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
     review_dicts = get_review_dicts(pr=pr)
-    reviews: typing.List[PRReview] = []
+    reviews: List[PRReviewSchema] = []
     for review_dict in review_dicts:
         try:
-            reviews.append(PRReview.parse_obj(review_dict))
+            reviews.append(PRReviewSchema.parse_obj(review_dict))
         except ValueError:
-            logger.warning("Could not parse PRReview")
+            logger.warning("Could not parse PRReviewSchema")
     return reviews
 
 
-def get_status_contexts(*, pr: dict) -> typing.List[StatusContext]:
+def get_status_contexts(*, pr: dict) -> List[StatusContext]:
     try:
-        commit_status_dicts: typing.List[dict] = pr["commits"]["nodes"][0]["commit"][
-            "status"
-        ]["contexts"]
+        commit_status_dicts: List[dict] = pr["commits"]["nodes"][0]["commit"]["status"][
+            "contexts"
+        ]
     except (IndexError, KeyError, TypeError):
         commit_status_dicts = []
 
-    status_contexts: typing.List[StatusContext] = []
+    status_contexts: List[StatusContext] = []
     for commit_status in commit_status_dicts:
         try:
             status_contexts.append(StatusContext.parse_obj(commit_status))
@@ -421,8 +477,8 @@ def get_status_contexts(*, pr: dict) -> typing.List[StatusContext]:
     return status_contexts
 
 
-def get_check_runs(*, pr: dict) -> typing.List[CheckRun]:
-    check_run_dicts: typing.List[dict] = []
+def get_check_runs(*, pr: dict) -> List[CheckRun]:
+    check_run_dicts: List[dict] = []
     try:
         for commit_node in pr["commits"]["nodes"]:
             check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
@@ -433,7 +489,7 @@ def get_check_runs(*, pr: dict) -> typing.List[CheckRun]:
     except (KeyError, TypeError):
         pass
 
-    check_runs: typing.List[CheckRun] = []
+    check_runs: List[CheckRun] = []
     for check_run_dict in check_run_dicts:
         try:
             check_runs.append(CheckRun.parse_obj(check_run_dict))
@@ -456,8 +512,8 @@ def get_head_exists(*, pr: dict) -> bool:
         return False
 
 
-def get_valid_merge_methods(*, repo: dict) -> typing.List[MergeMethod]:
-    valid_merge_methods: typing.List[MergeMethod] = []
+def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
+    valid_merge_methods: List[MergeMethod] = []
     if repo.get("mergeCommitAllowed"):
         valid_merge_methods.append(MergeMethod.merge)
 
@@ -491,18 +547,16 @@ class Client:
         )
         return self
 
-    async def __aexit__(
-        self, exc_type: typing.Any, exc_value: typing.Any, traceback: typing.Any
-    ) -> None:
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         await self.session.close()
 
     async def send_query(
         self,
         query: str,
-        variables: typing.Mapping[str, typing.Union[str, int, None]],
+        variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
         remaining_retries: int = 4,
-    ) -> typing.Optional[GraphQLResponse]:
+    ) -> Optional[GraphQLResponse]:
         log = logger.bind(install=installation_id)
 
         token = await get_token_for_install(installation_id=installation_id)
@@ -519,9 +573,9 @@ class Client:
         if res.status_code != status.HTTP_200_OK:
             log.error("github api request error", res=res)
             return None
-        return typing.cast(GraphQLResponse, res.json())
+        return cast(GraphQLResponse, res.json())
 
-    async def get_default_branch_name(self) -> typing.Optional[str]:
+    async def get_default_branch_name(self) -> Optional[str]:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
             variables=dict(owner=self.owner, repo=self.repo),
@@ -534,11 +588,54 @@ class Client:
         if errors is not None or data is None:
             logger.error("could not fetch default branch name", res=res)
             return None
-        return typing.cast(str, data["repository"]["defaultBranchRef"]["name"])
+        return cast(str, data["repository"]["defaultBranchRef"]["name"])
+
+    async def get_permissions_for_username(self, username: str) -> Permission:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            res = await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
+                headers=headers,
+            )
+        try:
+            res.raise_for_status()
+            return Permission(res.json()["permission"])
+        except (http.HTTPError, IndexError, TypeError, ValueError):
+            logger.exception("couldn't fetch permissions for username %r", username)
+            return Permission.NONE
+
+    # TODO(chdsbd): We may want to cache this response to improve performance as
+    # we could encounter a lot of throttling when hitting the Github API
+    async def get_reviewers_and_permissions(
+        self, *, reviews: List[PRReviewSchema]
+    ) -> List[PRReview]:
+        reviewer_names = {review.author.login for review in reviews}
+
+        requests = [
+            self.get_permissions_for_username(username) for username in reviewer_names
+        ]
+        permissions = await asyncio.gather(*requests)
+
+        user_permission_mapping = {
+            username: permission
+            for username, permission in zip(reviewer_names, permissions)
+        }
+
+        return [
+            PRReview(
+                state=review.state,
+                createdAt=review.createdAt,
+                author=PRReviewAuthor(
+                    login=review.author.login,
+                    permission=user_permission_mapping[review.author.login],
+                ),
+            )
+            for review in reviews
+        ]
 
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
-    ) -> typing.Optional[EventInfoResponse]:
+    ) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -572,20 +669,18 @@ class Client:
             return None
 
         config_str = get_config_str(repo=repository)
-        if not config_str:
+        if config_str is None:
+            # NOTE(chdsbd): we don't want to show a message for this as the lack
+            # of a config allows kodiak to be selectively installed
             log.warning("could not find configuration file")
-            return None
-
-        try:
-            config = V1.parse_toml(config_str)
-        except ValueError:
-            log.warning("could not parse configuration")
             return None
 
         pull_request = get_pull_request(repo=repository)
         if not pull_request:
             log.warning("Could not find PR")
             return None
+
+        config = V1.parse_toml(config_str)
 
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = get_labels(pr=pull_request)
@@ -601,8 +696,14 @@ class Client:
             repo=repository, ref_name=pr.baseRefName
         )
 
+        partial_reviews = get_reviews(pr=pull_request)
+        reviews_with_permissions = await self.get_reviewers_and_permissions(
+            reviews=partial_reviews
+        )
         return EventInfoResponse(
             config=config,
+            config_str=config_str,
+            config_file_expression=config_file_expression,
             pull_request=pr,
             repo=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
@@ -610,8 +711,8 @@ class Client:
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
             ),
             branch_protection=branch_protection,
-            review_requests_count=get_review_requests_count(pr=pull_request),
-            reviews=get_reviews(pr=pull_request),
+            review_requests=get_requested_reviews(pr=pull_request),
+            reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
@@ -621,7 +722,7 @@ class Client:
 
     async def get_pull_requests_for_sha(
         self, sha: str
-    ) -> typing.Optional[typing.List[events.BasePullRequest]]:
+    ) -> Optional[List[events.BasePullRequest]]:
         log = logger.bind(
             repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
         )
@@ -666,14 +767,14 @@ class Client:
                 headers=headers,
             )
 
-    async def get_pull_request(self, number: int) -> typing.Optional[dict]:
+    async def get_pull_request(self, number: int) -> Optional[dict]:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
         async with self.throttler:
             res = await self.session.get(url, headers=headers)
         if not res.ok:
             return None
-        return typing.cast(dict, res.json())
+        return cast(dict, res.json())
 
     async def merge_pull_request(self, number: int, body: dict) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
@@ -682,7 +783,7 @@ class Client:
             return await self.session.put(url, headers=headers, json=body)
 
     async def create_notification(
-        self, head_sha: str, message: str, summary: typing.Optional[str] = None
+        self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
@@ -740,7 +841,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     return token_response.token
 
 
-async def get_headers(*, installation_id: str) -> typing.Mapping[str, str]:
+async def get_headers(*, installation_id: str) -> Mapping[str, str]:
     token = await get_token_for_install(installation_id=installation_id)
     return dict(
         Authorization=f"token {token}",

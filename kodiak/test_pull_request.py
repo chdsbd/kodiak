@@ -1,10 +1,10 @@
-import typing
+from typing import List
 
 import pytest
 from pytest_mock import MockFixture
 from starlette.testclient import TestClient
 
-from kodiak import queries
+from kodiak import messages, queries
 from kodiak.config import (
     V1,
     Merge,
@@ -19,6 +19,7 @@ from kodiak.pull_request import (
     get_merge_body,
     strip_html_comments_from_markdown,
 )
+from kodiak.queries import MergeStateStatus
 from kodiak.test_utils import wrap_future
 
 
@@ -47,7 +48,7 @@ def test_mergeability_response_coverage() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("labels,expected", [(["automerge"], True), ([], False)])
 async def test_deleting_branch_after_merge(
-    labels: typing.List[str],
+    labels: List[str],
     expected: bool,
     event_response: queries.EventInfoResponse,
     mocker: MockFixture,
@@ -59,6 +60,7 @@ async def test_deleting_branch_after_merge(
 
     event_response.pull_request.state = queries.PullRequestState.MERGED
     event_response.pull_request.labels = labels
+    assert isinstance(event_response.config, V1)
     event_response.config.merge.delete_branch_on_merge = True
 
     mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
@@ -79,6 +81,40 @@ async def test_deleting_branch_after_merge(
     await pr.mergeability()
 
     assert delete_branch.called == expected
+
+
+@pytest.mark.asyncio
+async def test_cross_repo_missing_head(
+    event_response: queries.EventInfoResponse, mocker: MockFixture
+) -> None:
+    """
+    if a repository is from a fork (isCrossRepository), we will not be able to
+    see head information due to a problem with the v4 api failing to return head
+    information for forks, unlike the v3 api.
+    """
+
+    event_response.head_exists = False
+    event_response.pull_request.isCrossRepository = True
+    assert event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+    event_response.pull_request.labels = ["automerge"]
+    assert event_response.branch_protection is not None
+    event_response.branch_protection.requiresApprovingReviews = False
+    event_response.branch_protection.requiresStrictStatusChecks = True
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    set_status = mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
+    pr = PR(
+        number=123,
+        owner="tester",
+        repo="repo",
+        installation_id="abc",
+        client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
+    )
+    await pr.mergeability()
+
+    assert set_status.call_count == 1
+    set_status.assert_called_with(
+        summary=mocker.ANY, markdown_content=messages.FORKS_CANNOT_BE_UPDATED
+    )
 
 
 def test_pr(api_client: queries.Client) -> None:
@@ -152,7 +188,7 @@ async def test_attempting_to_notify_pr_author_with_no_automerge_label(
         installation_id="abc123",
         client=api_client,
     )
-
+    assert isinstance(event_response.config, V1)
     event_response.config.merge.require_automerge_label = False
     pr.event = event_response
 
@@ -215,6 +251,22 @@ def test_get_merge_body_strip_html_comments(
         pull_request,
     )
     expected = dict(merge_method="squash", commit_message="hello world")
+    assert actual == expected
+
+
+def test_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
+    pull_request.body = "hello world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(body=MergeBodyStyle.empty),
+            ),
+        ),
+        pull_request,
+    )
+    expected = dict(merge_method="squash", commit_message="")
     assert actual == expected
 
 
