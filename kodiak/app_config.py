@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import databases
@@ -13,6 +14,7 @@ SECRET_KEY = config("SECRET_KEY")
 GITHUB_APP_ID = config("GITHUB_APP_ID")
 GITHUB_PRIVATE_KEY_PATH = config("GITHUB_PRIVATE_KEY_PATH", default=None)
 GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
+LOGGING_LEVEL: int = logging._nameToLevel[config("LOGGING_LEVEL", default="INFO")]
 
 
 if GITHUB_PRIVATE_KEY_PATH is None and GITHUB_PRIVATE_KEY is None:
