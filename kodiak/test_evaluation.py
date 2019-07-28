@@ -540,6 +540,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
         )
     assert "wip-app" in str(e.value)
 
+
 def test_passing_checks_with_dont_wait_on_status_checks(
     pull_request: PullRequest,
     config: V1,
@@ -598,7 +599,6 @@ def test_failing_checks(
             valid_merge_methods=[MergeMethod.squash],
         )
     assert "wip-app" in str(e.value)
-
 
 
 def test_missing_required_context(
