@@ -411,7 +411,7 @@ def test_failing_contexts(
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
     with pytest.raises(
-        NotQueueable, match="failing/missing required status checks"
+        NotQueueable, match="failing/incomplete required status checks"
     ) as e:
         mergeable(
             config=config,
@@ -497,7 +497,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks(
     check_run.conclusion = None
     config.merge.dont_wait_on_status_checks = ["wip-app"]
     with pytest.raises(
-        NotQueueable, match="failing/missing required status checks"
+        NotQueueable, match="failing/incomplete required status checks"
     ) as e:
         mergeable(
             config=config,
@@ -528,7 +528,7 @@ def test_failing_checks(
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
     with pytest.raises(
-        NotQueueable, match="failing/missing required status checks"
+        NotQueueable, match="failing/incomplete required status checks"
     ) as e:
         mergeable(
             config=config,

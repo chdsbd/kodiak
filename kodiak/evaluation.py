@@ -239,7 +239,7 @@ def mergeable(
                 # is a similar question for the review counting.
 
                 raise NotQueueable(
-                    f"failing/missing required status checks: {failing_required_status_checks!r}"
+                    f"failing/incomplete required status checks: {failing_required_status_checks!r}"
                 )
             passing = set(passing_contexts)
 
