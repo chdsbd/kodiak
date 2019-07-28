@@ -4,7 +4,17 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import (
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 import arrow
 import jwt
@@ -233,9 +243,8 @@ class EventInfoResponse:
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
-    reviewers_with_permissions: Mapping[str, Permission]
     head_exists: bool
-    reviews: List[PRReview] = field(default_factory=list)
+    reviews: List[PRReviewWithPermission] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
@@ -277,6 +286,21 @@ class PRReview(BaseModel):
     state: PRReviewState
     createdAt: datetime
     author: PRReviewAuthor
+
+
+@dataclass
+class PRReviewWithPermission:
+    """
+    Container for repository reviews with the associated user's repo permission
+
+    We use PRReview to parse the PRReview from the grapql query response, but we
+    use this for passing around the app.
+    """
+
+    state: PRReviewState
+    createdAt: datetime
+    username: str
+    permission: Permission
 
 
 @dataclass
@@ -590,7 +614,7 @@ class Client:
 
     async def get_reviewers_and_permissions(
         self, *, reviews: List[PRReview]
-    ) -> Mapping[str, Permission]:
+    ) -> List[PRReviewWithPermission]:
         reviewer_names = {review.author.login for review in reviews}
 
         requests = [
@@ -598,10 +622,20 @@ class Client:
         ]
         permissions = await asyncio.gather(*requests)
 
-        return {
+        user_permission_mapping = {
             username: permission
             for username, permission in zip(reviewer_names, permissions)
         }
+
+        return [
+            PRReviewWithPermission(
+                state=review.state,
+                createdAt=review.createdAt,
+                username=review.author.login,
+                permission=user_permission_mapping[review.author.login],
+            )
+            for review in reviews
+        ]
 
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
@@ -666,9 +700,9 @@ class Client:
             repo=repository, ref_name=pr.baseRefName
         )
 
-        reviews = get_reviews(pr=pull_request)
-        reviewers_and_permissions = await self.get_reviewers_and_permissions(
-            reviews=reviews
+        partial_reviews = get_reviews(pr=pull_request)
+        reviews_with_permissions = await self.get_reviewers_and_permissions(
+            reviews=partial_reviews
         )
         return EventInfoResponse(
             config=config,
@@ -682,8 +716,7 @@ class Client:
             ),
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
-            reviews=reviews,
-            reviewers_with_permissions=reviewers_and_permissions,
+            reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),

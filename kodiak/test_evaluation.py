@@ -25,6 +25,7 @@ from kodiak.queries import (
     PRReviewAuthor,
     PRReviewRequest,
     PRReviewState,
+    PRReviewWithPermission,
     PullRequest,
     PullRequestState,
     StatusContext,
@@ -64,7 +65,6 @@ def config() -> V1:
 def branch_protection() -> BranchProtectionRule:
     return BranchProtectionRule(
         requiresApprovingReviews=True,
-        reviewers_with_permissions={},
         requiredApprovingReviewCount=1,
         requiresStatusChecks=True,
         requiredStatusCheckContexts=["ci/api"],
@@ -82,7 +82,7 @@ def test_missing_automerge_label(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     review_request: PRReviewRequest,
     context: StatusContext,
 ) -> None:
@@ -95,7 +95,6 @@ def test_missing_automerge_label(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -108,7 +107,7 @@ def test_require_automerge_label_false(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     """
@@ -124,7 +123,6 @@ def test_require_automerge_label_false(
         branch_protection=branch_protection,
         review_requests=[],
         reviews=[review],
-        reviewers_with_permissions={},
         contexts=[context],
         check_runs=[],
         valid_signature=False,
@@ -136,7 +134,7 @@ def test_blacklist_labels(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted label should not be mergeable
@@ -150,7 +148,6 @@ def test_blacklist_labels(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -163,7 +160,7 @@ def test_blacklist_title_match(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     # a PR with a blacklisted title should not be mergeable
@@ -176,7 +173,6 @@ def test_blacklist_title_match(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -189,7 +185,7 @@ def test_bad_merge_method_config(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(NotQueueable, match="merge.method") as e:
@@ -200,7 +196,6 @@ def test_bad_merge_method_config(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -217,7 +212,7 @@ def test_merged(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(BranchMerged):
@@ -228,7 +223,6 @@ def test_merged(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -240,7 +234,7 @@ def test_closed(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(NotQueueable, match="closed"):
@@ -251,7 +245,6 @@ def test_closed(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -263,7 +256,7 @@ def test_merge_conflict(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(MergeConflict):
@@ -274,7 +267,6 @@ def test_merge_conflict(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -286,7 +278,7 @@ def test_need_update(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(NeedsBranchUpdate):
@@ -297,7 +289,6 @@ def test_need_update(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -309,7 +300,7 @@ def test_missing_mergeability_state(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     with pytest.raises(MissingGithubMergeabilityState):
@@ -320,7 +311,6 @@ def test_missing_mergeability_state(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -332,7 +322,7 @@ def test_blocking_review(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -344,20 +334,19 @@ def test_blocking_review(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
-    assert review.author.login in str(e.value)
+    assert review.username in str(e.value)
 
 
 def test_requires_review_read_user(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     """
@@ -365,8 +354,9 @@ def test_requires_review_read_user(
     """
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     review.state = PRReviewState.APPROVED
+    review.permission = Permission.READ
     branch_protection.requiredApprovingReviewCount = 1
-    branch_protection.requiresApprovingReviews = 1
+    branch_protection.requiresApprovingReviews = True
     with pytest.raises(NotQueueable, match="missing required reviews") as e:
         mergeable(
             config=config,
@@ -374,7 +364,6 @@ def test_requires_review_read_user(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={review.author.login: Permission.READ},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -387,7 +376,7 @@ def test_missing_review_count(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -399,7 +388,6 @@ def test_missing_review_count(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -414,7 +402,7 @@ def test_failing_contexts(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -428,7 +416,6 @@ def test_failing_contexts(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -441,7 +428,7 @@ def test_passing_checks(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
@@ -457,7 +444,6 @@ def test_passing_checks(
         branch_protection=branch_protection,
         review_requests=[],
         reviews=[review],
-        reviewers_with_permissions={},
         contexts=[context],
         check_runs=[check_run],
         valid_signature=False,
@@ -469,7 +455,7 @@ def test_incomplete_checks(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
@@ -486,7 +472,6 @@ def test_incomplete_checks(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[check_run],
             valid_signature=False,
@@ -499,7 +484,7 @@ def test_failing_checks(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
@@ -516,7 +501,6 @@ def test_failing_checks(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[check_run],
             valid_signature=False,
@@ -529,7 +513,7 @@ def test_missing_required_context(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -542,7 +526,6 @@ def test_missing_required_context(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -556,7 +539,7 @@ def test_requires_signature(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -568,7 +551,6 @@ def test_requires_signature(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -589,7 +571,6 @@ def test_unknown_blockage(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,
@@ -601,7 +582,7 @@ def test_dont_update_before_block(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     """
@@ -617,7 +598,6 @@ def test_dont_update_before_block(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -629,7 +609,7 @@ def test_block_on_reviews_requested(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
     review_request: PRReviewRequest,
 ) -> None:
@@ -641,7 +621,6 @@ def test_block_on_reviews_requested(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=[review],
-            reviewers_with_permissions={},
             contexts=[context],
             check_runs=[],
             valid_signature=False,
@@ -654,7 +633,7 @@ def test_regression_error_before_update(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     check_run: CheckRun,
     review_request: PRReviewRequest,
 ) -> None:
@@ -672,7 +651,6 @@ def test_regression_error_before_update(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=[review],
-            reviewers_with_permissions={},
             check_runs=[check_run],
             contexts=contexts,
             valid_signature=False,
@@ -694,25 +672,29 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
     reviews = [
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
+            username="ghost",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="kodiak"),
+            username="kodiak",
+            permission=Permission.WRITE,
         ),
     ]
     with pytest.raises(NotQueueable, match="changes requested") as e:
@@ -722,7 +704,6 @@ def test_regression_mishandling_multiple_reviews_failing_reviews(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=reviews,
-            reviewers_with_permissions={},
             check_runs=[check_run],
             contexts=[context],
             valid_signature=False,
@@ -745,25 +726,29 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
     reviews = [
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.COMMENTED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
+            username="ghost",
+            permission=Permission.WRITE,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -773,7 +758,6 @@ def test_regression_mishandling_multiple_reviews_okay_reviews(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=reviews,
-            reviewers_with_permissions={},
             check_runs=[check_run],
             contexts=[context],
             valid_signature=False,
@@ -795,20 +779,23 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
     reviews = [
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.DISMISSED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.WRITE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
+            username="ghost",
+            permission=Permission.WRITE,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -818,7 +805,6 @@ def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=reviews,
-            reviewers_with_permissions={},
             check_runs=[check_run],
             contexts=[context],
             valid_signature=False,
@@ -840,15 +826,17 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
     reviews = [
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.CHANGES_REQUESTED,
             createdAt=first_review_date,
-            author=PRReviewAuthor(login="chdsbd"),
+            username="chdsbd",
+            permission=Permission.NONE,
         ),
-        PRReview(
+        PRReviewWithPermission(
             state=PRReviewState.APPROVED,
             createdAt=latest_review_date,
-            author=PRReviewAuthor(login="ghost"),
+            username="ghost",
+            permission=Permission.WRITE,
         ),
     ]
     with pytest.raises(NeedsBranchUpdate):
@@ -858,7 +846,6 @@ def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
             branch_protection=branch_protection,
             review_requests=[review_request],
             reviews=reviews,
-            reviewers_with_permissions={"chdsbd": Permission.READ, "ghost": Permission.WRITE},
             check_runs=[check_run],
             contexts=[context],
             valid_signature=False,
@@ -870,7 +857,7 @@ def test_passing(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
-    review: PRReview,
+    review: PRReviewWithPermission,
     context: StatusContext,
 ) -> None:
     mergeable(
@@ -879,7 +866,6 @@ def test_passing(
         branch_protection=branch_protection,
         review_requests=[],
         reviews=[review],
-        reviewers_with_permissions={},
         contexts=[context],
         check_runs=[],
         valid_signature=False,
@@ -899,7 +885,6 @@ def test_app_id(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,
@@ -913,7 +898,6 @@ def test_app_id(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,
@@ -948,7 +932,6 @@ def test_config_merge_optimistic_updates(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=contexts,
             check_runs=[],
             valid_signature=False,
@@ -963,7 +946,6 @@ def test_config_merge_optimistic_updates(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=contexts,
             check_runs=[],
             valid_signature=False,
@@ -990,7 +972,6 @@ def test_merge_state_status_draft(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,
@@ -1011,7 +992,6 @@ def test_missing_branch_protection(pull_request: PullRequest, config: V1) -> Non
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,
@@ -1036,7 +1016,6 @@ def test_requires_commit_signatures(
             branch_protection=branch_protection,
             review_requests=[],
             reviews=[],
-            reviewers_with_permissions={},
             contexts=[],
             check_runs=[],
             valid_signature=False,

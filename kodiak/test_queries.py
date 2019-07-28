@@ -17,10 +17,10 @@ from kodiak.queries import (
     MergeableState,
     MergeStateStatus,
     Permission,
-    PRReview,
     PRReviewAuthor,
     PRReviewRequest,
     PRReviewState,
+    PRReviewWithPermission,
     PullRequest,
     PullRequestState,
     RepoInfo,
@@ -122,35 +122,47 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
             PRReviewRequest(name="ghost-mannequin"),
         ],
         reviews=[
-            PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
-                state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="ghost"),
+            (
+                PRReviewWithPermission(
+                    createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                    state=PRReviewState.COMMENTED,
+                    username="ghost",
+                    permission=Permission.WRITE,
+                )
             ),
-            PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
-                state=PRReviewState.CHANGES_REQUESTED,
-                author=PRReviewAuthor(login="ghost"),
+            (
+                PRReviewWithPermission(
+                    createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                    state=PRReviewState.CHANGES_REQUESTED,
+                    username="ghost",
+                    permission=Permission.WRITE,
+                )
             ),
-            PRReview(
-                createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
-                state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="kodiak"),
+            (
+                PRReviewWithPermission(
+                    createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
+                    state=PRReviewState.COMMENTED,
+                    username="kodiak",
+                    permission=Permission.ADMIN,
+                )
             ),
-            PRReview(
-                createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
-                state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="ghost"),
+            (
+                PRReviewWithPermission(
+                    createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
+                    state=PRReviewState.APPROVED,
+                    username="ghost",
+                    permission=Permission.WRITE,
+                )
             ),
-            PRReview(
-                createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
-                state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="walrus"),
+            (
+                PRReviewWithPermission(
+                    createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
+                    state=PRReviewState.APPROVED,
+                    username="walrus",
+                    permission=Permission.WRITE,
+                )
             ),
         ],
-        reviewers_with_permissions=dict(
-            ghost=Permission.WRITE, kodiak=Permission.ADMIN, walrus=Permission.WRITE
-        ),
         status_contexts=[
             StatusContext(
                 context="ci/circleci: backend_lint", state=StatusState.SUCCESS

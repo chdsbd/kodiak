@@ -91,11 +91,12 @@ def branch_protection() -> queries.BranchProtectionRule:
 
 
 @pytest.fixture
-def review() -> queries.PRReview:
-    return queries.PRReview(
+def review() -> queries.PRReviewWithPermission:
+    return queries.PRReviewWithPermission(
         state=queries.PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
-        author=queries.PRReviewAuthor(login="ghost"),
+        username="ghost",
+        permission=queries.Permission.WRITE,
     )
 
 
@@ -135,7 +136,7 @@ def event_response(
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
-    review: queries.PRReview,
+    review: queries.PRReviewWithPermission,
     status_context: queries.StatusContext,
     config: V1,
 ) -> queries.EventInfoResponse:
@@ -149,7 +150,6 @@ def event_response(
         head_exists=True,
         review_requests=[],
         reviews=[review],
-        reviewers_with_permissions={review.author.login: Permission.WRITE},
         status_contexts=[status_context],
         valid_signature=True,
         valid_merge_methods=[queries.MergeMethod.merge],
