@@ -27,7 +27,7 @@ from typing import Any
 
 import pytest
 
-from kodiak.logging import SentryLevel, SentryProcessor
+from kodiak.logging import SentryLevel, SentryProcessor, get_logging_level
 
 
 def test_sentry_sent() -> None:
@@ -138,3 +138,10 @@ def test_sentry_log_specific_keys_as_tags(mocker: Any, level: SentryLevel) -> No
     event_dict = processor_only_errors(None, level, {"event": level + " message"})
 
     assert "sentry_id" not in event_dict
+
+
+@pytest.mark.parametrize(
+    "level,expected", [("info", logging.INFO), ("Warn", logging.WARN)]
+)
+def test_get_logging_level(level: str, expected: int) -> None:
+    assert get_logging_level(level) == expected
