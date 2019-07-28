@@ -3,6 +3,8 @@ from pathlib import Path
 import databases
 from starlette.config import Config
 
+from kodiak.logging import get_logging_level
+
 config = Config(".env")
 
 REDIS_URL = config("REDIS_URL", cast=databases.DatabaseURL, default=None) or config(
@@ -13,6 +15,7 @@ SECRET_KEY = config("SECRET_KEY")
 GITHUB_APP_ID = config("GITHUB_APP_ID")
 GITHUB_PRIVATE_KEY_PATH = config("GITHUB_PRIVATE_KEY_PATH", default=None)
 GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
+LOGGING_LEVEL = get_logging_level(config("LOGGING_LEVEL", default="INFO"))
 
 
 if GITHUB_PRIVATE_KEY_PATH is None and GITHUB_PRIVATE_KEY is None:
