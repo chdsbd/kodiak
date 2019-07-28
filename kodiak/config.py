@@ -65,6 +65,11 @@ class Merge(BaseModel):
     optimistic_updates: bool = True
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
+    # status checks that we don't want to wait to complete when they are in a
+    # pending state. This is useful for checks that will complete in an
+    # indefinite amount of time, like the wip-app checks or status checks
+    # requiring manual approval.
+    dont_wait_on_status_checks: List[str] = []
 
 
 class InvalidVersion(ValueError):

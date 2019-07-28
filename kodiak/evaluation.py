@@ -202,7 +202,10 @@ def mergeable(
             passing_contexts: List[str] = []
             required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
-                if status_context.state in (StatusState.ERROR, StatusState.FAILURE):
+                if (
+                    status_context.context in config.merge.dont_wait_on_status_checks
+                    or status_context.state in (StatusState.ERROR, StatusState.FAILURE)
+                ):
                     failing_contexts.append(status_context.context)
                 elif status_context.state in (
                     StatusState.EXPECTED,
@@ -213,6 +216,8 @@ def mergeable(
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
             for check_run in check_runs:
+                if check_run.name in config.merge.dont_wait_on_status_checks:
+                    failing_contexts.append(check_run.name)
                 if check_run.conclusion is None:
                     continue
                 if check_run.conclusion == CheckConclusionState.SUCCESS:
@@ -234,7 +239,7 @@ def mergeable(
                 # is a similar question for the review counting.
 
                 raise NotQueueable(
-                    f"failing required status checks: {failing_required_status_checks!r}"
+                    f"failing/missing required status checks: {failing_required_status_checks!r}"
                 )
             passing = set(passing_contexts)
 
