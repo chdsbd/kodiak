@@ -13,6 +13,7 @@ from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
     BranchMerged,
+    MergeBlocked,
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
