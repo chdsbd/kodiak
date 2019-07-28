@@ -602,6 +602,8 @@ class Client:
             logger.exception("couldn't fetch permissions for username %r", username)
             return Permission.NONE
 
+    # TODO(chdsbd): We may want to cache this response to improve performance as
+    # we could encounter a lot of throttling when hitting the Github API
     async def get_reviewers_and_permissions(
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
