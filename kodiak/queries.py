@@ -601,7 +601,7 @@ class Client:
     async def get_permissions_for_username(self, username: str) -> Permission:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
-            res = await http.get(
+            res = await self.session.get(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
                 headers=headers,
             )

@@ -203,6 +203,17 @@ async def test_get_event_info_blocked(
         ),
     )
 
+    async def get_permissions_for_username_patch(username: str) -> Permission:
+        if username in ("walrus", "ghost"):
+            return Permission.WRITE
+        if username in ("kodiak",):
+            return Permission.ADMIN
+        raise Exception
+
+    mocker.patch.object(
+        api_client, "get_permissions_for_username", get_permissions_for_username_patch
+    )
+
     res = await api_client.get_event_info(
         config_file_expression="master:.kodiak.toml", pr_number=100
     )
