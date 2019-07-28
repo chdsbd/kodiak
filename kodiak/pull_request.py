@@ -270,6 +270,9 @@ class PR:
 
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
             return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except MergeBlocked as e:
+            await self.set_status(summary=f"🛑 {e}")
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingGithubMergeabilityState:
