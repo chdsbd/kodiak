@@ -74,19 +74,21 @@ updated when their targets were updated.
 
    [merge]
    automerge_label = "automerge" # default: "automerge"
-   blacklist_title_regex = "^WIP.*" # default: "^WIP.*"
-   blacklist_labels = [] # default: []
+   blacklist_title_regex = "^WIP.*" # default: "^WIP.*" options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+   blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
    method = "squash" # default: "merge", options: "merge", "squash", "rebase"
    delete_branch_on_merge = true # default: false
    block_on_reviews_requested = false # default: false
    notify_on_conflict = true # default: true
    optimistic_updates = true # default: true
+   dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
    [merge.message]
-   title = "pull_request_title" # default: "github_default"
-   body = "pull_request_body" # default: "github_default"
+   title = "pull_request_title" # default: "github_default", options: "github_default", "pull_request_title"
+   body = "pull_request_body" # default: "github_default", options: "github_default", "pull_request_body", "empty"
    include_pr_number = false # default: true
-   body_type = "markdown" # default: "markdown"
+   body_type = "markdown" # default: "markdown", options: "plain_text", "markdown", "html"
+   strip_html_comments = false # default: false
    ```
 
 2. Setup Kodiak
