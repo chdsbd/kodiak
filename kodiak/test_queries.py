@@ -5,6 +5,7 @@ from typing import cast
 import arrow
 import pytest
 from pytest_mock import MockFixture
+from requests_async import Response
 
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
@@ -12,11 +13,11 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Client,
-    CommentAuthorAssociation,
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
     MergeStateStatus,
+    Permission,
     PRReview,
     PRReviewAuthor,
     PRReviewRequest,
@@ -126,32 +127,27 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
                 state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="ghost"),
-                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
                 state=PRReviewState.CHANGES_REQUESTED,
-                author=PRReviewAuthor(login="ghost"),
-                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
                 state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="kodiak"),
-                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+                author=PRReviewAuthor(login="kodiak", permission=Permission.ADMIN),
             ),
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
                 state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="ghost"),
-                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
                 createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
                 state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="walrus"),
-                authorAssociation=CommentAuthorAssociation.CONTRIBUTOR,
+                author=PRReviewAuthor(login="walrus", permission=Permission.WRITE),
             ),
         ],
         status_contexts=[
@@ -194,8 +190,85 @@ async def test_get_event_info_blocked(
         ),
     )
 
+    async def get_permissions_for_username_patch(username: str) -> Permission:
+        if username in ("walrus", "ghost"):
+            return Permission.WRITE
+        if username in ("kodiak",):
+            return Permission.ADMIN
+        raise Exception
+
+    mocker.patch.object(
+        api_client, "get_permissions_for_username", get_permissions_for_username_patch
+    )
+
     res = await api_client.get_event_info(
         config_file_expression="master:.kodiak.toml", pr_number=100
     )
     assert res is not None
     assert res == block_event
+
+
+MOCK_HEADERS = dict(
+    Authorization="token some-json-web-token",
+    Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+)
+
+
+@pytest.fixture
+def mock_get_token_for_install(mocker: MockFixture) -> None:
+    mocker.patch(
+        "kodiak.queries.get_token_for_install", return_value=wrap_future(MOCK_HEADERS)
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_permissions_for_username_missing(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    not_found = Response()
+    not_found.status_code = 404
+    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(not_found))
+    async with api_client as api_client:
+        res = await api_client.get_permissions_for_username("_invalid_username")
+    assert res == Permission.NONE
+
+
+PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
+    {
+        "permission": "read",
+        "user": {
+            "login": "ghost",
+            "id": 10137,
+            "node_id": "MDQ6VXNlcjEwMTM3",
+            "avatar_url": "https://avatars3.githubusercontent.com/u/10137?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/ghost",
+            "html_url": "https://github.com/ghost",
+            "followers_url": "https://api.github.com/users/ghost/followers",
+            "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+            "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+            "organizations_url": "https://api.github.com/users/ghost/orgs",
+            "repos_url": "https://api.github.com/users/ghost/repos",
+            "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/ghost/received_events",
+            "type": "User",
+            "site_admin": False,
+        },
+    }
+).encode()
+
+
+@pytest.mark.asyncio
+async def test_get_permissions_for_username_read(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    response = Response()
+    response.status_code = 200
+    response._content = PERMISSION_OK_READ_USER_RESPONSE
+
+    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(response))
+    async with api_client as api_client:
+        res = await api_client.get_permissions_for_username("ghost")
+    assert res == Permission.READ

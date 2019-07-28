@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -269,25 +270,27 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
-class CommentAuthorAssociation(Enum):
-    COLLABORATOR = "COLLABORATOR"
-    CONTRIBUTOR = "CONTRIBUTOR"
-    FIRST_TIMER = "FIRST_TIMER"
-    FIRST_TIME_CONTRIBUTOR = "FIRST_TIME_CONTRIBUTOR"
-    MEMBER = "MEMBER"
-    NONE = "NONE"
-    OWNER = "OWNER"
-
-
-class PRReviewAuthor(BaseModel):
+class PRReviewAuthorSchema(BaseModel):
     login: str
 
 
-class PRReview(BaseModel):
+@dataclass
+class PRReviewAuthor:
+    login: str
+    permission: Permission
+
+
+class PRReviewSchema(BaseModel):
+    state: PRReviewState
+    createdAt: datetime
+    author: PRReviewAuthorSchema
+
+
+@dataclass
+class PRReview:
     state: PRReviewState
     createdAt: datetime
     author: PRReviewAuthor
-    authorAssociation: CommentAuthorAssociation
 
 
 @dataclass
@@ -320,6 +323,17 @@ class CheckConclusionState(Enum):
 class CheckRun(BaseModel):
     name: str
     conclusion: Optional[CheckConclusionState]
+
+
+class Permission(Enum):
+    """
+    https://developer.github.com/v3/repos/collaborators/#review-a-users-permission-level
+    """
+
+    ADMIN = "admin"
+    WRITE = "write"
+    READ = "read"
+    NONE = "none"
 
 
 class TokenResponse(BaseModel):
@@ -432,14 +446,14 @@ def get_review_dicts(*, pr: dict) -> List[dict]:
         return []
 
 
-def get_reviews(*, pr: dict) -> List[PRReview]:
+def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
     review_dicts = get_review_dicts(pr=pr)
-    reviews: List[PRReview] = []
+    reviews: List[PRReviewSchema] = []
     for review_dict in review_dicts:
         try:
-            reviews.append(PRReview.parse_obj(review_dict))
+            reviews.append(PRReviewSchema.parse_obj(review_dict))
         except ValueError:
-            logger.warning("Could not parse PRReview")
+            logger.warning("Could not parse PRReviewSchema")
     return reviews
 
 
@@ -574,6 +588,49 @@ class Client:
             return None
         return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
+    async def get_permissions_for_username(self, username: str) -> Permission:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            res = await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
+                headers=headers,
+            )
+        try:
+            res.raise_for_status()
+            return Permission(res.json()["permission"])
+        except (http.HTTPError, IndexError, TypeError, ValueError):
+            logger.exception("couldn't fetch permissions for username %r", username)
+            return Permission.NONE
+
+    # TODO(chdsbd): We may want to cache this response to improve performance as
+    # we could encounter a lot of throttling when hitting the Github API
+    async def get_reviewers_and_permissions(
+        self, *, reviews: List[PRReviewSchema]
+    ) -> List[PRReview]:
+        reviewer_names = {review.author.login for review in reviews}
+
+        requests = [
+            self.get_permissions_for_username(username) for username in reviewer_names
+        ]
+        permissions = await asyncio.gather(*requests)
+
+        user_permission_mapping = {
+            username: permission
+            for username, permission in zip(reviewer_names, permissions)
+        }
+
+        return [
+            PRReview(
+                state=review.state,
+                createdAt=review.createdAt,
+                author=PRReviewAuthor(
+                    login=review.author.login,
+                    permission=user_permission_mapping[review.author.login],
+                ),
+            )
+            for review in reviews
+        ]
+
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
     ) -> Optional[EventInfoResponse]:
@@ -637,6 +694,10 @@ class Client:
             repo=repository, ref_name=pr.baseRefName
         )
 
+        partial_reviews = get_reviews(pr=pull_request)
+        reviews_with_permissions = await self.get_reviewers_and_permissions(
+            reviews=partial_reviews
+        )
         return EventInfoResponse(
             config=config,
             config_str=config_str,
@@ -649,7 +710,7 @@ class Client:
             ),
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
-            reviews=get_reviews(pr=pull_request),
+            reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
