@@ -33,6 +33,10 @@ class NotQueueable(KodiakException):
     pass
 
 
+class MergeBlocked(KodiakException):
+    pass
+
+
 class MissingAppID(KodiakException):
     """
     Application app_id doesn't match configuration

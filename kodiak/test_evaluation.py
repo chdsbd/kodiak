@@ -6,6 +6,7 @@ import pytest
 from kodiak.config import V1, MergeMethod
 from kodiak.errors import (
     BranchMerged,
+    MergeBlocked,
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
@@ -564,7 +565,7 @@ def test_unknown_blockage(
     branch_protection.requiredApprovingReviewCount = 0
     branch_protection.requiresStatusChecks = False
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
-    with pytest.raises(NotQueueable, match="blocked by branch protection settings"):
+    with pytest.raises(MergeBlocked):
         mergeable(
             config=config,
             pull_request=pull_request,
