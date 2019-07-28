@@ -211,6 +211,7 @@ def mergeable(
                     in (StatusState.EXPECTED, StatusState.PENDING)
                 ):
                     failing_contexts.append(status_context.context)
+                    continue
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):
                     failing_contexts.append(status_context.context)
                 elif status_context.state in (
