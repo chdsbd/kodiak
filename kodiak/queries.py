@@ -599,7 +599,7 @@ class Client:
             res.raise_for_status()
             return Permission(res.json()["permission"])
         except (http.HTTPError, IndexError, TypeError, ValueError):
-            logger.exception("couldn't fetch permissions for username %s", username)
+            logger.exception("couldn't fetch permissions for username %r", username)
             return Permission.NONE
 
     async def get_reviewers_and_permissions(
