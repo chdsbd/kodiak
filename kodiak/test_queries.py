@@ -5,6 +5,7 @@ from typing import cast
 import arrow
 import pytest
 from pytest_mock import MockFixture
+from requests_async import Response
 
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
@@ -205,3 +206,68 @@ async def test_get_event_info_blocked(
     )
     assert res is not None
     assert res == block_event
+
+
+MOCK_HEADERS = dict(
+    Authorization="token some-json-web-token",
+    Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+)
+
+
+@pytest.fixture
+def mock_get_token_for_install(mocker: MockFixture) -> None:
+    mocker.patch(
+        "kodiak.queries.get_token_for_install", return_value=wrap_future(MOCK_HEADERS)
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_permissions_for_username_missing(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    not_found = Response()
+    not_found.status_code = 404
+    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(not_found))
+    async with api_client as api_client:
+        res = await api_client.get_permissions_for_username("_invalid_username")
+    assert res == Permission.NONE
+
+
+PERMISSION_OK_READ_USER_RESPONSE = b"""\
+{
+  "permission": "read",
+  "user": {
+    "login": "ghost",
+    "id": 10137,
+    "node_id": "MDQ6VXNlcjEwMTM3",
+    "avatar_url": "https://avatars3.githubusercontent.com/u/10137?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/ghost",
+    "html_url": "https://github.com/ghost",
+    "followers_url": "https://api.github.com/users/ghost/followers",
+    "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+    "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+    "organizations_url": "https://api.github.com/users/ghost/orgs",
+    "repos_url": "https://api.github.com/users/ghost/repos",
+    "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/ghost/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}"""
+
+
+@pytest.mark.asyncio
+async def test_get_permissions_for_username_read(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    response = Response()
+    response.status_code = 200
+    response._content = PERMISSION_OK_READ_USER_RESPONSE
+
+    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(response))
+    async with api_client as api_client:
+        res = await api_client.get_permissions_for_username("ghost")
+    assert res == Permission.READ
