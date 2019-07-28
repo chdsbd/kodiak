@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import List, MutableMapping, Optional, Set
+from typing import List, Mapping, MutableMapping, Optional, Set
 
 import structlog
 
@@ -21,6 +21,7 @@ from kodiak.queries import (
     CheckRun,
     MergeableState,
     MergeStateStatus,
+    Permission,
     PRReview,
     PRReviewRequest,
     PRReviewState,
@@ -66,6 +67,7 @@ def mergeable(
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
     reviews: List[PRReview],
+    reviewers_with_permissions: Mapping[str, Permission],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
     valid_signature: bool,
@@ -170,8 +172,9 @@ def mergeable(
         ):
             reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
             for review in sorted(reviews, key=lambda x: x.createdAt):
-                # TODO(chdsbd): Check if user is in assignableUsers
-                assert False
+                reviewer_permission = reviewers_with_permissions[review.author.login]
+                if reviewer_permission not in {Permission.ADMIN, Permission.WRITE}:
+                    continue
                 reviews_by_author[review.author.login].append(review)
 
             successful_reviews = 0

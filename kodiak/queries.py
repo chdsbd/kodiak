@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -232,6 +233,7 @@ class EventInfoResponse:
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
+    reviewers_with_permissions: Mapping[str, Permission]
     head_exists: bool
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
@@ -307,6 +309,17 @@ class CheckConclusionState(Enum):
 class CheckRun(BaseModel):
     name: str
     conclusion: Optional[CheckConclusionState]
+
+
+class Permission(Enum):
+    """
+    https://developer.github.com/v3/repos/collaborators/#review-a-users-permission-level
+    """
+
+    ADMIN = "admin"
+    WRITE = "write"
+    READ = "read"
+    NONE = "none"
 
 
 class TokenResponse(BaseModel):
@@ -561,6 +574,35 @@ class Client:
             return None
         return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
+    async def get_permissions_for_username(self, username: str) -> Permission:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            res = await http.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
+                headers=headers,
+            )
+        try:
+            res.raise_for_status()
+            return Permission(res.json()["permission"])
+        except (http.HTTPError, IndexError, TypeError, ValueError):
+            logger.exception("couldn't fetch permissions for username %s", username)
+            return Permission.NONE
+
+    async def get_reviewers_and_permissions(
+        self, *, reviews: List[PRReview]
+    ) -> Mapping[str, Permission]:
+        reviewer_names = {review.author.login for review in reviews}
+
+        requests = [
+            self.get_permissions_for_username(username) for username in reviewer_names
+        ]
+        permissions = await asyncio.gather(*requests)
+
+        return {
+            username: permission
+            for username, permission in zip(reviewer_names, permissions)
+        }
+
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
     ) -> Optional[EventInfoResponse]:
@@ -624,6 +666,10 @@ class Client:
             repo=repository, ref_name=pr.baseRefName
         )
 
+        reviews = get_reviews(pr=pull_request)
+        reviewers_and_permissions = await self.get_reviewers_and_permissions(
+            reviews=reviews
+        )
         return EventInfoResponse(
             config=config,
             config_str=config_str,
@@ -636,7 +682,8 @@ class Client:
             ),
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
-            reviews=get_reviews(pr=pull_request),
+            reviews=reviews,
+            reviewers_with_permissions=reviewers_and_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),

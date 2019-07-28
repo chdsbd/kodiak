@@ -16,6 +16,7 @@ from kodiak.queries import (
     GraphQLResponse,
     MergeableState,
     MergeStateStatus,
+    Permission,
     PRReview,
     PRReviewAuthor,
     PRReviewRequest,
@@ -147,6 +148,9 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
                 author=PRReviewAuthor(login="walrus"),
             ),
         ],
+        reviewers_with_permissions=dict(
+            ghost=Permission.WRITE, kodiak=Permission.ADMIN, walrus=Permission.WRITE
+        ),
         status_contexts=[
             StatusContext(
                 context="ci/circleci: backend_lint", state=StatusState.SUCCESS

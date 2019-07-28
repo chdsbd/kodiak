@@ -10,7 +10,7 @@ from starlette.testclient import TestClient
 from kodiak import queries
 from kodiak.config import V1
 from kodiak.main import app
-from kodiak.queries import Client
+from kodiak.queries import Client, Permission
 
 
 @pytest.fixture
@@ -149,6 +149,7 @@ def event_response(
         head_exists=True,
         review_requests=[],
         reviews=[review],
+        reviewers_with_permissions={review.author.login: Permission.WRITE},
         status_contexts=[status_context],
         valid_signature=True,
         valid_merge_methods=[queries.MergeMethod.merge],
