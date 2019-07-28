@@ -135,7 +135,7 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
                 state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="kodiak", permission=Permission.WRITE),
+                author=PRReviewAuthor(login="kodiak", permission=Permission.ADMIN),
             ),
             PRReview(
                 createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
