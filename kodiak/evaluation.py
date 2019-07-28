@@ -260,7 +260,7 @@ def mergeable(
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
 
-        raise NotQueueable("Merging blocked by branch protection settings")
+        raise NotQueueable("Merging blocked by Github")
 
     # okay to merge
     return None
