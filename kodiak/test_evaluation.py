@@ -410,7 +410,9 @@ def test_failing_contexts(
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks") as e:
+    with pytest.raises(
+        NotQueueable, match="failing/missing required status checks"
+    ) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -481,6 +483,36 @@ def test_incomplete_checks(
     assert e.value.checks == {"wip-app"}
 
 
+def test_incomplete_checks_with_dont_wait_on_status_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["wip-app"]
+    check_run.name = "wip-app"
+    check_run.conclusion = None
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(
+        NotQueueable, match="failing/missing required status checks"
+    ) as e:
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    assert "wip-app" in str(e.value)
+
+
 def test_failing_checks(
     pull_request: PullRequest,
     config: V1,
@@ -495,7 +527,9 @@ def test_failing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
-    with pytest.raises(NotQueueable, match="failing required status checks") as e:
+    with pytest.raises(
+        NotQueueable, match="failing/missing required status checks"
+    ) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
