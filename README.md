@@ -67,14 +67,20 @@ updated when their targets were updated.
    branch with the following contents (see [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples):
 
    ```toml
-   # version is the only required field
+   # Minimal config. version is the only required field. 
+   version = 1
+   ```
+
+
+   ```toml
+   # Complex config. version is the only required field.
    version = 1
 
    # the following settings can be omitted since they have defaults
 
    [merge]
    automerge_label = "automerge" # default: "automerge"
-   blacklist_title_regex = "^WIP.*" # default: "^WIP.*" options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+   blacklist_title_regex = "^WIP.*" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
    blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
    method = "squash" # default: "merge", options: "merge", "squash", "rebase"
    delete_branch_on_merge = true # default: false
