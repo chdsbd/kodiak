@@ -483,12 +483,11 @@ def test_incomplete_checks(
     assert e.value.checks == {"wip-app"}
 
 
-def test_incomplete_checks_with_dont_wait_on_status_checks(
+def test_incomplete_checks_with_dont_wait_on_status_checks_check_run(
     pull_request: PullRequest,
     config: V1,
     branch_protection: BranchProtectionRule,
     review: PRReview,
-    context: StatusContext,
     check_run: CheckRun,
 ) -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
@@ -511,6 +510,63 @@ def test_incomplete_checks_with_dont_wait_on_status_checks(
             valid_merge_methods=[MergeMethod.squash],
         )
     assert "wip-app" in str(e.value)
+
+
+def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["wip-app"]
+    context.context = "wip-app"
+    context.state = StatusState.PENDING
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(
+        NotQueueable, match="failing/incomplete required status checks"
+    ) as e:
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    assert "wip-app" in str(e.value)
+
+def test_passing_checks_with_dont_wait_on_status_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    context.context = "ci/backend"
+    context.state = StatusState.SUCCESS
+    check_run.name = "wip-app"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(MergeBlocked):
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
 
 
 def test_failing_checks(
@@ -542,6 +598,7 @@ def test_failing_checks(
             valid_merge_methods=[MergeMethod.squash],
         )
     assert "wip-app" in str(e.value)
+
 
 
 def test_missing_required_context(
