@@ -564,7 +564,7 @@ def test_unknown_blockage(
     branch_protection.requiredApprovingReviewCount = 0
     branch_protection.requiresStatusChecks = False
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
-    with pytest.raises(NotQueueable, match="determine why PR is blocked"):
+    with pytest.raises(NotQueueable, match="blocked by branch protection settings"):
         mergeable(
             config=config,
             pull_request=pull_request,
