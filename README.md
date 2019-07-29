@@ -212,7 +212,7 @@ updated when their targets were updated.
 
 #### Auto Merging:
 
-- automatically merges PR once up to date with master and all required statuses and checks pass.
+- automatically merges PR once up to date with master and all required statuses and checks pass
 
 #### Auto Update Branches:
 
@@ -220,7 +220,7 @@ updated when their targets were updated.
 
 #### Update Branches Efficiently:
 
-- a improvement of Auto Update Branches where branches are only updated when necessary, as opposed to updating all branches any time their target branch (usually master) updates.
+- an improvement upon [Auto Update Branches](#auto-update-branches) where branches are only updated when necessary, as opposed to updating all branches any time their target branch (usually master) updates.
 
 ## Permissions
 
