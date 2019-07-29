@@ -105,7 +105,6 @@ updated when their targets were updated.
     version = 1
 
     [merge]
-
     # label to use to enable Kodiak to merge a PR
     automerge_label = "automerge" # default: "automerge"
 
