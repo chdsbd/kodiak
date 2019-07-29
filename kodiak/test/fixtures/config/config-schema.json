@@ -22,7 +22,8 @@
           "include_pr_number": true,
           "body_type": "markdown",
           "strip_html_comments": false
-        }
+        },
+        "dont_wait_on_status_checks": []
       },
       "allOf": [{ "$ref": "#/definitions/Merge" }]
     }
@@ -122,6 +123,14 @@
             "strip_html_comments": false
           },
           "allOf": [{ "$ref": "#/definitions/MergeMessage" }]
+        },
+        "dont_wait_on_status_checks": {
+          "title": "Dont_Wait_On_Status_Checks",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

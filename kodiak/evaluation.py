@@ -8,6 +8,7 @@ from kodiak import config
 from kodiak.config import MergeMethod
 from kodiak.errors import (
     BranchMerged,
+    MergeBlocked,
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
@@ -201,6 +202,16 @@ def mergeable(
             passing_contexts: List[str] = []
             required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
+                # handle dont_wait_on_status_checks. We want to consider a
+                # status_check failed if it is incomplete and in the
+                # configuration.
+                if (
+                    status_context.context in config.merge.dont_wait_on_status_checks
+                    and status_context.state
+                    in (StatusState.EXPECTED, StatusState.PENDING)
+                ):
+                    failing_contexts.append(status_context.context)
+                    continue
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):
                     failing_contexts.append(status_context.context)
                 elif status_context.state in (
@@ -212,6 +223,12 @@ def mergeable(
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
             for check_run in check_runs:
+                if (
+                    check_run.name in config.merge.dont_wait_on_status_checks
+                    and check_run.conclusion in (None, CheckConclusionState.NEUTRAL)
+                ):
+                    failing_contexts.append(check_run.name)
+                    continue
                 if check_run.conclusion is None:
                     continue
                 if check_run.conclusion == CheckConclusionState.SUCCESS:
@@ -233,7 +250,7 @@ def mergeable(
                 # is a similar question for the review counting.
 
                 raise NotQueueable(
-                    f"failing required status checks: {failing_required_status_checks!r}"
+                    f"failing/incomplete required status checks: {failing_required_status_checks!r}"
                 )
             passing = set(passing_contexts)
 
@@ -260,7 +277,7 @@ def mergeable(
             if need_branch_update:
                 raise NeedsBranchUpdate("behind branch. need update")
 
-        raise NotQueueable("Could not determine why PR is blocked")
+        raise MergeBlocked("Merging blocked by GitHub requirements")
 
     # okay to merge
     return None
