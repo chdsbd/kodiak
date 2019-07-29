@@ -176,7 +176,7 @@ updated when their targets were updated.
     The default label is "automerge" and is configured via the `merge.automerge_label` config.
     If you have disabled `merge.require_automerge_label`, you can skip this step.
 
-5)  Start auto merging PR with Kodiak! 🎉
+5)  Start auto merging PRs with Kodiak! 🎉
 
     Label your PRs with your automerge label and let Kodiak do the rest!
 
