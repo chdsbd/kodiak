@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.6.0 - 2019-07-28
+
+### Added
+- display requested reviewer names in status messages (#130)
+- add warning that forks cannot be updated when PR is from fork (#135)
+- add nicer error message for unknown block reason. The previous message erroneously indicated there was a problem with Kodiak (#139)
+- add configuration to ignore select pending status checks. This is useful to prevent waiting indefinitely for the [WIP GitHub App](http://github.com/marketplace/wip) Check Run to complete (#141)
+
+### Fixed
+- ensure user has write permissions when counting their reviews towards mergeability. We previously checked the wrong field for this information. (#134)
+
 ## 0.5.0 - 2019-07-26
 
 ### Added
