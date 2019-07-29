@@ -490,6 +490,13 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_check_run(
     review: PRReview,
     check_run: CheckRun,
 ) -> None:
+    """
+    If we have status checks that are in progress and have not completed, but we
+    have enabled dont_wait_on_status_checks for them, mark them as "failed" so
+    we don't spend time waiting for them to finish.
+
+    This case checks our handle of CheckRuns
+    """
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["wip-app"]
     check_run.name = "wip-app"
@@ -519,6 +526,13 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
     review: PRReview,
     context: StatusContext,
 ) -> None:
+    """
+    If we have status checks that are in progress and have not completed, but we
+    have enabled dont_wait_on_status_checks for them, mark them as "failed" so
+    we don't spend time waiting for them to finish.
+
+    This case checks our handle of StatusContexts
+    """
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["wip-app"]
     context.context = "wip-app"
@@ -549,6 +563,13 @@ def test_passing_checks_with_dont_wait_on_status_checks(
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
+    """
+    Regression test to ensure that if dont_wait_on_status_checks is enabled and
+    our configured check is passing, we merge the PR.
+
+    In this specific case we set mergeStateStatus = MergeStateStatus.BLOCKED so
+    we can test the code path.
+    """
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
     context.context = "ci/backend"
