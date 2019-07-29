@@ -72,6 +72,7 @@ updated when their targets were updated.
     ### minimal config
 
     ```toml
+    # /.kodiak.toml
     # Minimal config. version is the only required field.
     version = 1
     ```
@@ -79,6 +80,7 @@ updated when their targets were updated.
     ### opinionated config
 
     ```toml
+    # /.kodiak.toml
     version = 1
 
     [merge]
@@ -97,6 +99,7 @@ updated when their targets were updated.
     ### config with comments and all options set
 
     ```toml
+    # /.kodiak.toml
     # version is the only required setting in a kodiak config.
     # it must be set to 1
     version = 1
