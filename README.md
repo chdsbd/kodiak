@@ -97,27 +97,67 @@ updated when their targets were updated.
     ### config with comments and all options set
 
     ```toml
+    # version is the only required setting in a kodiak config.
+    # it must be set to 1
     version = 1
 
     [merge]
+
+    # label to use to enable Kodiak to merge a PR
     automerge_label = "automerge" # default: "automerge"
+
+    # require that the automerge label be set for Kodiak to merge a PR. if you
+    # disable this Kodiak will immediately attempt to merge every PR you create
     require_automerge_label = true
+
+    # if this title regex matches, Kodiak will not merge the PR
+    # this is useful to prevent merging work in progress PRs
     blacklist_title_regex = "" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+
+    # if these labels are set Kodiak will not merge the PR
     blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
+
+    # choose a merge method. If the configured merge method is disabled for a
+    # repository, Kodiak will report an error in a status message.
     method = "merge" # default: "merge", options: "merge", "squash", "rebase"
+
+    # once a PR is merged into master, delete the branch
     delete_branch_on_merge = false # default: false
+
+    # if you request review from a user, don't merge until that user provides a
+    # review, even if the PR is passing all checks
     block_on_reviews_requested = false # default: false
+
+    # if there is a merge conflict, make a comment on the PR and remove the
+    # automerge label. this is disabled when require_automerge_label is enabled
     notify_on_conflict = true # default: true
+
+    # if there are running status checks on a PR when it's up for merge, don't
+    # wait for those to finish before updating the branch
     optimistic_updates = false # default: true
+
+    # use this for status checks that run indefinitely, like deploy jobs or the
+    # WIP GitHub App
     dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
+
     [merge.message]
+    # by default, github uses the first commit title for the PR of a merge.
+    # "pull_request_title" uses the PR title.
     title = "github_default" # default: "github_default", options: "github_default", "pull_request_title"
+
+    # by default, GithHub combines the titles a PR's commits to create the body
+    # text of a merge."pull_request_body" uses the content of the PR to generate
+    # the body content while "empty" simple gives an empty string.
     body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
+
+    # GitHub adds the PR number to merges through the UI. This setting replicates that feature.
     include_pr_number = true # default: true
+
+    # markdown is the normal format for GitHub merges
     body_type = "markdown" # default: "markdown", options: "plain_text", "markdown", "html"
 
-    #
+    # useful for stripping HTML comments created by PR templates when the `markdown` `body_type` is used.
     strip_html_comments = false # default: false
     ```
 
