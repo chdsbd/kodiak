@@ -112,8 +112,8 @@ updated when their targets were updated.
     # disable this Kodiak will immediately attempt to merge every PR you create
     require_automerge_label = true
 
-    # if this title regex matches, Kodiak will not merge the PR
-    # this is useful to prevent merging work in progress PRs
+    # if this title regex matches, Kodiak will not merge the PR. this is useful
+    # to prevent merging work in progress PRs
     blacklist_title_regex = "" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
     # if these labels are set Kodiak will not merge the PR
