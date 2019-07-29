@@ -44,7 +44,7 @@ updated when their targets were updated.
     - branch protection rules are checked
     - the branch is updated if necessary
 
-4.  If the PR is mergeable it is queued in a per-repo merge queue
+4.  If the PR is mergeable it's queued in a per-repo merge queue
 
 5.  A task works serially over the merge queue to update a PR and merge it
 
