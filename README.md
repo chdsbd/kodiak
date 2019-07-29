@@ -41,7 +41,7 @@ updated when their targets were updated.
 
     - kodiak configurations are checked
     - pull request merge states are evaluated
-    - branch protection rules are check
+    - branch protection rules are checked
     - the branch is updated if necessary
 
 4.  If the PR is mergeable it is queued in a per-repo merge queue
