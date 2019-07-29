@@ -154,7 +154,8 @@ updated when their targets were updated.
     # the body content while "empty" simple gives an empty string.
     body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
 
-    # GitHub adds the PR number to merges through the UI. This setting replicates that feature.
+    # GitHub adds the PR number to the title of merges created through the UI.
+    # This setting replicates that feature.
     include_pr_number = true # default: true
 
     # markdown is the normal format for GitHub merges
