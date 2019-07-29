@@ -53,11 +53,12 @@ updated when their targets were updated.
 ## Known issues
 
 - Kodiak intentionally requires branch protection to be enabled to function,
-  Kodiak won't merge PRs if branch protection is disabled
+  Kodiak won't merge PRs if branch protection is disabled.
 - Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
-  signed commits](https://help.github.com/en/articles/about-required-commit-signing)
+  signed commits](https://help.github.com/en/articles/about-required-commit-signing).
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
-- Due to permission limitations for GitHub Apps, Kodiak doesn't support updating forks of branches ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
+- Due to permission limitations for GitHub Apps, Kodiak doesn't support updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
+- GitHub CODEOWNERS are not supported. Kodiak will prematurely update PRs that still require a review from a Code Owner. However, Kodiak will be able to merge the PR once all checks pass. ([kodiak#87](https://github.com/chdsbd/kodiak/issues/87))
 
 ## Setup
 
