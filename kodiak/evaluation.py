@@ -254,7 +254,7 @@ def mergeable(
                     f"failing required status checks: {failing_required_status_checks!r}"
                 )
             if skippable_contexts:
-                raise MissingSkippableChecks()
+                raise MissingSkippableChecks(skippable_contexts)
             passing = set(passing_contexts)
 
         need_branch_update = (

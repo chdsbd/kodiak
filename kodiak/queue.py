@@ -93,7 +93,7 @@ async def webhook_event_consumer(
                 )
                 continue
             if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
-                await pull_request.set_status(f"skippable checks ")
+                log.info("skippable checks")
                 continue
 
             if m_res not in (
@@ -188,7 +188,9 @@ async def repo_queue_consumer(
                         skippable_check_timeout -= 1
                         await asyncio.sleep(RETRY_RATE_SECONDS)
                         continue
-                    await pull_request.set_status(summary=f"🛑 incomplete checks")
+                    await pull_request.set_status(
+                        summary="⌛️ waiting for skippable checks"
+                    )
                     break
 
                 if m_res == MergeabilityResponse.NEEDS_UPDATE:
