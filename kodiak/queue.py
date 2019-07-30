@@ -122,7 +122,7 @@ async def webhook_event_consumer(
             )
 
 
-async def update_pr_with_retry(pull_request):
+async def update_pr_with_retry(pull_request: PR) -> bool:
     # try multiple times in case of intermittent failure
     retries = 5
     while retries:
@@ -132,6 +132,7 @@ async def update_pr_with_retry(pull_request):
         retries -= 1
         await asyncio.sleep(RETRY_RATE_SECONDS)
     return False
+
 
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
@@ -191,9 +192,7 @@ async def repo_queue_consumer(
                     if await update_pr_with_retry(pull_request):
                         continue
                     log.error("failed to update branch")
-                    await pull_request.set_status(
-                        summary=f"🛑 could not update branch: {res}"
-                    )
+                    await pull_request.set_status(summary="🛑 could not update branch")
                     # break to find next PR to try and merge
                     break
                 elif m_res == MergeabilityResponse.NEED_REFRESH:
