@@ -187,7 +187,7 @@ async def repo_queue_consumer(
                         while retries:
                             log.info("update branch")
                             res = await pull_request.update()
-                            if res is not None:
+                            if res:
                                 return True
                             # if res is None:
                             retries -= 1

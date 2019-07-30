@@ -299,21 +299,19 @@ class PR:
                 )
             return MergeabilityResponse.NEEDS_UPDATE, self.event
 
-    async def update(self) -> Optional[dict]:
+    async def update(self) -> bool:
         self.log.info("update")
         event = await self.get_event()
         if event is None:
             self.log.warning("problem")
-            return None
+            return False
         res = await self.client.merge_branch(
             head=event.pull_request.baseRefName, base=event.pull_request.headRefName
         )
         if res.status_code > 300:
             self.log.error("could not update branch", res=res, res_json=res.json())
-            return None
-        if res.status_code == 204:
-            return {}
-        return cast(dict, res.json())
+            return False
+        return True
 
     async def trigger_mergeability_check(self) -> None:
         await self.client.get_pull_request(number=self.number)
