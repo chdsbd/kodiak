@@ -310,8 +310,10 @@ class PR:
         )
         if res.status_code > 300:
             self.log.error("could not update branch", res=res, res_json=res.json())
-            return cast(dict, res.json())
-        return None
+            return None
+        if res.status_code == 204:
+            return {}
+        return cast(dict, res.json())
 
     async def trigger_mergeability_check(self) -> None:
         await self.client.get_pull_request(number=self.number)

@@ -181,17 +181,21 @@ async def repo_queue_consumer(
                     # update pull request and poll for result
                     log.info("update pull request and don't attempt to merge")
 
-                    # try multiple times in case of intermittent failure
-                    retries = 5
-                    while retries:
-                        log.info("update branch")
-                        res = await pull_request.update()
-                        # if res is None:
-                        if res is None:
-                            break
-                        retries -= 1
-                        log.info("retry update branch")
-                        await asyncio.sleep(RETRY_RATE_SECONDS)
+                    async def update():
+                        # try multiple times in case of intermittent failure
+                        retries = 5
+                        while retries:
+                            log.info("update branch")
+                            res = await pull_request.update()
+                            if res is not None:
+                                return True
+                            # if res is None:
+                            retries -= 1
+                            log.info("retry update branch")
+                            await asyncio.sleep(RETRY_RATE_SECONDS)
+                        return False
+                    if await update():
+                        continue
                     log.error("failed to update branch")
                     await pull_request.set_status(
                         summary=f"🛑 could not update branch: {res}"
