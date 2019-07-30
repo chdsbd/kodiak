@@ -186,10 +186,9 @@ async def repo_queue_consumer(
                         retries = 5
                         while retries:
                             log.info("update branch")
-                            res = await pull_request.update()
-                            if res:
+                            update_ok = await pull_request.update()
+                            if update_ok:
                                 return True
-                            # if res is None:
                             retries -= 1
                             log.info("retry update branch")
                             await asyncio.sleep(RETRY_RATE_SECONDS)
