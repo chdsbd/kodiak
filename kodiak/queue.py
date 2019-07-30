@@ -122,8 +122,16 @@ async def webhook_event_consumer(
             )
 
 
-# TODO(chdsbd): Generalize this event processor boilerplate
-
+async def update_pr_with_retry(pull_request):
+    # try multiple times in case of intermittent failure
+    retries = 5
+    while retries:
+        update_ok = await pull_request.update()
+        if update_ok:
+            return True
+        retries -= 1
+        await asyncio.sleep(RETRY_RATE_SECONDS)
+    return False
 
 async def repo_queue_consumer(
     *, queue_name: str, connection: RedisConnection
@@ -178,22 +186,9 @@ async def repo_queue_consumer(
                     log.info("cannot merge")
                     break
                 if m_res == MergeabilityResponse.NEEDS_UPDATE:
-                    # update pull request and poll for result
                     log.info("update pull request and don't attempt to merge")
 
-                    async def update():
-                        # try multiple times in case of intermittent failure
-                        retries = 5
-                        while retries:
-                            log.info("update branch")
-                            update_ok = await pull_request.update()
-                            if update_ok:
-                                return True
-                            retries -= 1
-                            log.info("retry update branch")
-                            await asyncio.sleep(RETRY_RATE_SECONDS)
-                        return False
-                    if await update():
+                    if await update_pr_with_retry():
                         continue
                     log.error("failed to update branch")
                     await pull_request.set_status(
