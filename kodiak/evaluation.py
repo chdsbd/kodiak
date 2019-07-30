@@ -12,6 +12,7 @@ from kodiak.errors import (
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
+    MissingSkippableChecks,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
@@ -197,6 +198,7 @@ def mergeable(
         required: Set[str] = set()
         passing: Set[str] = set()
         if branch_protection.requiresStatusChecks:
+            skippable_contexts: List[str] = []
             failing_contexts: List[str] = []
             pending_contexts: List[str] = []
             passing_contexts: List[str] = []
@@ -210,7 +212,7 @@ def mergeable(
                     and status_context.state
                     in (StatusState.EXPECTED, StatusState.PENDING)
                 ):
-                    failing_contexts.append(status_context.context)
+                    skippable_contexts.append(status_context.context)
                     continue
                 if status_context.state in (StatusState.ERROR, StatusState.FAILURE):
                     failing_contexts.append(status_context.context)
@@ -227,7 +229,7 @@ def mergeable(
                     check_run.name in config.merge.dont_wait_on_status_checks
                     and check_run.conclusion in (None, CheckConclusionState.NEUTRAL)
                 ):
-                    failing_contexts.append(check_run.name)
+                    skippable_contexts.append(check_run.name)
                     continue
                 if check_run.conclusion is None:
                     continue
@@ -239,7 +241,6 @@ def mergeable(
                     CheckConclusionState.TIMED_OUT,
                 ):
                     failing_contexts.append(check_run.name)
-
             failing = set(failing_contexts)
             # we have failing statuses that are required
             failing_required_status_checks = failing & required
@@ -250,8 +251,10 @@ def mergeable(
                 # is a similar question for the review counting.
 
                 raise NotQueueable(
-                    f"failing/incomplete required status checks: {failing_required_status_checks!r}"
+                    f"failing required status checks: {failing_required_status_checks!r}"
                 )
+            if skippable_contexts:
+                raise MissingSkippableChecks()
             passing = set(passing_contexts)
 
         need_branch_update = (

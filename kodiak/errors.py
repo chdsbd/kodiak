@@ -33,6 +33,10 @@ class NotQueueable(KodiakException):
     pass
 
 
+class MissingSkippableChecks(KodiakException):
+    pass
+
+
 class MergeBlocked(KodiakException):
     pass
 

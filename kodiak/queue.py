@@ -92,11 +92,16 @@ async def webhook_event_consumer(
                     webhook_event.get_merge_queue_name(), [webhook_event.json()]
                 )
                 continue
+            if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+                await pull_request.set_status(f"skippable checks ")
+                continue
+
             if m_res not in (
                 MergeabilityResponse.NEEDS_UPDATE,
                 MergeabilityResponse.NEED_REFRESH,
                 MergeabilityResponse.WAIT,
                 MergeabilityResponse.OK,
+                MergeabilityResponse.SKIPPABLE_CHECKS,
             ):
                 raise Exception("Unknown MergeabilityResponse")
 
@@ -163,6 +168,7 @@ async def repo_queue_consumer(
 
             # mark that we're working on this PR
             await pull_request.set_status(summary="⛴ attempting to merge PR")
+            skippable_check_timeout = 4
             while True:
                 # there are two exits to this loop:
                 # - OK MergeabilityResponse
@@ -177,6 +183,14 @@ async def repo_queue_consumer(
                 if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
                     log.info("cannot merge")
                     break
+                if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+                    if skippable_check_timeout:
+                        skippable_check_timeout -= 1
+                        await asyncio.sleep(RETRY_RATE_SECONDS)
+                        continue
+                    await pull_request.set_status(summary=f"🛑 incomplete checks")
+                    break
+
                 if m_res == MergeabilityResponse.NEEDS_UPDATE:
                     # update pull request and poll for result
                     log.info("update pull request and don't attempt to merge")
