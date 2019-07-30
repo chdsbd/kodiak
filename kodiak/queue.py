@@ -188,7 +188,7 @@ async def repo_queue_consumer(
                 if m_res == MergeabilityResponse.NEEDS_UPDATE:
                     log.info("update pull request and don't attempt to merge")
 
-                    if await update_pr_with_retry():
+                    if await update_pr_with_retry(pull_request):
                         continue
                     log.error("failed to update branch")
                     await pull_request.set_status(
