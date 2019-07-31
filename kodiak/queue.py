@@ -189,7 +189,7 @@ async def repo_queue_consumer(
                         await asyncio.sleep(RETRY_RATE_SECONDS)
                         continue
                     await pull_request.set_status(
-                        summary="⌛️ waiting for skippable checks"
+                        summary="⌛️ waiting a bit for skippable checks"
                     )
                     break
 
