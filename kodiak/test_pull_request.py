@@ -306,17 +306,6 @@ def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None
     assert strip_html_comments_from_markdown(original) == stripped
 
 
-@pytest.fixture
-def pr() -> PR:
-    return PR(
-        number=123,
-        owner="tester",
-        repo="repo",
-        installation_id="abc",
-        client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
-    )
-
-
 @pytest.mark.asyncio
 async def test_pr_update_ok(
     mocker: MockFixture, event_response: queries.EventInfoResponse, pr: PR
