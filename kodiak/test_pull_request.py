@@ -36,7 +36,10 @@ MERGEABLE_RESPONSES = (
     MergeabilityResponse.WAIT,
 )
 
-NOT_MERGEABLE_RESPONSES = (MergeabilityResponse.NOT_MERGEABLE,)
+NOT_MERGEABLE_RESPONSES = (
+    MergeabilityResponse.NOT_MERGEABLE,
+    MergeabilityResponse.SKIPPABLE_CHECKS,
+)
 
 
 def test_mergeability_response_coverage() -> None:
