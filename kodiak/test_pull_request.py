@@ -1,4 +1,5 @@
 from typing import List
+from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockFixture
@@ -14,6 +15,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
+from kodiak.errors import MissingSkippableChecks
 from kodiak.pull_request import (
     PR,
     MergeabilityResponse,
@@ -355,3 +357,15 @@ async def test_pr_update_missing_event(mocker: MockFixture, pr: PR) -> None:
 
     res = await pr.update()
     assert not res
+
+
+@pytest.mark.asyncio
+async def test_mergeability_missing_skippable_checks(
+    mocker: MockFixture, event_response: queries.EventInfoResponse, pr: PR
+) -> None:
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    mergeable = mocker.patch("kodiak.pull_request.mergeable")
+    mergeable.side_effect = MissingSkippableChecks([])
+    mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
+    res, event = await pr.mergeability()
+    assert res == MergeabilityResponse.SKIPPABLE_CHECKS

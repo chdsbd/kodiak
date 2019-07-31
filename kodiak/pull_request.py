@@ -259,7 +259,8 @@ class PR:
         except MissingSkippableChecks as e:
             self.log.info("skippable checks", checks=e.checks)
             await self.set_status(
-                summary="🛑 not waiting for dont_wait_on_status_checks", detail=repr(e.checks)
+                summary="🛑 not waiting for dont_wait_on_status_checks",
+                detail=repr(e.checks),
             )
             return MergeabilityResponse.SKIPPABLE_CHECKS, self.event
         except (NotQueueable, MergeConflict, BranchMerged) as e:
