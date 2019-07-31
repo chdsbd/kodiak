@@ -10,6 +10,7 @@ from kodiak.errors import (
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
+    MissingSkippableChecks,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
@@ -410,9 +411,7 @@ def test_failing_contexts(
     branch_protection.requiredStatusCheckContexts = ["ci/backend"]
     context.context = "ci/backend"
     context.state = StatusState.FAILURE
-    with pytest.raises(
-        NotQueueable, match="failing/incomplete required status checks"
-    ) as e:
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -502,9 +501,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_check_run(
     check_run.name = "wip-app"
     check_run.conclusion = None
     config.merge.dont_wait_on_status_checks = ["wip-app"]
-    with pytest.raises(
-        NotQueueable, match="failing/incomplete required status checks"
-    ) as e:
+    with pytest.raises(MissingSkippableChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -516,7 +513,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_check_run(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
-    assert "wip-app" in str(e.value)
+    assert "wip-app" in e.value.checks
 
 
 def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
@@ -538,9 +535,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
     context.context = "wip-app"
     context.state = StatusState.PENDING
     config.merge.dont_wait_on_status_checks = ["wip-app"]
-    with pytest.raises(
-        NotQueueable, match="failing/incomplete required status checks"
-    ) as e:
+    with pytest.raises(MissingSkippableChecks) as e:
         mergeable(
             config=config,
             pull_request=pull_request,
@@ -552,7 +547,7 @@ def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
-    assert "wip-app" in str(e.value)
+    assert "wip-app" in e.value.checks
 
 
 def test_passing_checks_with_dont_wait_on_status_checks(
@@ -605,9 +600,7 @@ def test_failing_checks(
     context.state = StatusState.SUCCESS
     check_run.name = "wip-app"
     check_run.conclusion = CheckConclusionState.FAILURE
-    with pytest.raises(
-        NotQueueable, match="failing/incomplete required status checks"
-    ) as e:
+    with pytest.raises(NotQueueable, match="failing required status checks") as e:
         mergeable(
             config=config,
             pull_request=pull_request,

@@ -17,6 +17,7 @@ from kodiak.errors import (
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
+    MissingSkippableChecks,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
@@ -34,6 +35,7 @@ class MergeabilityResponse(Enum):
     NEEDS_UPDATE = auto()
     NEED_REFRESH = auto()
     NOT_MERGEABLE = auto()
+    SKIPPABLE_CHECKS = auto()
     WAIT = auto()
 
 
@@ -254,6 +256,13 @@ class PR:
             )
             self.log.info("okay")
             return MergeabilityResponse.OK, self.event
+        except MissingSkippableChecks as e:
+            self.log.info("skippable checks", checks=e.checks)
+            await self.set_status(
+                summary="🛑 not waiting for dont_wait_on_status_checks",
+                detail=repr(e.checks),
+            )
+            return MergeabilityResponse.SKIPPABLE_CHECKS, self.event
         except (NotQueueable, MergeConflict, BranchMerged) as e:
             if (
                 isinstance(e, MergeConflict)
