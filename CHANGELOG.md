@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.7.0 - 2019-08-01
+
+### Fixed
+- fixed updating PR accidentally removing it from the merge queue (#148)
+- fixed possible race condition when `dont_wait_on_status_checks` was configured that could accidentally remove a PR from the merge queue (#149)
+
 ## 0.6.0 - 2019-07-28
 
 ### Added
