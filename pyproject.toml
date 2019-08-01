@@ -23,6 +23,10 @@ markdown-html-finder = "^0.2.0"
 markupsafe = "^1.1"
 fastapi = "^0.33.0"
 sentry-sdk = "^0.10.2"
+requests = "^2.22"
+
+[tool.poetry.scripts]
+kodiak = 'kodiak.cli:cli'
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.4"

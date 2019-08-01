@@ -2,6 +2,7 @@ from typing import List
 
 import pytest
 from pytest_mock import MockFixture
+from requests_async import Response
 from starlette.testclient import TestClient
 
 from kodiak import messages, queries
@@ -13,6 +14,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
+from kodiak.errors import MissingSkippableChecks
 from kodiak.pull_request import (
     PR,
     MergeabilityResponse,
@@ -36,7 +38,10 @@ MERGEABLE_RESPONSES = (
     MergeabilityResponse.WAIT,
 )
 
-NOT_MERGEABLE_RESPONSES = (MergeabilityResponse.NOT_MERGEABLE,)
+NOT_MERGEABLE_RESPONSES = (
+    MergeabilityResponse.NOT_MERGEABLE,
+    MergeabilityResponse.SKIPPABLE_CHECKS,
+)
 
 
 def test_mergeability_response_coverage() -> None:
@@ -303,3 +308,63 @@ Totam dolor [exercitationem laborum](https://numquam.com)
 )
 def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
     assert strip_html_comments_from_markdown(original) == stripped
+
+
+@pytest.mark.asyncio
+async def test_pr_update_ok(
+    mocker: MockFixture, event_response: queries.EventInfoResponse, pr: PR
+) -> None:
+    """
+    Update should return true on success
+    """
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    res = Response()
+    res.status_code = 200
+    mocker.patch(
+        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+    )
+
+    res = await pr.update()
+    assert res, "should be true when we have a successful call"
+
+
+@pytest.mark.asyncio
+async def test_pr_update_bad_merge(
+    mocker: MockFixture, event_response: queries.EventInfoResponse, pr: PR
+) -> None:
+    """
+    Update should return false on an error
+    """
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    res = Response()
+    res.status_code = 409
+    res._content = b"{}"
+    mocker.patch(
+        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+    )
+
+    res = await pr.update()
+    assert not res
+
+
+@pytest.mark.asyncio
+async def test_pr_update_missing_event(mocker: MockFixture, pr: PR) -> None:
+    """
+    Return False if get_event res is missing
+    """
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(None))
+
+    res = await pr.update()
+    assert not res
+
+
+@pytest.mark.asyncio
+async def test_mergeability_missing_skippable_checks(
+    mocker: MockFixture, event_response: queries.EventInfoResponse, pr: PR
+) -> None:
+    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
+    mergeable = mocker.patch("kodiak.pull_request.mergeable")
+    mergeable.side_effect = MissingSkippableChecks([])
+    mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
+    res, event = await pr.mergeability()
+    assert res == MergeabilityResponse.SKIPPABLE_CHECKS

@@ -6,9 +6,11 @@ import pytest
 from kodiak.config import V1, MergeMethod
 from kodiak.errors import (
     BranchMerged,
+    MergeBlocked,
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
+    MissingSkippableChecks,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
@@ -481,6 +483,110 @@ def test_incomplete_checks(
     assert e.value.checks == {"wip-app"}
 
 
+def test_incomplete_checks_with_dont_wait_on_status_checks_check_run(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    check_run: CheckRun,
+) -> None:
+    """
+    If we have status checks that are in progress and have not completed, but we
+    have enabled dont_wait_on_status_checks for them, mark them as "failed" so
+    we don't spend time waiting for them to finish.
+
+    This case checks our handle of CheckRuns
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["wip-app"]
+    check_run.name = "wip-app"
+    check_run.conclusion = None
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(MissingSkippableChecks) as e:
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    assert "wip-app" in e.value.checks
+
+
+def test_incomplete_checks_with_dont_wait_on_status_checks_status_check(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    """
+    If we have status checks that are in progress and have not completed, but we
+    have enabled dont_wait_on_status_checks for them, mark them as "failed" so
+    we don't spend time waiting for them to finish.
+
+    This case checks our handle of StatusContexts
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["wip-app"]
+    context.context = "wip-app"
+    context.state = StatusState.PENDING
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(MissingSkippableChecks) as e:
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+    assert "wip-app" in e.value.checks
+
+
+def test_passing_checks_with_dont_wait_on_status_checks(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Regression test to ensure that if dont_wait_on_status_checks is enabled and
+    our configured check is passing, we merge the PR.
+
+    In this specific case we set mergeStateStatus = MergeStateStatus.BLOCKED so
+    we can test the code path.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiredStatusCheckContexts = ["ci/backend", "wip-app"]
+    context.context = "ci/backend"
+    context.state = StatusState.SUCCESS
+    check_run.name = "wip-app"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+    config.merge.dont_wait_on_status_checks = ["wip-app"]
+    with pytest.raises(MergeBlocked):
+        mergeable(
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
 def test_failing_checks(
     pull_request: PullRequest,
     config: V1,
@@ -565,7 +671,7 @@ def test_unknown_blockage(
     branch_protection.requiredApprovingReviewCount = 0
     branch_protection.requiresStatusChecks = False
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
-    with pytest.raises(NotQueueable, match="determine why PR is blocked"):
+    with pytest.raises(MergeBlocked):
         mergeable(
             config=config,
             pull_request=pull_request,

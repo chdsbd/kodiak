@@ -13,9 +13,11 @@ from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
     BranchMerged,
+    MergeBlocked,
     MergeConflict,
     MissingAppID,
     MissingGithubMergeabilityState,
+    MissingSkippableChecks,
     NeedsBranchUpdate,
     NotQueueable,
     WaitingForChecks,
@@ -33,6 +35,7 @@ class MergeabilityResponse(Enum):
     NEEDS_UPDATE = auto()
     NEED_REFRESH = auto()
     NOT_MERGEABLE = auto()
+    SKIPPABLE_CHECKS = auto()
     WAIT = auto()
 
 
@@ -253,6 +256,13 @@ class PR:
             )
             self.log.info("okay")
             return MergeabilityResponse.OK, self.event
+        except MissingSkippableChecks as e:
+            self.log.info("skippable checks", checks=e.checks)
+            await self.set_status(
+                summary="🛑 not waiting for dont_wait_on_status_checks",
+                detail=repr(e.checks),
+            )
+            return MergeabilityResponse.SKIPPABLE_CHECKS, self.event
         except (NotQueueable, MergeConflict, BranchMerged) as e:
             if (
                 isinstance(e, MergeConflict)
@@ -269,6 +279,9 @@ class PR:
                 )
 
             await self.set_status(summary="🛑 cannot merge", detail=str(e))
+            return MergeabilityResponse.NOT_MERGEABLE, self.event
+        except MergeBlocked as e:
+            await self.set_status(summary=f"🛑 {e}")
             return MergeabilityResponse.NOT_MERGEABLE, self.event
         except MissingAppID:
             return MergeabilityResponse.NOT_MERGEABLE, self.event
@@ -295,19 +308,19 @@ class PR:
                 )
             return MergeabilityResponse.NEEDS_UPDATE, self.event
 
-    async def update(self) -> Optional[dict]:
+    async def update(self) -> bool:
         self.log.info("update")
         event = await self.get_event()
         if event is None:
             self.log.warning("problem")
-            return None
+            return False
         res = await self.client.merge_branch(
             head=event.pull_request.baseRefName, base=event.pull_request.headRefName
         )
         if res.status_code > 300:
             self.log.error("could not update branch", res=res, res_json=res.json())
-            return cast(dict, res.json())
-        return None
+            return False
+        return True
 
     async def trigger_mergeability_check(self) -> None:
         await self.client.get_pull_request(number=self.number)

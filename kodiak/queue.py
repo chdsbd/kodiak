@@ -92,11 +92,16 @@ async def webhook_event_consumer(
                     webhook_event.get_merge_queue_name(), [webhook_event.json()]
                 )
                 continue
+            if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+                log.info("skippable checks")
+                continue
+
             if m_res not in (
                 MergeabilityResponse.NEEDS_UPDATE,
                 MergeabilityResponse.NEED_REFRESH,
                 MergeabilityResponse.WAIT,
                 MergeabilityResponse.OK,
+                MergeabilityResponse.SKIPPABLE_CHECKS,
             ):
                 raise Exception("Unknown MergeabilityResponse")
 
@@ -122,7 +127,16 @@ async def webhook_event_consumer(
             )
 
 
-# TODO(chdsbd): Generalize this event processor boilerplate
+async def update_pr_with_retry(pull_request: PR) -> bool:
+    # try multiple times in case of intermittent failure
+    retries = 5
+    while retries:
+        update_ok = await pull_request.update()
+        if update_ok:
+            return True
+        retries -= 1
+        await asyncio.sleep(RETRY_RATE_SECONDS)
+    return False
 
 
 async def repo_queue_consumer(
@@ -163,6 +177,7 @@ async def repo_queue_consumer(
 
             # mark that we're working on this PR
             await pull_request.set_status(summary="⛴ attempting to merge PR")
+            skippable_check_timeout = 4
             while True:
                 # there are two exits to this loop:
                 # - OK MergeabilityResponse
@@ -177,25 +192,23 @@ async def repo_queue_consumer(
                 if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
                     log.info("cannot merge")
                     break
+                if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+                    if skippable_check_timeout:
+                        skippable_check_timeout -= 1
+                        await asyncio.sleep(RETRY_RATE_SECONDS)
+                        continue
+                    await pull_request.set_status(
+                        summary="⌛️ waiting a bit for skippable checks"
+                    )
+                    break
+
                 if m_res == MergeabilityResponse.NEEDS_UPDATE:
-                    # update pull request and poll for result
                     log.info("update pull request and don't attempt to merge")
 
-                    # try multiple times in case of intermittent failure
-                    retries = 5
-                    while retries:
-                        log.info("update branch")
-                        res = await pull_request.update()
-                        # if res is None:
-                        if res is None:
-                            break
-                        retries -= 1
-                        log.info("retry update branch")
-                        await asyncio.sleep(RETRY_RATE_SECONDS)
+                    if await update_pr_with_retry(pull_request):
+                        continue
                     log.error("failed to update branch")
-                    await pull_request.set_status(
-                        summary=f"🛑 could not update branch: {res}"
-                    )
+                    await pull_request.set_status(summary="🛑 could not update branch")
                     # break to find next PR to try and merge
                     break
                 elif m_res == MergeabilityResponse.NEED_REFRESH:

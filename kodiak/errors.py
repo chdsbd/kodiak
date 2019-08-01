@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Set
+from typing import List, Set
 
 from requests_async import Response
 
@@ -30,6 +30,16 @@ class WaitingForChecks(KodiakException):
 
 
 class NotQueueable(KodiakException):
+    pass
+
+
+class MissingSkippableChecks(KodiakException):
+    def __init__(self, checks: List[str]):
+        self.checks = checks
+        super().__init__()
+
+
+class MergeBlocked(KodiakException):
     pass
 
 
