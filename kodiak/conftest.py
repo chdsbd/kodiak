@@ -134,9 +134,53 @@ method = "squash"
 
 
 @pytest.fixture
+def code_owners() -> str:
+    return """\
+# This is a comment.
+# Each line is a file pattern followed by one or more owners.
+
+# These owners will be the default owners for everything in
+# the repo. Unless a later match takes precedence,
+# @global-owner1 and @global-owner2 will be requested for
+# review when someone opens a pull request.
+*       @global-owner1 @global-owner2
+
+# Order is important; the last matching pattern takes the most
+# precedence. When someone opens a pull request that only
+# modifies JS files, only @js-owner and not the global
+# owner(s) will be requested for a review.
+*.js    @js-owner
+
+# You can also use email addresses if you prefer. They'll be
+# used to look up users just like we do for commit author
+# emails.
+*.go docs@example.com
+
+# In this example, @doctocat owns any files in the build/logs
+# directory at the root of the repository and any of its
+# subdirectories.
+/build/logs/ @doctocat
+
+# The `docs/*` pattern will match files like
+# `docs/getting-started.md` but not further nested files like
+# `docs/build-app/troubleshooting.md`.
+docs/*  docs@example.com
+
+# In this example, @octocat owns any file in an apps directory
+# anywhere in your repository.
+apps/ @octocat
+
+# In this example, @doctocat owns any file in the `/docs`
+# directory in the root of your repository.
+/docs/ @doctocat
+"""
+
+
+@pytest.fixture
 def event_response(
     config_str: str,
     config_file_expression: str,
+    code_owners: str,
     pull_request: queries.PullRequest,
     repo: queries.RepoInfo,
     branch_protection: queries.BranchProtectionRule,
@@ -147,6 +191,7 @@ def event_response(
     return queries.EventInfoResponse(
         config_str=config_str,
         config_file_expression=config_file_expression,
+        owners_str=code_owners,
         config=config,
         pull_request=pull_request,
         repo=repo,

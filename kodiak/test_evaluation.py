@@ -1126,7 +1126,7 @@ def test_requires_code_owner_reviews(
         config=config,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests_count=0,
+        review_requests=[],
         reviews=[],
         contexts=[],
         check_runs=[],

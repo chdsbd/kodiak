@@ -132,6 +132,14 @@ def create_git_revision_expression(branch: str, file_path: str) -> str:
     return f"{branch}:{file_path}"
 
 
+def create_owners_root_file_expression(branch: str) -> str:
+    return f"{branch}:CODEOWNERS"
+
+
+def create_owners_github_file_expression(branch: str) -> str:
+    return f"{branch}:.github/CODEOWNERS"
+
+
 @dataclass(init=False, repr=False, eq=False)
 class PR:
     number: int
@@ -172,12 +180,23 @@ class PR:
         return f"<PR path='{self.owner}/{self.repo}#{self.number}'>"
 
     async def get_event(self) -> Optional[EventInfoResponse]:
-        default_branch_name = await self.client.get_default_branch_name()
-        if default_branch_name is None:
+        branch_info = await self.client.get_default_branch_name(pr_number=self.number)
+
+        if (
+            branch_info is None
+            or branch_info.default_branch_name is None
+            or branch_info.base_ref_name is None
+        ):
             return None
         return await self.client.get_event_info(
             config_file_expression=create_git_revision_expression(
-                branch=default_branch_name, file_path=CONFIG_FILE_PATH
+                branch=branch_info.default_branch_name, file_path=CONFIG_FILE_PATH
+            ),
+            owners_root_file_expression=create_owners_root_file_expression(
+                branch=branch_info.base_ref_name
+            ),
+            owners_github_file_expression=create_owners_github_file_expression(
+                branch=branch_info.base_ref_name
             ),
             pr_number=self.number,
         )

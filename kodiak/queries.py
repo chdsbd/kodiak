@@ -46,10 +46,13 @@ class GraphQLResponse(TypedDict):
 
 
 DEFAULT_BRANCH_NAME_QUERY = """
-query ($owner: String!, $repo: String!) {
+query ($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
     defaultBranchRef {
       name
+    }
+    pullRequest(number: $PRNumber) {
+      baseRefName
     }
   }
 }
@@ -57,7 +60,7 @@ query ($owner: String!, $repo: String!) {
 
 
 GET_EVENT_INFO_QUERY = """
-query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: String!, $PRNumber: Int!) {
+query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!, $ownersGithubFileExpression: String!, $ownersRootFileExpression: String!, $configFileExpression: String!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -154,7 +157,17 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         totalCount
       }
     }
-    object(expression: $configFileExpression) {
+    owners_root_file: object(expression: $ownersRootFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    owners_github_file: object(expression: $ownersGithubFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    config_file: object(expression: $configFileExpression) {
       ... on Blob {
         text
       }
@@ -232,6 +245,7 @@ class EventInfoResponse:
     config: Union[V1, pydantic.ValidationError, toml.TomlDecodeError]
     config_str: str
     config_file_expression: str
+    owners_str: Optional[str]
     pull_request: PullRequest
     repo: RepoInfo
     branch_protection: Optional[BranchProtectionRule]
@@ -361,9 +375,18 @@ def get_repo(*, data: dict) -> Optional[dict]:
 
 def get_config_str(*, repo: dict) -> Optional[str]:
     try:
-        return cast(str, repo["object"]["text"])
+        return cast(str, repo["config_file"]["text"])
     except (KeyError, TypeError):
         return None
+
+
+def get_owners_str(*, repo: dict) -> Optional[str]:
+    for owner_kind in ("owners_root_file", "owners_github_file"):
+        try:
+            return cast(str, repo[owner_kind]["text"])
+        except (KeyError, TypeError):
+            continue
+    return None
 
 
 def get_pull_request(*, repo: dict) -> Optional[dict]:
@@ -525,6 +548,12 @@ def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
     return valid_merge_methods
 
 
+@dataclass
+class BranchInfo:
+    default_branch_name: Optional[str]
+    base_ref_name: Optional[str]
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -575,10 +604,10 @@ class Client:
             return None
         return cast(GraphQLResponse, res.json())
 
-    async def get_default_branch_name(self) -> Optional[str]:
+    async def get_default_branch_name(self, *, pr_number: int) -> Optional[BranchInfo]:
         res = await self.send_query(
             query=DEFAULT_BRANCH_NAME_QUERY,
-            variables=dict(owner=self.owner, repo=self.repo),
+            variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
         )
         if res is None:
@@ -588,7 +617,22 @@ class Client:
         if errors is not None or data is None:
             logger.error("could not fetch default branch name", res=res)
             return None
-        return cast(str, data["repository"]["defaultBranchRef"]["name"])
+        try:
+            base_ref_name: Optional[str] = cast(
+                str, data["repository"]["pullRequest"]["baseRefName"]
+            )
+        except (IndexError, ValueError, TypeError):
+            base_ref_name = None
+        try:
+            default_branch_name: Optional[str] = cast(
+                str, data["repository"]["defaultBranchRef"]["name"]
+            )
+        except (IndexError, ValueError, TypeError):
+            default_branch_name = None
+
+        return BranchInfo(
+            default_branch_name=default_branch_name, base_ref_name=base_ref_name
+        )
 
     async def get_permissions_for_username(self, username: str) -> Permission:
         headers = await get_headers(installation_id=self.installation_id)
@@ -634,7 +678,12 @@ class Client:
         ]
 
     async def get_event_info(
-        self, config_file_expression: str, pr_number: int
+        self,
+        *,
+        pr_number: int,
+        owners_root_file_expression: str,
+        owners_github_file_expression: str,
+        config_file_expression: str,
     ) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
@@ -649,6 +698,8 @@ class Client:
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
+                ownersRootFileExpression=owners_root_file_expression,
+                ownersGithubFileExpression=owners_github_file_expression,
                 configFileExpression=config_file_expression,
                 PRNumber=pr_number,
             ),
@@ -674,6 +725,8 @@ class Client:
             # of a config allows kodiak to be selectively installed
             log.warning("could not find configuration file")
             return None
+
+        owners_str = get_owners_str(repo=repository)
 
         pull_request = get_pull_request(repo=repository)
         if not pull_request:
@@ -704,6 +757,7 @@ class Client:
             config=config,
             config_str=config_str,
             config_file_expression=config_file_expression,
+            owners_str=owners_str,
             pull_request=pr,
             repo=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),

@@ -48,7 +48,7 @@ async def test_get_default_branch_name_error(
         return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
     )
 
-    res = await api_client.get_default_branch_name()
+    res = await api_client.get_default_branch_name(pr_number=145)
     assert res is None
 
 
@@ -70,7 +70,9 @@ def blocked_response() -> dict:
 
 
 @pytest.fixture
-def block_event(config_file_expression: str, config_str: str) -> EventInfoResponse:
+def block_event(
+    config_file_expression: str, config_str: str, code_owners: str
+) -> EventInfoResponse:
     config = V1(
         version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
@@ -115,6 +117,7 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
         config=config,
         config_str=config_str,
         config_file_expression=config_file_expression,
+        owners_str=code_owners,
         head_exists=True,
         pull_request=pr,
         repo=rep_info,
@@ -203,7 +206,10 @@ async def test_get_event_info_blocked(
     )
 
     res = await api_client.get_event_info(
-        config_file_expression="master:.kodiak.toml", pr_number=100
+        config_file_expression="master:.kodiak.toml",
+        owners_root_file_expression="master:CODEOWNERS",
+        owners_github_file_expression="master:.github/CODEOWNERS",
+        pr_number=100,
     )
     assert res is not None
     assert res == block_event
