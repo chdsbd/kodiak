@@ -60,7 +60,15 @@ query ($owner: String!, $repo: String!, $PRNumber: Int!) {
 
 
 GET_EVENT_INFO_QUERY = """
-query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!, $ownersGithubFileExpression: String!, $ownersRootFileExpression: String!, $configFileExpression: String!) {
+query GetEventInfo(
+    $owner: String!,
+    $repo: String!,
+    $PRNumber: Int!,
+    $ownersGithubFileExpression: String!,
+    $ownersDocsFileExpression: String!,
+    $ownersRootFileExpression: String!,
+    $configFileExpression: String!
+  ) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -162,6 +170,11 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!, $ownersGith
         text
       }
     }
+    owners_docs_file: object(expression: $ownersDocsFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
     owners_github_file: object(expression: $ownersGithubFileExpression) {
       ... on Blob {
         text
@@ -251,6 +264,7 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
+    file_paths: List[str] = field(default_factory=list)
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
@@ -381,7 +395,7 @@ def get_config_str(*, repo: dict) -> Optional[str]:
 
 
 def get_owners_str(*, repo: dict) -> Optional[str]:
-    for owner_kind in ("owners_root_file", "owners_github_file"):
+    for owner_kind in ("owners_root_file", "owners_github_file", "owners_docs_file"):
         try:
             return cast(str, repo[owner_kind]["text"])
         except (KeyError, TypeError):
@@ -634,6 +648,40 @@ class Client:
             default_branch_name=default_branch_name, base_ref_name=base_ref_name
         )
 
+    async def get_files_for_pr(self, pr_number: int, page_limit: int = 3) -> List[str]:
+        """
+        Use the GitHub v3 api to fetch file names affected by a PR
+
+        We set a limit on the number of pages we ask for as some PRs can touch
+        thousands of files and it would take a relatively long time to fetch
+        them.
+
+        Since we must limit the api requests we make we must accept some
+        inaccuracies. We can miss files that would help identify a code owner.
+        In this case, Kodiak will likely update the branch as it cannot
+        calculate that it should be blocked. It will then encounter an unknown
+        blockage. This update/block cycle could repeat, but there's nothing
+        obvious we can do to fix this.
+
+        We might be able to do something with fetching the repository and doing
+        something locally, but I'm not sure how that would compare to HTTP
+        requests.
+        """
+        headers = await get_headers(installation_id=self.installation_id)
+        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pr_number}/files?page_size=300"
+        file_paths: List[str] = []
+        while page_limit:
+            page_limit -= 1
+            async with self.throttler:
+                res = await self.session.get(url, headers=headers)
+                for file in res.json():
+                    file_paths.append(file["filename"])
+            if "url" in res.links.get("next", []):
+                url = res.links["next"]["url"]
+            else:
+                break
+        return file_paths
+
     async def get_permissions_for_username(self, username: str) -> Permission:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
@@ -683,6 +731,7 @@ class Client:
         pr_number: int,
         owners_root_file_expression: str,
         owners_github_file_expression: str,
+        owners_docs_file_expression: str,
         config_file_expression: str,
     ) -> Optional[EventInfoResponse]:
         """
@@ -699,6 +748,7 @@ class Client:
                 owner=self.owner,
                 repo=self.repo,
                 ownersRootFileExpression=owners_root_file_expression,
+                ownersDocsFileExpression=owners_docs_file_expression,
                 ownersGithubFileExpression=owners_github_file_expression,
                 configFileExpression=config_file_expression,
                 PRNumber=pr_number,
@@ -753,6 +803,11 @@ class Client:
         reviews_with_permissions = await self.get_reviewers_and_permissions(
             reviews=partial_reviews
         )
+
+        if branch_protection and branch_protection.requiresCodeOwnerReviews:
+            file_paths = await self.get_files_for_pr(pr.number)
+        else:
+            file_paths = []
         return EventInfoResponse(
             config=config,
             config_str=config_str,
@@ -765,6 +820,7 @@ class Client:
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
             ),
             branch_protection=branch_protection,
+            file_paths=file_paths,
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),

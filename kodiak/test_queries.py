@@ -208,6 +208,7 @@ async def test_get_event_info_blocked(
     res = await api_client.get_event_info(
         config_file_expression="master:.kodiak.toml",
         owners_root_file_expression="master:CODEOWNERS",
+        owners_docs_file_expression="master:docs/CODEOWNERS",
         owners_github_file_expression="master:.github/CODEOWNERS",
         pr_number=100,
     )

@@ -136,6 +136,10 @@ def create_owners_root_file_expression(branch: str) -> str:
     return f"{branch}:CODEOWNERS"
 
 
+def create_owners_docs_file_expression(branch: str) -> str:
+    return f"{branch}:docs/CODEOWNERS"
+
+
 def create_owners_github_file_expression(branch: str) -> str:
     return f"{branch}:.github/CODEOWNERS"
 
@@ -193,6 +197,9 @@ class PR:
                 branch=branch_info.default_branch_name, file_path=CONFIG_FILE_PATH
             ),
             owners_root_file_expression=create_owners_root_file_expression(
+                branch=branch_info.base_ref_name
+            ),
+            owners_docs_file_expression=create_owners_docs_file_expression(
                 branch=branch_info.base_ref_name
             ),
             owners_github_file_expression=create_owners_github_file_expression(
