@@ -12,5 +12,8 @@ if [[ ! -z $CIRCLE_TAG ]]; then
     LABEL="$CIRCLE_TAG"
 fi
 
-docker build --tag $DOCKER_HUB_REPO:$LABEL .
-docker push $DOCKER_HUB_REPO:$LABEL
+DOCKER_HUB_TAG=$DOCKER_HUB_REPO:$LABEL
+HEROKU_TAG=registry.heroku.com/$APP_NAME/web
+docker build --tag $DOCKER_HUB_TAG --tag $HEROKU_TAG .
+docker push $DOCKER_HUB_TAG
+docker push $HEROKU_TAG

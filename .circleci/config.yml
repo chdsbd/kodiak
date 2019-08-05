@@ -76,7 +76,7 @@ workflows:
       - lint_api
       - build_container:
           filters:
-            branches:
-              only: master
+            # branches:
+            #   only: master
             tags:
               only: /^v.*/
