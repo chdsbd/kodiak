@@ -5,12 +5,14 @@ docker login --username="$DOCKER_USER" --password="$DOCKER_PASS"
 docker login --username=_ --password=$HEROKU_API_TOKEN registry.heroku.com
 
 set -x
+set +u
 
 # https://circleci.com/docs/2.0/env-vars/#circleci-built-in-environment-variables
 LABEL="$CIRCLE_SHA1"
 if [[ ! -z $CIRCLE_TAG ]]; then
     LABEL="$CIRCLE_TAG"
 fi
+set -u
 
 DOCKER_HUB_TAG=$DOCKER_HUB_REPO:$LABEL
 HEROKU_TAG_PROD=registry.heroku.com/kodiak-prod/web
