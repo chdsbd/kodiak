@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 set -e
 DOCKER_HUB_REPO='cdignam/kodiak'
-docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
+docker login --username="$DOCKER_USER" --password="$DOCKER_PASS"
+docker login --username=_ --password=$HEROKU_API_TOKEN registry.heroku.com
 
 set -x
 
