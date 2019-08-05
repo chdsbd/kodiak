@@ -13,7 +13,8 @@ if [[ ! -z $CIRCLE_TAG ]]; then
 fi
 
 DOCKER_HUB_TAG=$DOCKER_HUB_REPO:$LABEL
-HEROKU_TAG=registry.heroku.com/$APP_NAME/web
+HEROKU_TAG_PROD=registry.heroku.com/kodiak-prod/web
+HEROKU_TAG_STAGE=registry.heroku.com/kodiak-stage/web
 docker build --tag $DOCKER_HUB_TAG --tag $HEROKU_TAG .
 docker push $DOCKER_HUB_TAG
 docker push $HEROKU_TAG
