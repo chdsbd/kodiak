@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-set -e
+set -eu
 DOCKER_HUB_REPO='cdignam/kodiak'
 docker login --username="$DOCKER_USER" --password="$DOCKER_PASS"
 docker login --username=_ --password=$HEROKU_API_TOKEN registry.heroku.com
@@ -17,4 +17,5 @@ HEROKU_TAG_PROD=registry.heroku.com/kodiak-prod/web
 HEROKU_TAG_STAGE=registry.heroku.com/kodiak-stage/web
 docker build --tag $DOCKER_HUB_TAG --tag $HEROKU_TAG_PROD --tag $HEROKU_TAG_STAGE .
 docker push $DOCKER_HUB_TAG
-docker push $HEROKU_TAG
+docker push $HEROKU_TAG_STAGE
+docker push $HEROKU_TAG_PROD
