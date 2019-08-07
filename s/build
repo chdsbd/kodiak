@@ -18,6 +18,8 @@ DOCKER_HUB_TAG=$DOCKER_HUB_REPO:$LABEL
 HEROKU_TAG_PROD=registry.heroku.com/kodiak-prod/web
 HEROKU_TAG_STAGE=registry.heroku.com/kodiak-stage/web
 docker build --tag $DOCKER_HUB_TAG --tag $HEROKU_TAG_PROD --tag $HEROKU_TAG_STAGE .
+docker inspect $HEROKU_TAG_PROD --format={{.Id}}
+docker inspect $HEROKU_TAG_STAGE --format={{.Id}}
 docker push $DOCKER_HUB_TAG
 docker push $HEROKU_TAG_STAGE
 docker push $HEROKU_TAG_PROD
