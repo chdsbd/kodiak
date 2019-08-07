@@ -31,18 +31,25 @@ def list_installs() -> None:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
-    res = requests.get(
-        "https://api.github.com/app/installations",
-        headers=dict(
-            Accept="application/vnd.github.machine-man-preview+json",
-            Authorization=f"Bearer {app_token}",
-        ),
+    results: List[dict] = []
+    headers = dict(
+        Accept="application/vnd.github.machine-man-preview+json",
+        Authorization=f"Bearer {app_token}",
     )
+    url = "https://api.github.com/app/installations"
+    while True:
+        res = requests.get(url, headers=headers)
+        res.raise_for_status()
+        results += res.json()
+        try:
+            url = res.links["next"]["url"]
+        except (KeyError, IndexError):
+            break
 
     if res.links:
         click.echo("pagination available")
 
-    for r in res.json():
+    for r in results:
         try:
             install_url = r["account"]["html_url"]
             install_id = r["id"]
