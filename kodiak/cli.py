@@ -46,9 +46,6 @@ def list_installs() -> None:
         except (KeyError, IndexError):
             break
 
-    if res.links:
-        click.echo("pagination available")
-
     for r in results:
         try:
             install_url = r["account"]["html_url"]
