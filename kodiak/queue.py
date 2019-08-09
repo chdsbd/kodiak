@@ -13,6 +13,7 @@ from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
+from kodiak.config import V1
 from kodiak.pull_request import PR, MergeabilityResponse
 from kodiak.queries import Client
 
@@ -95,6 +96,16 @@ async def webhook_event_consumer(
             if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
                 log.info("skippable checks")
                 continue
+
+            if (
+                m_res == MergeabilityResponse.NEEDS_UPDATE
+                and isinstance(event, V1)
+                and event.config.merge.update_branch_immediately
+            ):
+                log.info("updating pull request")
+                if not await update_pr_with_retry(pull_request):
+                    log.error("failed to update branch")
+                    await pull_request.set_status(summary="🛑 could not update branch")
 
             if m_res not in (
                 MergeabilityResponse.NEEDS_UPDATE,
