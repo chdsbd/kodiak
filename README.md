@@ -143,9 +143,12 @@ updated when their targets were updated.
     # WIP GitHub App
     dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
-    # immediately update a PR whenever the target updates. This does not
-    # efficiently update PRs and will cause PRs to update multiple times as
-    # competing PRs are merged into the same target.
+    # immediately update a PR whenever the target updates. If enabled Kodiak will
+    # not be able to efficiently update PRs. Any time the target of a PR updates,
+    # the PR will update. If you have multiple PRs against a target like "master",
+    # any time a commit is added to "master" _all_ of those PRs will update. For
+    # N PRs against a target you will potentially see N(N-1)/2 updates. If this
+    # config was disabled you'd only see N-1 updates.
     update_branch_immediately = false # default: false
 
 
