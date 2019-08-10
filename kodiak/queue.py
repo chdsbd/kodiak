@@ -61,7 +61,6 @@ async def process_webhook_event(
     log.info("block for new webhook event")
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-    # TODO: Move logic into function to make it more testable
     async with Client(
         owner=webhook_event.repo_owner,
         repo=webhook_event.repo_name,
