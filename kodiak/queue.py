@@ -268,7 +268,7 @@ async def repo_queue_consumer(
     log = logger.bind(queue=queue_name)
     log.info("start repo_consumer")
     while True:
-        process_repo_queue(log, connection, queue_name)
+        await process_repo_queue(log, connection, queue_name)
 
 
 class RedisWebhookQueue:
