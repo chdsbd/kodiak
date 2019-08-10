@@ -148,10 +148,10 @@ updated when their targets were updated.
     # the PR will update.
     #
     # If you have multiple PRs against a target like "master", any time a commit
-    # is added to "master" _all_ of those PRs will update.
+    # is added to "master" _all_ of those PRs against master will update.
     #
     # For N PRs against a target you will potentially see N(N-1)/2 updates. If
-    # this configuration option was disabled you'd only see N-1 updates.
+    # this configuration option was disabled you would only see N-1 updates.
     #
     # If you have continuous integration (CI) run on every commit, enabling this
     # configuration option will likely increase your CI costs if you pay per
