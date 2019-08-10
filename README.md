@@ -145,10 +145,13 @@ updated when their targets were updated.
 
     # immediately update a PR whenever the target updates. If enabled Kodiak will
     # not be able to efficiently update PRs. Any time the target of a PR updates,
-    # the PR will update. If you have multiple PRs against a target like "master",
-    # any time a commit is added to "master" _all_ of those PRs will update. For
-    # N PRs against a target you will potentially see N(N-1)/2 updates. If this
-    # config was disabled you'd only see N-1 updates.
+    # the PR will update.
+    # 
+    # If you have multiple PRs against a target like "master", any time a commit
+    # is added to "master" _all_ of those PRs will update.
+
+    # For N PRs against a target you will potentially see N(N-1)/2 updates. If
+    # this configuration option was disabled you'd only see N-1 updates.
     update_branch_immediately = false # default: false
 
 
