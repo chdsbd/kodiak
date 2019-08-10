@@ -143,6 +143,9 @@ updated when their targets were updated.
     # WIP GitHub App
     dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
+    # immediately update a PR whenever the target updates. This does not efficiently update PRs and will cause PRs to update multiple times as competing PRs are merged into the same target.
+    update_branch_immediately = false # default: false
+
 
     [merge.message]
     # by default, github uses the first commit title for the PR of a merge.
