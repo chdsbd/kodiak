@@ -24,3 +24,10 @@ async def test_update_pr_with_retry_failure(pr: PR, mocker: MockFixture) -> None
     assert not res
 
     assert asyncio_sleep.call_count == 5
+
+@pytest.mark.asyncio
+async def test_process_webhook_event_update_branch():
+    """
+    Verify that config.merge.update_branch_immediately triggers branch update immediately
+    """
+    assert False
