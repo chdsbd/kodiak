@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock
+
 import pytest
 import structlog
-from pytest_mock import MagicMock, MockFixture
+from pytest_mock import MockFixture
 
 from kodiak.config import V1
 from kodiak.pull_request import PR, EventInfoResponse, MergeabilityResponse
