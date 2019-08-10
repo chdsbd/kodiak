@@ -52,6 +52,73 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
     return None
 
 
+async def process_webhook_event(
+    connection: RedisConnection,
+    webhook_queue: RedisWebhookQueue,
+    queue_name: str,
+    log: structlog.BoundLogger,
+) -> None:
+    log.info("block for new webhook event")
+    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    # TODO: Move logic into function to make it more testable
+    async with Client(
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        installation_id=webhook_event.installation_id,
+    ) as api_client:
+        pull_request = PR(
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            installation_id=webhook_event.installation_id,
+            client=api_client,
+        )
+        is_merging = (
+            await connection.get(webhook_event.get_merge_target_queue_name())
+            == webhook_event.json()
+        )
+        # trigger status updates
+        m_res, event = await pull_request.mergeability()
+        if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+            # remove ineligible events from the merge queue
+            await connection.zrem(
+                webhook_event.get_merge_queue_name(), [webhook_event.json()]
+            )
+            return
+        if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+            log.info("skippable checks")
+            return
+
+        if m_res not in (
+            MergeabilityResponse.NEEDS_UPDATE,
+            MergeabilityResponse.NEED_REFRESH,
+            MergeabilityResponse.WAIT,
+            MergeabilityResponse.OK,
+            MergeabilityResponse.SKIPPABLE_CHECKS,
+        ):
+            raise Exception("Unknown MergeabilityResponse")
+
+        # don't clobber statuses set in the merge loop
+        # The following responses are okay to add to merge queue:
+        #   + NEEDS_UPDATE - okay for merging
+        #   + NEED_REFRESH - assume okay
+        #   + WAIT - assume checks pass
+        #   + OK - we've got the green
+        webhook_event_jsons = await webhook_queue.enqueue_for_repo(event=webhook_event)
+        if is_merging:
+            return
+
+        position = find_position(webhook_event_jsons, webhook_event_json.value)
+        if position is None:
+            return
+        # use 1-based indexing
+        humanized_position = inflection.ordinalize(position + 1)
+        await pull_request.set_status(
+            f"📦 enqueued for merge (position={humanized_position})"
+        )
+
+
 async def webhook_event_consumer(
     *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
 ) -> typing.NoReturn:
@@ -65,66 +132,7 @@ async def webhook_event_consumer(
     log.info("start webhook event consumer")
 
     while True:
-        log.info("block for new webhook event")
-        webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
-        webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-        async with Client(
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            installation_id=webhook_event.installation_id,
-        ) as api_client:
-            pull_request = PR(
-                owner=webhook_event.repo_owner,
-                repo=webhook_event.repo_name,
-                number=webhook_event.pull_request_number,
-                installation_id=webhook_event.installation_id,
-                client=api_client,
-            )
-            is_merging = (
-                await connection.get(webhook_event.get_merge_target_queue_name())
-                == webhook_event.json()
-            )
-            # trigger status updates
-            m_res, event = await pull_request.mergeability()
-            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-                # remove ineligible events from the merge queue
-                await connection.zrem(
-                    webhook_event.get_merge_queue_name(), [webhook_event.json()]
-                )
-                continue
-            if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
-                log.info("skippable checks")
-                continue
-
-            if m_res not in (
-                MergeabilityResponse.NEEDS_UPDATE,
-                MergeabilityResponse.NEED_REFRESH,
-                MergeabilityResponse.WAIT,
-                MergeabilityResponse.OK,
-                MergeabilityResponse.SKIPPABLE_CHECKS,
-            ):
-                raise Exception("Unknown MergeabilityResponse")
-
-            # don't clobber statuses set in the merge loop
-            # The following responses are okay to add to merge queue:
-            #   + NEEDS_UPDATE - okay for merging
-            #   + NEED_REFRESH - assume okay
-            #   + WAIT - assume checks pass
-            #   + OK - we've got the green
-            webhook_event_jsons = await webhook_queue.enqueue_for_repo(
-                event=webhook_event
-            )
-            if is_merging:
-                continue
-
-            position = find_position(webhook_event_jsons, webhook_event_json.value)
-            if position is None:
-                continue
-            # use 1-based indexing
-            humanized_position = inflection.ordinalize(position + 1)
-            await pull_request.set_status(
-                f"📦 enqueued for merge (position={humanized_position})"
-            )
+        await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
 async def update_pr_with_retry(pull_request: PR) -> bool:
@@ -137,6 +145,93 @@ async def update_pr_with_retry(pull_request: PR) -> bool:
         retries -= 1
         await asyncio.sleep(RETRY_RATE_SECONDS)
     return False
+
+
+async def process_repo_queue(
+    log: structlog.BoundLogger, connection: RedisConnection, queue_name: str
+) -> None:
+    log.info("block for new repo event")
+    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    # mark this PR as being merged currently. we check this elsewhere to set proper status codes
+    await connection.set(
+        webhook_event.get_merge_target_queue_name(), webhook_event.json()
+    )
+    async with Client(
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        installation_id=webhook_event.installation_id,
+    ) as api_client:
+        pull_request = PR(
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            installation_id=webhook_event.installation_id,
+            client=api_client,
+        )
+
+        # mark that we're working on this PR
+        await pull_request.set_status(summary="⛴ attempting to merge PR")
+        skippable_check_timeout = 4
+        while True:
+            # there are two exits to this loop:
+            # - OK MergeabilityResponse
+            # - NOT_MERGEABLE MergeabilityResponse
+            #
+            # otherwise we continue to poll the Github API for a status change
+            # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
+
+            # TODO(chdsbd): Replace enum response with exceptions
+            m_res, event = await pull_request.mergeability(merging=True)
+            log = log.bind(res=m_res)
+            if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
+                log.info("cannot merge")
+                break
+            if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
+                if skippable_check_timeout:
+                    skippable_check_timeout -= 1
+                    await asyncio.sleep(RETRY_RATE_SECONDS)
+                    continue
+                await pull_request.set_status(
+                    summary="⌛️ waiting a bit for skippable checks"
+                )
+                break
+
+            if m_res == MergeabilityResponse.NEEDS_UPDATE:
+                log.info("update pull request and don't attempt to merge")
+
+                if await update_pr_with_retry(pull_request):
+                    continue
+                log.error("failed to update branch")
+                await pull_request.set_status(summary="🛑 could not update branch")
+                # break to find next PR to try and merge
+                break
+            elif m_res == MergeabilityResponse.NEED_REFRESH:
+                # trigger a git mergeability check on Github's end and poll for result
+                log.info("needs refresh")
+                await pull_request.trigger_mergeability_check()
+                continue
+            elif m_res == MergeabilityResponse.WAIT:
+                # continuously poll until we either get an OK or a failure for mergeability
+                log.info("waiting for status checks")
+                continue
+            elif m_res == MergeabilityResponse.OK:
+                # continue to try and merge
+                pass
+            else:
+                raise Exception("Unknown MergeabilityResponse")
+
+            retries = 5
+            while retries:
+                log.info("merge")
+                if await pull_request.merge(event):
+                    # success merging
+                    break
+                retries -= 1
+                log.info("retry merge")
+                await asyncio.sleep(RETRY_RATE_SECONDS)
+            else:
+                log.error("Exhausted attempts to merge pull request")
 
 
 async def repo_queue_consumer(
@@ -155,88 +250,7 @@ async def repo_queue_consumer(
     log = logger.bind(queue=queue_name)
     log.info("start repo_consumer")
     while True:
-        log.info("block for new repo event")
-        webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
-        webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-        # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-        await connection.set(
-            webhook_event.get_merge_target_queue_name(), webhook_event.json()
-        )
-        async with Client(
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            installation_id=webhook_event.installation_id,
-        ) as api_client:
-            pull_request = PR(
-                owner=webhook_event.repo_owner,
-                repo=webhook_event.repo_name,
-                number=webhook_event.pull_request_number,
-                installation_id=webhook_event.installation_id,
-                client=api_client,
-            )
-
-            # mark that we're working on this PR
-            await pull_request.set_status(summary="⛴ attempting to merge PR")
-            skippable_check_timeout = 4
-            while True:
-                # there are two exits to this loop:
-                # - OK MergeabilityResponse
-                # - NOT_MERGEABLE MergeabilityResponse
-                #
-                # otherwise we continue to poll the Github API for a status change
-                # from the other states: NEEDS_UPDATE, NEED_REFRESH, WAIT
-
-                # TODO(chdsbd): Replace enum response with exceptions
-                m_res, event = await pull_request.mergeability(merging=True)
-                log = log.bind(res=m_res)
-                if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-                    log.info("cannot merge")
-                    break
-                if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
-                    if skippable_check_timeout:
-                        skippable_check_timeout -= 1
-                        await asyncio.sleep(RETRY_RATE_SECONDS)
-                        continue
-                    await pull_request.set_status(
-                        summary="⌛️ waiting a bit for skippable checks"
-                    )
-                    break
-
-                if m_res == MergeabilityResponse.NEEDS_UPDATE:
-                    log.info("update pull request and don't attempt to merge")
-
-                    if await update_pr_with_retry(pull_request):
-                        continue
-                    log.error("failed to update branch")
-                    await pull_request.set_status(summary="🛑 could not update branch")
-                    # break to find next PR to try and merge
-                    break
-                elif m_res == MergeabilityResponse.NEED_REFRESH:
-                    # trigger a git mergeability check on Github's end and poll for result
-                    log.info("needs refresh")
-                    await pull_request.trigger_mergeability_check()
-                    continue
-                elif m_res == MergeabilityResponse.WAIT:
-                    # continuously poll until we either get an OK or a failure for mergeability
-                    log.info("waiting for status checks")
-                    continue
-                elif m_res == MergeabilityResponse.OK:
-                    # continue to try and merge
-                    pass
-                else:
-                    raise Exception("Unknown MergeabilityResponse")
-
-                retries = 5
-                while retries:
-                    log.info("merge")
-                    if await pull_request.merge(event):
-                        # success merging
-                        break
-                    retries -= 1
-                    log.info("retry merge")
-                    await asyncio.sleep(RETRY_RATE_SECONDS)
-                else:
-                    log.error("Exhausted attempts to merge pull request")
+        process_repo_queue(log, connection, queue_name)
 
 
 class RedisWebhookQueue:
