@@ -6,7 +6,7 @@ from pytest_mock import MockFixture
 
 from kodiak.config import V1
 from kodiak.pull_request import PR, EventInfoResponse, MergeabilityResponse
-from kodiak.queue import update_pr_if_configured, update_pr_with_retry
+from kodiak.queue import update_pr_immediately_if_configured, update_pr_with_retry
 from kodiak.test_utils import wrap_future
 
 
@@ -44,7 +44,7 @@ def mock_logger(mocker: MockFixture) -> structlog.BoundLogger:
 
 
 @pytest.mark.asyncio
-async def test_update_pr_if_configured_successful_update(
+async def test_update_pr_immediately_if_configured_successful_update(
     mocker: MockFixture,
     mock_pull_request: MagicMock,
     mock_logger: structlog.BoundLogger,
@@ -59,7 +59,7 @@ async def test_update_pr_if_configured_successful_update(
     assert isinstance(event_response.config, V1)
     assert isinstance(event_response.config, V1)
     event_response.config.merge.update_branch_immediately = True
-    await update_pr_if_configured(
+    await update_pr_immediately_if_configured(
         m_res=MergeabilityResponse.NEEDS_UPDATE,
         event=event_response,
         pull_request=mock_pull_request,
@@ -70,7 +70,7 @@ async def test_update_pr_if_configured_successful_update(
 
 
 @pytest.mark.asyncio
-async def test_update_pr_if_configured_failed_update(
+async def test_update_pr_immediately_if_configured_failed_update(
     mocker: MockFixture,
     mock_pull_request: MagicMock,
     mock_logger: structlog.BoundLogger,
@@ -81,7 +81,7 @@ async def test_update_pr_if_configured_failed_update(
     )
     assert isinstance(event_response.config, V1)
     event_response.config.merge.update_branch_immediately = True
-    await update_pr_if_configured(
+    await update_pr_immediately_if_configured(
         m_res=MergeabilityResponse.NEEDS_UPDATE,
         event=event_response,
         pull_request=mock_pull_request,
@@ -94,7 +94,7 @@ async def test_update_pr_if_configured_failed_update(
 
 
 @pytest.mark.asyncio
-async def test_update_pr_if_configured_no_config(
+async def test_update_pr_immediately_if_configured_no_config(
     mocker: MockFixture,
     mock_pull_request: MagicMock,
     mock_logger: structlog.BoundLogger,
@@ -105,7 +105,7 @@ async def test_update_pr_if_configured_no_config(
     )
     assert isinstance(event_response.config, V1)
     event_response.config.merge.update_branch_immediately = False
-    await update_pr_if_configured(
+    await update_pr_immediately_if_configured(
         m_res=MergeabilityResponse.NEEDS_UPDATE,
         event=event_response,
         pull_request=mock_pull_request,

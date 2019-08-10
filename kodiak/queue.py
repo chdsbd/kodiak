@@ -53,7 +53,7 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
     return None
 
 
-async def update_pr_if_configured(
+async def update_pr_immediately_if_configured(
     m_res: MergeabilityResponse,
     event: EventInfoResponse,
     pull_request: PR,
@@ -106,7 +106,7 @@ async def process_webhook_event(
         if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
             log.info("skippable checks")
             return
-        await update_pr_if_configured(m_res, event, pull_request, log)
+        await update_pr_immediately_if_configured(m_res, event, pull_request, log)
 
         if m_res not in (
             MergeabilityResponse.NEEDS_UPDATE,
