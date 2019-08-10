@@ -23,7 +23,8 @@
           "body_type": "markdown",
           "strip_html_comments": false
         },
-        "dont_wait_on_status_checks": []
+        "dont_wait_on_status_checks": [],
+        "update_branch_immediately": false
       },
       "allOf": [{ "$ref": "#/definitions/Merge" }]
     }
@@ -131,6 +132,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "update_branch_immediately": {
+          "title": "Update_Branch_Immediately",
+          "default": false,
+          "type": "boolean"
         }
       }
     }
