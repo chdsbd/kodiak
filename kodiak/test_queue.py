@@ -1,8 +1,10 @@
 import pytest
-from pytest_mock import MockFixture
+import structlog
+from pytest_mock import MagicMock, MockFixture
 
-from kodiak.pull_request import PR
-from kodiak.queue import update_pr_with_retry
+from kodiak.config import V1
+from kodiak.pull_request import PR, EventInfoResponse, MergeabilityResponse
+from kodiak.queue import update_pr_if_configured, update_pr_with_retry
 from kodiak.test_utils import wrap_future
 
 
@@ -25,9 +27,89 @@ async def test_update_pr_with_retry_failure(pr: PR, mocker: MockFixture) -> None
 
     assert asyncio_sleep.call_count == 5
 
+
+@pytest.fixture
+def mock_pull_request(mocker: MockFixture) -> MagicMock:
+    pr = mocker.MagicMock(PR)()
+    # handle `TypeError: object MagicMock can't be used in 'await' expression`
+    pr.set_status.return_value = wrap_future(None)
+    return pr
+
+
+@pytest.fixture
+def mock_logger(mocker: MockFixture) -> structlog.BoundLogger:
+    return mocker.MagicMock(structlog.BoundLogger)()
+
+
 @pytest.mark.asyncio
-async def test_process_webhook_event_update_branch():
+async def test_update_pr_if_configured_successful_update(
+    mocker: MockFixture,
+    mock_pull_request: MagicMock,
+    mock_logger: structlog.BoundLogger,
+    event_response: EventInfoResponse,
+) -> None:
     """
     Verify that config.merge.update_branch_immediately triggers branch update immediately
     """
-    assert False
+    update_pr_with_retry = mocker.patch(
+        "kodiak.queue.update_pr_with_retry", return_value=wrap_future(True)
+    )
+    assert isinstance(event_response.config, V1)
+    assert isinstance(event_response.config, V1)
+    event_response.config.merge.update_branch_immediately = True
+    await update_pr_if_configured(
+        m_res=MergeabilityResponse.NEEDS_UPDATE,
+        event=event_response,
+        pull_request=mock_pull_request,
+        log=mock_logger,
+    )
+    assert update_pr_with_retry.call_count == 1
+    assert mock_pull_request.set_status.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_pr_if_configured_failed_update(
+    mocker: MockFixture,
+    mock_pull_request: MagicMock,
+    mock_logger: structlog.BoundLogger,
+    event_response: EventInfoResponse,
+) -> None:
+    update_pr_with_retry = mocker.patch(
+        "kodiak.queue.update_pr_with_retry", return_value=wrap_future(False)
+    )
+    assert isinstance(event_response.config, V1)
+    event_response.config.merge.update_branch_immediately = True
+    await update_pr_if_configured(
+        m_res=MergeabilityResponse.NEEDS_UPDATE,
+        event=event_response,
+        pull_request=mock_pull_request,
+        log=mock_logger,
+    )
+    assert update_pr_with_retry.call_count == 1
+    assert (
+        mock_pull_request.set_status.call_count == 1
+    ), "we should call set_status on a failure"
+
+
+@pytest.mark.asyncio
+async def test_update_pr_if_configured_no_config(
+    mocker: MockFixture,
+    mock_pull_request: MagicMock,
+    mock_logger: structlog.BoundLogger,
+    event_response: EventInfoResponse,
+) -> None:
+    update_pr_with_retry = mocker.patch(
+        "kodiak.queue.update_pr_with_retry", return_value=wrap_future(True)
+    )
+    assert isinstance(event_response.config, V1)
+    event_response.config.merge.update_branch_immediately = False
+    await update_pr_if_configured(
+        m_res=MergeabilityResponse.NEEDS_UPDATE,
+        event=event_response,
+        pull_request=mock_pull_request,
+        log=mock_logger,
+    )
+    assert update_pr_with_retry.call_count == 0
+    assert (
+        mock_pull_request.set_status.call_count == 0
+    ), "we shouldn't hit these functions"

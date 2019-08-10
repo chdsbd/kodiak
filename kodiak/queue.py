@@ -13,9 +13,9 @@ from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
-from kodiak.pull_request import PR, MergeabilityResponse
-from kodiak.queries import Client
 from kodiak.config import V1
+from kodiak.pull_request import PR, EventInfoResponse, MergeabilityResponse
+from kodiak.queries import Client
 
 logger = structlog.get_logger()
 
@@ -51,6 +51,23 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
             return count
         count += 1
     return None
+
+
+async def update_pr_if_configured(
+    m_res: MergeabilityResponse,
+    event: EventInfoResponse,
+    pull_request: PR,
+    log: structlog.BoundLogger,
+) -> None:
+    if (
+        m_res == MergeabilityResponse.NEEDS_UPDATE
+        and isinstance(event.config, V1)
+        and event.config.merge.update_branch_immediately
+    ):
+        log.info("updating pull request")
+        if not await update_pr_with_retry(pull_request):
+            log.error("failed to update branch")
+            await pull_request.set_status(summary="🛑 could not update branch")
 
 
 async def process_webhook_event(
@@ -89,15 +106,7 @@ async def process_webhook_event(
         if m_res == MergeabilityResponse.SKIPPABLE_CHECKS:
             log.info("skippable checks")
             return
-        if (
-            m_res == MergeabilityResponse.NEEDS_UPDATE
-            and isinstance(event, V1)
-            and event.config.merge.update_branch_immediately
-        ):
-            log.info("updating pull request")
-            if not await update_pr_with_retry(pull_request):
-                log.error("failed to update branch")
-                await pull_request.set_status(summary="🛑 could not update branch")
+        await update_pr_if_configured(m_res, event, pull_request, log)
 
         if m_res not in (
             MergeabilityResponse.NEEDS_UPDATE,
