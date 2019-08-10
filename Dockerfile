@@ -10,8 +10,15 @@ WORKDIR /var/app
 
 COPY pyproject.toml poetry.lock /var/app/
 
+# install deps
 RUN poetry install
 
 COPY . /var/app
+
+# workaround for: https://github.com/sdispater/poetry/issues/1123
+RUN rm -rf /var/app/pip-wheel-metadata/
+
+# install cli
+RUN poetry install
 
 CMD poetry run uvicorn kodiak.main:app --host 0.0.0.0 --port $PORT
