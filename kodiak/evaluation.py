@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import List, MutableMapping, Optional, Set
+from typing import Iterable, List, MutableMapping, Optional, Set
 
 import structlog
 
@@ -64,19 +64,19 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
 
 
 def match_required_status_checks(
-    required_status_checks: List[str], status_check: str
-) -> bool:
+    required_status_checks: Iterable[str], status_check: str
+) -> Optional[str]:
     """
     Github will combine/abbreviate some required status checks, like `ci/pr` and `ci/push` would be abbreviated to `ci` in the Github api response. So if we have a status_check like `ci/pr` we should match `ci` to that response.
     """
     for required_status_check in required_status_checks:
         if required_status_check == status_check:
-            return True
+            return required_status_check
         if status_check.startswith(required_status_check):
             _start, end = status_check.split(required_status_check)
             if end.startswith("/"):
-                return True
-    return False
+                return required_status_check
+    return None
 
 
 def mergeable(
@@ -257,9 +257,11 @@ def mergeable(
                     CheckConclusionState.TIMED_OUT,
                 ):
                     failing_contexts.append(check_run.name)
-            failing = set(failing_contexts)
-            # we have failing statuses that are required
-            failing_required_status_checks = failing & required
+            failing_required_status_checks = {
+                failing_context
+                for failing_context in failing_contexts
+                if match_required_status_checks(required, failing_context)
+            }
             if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
@@ -277,7 +279,10 @@ def mergeable(
             branch_protection.requiresStrictStatusChecks
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         )
-        missing_required_status_checks = required - passing
+        passing_required_status_checks = {
+            match_required_status_checks(required, check) for check in passing
+        }
+        missing_required_status_checks = required - passing_required_status_checks
         wait_for_checks = (
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )

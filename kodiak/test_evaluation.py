@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 
 import pytest
 
@@ -15,7 +15,7 @@ from kodiak.errors import (
     NotQueueable,
     WaitingForChecks,
 )
-from kodiak.evaluation import mergeable, match_required_status_checks
+from kodiak.evaluation import match_required_status_checks, mergeable
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -1152,30 +1152,20 @@ def test_partial_branch_protection(
     "required_status_checks,status_check,is_match",
     [
         (
-            [
-                "continuous-integration/travis-ci",
-            ],
+            ["continuous-integration/travis-ci"],
             "continuous-integration/travis-ci/push",
-            True,
+            "continuous-integration/travis-ci",
         ),
         (
-            [
-                "continuous-integration/travis-ci",
-            ],
+            ["continuous-integration/travis-ci"],
             "continuous-integration/travis-ci-pull",
-            False,
+            None,
         ),
-        (
-            [
-                "continuous-integration/travis-ci",
-            ],
-            "kodiakhq: status",
-            False,
-        ),
+        (["continuous-integration/travis-ci"], "kodiakhq: status", None),
     ],
 )
 def test_match_required_status_checks(
-    required_status_checks: List[str], status_check: str, is_match: bool
+    required_status_checks: List[str], status_check: str, is_match: Optional[str]
 ) -> None:
     assert (
         match_required_status_checks(required_status_checks, status_check) == is_match
