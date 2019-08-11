@@ -1123,14 +1123,14 @@ def test_partial_branch_protection(
     In some cases the github api returns partial branch protection contexts
     """
     branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
+    branch_protection.requiresApprovingReviews = False
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     contexts = [
         StatusContext(
-            context="continuous-integration/travis-ci/pr",
-            state=queries.StatusState.ERROR,
+            context="continuous-integration/travis-ci/pr", state=StatusState.ERROR
         ),
         StatusContext(
-            context="continuous-integration/travis-ci/push",
-            state=queries.StatusState.ERROR,
+            context="continuous-integration/travis-ci/push", state=StatusState.ERROR
         ),
     ]
     with pytest.raises(NotQueueable, match="failing required status checks"):
