@@ -15,7 +15,7 @@ from kodiak.errors import (
     NotQueueable,
     WaitingForChecks,
 )
-from kodiak.evaluation import mergeable
+from kodiak.evaluation import mergeable, match_required_status_checks
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -1146,3 +1146,37 @@ def test_partial_branch_protection(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+
+@pytest.mark.parametrize(
+    "required_status_checks,status_check,is_match",
+    [
+        (
+            [
+                "continuous-integration/travis-ci",
+            ],
+            "continuous-integration/travis-ci/push",
+            True,
+        ),
+        (
+            [
+                "continuous-integration/travis-ci",
+            ],
+            "continuous-integration/travis-ci-pull",
+            False,
+        ),
+        (
+            [
+                "continuous-integration/travis-ci",
+            ],
+            "kodiakhq: status",
+            False,
+        ),
+    ],
+)
+def test_match_required_status_checks(
+    required_status_checks: List[str], status_check: str, is_match: bool
+) -> None:
+    assert (
+        match_required_status_checks(required_status_checks, status_check) == is_match
+    )

@@ -63,6 +63,22 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
     return status
 
 
+def match_required_status_checks(
+    required_status_checks: List[str], status_check: str
+) -> bool:
+    """
+    Github will combine/abbreviate some required status checks, like `ci/pr` and `ci/push` would be abbreviated to `ci` in the Github api response. So if we have a status_check like `ci/pr` we should match `ci` to that response.
+    """
+    for required_status_check in required_status_checks:
+        if required_status_check == status_check:
+            return True
+        if status_check.startswith(required_status_check):
+            _start, end = status_check.split(required_status_check)
+            if end.startswith("/"):
+                return True
+    return False
+
+
 def mergeable(
     config: config.V1,
     pull_request: PullRequest,
