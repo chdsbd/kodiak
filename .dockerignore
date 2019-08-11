@@ -4,3 +4,10 @@
 .venv/
 Dockerfile
 *.pem
+*_cache/
+assets/
+.vscode/
+pip-wheel-metadata/
+*egg-info/
+.github
+.circleci
