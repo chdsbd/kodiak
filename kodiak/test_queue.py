@@ -51,7 +51,8 @@ async def test_update_pr_immediately_if_configured_successful_update(
     event_response: EventInfoResponse,
 ) -> None:
     """
-    Verify that config.merge.update_branch_immediately triggers branch update immediately
+    Test successful case where merge.update_branch_immediately is set and
+    updating PR succeeds
     """
     update_pr_with_retry = mocker.patch(
         "kodiak.queue.update_pr_with_retry", return_value=wrap_future(True)
@@ -76,6 +77,9 @@ async def test_update_pr_immediately_if_configured_failed_update(
     mock_logger: structlog.BoundLogger,
     event_response: EventInfoResponse,
 ) -> None:
+    """
+    Test case where merge.update_branch_immediately is set and updating PR fails
+    """
     update_pr_with_retry = mocker.patch(
         "kodiak.queue.update_pr_with_retry", return_value=wrap_future(False)
     )
@@ -100,6 +104,9 @@ async def test_update_pr_immediately_if_configured_no_config(
     mock_logger: structlog.BoundLogger,
     event_response: EventInfoResponse,
 ) -> None:
+    """
+    If merge.update_branch_immediately is not set, we shouldn't update the PR
+    """
     update_pr_with_retry = mocker.patch(
         "kodiak.queue.update_pr_with_retry", return_value=wrap_future(True)
     )
