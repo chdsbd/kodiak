@@ -143,6 +143,21 @@ updated when their targets were updated.
     # WIP GitHub App
     dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
+    # immediately update a PR whenever the target updates. If enabled, Kodiak will
+    # not be able to efficiently update PRs. Any time the target of a PR updates,
+    # the PR will update.
+    #
+    # If you have multiple PRs against a target like "master", any time a commit
+    # is added to "master" _all_ of those PRs against "master" will update.
+    #
+    # For N PRs against a target you will potentially see N(N-1)/2 updates. If
+    # this configuration option was disabled you would only see N-1 updates.
+    #
+    # If you have continuous integration (CI) run on every commit, enabling this
+    # configuration option will likely increase your CI costs if you pay per
+    # minute. If you pay per build host, this will likely increase job queueing.
+    update_branch_immediately = false # default: false
+
 
     [merge.message]
     # by default, github uses the first commit title for the PR of a merge.

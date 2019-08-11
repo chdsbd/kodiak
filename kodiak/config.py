@@ -70,6 +70,8 @@ class Merge(BaseModel):
     # indefinite amount of time, like the wip-app checks or status checks
     # requiring manual approval.
     dont_wait_on_status_checks: List[str] = []
+    # immediately update a PR whenever the target updates
+    update_branch_immediately: bool = False
 
 
 class InvalidVersion(ValueError):

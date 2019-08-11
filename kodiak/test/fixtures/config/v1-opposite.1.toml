@@ -13,6 +13,7 @@ block_on_reviews_requested = true # default: false
 notify_on_conflict = false # default: true
 optimistic_updates = false # default: true
 dont_wait_on_status_checks = ["ci/circleci: deploy"] # default: []
+update_branch_immediately = true
 
 [merge.message]
 title = "pull_request_title" # default: "github_default"

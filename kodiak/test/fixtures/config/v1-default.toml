@@ -12,6 +12,7 @@ block_on_reviews_requested = false
 notify_on_conflict = true
 optimistic_updates = true
 dont_wait_on_status_checks = []
+update_branch_immediately = false
 
 [merge.message]
 title = "github_default"
