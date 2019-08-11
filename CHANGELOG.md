@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.8.0 - 2019-08-11
+
+### Added
+- `merge.update_branch_immediately` configuration option to immediately update a PR when the target is updated instead of waiting until just before the PR is merged. See [README.md#config-with-comments-and-all-options-set](https://github.com/chdsbd/kodiak#config-with-comments-and-all-options-set) for a more detailed explanation of this feature and potential drawbacks (#120)
+
 ## 0.7.0 - 2019-08-01
 
 ### Fixed
