@@ -15,7 +15,7 @@ from kodiak.errors import (
     NotQueueable,
     WaitingForChecks,
 )
-from kodiak.evaluation import match_required_status_checks, mergeable
+from kodiak.evaluation import mergeable, match_required_status_checks
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -1159,6 +1159,11 @@ def test_partial_branch_protection(
         (
             ["continuous-integration/travis-ci"],
             "continuous-integration/travis-ci-pull",
+            None,
+        ),
+        (
+            ["continuous-integration/appengine/push"],
+            "continuous-integration/appengine/push/1234",
             None,
         ),
         (["continuous-integration/travis-ci"], "kodiakhq: status", None),
