@@ -1191,11 +1191,9 @@ def test_match_required_status_checks(
     required_status_checks: List[str], status_checks: List[str], match: Optional[str]
 ) -> None:
     """
-    Github compresses _some_ check names into one, but only for travis-ci
+    Github compresses _some_ check names into one, but only for travis-ci. See the parameters for a full list
     
-    continuous-integration/travis-ci/{pr,pull,build} => continuous-integration/travis-ci
-
-    Fix #163
+    continuous-integration/travis-ci/{pr,push} => continuous-integration/travis-ci
     """
     for status_check in status_checks:
         assert (
