@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 
 import pytest
 
@@ -15,7 +15,7 @@ from kodiak.errors import (
     NotQueueable,
     WaitingForChecks,
 )
-from kodiak.evaluation import mergeable
+from kodiak.evaluation import match_required_status_checks, mergeable
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -1113,4 +1113,91 @@ def test_requires_commit_signatures(
             check_runs=[],
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+def test_partial_branch_protection(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    """
+    In some cases the github api returns partial branch protection contexts
+    """
+    branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
+    branch_protection.requiresApprovingReviews = False
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    contexts = [
+        StatusContext(
+            context="continuous-integration/travis-ci/pr", state=StatusState.ERROR
+        ),
+        StatusContext(
+            context="continuous-integration/travis-ci/push", state=StatusState.ERROR
+        ),
+    ]
+    with pytest.raises(NotQueueable, match="failing required status checks"):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[],
+            contexts=contexts,
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
+
+
+@pytest.mark.parametrize(
+    "required_status_checks,status_checks,match",
+    [
+        (
+            ["continuous-integration/circle-ci"],
+            [
+                "continuous-integration/circle-ci/deploy/floral-pond-9810",
+                "continuous-integration/circle-ci/deploy",
+                "continuous-integration/circle-ci/pull",
+                "continuous-integration/circle-ci/push",
+                "continuous-integration/circle-ci/pr",
+            ],
+            None,
+        ),
+        (
+            ["continuous-integration/circle-ci"],
+            ["continuous-integration/circle-ci"],
+            "continuous-integration/circle-ci",
+        ),
+        (
+            ["continuous-integration/travis-ci"],
+            [
+                "continuous-integration/travis-ci/deploy/floral-pond-9810",
+                "continuous-integration/travis-ci/deploy",
+                "continuous-integration/travis-ci/pull",
+            ],
+            None,
+        ),
+        (
+            ["continuous-integration/travis-ci"],
+            [
+                "continuous-integration/travis-ci/push",
+                "continuous-integration/travis-ci/pr",
+                "continuous-integration/travis-ci",
+            ],
+            "continuous-integration/travis-ci",
+        ),
+    ],
+)
+def test_match_required_status_checks(
+    required_status_checks: List[str], status_checks: List[str], match: Optional[str]
+) -> None:
+    """
+    Github compresses _some_ check names into one, but only for travis-ci
+    
+    continuous-integration/travis-ci/{pr,pull,build} => continuous-integration/travis-ci
+
+    Fix #163
+    """
+    for status_check in status_checks:
+        assert (
+            match_required_status_checks(required_status_checks, status_check) == match
         )
