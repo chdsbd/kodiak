@@ -116,7 +116,7 @@ updated when their targets were updated.
 
     # if this title regex matches, Kodiak will not merge the PR. this is useful
     # to prevent merging work in progress PRs
-    blacklist_title_regex = "" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+    blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
     # if these labels are set Kodiak will not merge the PR
     blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
