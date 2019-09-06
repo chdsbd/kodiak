@@ -72,6 +72,10 @@ class Merge(BaseModel):
     dont_wait_on_status_checks: List[str] = []
     # immediately update a PR whenever the target updates
     update_branch_immediately: bool = False
+    # if a PR is passing all checks and is able to be merged, merge it without
+    # placing it in the queue. This will introduce some unfairness where those
+    # waiting in the queue the longest will not be served first.
+    prioritize_ready_to_merge: bool = False
 
 
 class InvalidVersion(ValueError):
