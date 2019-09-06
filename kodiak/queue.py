@@ -118,7 +118,8 @@ async def process_webhook_event(
             raise Exception("Unknown MergeabilityResponse")
 
         if (
-            event.config.merge.prioritize_ready_to_merge
+            isinstance(event.config, V1)
+            and event.config.merge.prioritize_ready_to_merge
             and m_res == MergeabilityResponse.OK
         ):
             merge_success = await pull_request.merge(event)
