@@ -50,6 +50,7 @@ def test_config_default() -> None:
                     optimistic_updates=False,
                     dont_wait_on_status_checks=["ci/circleci: deploy"],
                     update_branch_immediately=True,
+                    prioritize_ready_to_merge=True,
                     message=MergeMessage(
                         title=MergeTitleStyle.pull_request_title,
                         body=MergeBodyStyle.pull_request_body,
@@ -77,6 +78,7 @@ def test_config_default() -> None:
                     optimistic_updates=False,
                     dont_wait_on_status_checks=["ci/circleci: deploy"],
                     update_branch_immediately=True,
+                    prioritize_ready_to_merge=True,
                     message=MergeMessage(
                         title=MergeTitleStyle.pull_request_title,
                         body=MergeBodyStyle.empty,
