@@ -298,7 +298,7 @@ class PR:
         except NeedsBranchUpdate:
             if self.event.pull_request.isCrossRepository:
                 await self.set_status(
-                    summary='🚨 forks cannot updated via the github api. Click "Details" for more info',
+                    summary='🚨 forks cannot be updated via the github api. Click "Details" for more info',
                     markdown_content=messages.FORKS_CANNOT_BE_UPDATED,
                 )
                 return MergeabilityResponse.NOT_MERGEABLE, self.event
