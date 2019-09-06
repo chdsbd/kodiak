@@ -121,7 +121,7 @@ async def process_webhook_event(
             event.config.merge.prioritize_ready_to_merge
             and m_res == MergeabilityResponse.OK
         ):
-            merge_success = pull_request.merge(event)
+            merge_success = await pull_request.merge(event)
             if merge_success:
                 return
             log.error("problem merging PR")
