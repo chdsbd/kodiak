@@ -159,6 +159,11 @@ updated when their targets were updated.
     # minute. If you pay per build host, this will likely increase job queueing.
     update_branch_immediately = false # default: false
 
+    # if a PR is passing all checks and is able to be merged, merge it without
+    # placing it in the queue. This will introduce some unfairness where those
+    # waiting in the queue the longest will not be served first.
+    prioritize_ready_to_merge = false # default: false
+
 
     [merge.message]
     # by default, github uses the first commit title for the PR of a merge.

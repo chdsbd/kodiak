@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.9.0 - 2019-09-07
+
+### Added
+- `merge.prioritize_ready_to_merge` configuration option to immediately merge a PR if it's mergeable instead of placing it in the merge queue. This allows PRs to bypass those waiting to update in the queue if they are mergeable. See the README for more details.
+
 ## 0.8.0 - 2019-08-11
 
 ### Added
