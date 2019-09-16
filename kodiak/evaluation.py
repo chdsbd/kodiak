@@ -111,7 +111,8 @@ def mergeable(
         raise NotQueueable(f"has blacklist_labels: {blacklist_labels!r}")
 
     if (
-        config.merge.blacklist_title_regex
+        not config.merge.update_branch_immediately
+        and config.merge.blacklist_title_regex
         and re.search(config.merge.blacklist_title_regex, pull_request.title)
         is not None
     ):
