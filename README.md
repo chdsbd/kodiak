@@ -170,7 +170,7 @@ updated when their targets were updated.
     # "pull_request_title" uses the PR title.
     title = "github_default" # default: "github_default", options: "github_default", "pull_request_title"
 
-    # by default, GithHub combines the titles a PR's commits to create the body
+    # by default, GitHub combines the titles of a PR's commits to create the body
     # text of a merge. "pull_request_body" uses the content of the PR to generate
     # the body content while "empty" simple gives an empty string.
     body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
