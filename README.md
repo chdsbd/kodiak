@@ -211,6 +211,7 @@ updated when their targets were updated.
 | <!-- 2019-04-18 --> [Kodiak](https://github.com/chdsbd/kodiak)                            | ✅                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Python     |
 | <!-- 2013-02-01 --> [Bors](https://github.com/graydon/bors)                               | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Python     |
 | <!-- 2014-12-18 --> [Homu](https://github.com/barosl/homu)                                | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Python     |
+| <!-- 2014-02-26 --> [Shipit](https://github.com/Shopify/shipit-engine)                    | ❌                           | ✅           | ✅                   | ❌                          | ✅          | ❌                                                                            | Ruby       |
 | <!-- 2016-08-06 --> [Gullintanni](https://github.com/gullintanni/gullintanni)             | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Elixir     |
 | <!-- 2016-10-27 --> [Popuko](https://github.com/voyagegroup/popuko)                       | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Go         |
 | <!-- 2016-12-13 --> [Bors-ng](https://bors.tech)                                          | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Elixir     |
@@ -225,7 +226,7 @@ updated when their targets were updated.
 
 ### explanations
 
-#### Works With GitHub Integration:
+#### Works With Branch Protection
 
 - doesn't require changing CI
 - follows commit statuses & GitHub checks
