@@ -209,7 +209,7 @@ updated when their targets were updated.
 
     If you have any questions please [open a ticket](https://github.com/chdsbd/kodiak/issues/new/choose).
 
-## Prior Art
+## Prior Art / Alternatives
 
 | Name                                                                                      | Works With Branch Protection | Auto Merging | Auto Update Branches | Update Branches Efficiently | Open Source | Practice [Dogfooding](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) | Language   |
 | ----------------------------------------------------------------------------------------- | ---------------------------- | ------------ | -------------------- | --------------------------- | ----------- | ----------------------------------------------------------------------------- | ---------- |
@@ -228,6 +228,8 @@ updated when their targets were updated.
 | <!-- 2018-10-21 --> [Merge when green](https://github.com/phstc/probot-merge-when-green)  | ❌                           | ✅           | ❌                   | ❌                          | ✅          | ✅                                                                            | JavaScript |
 | <!-- Unknown    --> [Always Be Closing](https://github.com/marketplace/always-be-closing) | 🤷‍                          | ✅           | ✅                   | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
 | <!-- Unknown    --> [Auto Merge](https://github.com/marketplace/auto-merge)               | 🤷‍                          | ✅           | 🤷‍                  | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
+| <!-- Unknown    --> [Auto Merge](https://github.com/marketplace/auto-merge)               | 🤷‍                          | ✅           | 🤷‍                  | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
+| <!-- Unknown --> [Ranger](https://github.com/marketplace/auto-merge)                      | 🤷‍                          | ✅           | ❌ ‍                 | ❌ ‍                        | ❌          | 🤷‍                                                                           | 🤷‍        |
 
 ### explanations
 
