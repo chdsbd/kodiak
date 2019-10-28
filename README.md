@@ -228,8 +228,7 @@ updated when their targets were updated.
 | <!-- 2018-10-21 --> [Merge when green](https://github.com/phstc/probot-merge-when-green)  | ❌                           | ✅           | ❌                   | ❌                          | ✅          | ✅                                                                            | JavaScript |
 | <!-- Unknown    --> [Always Be Closing](https://github.com/marketplace/always-be-closing) | 🤷‍                          | ✅           | ✅                   | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
 | <!-- Unknown    --> [Auto Merge](https://github.com/marketplace/auto-merge)               | 🤷‍                          | ✅           | 🤷‍                  | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
-| <!-- Unknown    --> [Auto Merge](https://github.com/marketplace/auto-merge)               | 🤷‍                          | ✅           | 🤷‍                  | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
-| <!-- Unknown --> [Ranger](https://github.com/marketplace/auto-merge)                      | 🤷‍                          | ✅           | ❌ ‍                 | ❌ ‍                        | ❌          | 🤷‍                                                                           | 🤷‍        |
+| <!-- Unknown --> [Ranger](https://github.com/marketplace/auto-merge)                      | ✅ ‍                         | ✅           | ❌ ‍                 | ❌ ‍                        | ❌          | 🤷‍                                                                           | 🤷‍        |
 
 ### explanations
 
