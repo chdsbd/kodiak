@@ -117,6 +117,9 @@ async def process_webhook_event(
         ):
             raise Exception("Unknown MergeabilityResponse")
 
+        if event.config.merge.do_not_merge:
+            return
+
         if (
             isinstance(event.config, V1)
             and event.config.merge.prioritize_ready_to_merge
