@@ -76,7 +76,7 @@ class Merge(BaseModel):
     # placing it in the queue. This will introduce some unfairness where those
     # waiting in the queue the longest will not be served first.
     prioritize_ready_to_merge: bool = False
-    # Will stop the PR from ever being merge. This can be used with the 
+    # Will stop the PR from ever being merge. This can be used with the
     # update_branch_immediately to perform auto updating without merging.
     do_not_merge: bool = False
 
