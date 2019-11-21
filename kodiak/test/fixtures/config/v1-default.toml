@@ -14,6 +14,7 @@ optimistic_updates = true
 dont_wait_on_status_checks = []
 update_branch_immediately = false
 prioritize_ready_to_merge = false
+do_not_merge = false
 
 [merge.message]
 title = "github_default"

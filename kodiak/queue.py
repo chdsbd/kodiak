@@ -65,9 +65,13 @@ async def update_pr_immediately_if_configured(
         and event.config.merge.update_branch_immediately
     ):
         log.info("updating pull request")
+        await pull_request.set_status(summary="🔄 attempting to update pull request")
         if not await update_pr_with_retry(pull_request):
             log.error("failed to update branch")
             await pull_request.set_status(summary="🛑 could not update branch")
+        # we don't need to overwrite the "attempting to update..." message here
+        # because it will be updated by either the merge queue logic or the
+        # `merge.do_not_merge` logic.
 
 
 async def process_webhook_event(
@@ -116,6 +120,22 @@ async def process_webhook_event(
             MergeabilityResponse.SKIPPABLE_CHECKS,
         ):
             raise Exception("Unknown MergeabilityResponse")
+
+        if isinstance(event.config, V1) and event.config.merge.do_not_merge:
+            # we duplicate the status messages found in the mergeability
+            # function here because status messages for WAIT and NEEDS_UPDATE
+            # are only set when Kodiak hits the merging logic.
+            if m_res == MergeabilityResponse.WAIT:
+                await pull_request.set_status(summary="⌛️ waiting for checks")
+            if m_res in {
+                MergeabilityResponse.OK,
+                MergeabilityResponse.SKIPPABLE_CHECKS,
+            }:
+                await pull_request.set_status(summary="✅ okay to merge")
+            log.debug(
+                "skipping merging for PR because `merge.do_not_merge` is configured."
+            )
+            return
 
         if (
             isinstance(event.config, V1)

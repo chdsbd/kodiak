@@ -15,6 +15,7 @@ optimistic_updates = false # default: true
 dont_wait_on_status_checks = ["ci/circleci: deploy"] # default: []
 update_branch_immediately = true
 prioritize_ready_to_merge = true
+do_not_merge = true
 
 [merge.message]
 title = "pull_request_title" # default: "github_default"
