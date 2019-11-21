@@ -127,10 +127,10 @@ async def process_webhook_event(
             # are only set when Kodiak hits the merging logic.
             if m_res == MergeabilityResponse.WAIT:
                 await pull_request.set_status(summary="⌛️ waiting for checks")
-            if m_res in (
+            if m_res in {
                 MergeabilityResponse.OK,
                 MergeabilityResponse.SKIPPABLE_CHECKS,
-            ):
+            }:
                 await pull_request.set_status(summary="✅ okay to merge")
             log.debug(
                 "skipping merging for PR because `merge.do_not_merge` is configured."
