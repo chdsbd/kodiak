@@ -65,9 +65,13 @@ async def update_pr_immediately_if_configured(
         and event.config.merge.update_branch_immediately
     ):
         log.info("updating pull request")
+        await pull_request.set_status(summary="🔄 attempting to update pull request")
         if not await update_pr_with_retry(pull_request):
             log.error("failed to update branch")
             await pull_request.set_status(summary="🛑 could not update branch")
+        # we don't need to overwrite the "attempting to update..." message here
+        # because it will be updated by either the merge queue logic or the
+        # `merge.do_not_merge` logic.
 
 
 async def process_webhook_event(
@@ -121,6 +125,8 @@ async def process_webhook_event(
             isinstance(event.config, V1)
             and event.config.merge.do_not_merge
         ):
+            log.debug("skipping merging for PR because `merge.do_not_merge` is configured.")
+            await pull_request.set_status(summary="✅ okay to merge")
             return
 
         if (
