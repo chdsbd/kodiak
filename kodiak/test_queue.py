@@ -67,7 +67,9 @@ async def test_update_pr_immediately_if_configured_successful_update(
         log=mock_logger,
     )
     assert update_pr_with_retry.call_count == 1
-    assert mock_pull_request.set_status.call_count == 0
+    assert (
+        mock_pull_request.set_status.call_count == 1
+    ), "should call once for `attempting to update...` message"
 
 
 @pytest.mark.asyncio
@@ -93,8 +95,8 @@ async def test_update_pr_immediately_if_configured_failed_update(
     )
     assert update_pr_with_retry.call_count == 1
     assert (
-        mock_pull_request.set_status.call_count == 1
-    ), "we should call set_status on a failure"
+        mock_pull_request.set_status.call_count == 2
+    ), "we should call once for `attempting to update...` message and once for merge failure"
 
 
 @pytest.mark.asyncio
