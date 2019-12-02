@@ -244,6 +244,20 @@ def mergeable(
             failing = set(failing_contexts)
             # we have failing statuses that are required
             failing_required_status_checks = failing & required
+            # GitHub has undocumented logic for travis-ci checks in GitHub
+            # branch protection rules. GitHub compresses
+            # "continuous-integration/travis-ci/{pr,pull}" to
+            # "continuous-integration/travis-ci". There is only special handling
+            # for these specific checks.
+            if "continuous-integration/travis-ci" in required:
+                if "continuous-integration/travis-ci/pr" in failing:
+                    failing_required_status_checks.add(
+                        "continuous-integration/travis-ci/pr"
+                    )
+                if "continuous-integration/travis-ci/pull" in failing:
+                    failing_required_status_checks.add(
+                        "continuous-integration/travis-ci/pull"
+                    )
             if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
