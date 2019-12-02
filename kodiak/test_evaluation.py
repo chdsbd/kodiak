@@ -1114,3 +1114,35 @@ def test_requires_commit_signatures(
             valid_signature=False,
             valid_merge_methods=[MergeMethod.squash],
         )
+
+
+def test_partial_branch_protection(
+    pull_request: PullRequest, config: V1, branch_protection: BranchProtectionRule
+) -> None:
+    """
+    In some cases the github api returns partial branch protection contexts
+    """
+    branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
+    branch_protection.requiresApprovingReviews = False
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    contexts = [
+        StatusContext(
+            context="continuous-integration/travis-ci/pr", state=StatusState.ERROR
+        ),
+        StatusContext(
+            context="continuous-integration/travis-ci/push", state=StatusState.ERROR
+        ),
+    ]
+    with pytest.raises(NotQueueable, match="failing required status checks"):
+        mergeable(
+            app_id="1234",
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[],
+            contexts=contexts,
+            check_runs=[],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+        )
