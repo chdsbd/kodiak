@@ -59,6 +59,8 @@ updated when their targets were updated.
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
 - Due to permission limitations for GitHub Apps, Kodiak doesn't support updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
 - GitHub CODEOWNERS are not supported. Kodiak will prematurely update PRs that still require a review from a Code Owner. However, Kodiak will be able to merge the PR once all checks pass. ([kodiak#87](https://github.com/chdsbd/kodiak/issues/87))
+- Travis-CI's [deprecated commit status updates](https://blog.travis-ci.com/2018-09-27-deprecating-github-commit-status-api-for-github-apps-managed-repositories) are not supported. [Please upgrade](https://blog.travis-ci.com/2018-05-07-announcing-support-for-github-checks-api-on-travis-ci-com#moving-to-github-apps) to the newer GitHub Check-based solution. ([kodiak#163](https://github.com/chdsbd/kodiak/pull/166))
+- Using `merge.block_on_reviews_requested` is not recommended. If a PR is blocked by this rule a reviewer's comment will allow the PR to be merged, not just a positive approval. This is a limitation of the GitHub API. Please try GitHub's required approvals branch protection setting instead. ([kodiak#153](https://github.com/chdsbd/kodiak/issues/153))
 
 ## Setup
 
@@ -115,7 +117,7 @@ updated when their targets were updated.
 
     # if this title regex matches, Kodiak will not merge the PR. this is useful
     # to prevent merging work in progress PRs
-    blacklist_title_regex = "" # default: "^WIP.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+    blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
     # if these labels are set Kodiak will not merge the PR
     blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
@@ -126,7 +128,12 @@ updated when their targets were updated.
 
     # once a PR is merged into master, delete the branch
     delete_branch_on_merge = false # default: false
-
+    
+    # Deprecated: Due to limitations with the GitHub API this feature is
+    # fundamentally broken and cannot be fixed. Please use the GitHub branch
+    # protection "required reviewers" setting instead. See this issue/comment
+    # for more information about why this feature is not fixable: https://github.com/chdsbd/kodiak/issues/153#issuecomment-523057332.
+    # 
     # if you request review from a user, don't merge until that user provides a
     # review, even if the PR is passing all checks
     block_on_reviews_requested = false # default: false
@@ -158,13 +165,18 @@ updated when their targets were updated.
     # minute. If you pay per build host, this will likely increase job queueing.
     update_branch_immediately = false # default: false
 
+    # if a PR is passing all checks and is able to be merged, merge it without
+    # placing it in the queue. This will introduce some unfairness where those
+    # waiting in the queue the longest will not be served first.
+    prioritize_ready_to_merge = false # default: false
+
 
     [merge.message]
     # by default, github uses the first commit title for the PR of a merge.
     # "pull_request_title" uses the PR title.
     title = "github_default" # default: "github_default", options: "github_default", "pull_request_title"
 
-    # by default, GithHub combines the titles a PR's commits to create the body
+    # by default, GitHub combines the titles of a PR's commits to create the body
     # text of a merge. "pull_request_body" uses the content of the PR to generate
     # the body content while "empty" simple gives an empty string.
     body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
@@ -197,13 +209,14 @@ updated when their targets were updated.
 
     If you have any questions please [open a ticket](https://github.com/chdsbd/kodiak/issues/new/choose).
 
-## Prior Art
+## Prior Art / Alternatives
 
 | Name                                                                                      | Works With Branch Protection | Auto Merging | Auto Update Branches | Update Branches Efficiently | Open Source | Practice [Dogfooding](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) | Language   |
 | ----------------------------------------------------------------------------------------- | ---------------------------- | ------------ | -------------------- | --------------------------- | ----------- | ----------------------------------------------------------------------------- | ---------- |
 | <!-- 2019-04-18 --> [Kodiak](https://github.com/chdsbd/kodiak)                            | ✅                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Python     |
 | <!-- 2013-02-01 --> [Bors](https://github.com/graydon/bors)                               | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Python     |
 | <!-- 2014-12-18 --> [Homu](https://github.com/barosl/homu)                                | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Python     |
+| <!-- 2014-02-26 --> [Shipit](https://github.com/Shopify/shipit-engine)                    | ❌                           | ✅           | ✅                   | ❌                          | ✅          | ❌                                                                            | Ruby       |
 | <!-- 2016-08-06 --> [Gullintanni](https://github.com/gullintanni/gullintanni)             | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ❌                                                                            | Elixir     |
 | <!-- 2016-10-27 --> [Popuko](https://github.com/voyagegroup/popuko)                       | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Go         |
 | <!-- 2016-12-13 --> [Bors-ng](https://bors.tech)                                          | ❌                           | ✅           | ✅                   | ✅                          | ✅          | ✅                                                                            | Elixir     |
@@ -215,10 +228,11 @@ updated when their targets were updated.
 | <!-- 2018-10-21 --> [Merge when green](https://github.com/phstc/probot-merge-when-green)  | ❌                           | ✅           | ❌                   | ❌                          | ✅          | ✅                                                                            | JavaScript |
 | <!-- Unknown    --> [Always Be Closing](https://github.com/marketplace/always-be-closing) | 🤷‍                          | ✅           | ✅                   | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
 | <!-- Unknown    --> [Auto Merge](https://github.com/marketplace/auto-merge)               | 🤷‍                          | ✅           | 🤷‍                  | 🤷‍                         | ❌          | 🤷‍                                                                           | 🤷‍        |
+| <!-- Unknown --> [Ranger](https://reporanger.com)                                         | ✅ ‍                         | ✅           | ❌ ‍                 | ❌ ‍                        | ❌          | 🤷‍                                                                           | 🤷‍        |
 
 ### explanations
 
-#### Works With GitHub Integration:
+#### Works With Branch Protection
 
 - doesn't require changing CI
 - follows commit statuses & GitHub checks
