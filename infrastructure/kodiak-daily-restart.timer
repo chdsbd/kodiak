@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart daily at off-peak time
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 UTC
+
+Persistent=true
+
+[Install]
+WantedBy=timers.target
