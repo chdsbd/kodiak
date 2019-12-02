@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import Iterable, List, MutableMapping, Optional, Set
+from typing import List, MutableMapping, Optional, Set
 
 import structlog
 
