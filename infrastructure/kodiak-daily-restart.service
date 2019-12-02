@@ -1,0 +1,5 @@
+[Unit]
+Description=Restart kodiak
+ 
+[Service]
+ExecStart=/root/kodiak-restart.sh
