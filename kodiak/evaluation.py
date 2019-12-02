@@ -63,18 +63,6 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
     return status
 
 
-def match_required_status_checks(
-    required_status_checks: Iterable[str], status_check: str
-) -> Optional[str]:
-    """
-    Github compresses _some_ check names into one, but only for travis-ci
-    
-    continuous-integration/travis-ci/{pr,push} => continuous-integration/travis-ci
-    continuous-integration/travis-ci/foo => continuous-integration/travis-ci/foo
-    """
-    return None
-
-
 def mergeable(
     config: config.V1,
     pull_request: PullRequest,
