@@ -16,7 +16,7 @@ SECRET_KEY = config("SECRET_KEY")
 GITHUB_APP_ID = config("GITHUB_APP_ID")
 GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
 GITHUB_PRIVATE_KEY_PATH = config("GITHUB_PRIVATE_KEY_PATH", default=None)
-GITHUB_PRIVATE_KEY_BASE64 = config("GITHUB_PRIVATE_KEY", default=None)
+GITHUB_PRIVATE_KEY_BASE64 = config("GITHUB_PRIVATE_KEY_BASE64", default=None)
 LOGGING_LEVEL = get_logging_level(config("LOGGING_LEVEL", default="INFO"))
 
 
