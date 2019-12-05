@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.10.0 - 2019-12-04
+
+### Added
+- `GITHUB_PRIVATE_KEY_BASE64` environment variable to support configuring GitHub private key via base64. This is a workaround to support Docker's .env files, which do not allow multi-line or quoted values (#191, #192).
+- `merge.do_not_merge` configuration option to support updating PRs without merging them (#187).
+
+### Changed
+- deprecate `merge.block_on_reviews_requested`, which is fundamentally broken and cannot be fixed (#180, #182).
+
+### Fixed
+- fixed travis-ci check compression to support deprecated travis-ci status check format (#166).
+
 ## 0.9.0 - 2019-09-07
 
 ### Added
