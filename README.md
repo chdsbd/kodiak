@@ -59,7 +59,6 @@ updated when their targets were updated.
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
 - Due to permission limitations for GitHub Apps, Kodiak doesn't support updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
 - GitHub CODEOWNERS are not supported. Kodiak will prematurely update PRs that still require a review from a Code Owner. However, Kodiak will be able to merge the PR once all checks pass. ([kodiak#87](https://github.com/chdsbd/kodiak/issues/87))
-- Travis-CI's [deprecated commit status updates](https://blog.travis-ci.com/2018-09-27-deprecating-github-commit-status-api-for-github-apps-managed-repositories) are not supported. [Please upgrade](https://blog.travis-ci.com/2018-05-07-announcing-support-for-github-checks-api-on-travis-ci-com#moving-to-github-apps) to the newer GitHub Check-based solution. ([kodiak#163](https://github.com/chdsbd/kodiak/pull/166))
 - Using `merge.block_on_reviews_requested` is not recommended. If a PR is blocked by this rule a reviewer's comment will allow the PR to be merged, not just a positive approval. This is a limitation of the GitHub API. Please try GitHub's required approvals branch protection setting instead. ([kodiak#153](https://github.com/chdsbd/kodiak/issues/153))
 
 ## Setup
