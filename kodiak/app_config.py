@@ -21,9 +21,9 @@ LOGGING_LEVEL = get_logging_level(config("LOGGING_LEVEL", default="INFO"))
 
 
 if GITHUB_PRIVATE_KEY is not None:
-    PRIVATE_KEY = Path(GITHUB_PRIVATE_KEY_PATH).read_text()
-elif GITHUB_PRIVATE_KEY is not None:
     PRIVATE_KEY = GITHUB_PRIVATE_KEY
+elif GITHUB_PRIVATE_KEY_PATH is not None:
+    PRIVATE_KEY = Path(GITHUB_PRIVATE_KEY_PATH).read_text()
 elif GITHUB_PRIVATE_KEY_BASE64 is not None:
     PRIVATE_KEY = base64.decodebytes(GITHUB_PRIVATE_KEY_BASE64.encode()).decode()
 else:
