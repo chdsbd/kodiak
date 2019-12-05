@@ -316,7 +316,7 @@ If you don't want to use the [GitHub App](https://github.com/apps/kodiakhq/insta
     # The APP_ID and PRIVATE_KEY are needed to run the app. You must also set a SECRET_KEY to pass to the app.
 
     # configure app environment (this can also be done through the Heroku web ui)
-    heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nsome/private/key\nbits\n-----END RSA PRIVATE KEY-----\n"
+    heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="$(cat github_private_key.pem)"
 
     # Redis v5 is required and provided by RedisCloud
     heroku addons:create -a $APP_NAME rediscloud:30 --wait
