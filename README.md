@@ -170,6 +170,10 @@ updated when their targets were updated.
     # waiting in the queue the longest will not be served first.
     prioritize_ready_to_merge = false # default: false
 
+    # never merge a PR. This can be used with merge.update_branch_immediately to
+    # automatically update a PR without merging.
+    do_not_merge = false # default: false
+
 
     [merge.message]
     # by default, github uses the first commit title for the PR of a merge.
