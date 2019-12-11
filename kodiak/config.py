@@ -72,6 +72,12 @@ class Merge(BaseModel):
     dont_wait_on_status_checks: List[str] = []
     # immediately update a PR whenever the target updates
     update_branch_immediately: bool = False
+    # ignore specific status checks that would normally prevent a PR from being
+    # updating. If for example the WIP status check was incomplete, we could
+    # specify "WIP" in this configuration to enable kodiak to update a branch
+    # even without WIP passing. This setting is only necessary for "required"
+    # status checks specified in GitHub branch protection settings.
+    update_ignore_checks: List[str] = []
     # if a PR is passing all checks and is able to be merged, merge it without
     # placing it in the queue. This will introduce some unfairness where those
     # waiting in the queue the longest will not be served first.

@@ -25,6 +25,7 @@
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
+        "update_ignore_checks": [],
         "prioritize_ready_to_merge": false,
         "do_not_merge": false
       },
@@ -139,6 +140,14 @@
           "title": "Update_Branch_Immediately",
           "default": false,
           "type": "boolean"
+        },
+        "update_ignore_checks": {
+          "title": "Update_Ignore_Checks",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "prioritize_ready_to_merge": {
           "title": "Prioritize_Ready_To_Merge",
