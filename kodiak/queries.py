@@ -12,7 +12,6 @@ import pydantic
 import requests_async as http
 import structlog
 import toml
-from asyncio_throttle import Throttler
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
@@ -20,7 +19,7 @@ from starlette import status
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.github import events
-from kodiak.throttle import get_thottler_for_installation
+from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
 
@@ -538,10 +537,13 @@ class Client:
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+        self.log = logger.bind(
+            repo=f"{self.owner}/{self.repo}", install=self.installation_id
+        )
 
     async def __aenter__(self) -> Client:
-        self.throttler = await get_thottler_for_installation(
-            installation_id=self.installation_id
+        self.throttler = get_thottler_for_installation(
+            installation_id=self.installation_id, log=self.log
         )
         return self
 
@@ -555,7 +557,7 @@ class Client:
         installation_id: str,
         remaining_retries: int = 4,
     ) -> Optional[GraphQLResponse]:
-        log = logger.bind(install=installation_id)
+        log = self.log
 
         token = await get_token_for_install(installation_id=installation_id)
         self.session.headers["Authorization"] = f"Bearer {token}"
@@ -639,9 +641,9 @@ class Client:
 
         This is basically the "do-all-the-things" query
         """
-        log = logger.bind(
-            repo=f"{self.owner}/{self.repo}", pr=pr_number, install=self.installation_id
-        )
+
+        log = self.log.bind(pr=pr_number)
+
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
             variables=dict(
@@ -820,7 +822,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
-    throttler = await get_thottler_for_installation(
+    throttler = get_thottler_for_installation(
         # this isn't a real installation ID, but it provides rate limiting
         # for our GithubApp instead of the installations we typically act as
         installation_id=APPLICATION_ID
