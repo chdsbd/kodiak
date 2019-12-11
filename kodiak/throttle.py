@@ -1,10 +1,10 @@
-from collections import defaultdict
-from typing import Mapping, Any, Optional
-import time
 import asyncio
-from collections import deque
-from typing_extensions import Deque
+import time
+from collections import defaultdict, deque
+from typing import Any, Mapping, Optional
+
 import structlog
+from typing_extensions import Deque
 
 
 class Throttler:
