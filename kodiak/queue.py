@@ -82,6 +82,7 @@ async def process_webhook_event(
 ) -> None:
     log.info("block for new webhook event")
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
     async with Client(
         owner=webhook_event.repo_owner,
@@ -95,14 +96,16 @@ async def process_webhook_event(
             installation_id=webhook_event.installation_id,
             client=api_client,
         )
+        log.info("checking if merging")
         is_merging = (
             await connection.get(webhook_event.get_merge_target_queue_name())
             == webhook_event.json()
         )
+        log.info("fetching mergeability status")
         # trigger status updates
         m_res, event = await pull_request.mergeability()
         if event is None or m_res == MergeabilityResponse.NOT_MERGEABLE:
-            # remove ineligible events from the merge queue
+            log.info("removing ineligible events from merge queue")
             await connection.zrem(
                 webhook_event.get_merge_queue_name(), [webhook_event.json()]
             )
@@ -119,12 +122,14 @@ async def process_webhook_event(
             MergeabilityResponse.OK,
             MergeabilityResponse.SKIPPABLE_CHECKS,
         ):
+            log.info("unknown mergeability response")
             raise Exception("Unknown MergeabilityResponse")
 
         if isinstance(event.config, V1) and event.config.merge.do_not_merge:
             # we duplicate the status messages found in the mergeability
             # function here because status messages for WAIT and NEEDS_UPDATE
             # are only set when Kodiak hits the merging logic.
+            log.info("updating merge status")
             if m_res == MergeabilityResponse.WAIT:
                 await pull_request.set_status(summary="⌛️ waiting for checks")
             if m_res in {
@@ -132,7 +137,7 @@ async def process_webhook_event(
                 MergeabilityResponse.SKIPPABLE_CHECKS,
             }:
                 await pull_request.set_status(summary="✅ okay to merge")
-            log.debug(
+            log.info(
                 "skipping merging for PR because `merge.do_not_merge` is configured."
             )
             return
@@ -153,15 +158,18 @@ async def process_webhook_event(
         #   + NEED_REFRESH - assume okay
         #   + WAIT - assume checks pass
         #   + OK - we've got the green
+        log.info("enqueuing event for merge")
         webhook_event_jsons = await webhook_queue.enqueue_for_repo(event=webhook_event)
         if is_merging:
             return
 
+        log.info("finding position")
         position = find_position(webhook_event_jsons, webhook_event_json.value)
         if position is None:
             return
         # use 1-based indexing
         humanized_position = inflection.ordinalize(position + 1)
+        log.info("setting enqueue for merge status")
         await pull_request.set_status(
             f"📦 enqueued for merge (position={humanized_position})"
         )

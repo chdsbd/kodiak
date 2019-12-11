@@ -208,6 +208,7 @@ class PR:
         if self.event is None:
             self.log.error("could not fetch event")
             return
+        self.log.info("setting status %s", message)
         await self.client.create_notification(
             head_sha=self.event.pull_request.latest_sha,
             message=message,
@@ -264,6 +265,7 @@ class PR:
             )
             return MergeabilityResponse.SKIPPABLE_CHECKS, self.event
         except (NotQueueable, MergeConflict, BranchMerged) as e:
+            self.log.info("not queueable, mergeconflict, or branch merged")
             if (
                 isinstance(e, MergeConflict)
                 and self.event.config.merge.notify_on_conflict
