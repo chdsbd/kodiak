@@ -672,7 +672,7 @@ class Client:
         if config_str is None:
             # NOTE(chdsbd): we don't want to show a message for this as the lack
             # of a config allows kodiak to be selectively installed
-            log.warning("could not find configuration file")
+            log.info("could not find configuration file")
             return None
 
         pull_request = get_pull_request(repo=repository)
