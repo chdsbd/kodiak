@@ -543,7 +543,7 @@ class Client:
 
     async def __aenter__(self) -> Client:
         self.throttler = get_thottler_for_installation(
-            installation_id=self.installation_id, log=self.log
+            installation_id=self.installation_id
         )
         return self
 
