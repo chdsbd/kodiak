@@ -336,7 +336,7 @@ class PR:
             number=self.number, body=get_merge_body(event.config, event.pull_request)
         )
         if res.status_code > 300:
-            self.log.error("could not merge PR", res=res, res_json=res.json())
+            self.log.info("could not merge PR", res=res, res_json=res.json())
             return False
         return True
 
