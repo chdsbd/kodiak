@@ -122,34 +122,6 @@ async def test_deleting_branch_not_called_for_fork(
     assert delete_branch.called is False
 
 
-@pytest.mark.asyncio
-async def test_cross_repo_missing_head(
-    event_response: queries.EventInfoResponse, mocker: MockFixture
-) -> None:
-    """
-    if a repository is from a fork (isCrossRepository), we will not be able to
-    see head information.
-    """
-
-    event_response.head_exists = False
-    event_response.pull_request.isCrossRepository = True
-    assert event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
-    event_response.pull_request.labels = ["automerge"]
-    assert event_response.branch_protection is not None
-    event_response.branch_protection.requiresApprovingReviews = False
-    event_response.branch_protection.requiresStrictStatusChecks = True
-    mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
-    set_status = mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
-    pr = PR(
-        number=123,
-        owner="tester",
-        repo="repo",
-        installation_id="abc",
-        client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
-    )
-    await pr.mergeability()
-
-
 def test_pr(api_client: queries.Client) -> None:
     a = PR(
         number=123,
