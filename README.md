@@ -370,7 +370,7 @@ GitHub App and a testing GitHub repo.
     ```
 
     Now we can copy the **Forwarding** url into the GitHub app form.
-    Don't forget to append the path: `/api/github/hook` and sure to copy the
+    Don't forget to append the path: `/api/github/hook` and make sure to copy the
     `https`.
 
     Then hit create.
@@ -429,6 +429,23 @@ create_mock_pr() {
   git checkout master
 }
 ```
+### Integration testing a with docker
+The following steps will set your test-app up with little effort:
+
+* Copy the private key that you generated on github for the app to your repository root and name it ```kodiaktest.private-key.pem```,
+* Create a file ```.env``` that sets the following environment variables: ```GITHUB_APP_ID```, ```SECRET_KEY```.
+* By using the ```docker-compose.yml``` file in conjunction with the ```Dockerfile``` in the repository
+   doing integration tests with WIP code is as easy as running these commands from the root of the repository:
+   ``` bash
+   docker-compose build
+   docker-compose up
+   ```
+* In a separate terminal you have to open up a tunnel to make your machine reachable from outside your local network:
+   ``` bash
+   ngrok http 3000
+   ```
+* Copy the address from the ```ngrok``` output to the webhook settings of your github app and it should work.
+
 
 ### Releasing a new version
 
