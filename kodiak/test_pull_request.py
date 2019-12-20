@@ -21,7 +21,6 @@ from kodiak.pull_request import (
     get_merge_body,
     strip_html_comments_from_markdown,
 )
-from kodiak.queries import MergeStateStatus
 from kodiak.test_utils import wrap_future
 
 
