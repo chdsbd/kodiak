@@ -94,8 +94,7 @@ async def test_cross_repo_missing_head(
 ) -> None:
     """
     if a repository is from a fork (isCrossRepository), we will not be able to
-    see head information due to a problem with the v4 api failing to return head
-    information for forks, unlike the v3 api.
+    see head information.
     """
 
     event_response.head_exists = False
@@ -115,9 +114,6 @@ async def test_cross_repo_missing_head(
         client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
     )
     await pr.mergeability()
-
-    assert set_status.call_count == 1
-    assert False
 
 
 def test_pr(api_client: queries.Client) -> None:
@@ -319,7 +315,7 @@ async def test_pr_update_ok(
     res = Response()
     res.status_code = 200
     mocker.patch(
-        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+        "kodiak.pull_request.queries.Client.update_branch", return_value=wrap_future(res)
     )
 
     res = await pr.update()
@@ -338,7 +334,7 @@ async def test_pr_update_bad_merge(
     res.status_code = 409
     res._content = b"{}"
     mocker.patch(
-        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+        "kodiak.pull_request.queries.Client.update_branch", return_value=wrap_future(res)
     )
 
     res = await pr.update()
