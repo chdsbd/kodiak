@@ -8,7 +8,7 @@ import structlog
 from markdown_html_finder import find_html_positions
 
 import kodiak.app_config as conf
-from kodiak import messages, queries
+from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
 from kodiak.errors import (
@@ -224,8 +224,8 @@ class PR:
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        # PRs from forks will always appear deleted because the v4 api doesn't
-        # return head information for forks like the v3 api does.
+        # PRs from forks will always appear deleted because GitHub app
+        # permissions limit our access to the current installation.
         if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
             self.log.info("branch deleted")
             return MergeabilityResponse.NOT_MERGEABLE, None
@@ -275,6 +275,7 @@ class PR:
             if (
                 isinstance(e, BranchMerged)
                 and self.event.config.merge.delete_branch_on_merge
+                and not self.event.pull_request.isCrossRepository
             ):
                 await self.client.delete_branch(
                     branch=self.event.pull_request.headRefName
@@ -298,12 +299,6 @@ class PR:
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            if self.event.pull_request.isCrossRepository:
-                await self.set_status(
-                    summary='🚨 forks cannot be updated via the github api. Click "Details" for more info',
-                    markdown_content=messages.FORKS_CANNOT_BE_UPDATED,
-                )
-                return MergeabilityResponse.NOT_MERGEABLE, self.event
             if merging:
                 await self.set_status(
                     summary="⛴ attempting to merge PR", detail="updating branch"
@@ -316,9 +311,7 @@ class PR:
         if event is None:
             self.log.warning("problem")
             return False
-        res = await self.client.merge_branch(
-            head=event.pull_request.baseRefName, base=event.pull_request.headRefName
-        )
+        res = await self.client.update_branch(pull_number=event.pull_request.number)
         if res.status_code > 300:
             self.log.error("could not update branch", res=res, res_json=res.json())
             return False

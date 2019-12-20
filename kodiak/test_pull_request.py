@@ -5,7 +5,7 @@ from pytest_mock import MockFixture
 from requests_async import Response
 from starlette.testclient import TestClient
 
-from kodiak import messages, queries
+from kodiak import queries
 from kodiak.config import (
     V1,
     Merge,
@@ -117,9 +117,7 @@ async def test_cross_repo_missing_head(
     await pr.mergeability()
 
     assert set_status.call_count == 1
-    set_status.assert_called_with(
-        summary=mocker.ANY, markdown_content=messages.FORKS_CANNOT_BE_UPDATED
-    )
+    assert False
 
 
 def test_pr(api_client: queries.Client) -> None:
