@@ -429,7 +429,7 @@ create_mock_pr() {
   git checkout master
 }
 ```
-### Integration testing a with docker
+### Integration testing with docker
 The following steps will set your test-app up with little effort:
 
 * Copy the private key that you generated on github for the app to your repository root and name it ```kodiaktest.private-key.pem```,
