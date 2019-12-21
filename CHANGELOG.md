@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.11.0 - 2019-12-20
+
+### Added
+- updating of PRs made from forks. The merges API endpoint Kodiak had been using for updating branches didn't work across forks due to GitHub permissions. A [new API endpoint][update-branch-blog] was released in late May 2019 that avoided any permission issue, but wasn't noticed until 2019-12-12 🤦‍♀️. This change should make Kodiak more useful for public projects.
+
+[update-branch-blog]: https://developer.github.com/changes/2019-05-29-update-branch-api/
+
 ## 0.10.0 - 2019-12-04
 
 ### Added
