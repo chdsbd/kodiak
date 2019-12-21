@@ -5,7 +5,7 @@ from pytest_mock import MockFixture
 from requests_async import Response
 from starlette.testclient import TestClient
 
-from kodiak import messages, queries
+from kodiak import queries
 from kodiak.config import (
     V1,
     Merge,
@@ -21,7 +21,6 @@ from kodiak.pull_request import (
     get_merge_body,
     strip_html_comments_from_markdown,
 )
-from kodiak.queries import MergeStateStatus
 from kodiak.test_utils import wrap_future
 
 
@@ -89,24 +88,26 @@ async def test_deleting_branch_after_merge(
 
 
 @pytest.mark.asyncio
-async def test_cross_repo_missing_head(
+async def test_deleting_branch_not_called_for_fork(
     event_response: queries.EventInfoResponse, mocker: MockFixture
 ) -> None:
     """
-    if a repository is from a fork (isCrossRepository), we will not be able to
-    see head information due to a problem with the v4 api failing to return head
-    information for forks, unlike the v3 api.
+    we cannot delete branches of forks so we should not hit the delete_branch query.
     """
 
-    event_response.head_exists = False
+    event_response.pull_request.state = queries.PullRequestState.MERGED
     event_response.pull_request.isCrossRepository = True
-    assert event_response.pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     event_response.pull_request.labels = ["automerge"]
-    assert event_response.branch_protection is not None
-    event_response.branch_protection.requiresApprovingReviews = False
-    event_response.branch_protection.requiresStrictStatusChecks = True
+    assert isinstance(event_response.config, V1)
+    event_response.config.merge.delete_branch_on_merge = True
+
     mocker.patch.object(PR, "get_event", return_value=wrap_future(event_response))
-    set_status = mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
+    mocker.patch.object(PR, "set_status", return_value=wrap_future(None))
+
+    delete_branch = mocker.patch.object(
+        queries.Client, "delete_branch", return_value=wrap_future(True)
+    )
+
     pr = PR(
         number=123,
         owner="tester",
@@ -114,12 +115,10 @@ async def test_cross_repo_missing_head(
         installation_id="abc",
         client=queries.Client(owner="tester", repo="repo", installation_id="abc"),
     )
+
     await pr.mergeability()
 
-    assert set_status.call_count == 1
-    set_status.assert_called_with(
-        summary=mocker.ANY, markdown_content=messages.FORKS_CANNOT_BE_UPDATED
-    )
+    assert delete_branch.called is False
 
 
 def test_pr(api_client: queries.Client) -> None:
@@ -321,7 +320,8 @@ async def test_pr_update_ok(
     res = Response()
     res.status_code = 200
     mocker.patch(
-        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+        "kodiak.pull_request.queries.Client.update_branch",
+        return_value=wrap_future(res),
     )
 
     res = await pr.update()
@@ -340,7 +340,8 @@ async def test_pr_update_bad_merge(
     res.status_code = 409
     res._content = b"{}"
     mocker.patch(
-        "kodiak.pull_request.queries.Client.merge_branch", return_value=wrap_future(res)
+        "kodiak.pull_request.queries.Client.update_branch",
+        return_value=wrap_future(res),
     )
 
     res = await pr.update()

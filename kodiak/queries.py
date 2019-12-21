@@ -758,12 +758,11 @@ class Client:
             return False
         return True
 
-    async def merge_branch(self, head: str, base: str) -> http.Response:
+    async def update_branch(self, *, pull_number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
-            return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
-                json=dict(head=head, base=base),
+            return await self.session.put(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch",
                 headers=headers,
             )
 
@@ -845,5 +844,5 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
     token = await get_token_for_install(installation_id=installation_id)
     return dict(
         Authorization=f"token {token}",
-        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
     )
