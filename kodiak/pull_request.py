@@ -1,3 +1,4 @@
+import asyncio
 import textwrap
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -6,22 +7,13 @@ from typing import List, Optional, Tuple, cast
 
 import structlog
 from markdown_html_finder import find_html_positions
+from typing_extensions import Literal
 
 import kodiak.app_config as conf
 from kodiak import queries
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeTitleStyle
 from kodiak.config_utils import get_markdown_for_config
-from kodiak.errors import (
-    BranchMerged,
-    MergeBlocked,
-    MergeConflict,
-    MissingAppID,
-    MissingGithubMergeabilityState,
-    MissingSkippableChecks,
-    NeedsBranchUpdate,
-    NotQueueable,
-    WaitingForChecks,
-)
+from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.evaluation import mergeable
 from kodiak.queries import EventInfoResponse, PullRequest, get_headers
 
@@ -132,6 +124,10 @@ def create_git_revision_expression(branch: str, file_path: str) -> str:
     return f"{branch}:{file_path}"
 
 
+RETRY_RATE_SECONDS = 2
+POLL_RATE_SECONDS = 3
+
+
 @dataclass(init=False, repr=False, eq=False)
 class PR:
     number: int
@@ -216,94 +212,72 @@ class PR:
         )
 
     # TODO(chdsbd): Move set_status updates out of this method
-    async def mergeability(
-        self, merging: bool = False
-    ) -> Tuple[MergeabilityResponse, Optional[EventInfoResponse]]:
+    async def evaluate_mergeability(self, merging: bool = False) -> None:
         self.log.info("get_event")
         self.event = await self.get_event()
         if self.event is None:
             self.log.info("no event")
-            return MergeabilityResponse.NOT_MERGEABLE, None
-        # PRs from forks will always appear deleted because GitHub app
-        # permissions limit our access to the current installation.
-        if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
-            self.log.info("branch deleted")
-            return MergeabilityResponse.NOT_MERGEABLE, None
-        if not isinstance(self.event.config, V1):
+            return
+        self.log.info("check mergeable")
 
-            await self.set_status(
-                "🚨 Invalid configuration",
-                detail='Click "Details" for more info.',
-                markdown_content=get_markdown_for_config(
-                    self.event.config,
-                    self.event.config_str,
-                    self.event.config_file_expression,
-                ),
-            )
-            return MergeabilityResponse.NOT_MERGEABLE, None
-        try:
-            self.log.info("check mergeable")
-            mergeable(
-                config=self.event.config,
-                app_id=conf.GITHUB_APP_ID,
-                pull_request=self.event.pull_request,
-                branch_protection=self.event.branch_protection,
-                review_requests=self.event.review_requests,
-                reviews=self.event.reviews,
-                contexts=self.event.status_contexts,
-                check_runs=self.event.check_runs,
-                valid_signature=self.event.valid_signature,
-                valid_merge_methods=self.event.valid_merge_methods,
-            )
-            self.log.info("okay")
-            return MergeabilityResponse.OK, self.event
-        except MissingSkippableChecks as e:
-            self.log.info("skippable checks", checks=e.checks)
-            await self.set_status(
-                summary="🛑 not waiting for dont_wait_on_status_checks",
-                detail=repr(e.checks),
-            )
-            return MergeabilityResponse.SKIPPABLE_CHECKS, self.event
-        except (NotQueueable, MergeConflict, BranchMerged) as e:
-            self.log.info("not queueable, mergeconflict, or branch merged")
-            if (
-                isinstance(e, MergeConflict)
-                and self.event.config.merge.notify_on_conflict
-            ):
-                await self.notify_pr_creator()
+        class API:
+            def dequeue(self) -> None:
+                print("dequeue")
 
-            if (
-                isinstance(e, BranchMerged)
-                and self.event.config.merge.delete_branch_on_merge
-                and not self.event.pull_request.isCrossRepository
-            ):
-                await self.client.delete_branch(
-                    branch=self.event.pull_request.headRefName
-                )
+            def set_status(
+                self,
+                msg: str,
+                *,
+                kind: Optional[
+                    Literal["cfg_err", "blocked", "loading", "updating"]
+                ] = None,
+            ) -> None:
+                print("set_status", msg, kind)
 
-            await self.set_status(summary="🛑 cannot merge", detail=str(e))
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
-        except MergeBlocked as e:
-            await self.set_status(summary=f"🛑 {e}")
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
-        except MissingAppID:
-            return MergeabilityResponse.NOT_MERGEABLE, self.event
-        except MissingGithubMergeabilityState:
-            self.log.info("missing mergeability state, need refresh")
-            return MergeabilityResponse.NEED_REFRESH, self.event
-        except WaitingForChecks as e:
-            if merging:
-                await self.set_status(
-                    summary="⛴ attempting to merge PR",
-                    detail=f"waiting for checks: {e.checks!r}",
+            def delete_branch(self) -> None:
+                print("delete_branch")
+
+            def remove_automerge_label(self) -> None:
+                print("remove_automerge_label")
+
+            def notify_merge_conflict(self) -> None:
+                print("notify_merge_conflict")
+
+            def trigger_test_commit(self) -> None:
+                print("trigger_test_commit")
+
+            def merge(self) -> None:
+                print("merge")
+
+            def update_branch(self) -> None:
+                print("update_branch")
+
+        skippable_check_timeout = 4
+        while True:
+            try:
+                mergeable(
+                    api=API(),
+                    config=self.event.config,
+                    app_id=conf.GITHUB_APP_ID,
+                    pull_request=self.event.pull_request,
+                    branch_protection=self.event.branch_protection,
+                    review_requests=self.event.review_requests,
+                    reviews=self.event.reviews,
+                    contexts=self.event.status_contexts,
+                    check_runs=self.event.check_runs,
+                    valid_signature=self.event.valid_signature,
+                    valid_merge_methods=self.event.valid_merge_methods,
+                    merging=merging,
                 )
-            return MergeabilityResponse.WAIT, self.event
-        except NeedsBranchUpdate:
-            if merging:
-                await self.set_status(
-                    summary="⛴ attempting to merge PR", detail="updating branch"
-                )
-            return MergeabilityResponse.NEEDS_UPDATE, self.event
+            except RetryForSkippableChecks:
+                if skippable_check_timeout:
+                    skippable_check_timeout -= 1
+                    await asyncio.sleep(RETRY_RATE_SECONDS)
+                    continue
+            except PollForever:
+                await asyncio.sleep(POLL_RATE_SECONDS)
+                continue
+            break
 
     async def update(self) -> bool:
         self.log.info("update")

@@ -1,22 +1,16 @@
 import re
 from collections import defaultdict
-from typing import List, MutableMapping, Optional, Set
+from dataclasses import dataclass
+from typing import List, MutableMapping, Optional, Set, Union
 
+import pydantic
 import structlog
+import toml
+from typing_extensions import Literal, Protocol
 
 from kodiak import config
-from kodiak.config import MergeMethod
-from kodiak.errors import (
-    BranchMerged,
-    MergeBlocked,
-    MergeConflict,
-    MissingAppID,
-    MissingGithubMergeabilityState,
-    MissingSkippableChecks,
-    NeedsBranchUpdate,
-    NotQueueable,
-    WaitingForChecks,
-)
+from kodiak.config import V1, MergeMethod
+from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -63,8 +57,104 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
     return status
 
 
+@dataclass
+class SetStatus:
+    message: str
+
+
+class Dequeue:
+    pass
+
+
+class Merge:
+    pass
+
+
+class Poll:
+    pass
+
+
+class UpdateBranch:
+    pass
+
+
+class Retry:
+    pass
+
+
+class DeleteBranch:
+    pass
+
+
+class RemoveAutoMergeLabel:
+    pass
+
+
+class AddMergeConflictComment:
+    pass
+
+
+class TriggerTestCommit:
+    pass
+
+
+def fmt_blocked(message: str) -> str:
+    return f"🛑 cannot merge ({message})"
+
+
+def fmt_cfg_err(message: str) -> str:
+    return f"⚠️ config error ({message})"
+
+
+class PRAPI(Protocol):
+    def dequeue(self) -> None:
+        ...
+
+    def set_status(
+        self,
+        msg: str,
+        *,
+        kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
+    ) -> None:
+        ...
+
+    def delete_branch(self) -> None:
+        ...
+
+    def remove_automerge_label(self) -> None:
+        ...
+
+    def notify_merge_conflict(self) -> None:
+        ...
+
+    def trigger_test_commit(self) -> None:
+        ...
+
+    def merge(self) -> None:
+        ...
+
+    def update_branch(self) -> None:
+        ...
+
+
+def cfg_err(api: PRAPI, msg: str) -> None:
+    api.dequeue()
+    api.set_status(msg, kind="cfg_err")
+
+
+def block_merge(api: PRAPI, msg: str) -> None:
+    api.dequeue()
+    api.set_status(msg, kind="blocked")
+
+
+def update_branch(api: PRAPI) -> None:
+    api.update_branch()
+    api.set_status("updating branch", kind="updating")
+
+
 def mergeable(
-    config: config.V1,
+    api: PRAPI,
+    config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
@@ -73,6 +163,7 @@ def mergeable(
     check_runs: List[CheckRun],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
+    merging: bool,
     app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
@@ -86,61 +177,91 @@ def mergeable(
         valid_merge_methods=valid_merge_methods,
     )
 
+    if not isinstance(config, V1):
+        log.warning("problem fetching config")
+        return
+
     # if we have an app_id in the config then we only want to work on this repo
     # if our app_id from the environment matches the configuration.
     if config.app_id is not None and config.app_id != app_id:
-        raise MissingAppID("missing required app_id")
+        log.info("missing required app_id")
+        api.dequeue()
+        return
 
     if branch_protection is None:
-        raise NotQueueable(
-            f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
+        cfg_err(
+            api, f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
         )
+        return
     if branch_protection.requiresCommitSignatures:
-        raise NotQueueable(
-            '"Require signed commits" branch protection is not supported. See Kodiak README for more info.'
+        cfg_err(
+            api,
+            '"Require signed commits" branch protection is not supported. See Kodiak README for more info.',
         )
+        return
 
     if (
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
     ):
-        raise NotQueueable(f"missing automerge_label: {config.merge.automerge_label!r}")
+        block_merge(api, f"missing automerge_label: {config.merge.automerge_label!r}")
+        return
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
-        log.info("missing required blacklist labels")
-        raise NotQueueable(f"has blacklist_labels: {blacklist_labels!r}")
+        block_merge(api, f"has blacklist_labels: {blacklist_labels!r}")
+        return
 
     if (
         config.merge.blacklist_title_regex
         and re.search(config.merge.blacklist_title_regex, pull_request.title)
         is not None
     ):
-        raise NotQueueable(
-            f"title matches blacklist_title_regex: {config.merge.blacklist_title_regex!r}"
+        block_merge(
+            api,
+            f"title matches blacklist_title_regex: {config.merge.blacklist_title_regex!r}",
         )
+        return
 
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
-        raise NotQueueable("pull request is in draft state")
+        block_merge(api, "pull request is in draft state")
+        return
 
     if config.merge.method not in valid_merge_methods:
         valid_merge_methods_str = [method.value for method in valid_merge_methods]
-        raise NotQueueable(
-            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}"
+        cfg_err(
+            api,
+            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
         )
+        return
 
     if config.merge.block_on_reviews_requested and review_requests:
         names = [r.name for r in review_requests]
-        raise NotQueueable(f"reviews requested: {names!r}")
+        block_merge(api, f"reviews requested: {names!r}")
+        return
 
     if pull_request.state == PullRequestState.MERGED:
-        raise BranchMerged()
+        log.info(
+            "pull request merged. config.merge.delete_branch_on_merge=%r",
+            config.merge.delete_branch_on_merge,
+        )
+        api.dequeue()
+        if config.merge.delete_branch_on_merge:
+            api.delete_branch()
+        return
+
     if pull_request.state == PullRequestState.CLOSED:
-        raise NotQueueable("closed")
+        api.dequeue()
+        return
     if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
         or pull_request.mergeable == MergeableState.CONFLICTING
     ):
-        raise MergeConflict()
+        block_merge(api, "merge conflict")
+        # remove label if configured and send message
+        if config.merge.notify_on_conflict:
+            api.remove_automerge_label()
+            api.notify_merge_conflict()
+        return
 
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
         # TODO: This status means that the pr is mergeable but has failing
@@ -150,7 +271,8 @@ def mergeable(
     if pull_request.mergeable == MergeableState.UNKNOWN:
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
-        raise MissingGithubMergeabilityState("missing mergeablity state")
+        api.trigger_test_commit()
+        return
 
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,
@@ -182,19 +304,22 @@ def mergeable(
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    raise NotQueueable(f"changes requested by {author_name!r}")
+                    block_merge(api, f"changes requested by {author_name!r}")
+                    return
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                raise NotQueueable(
-                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}"
+                block_merge(
+                    api,
+                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}",
                 )
+                return
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
-            raise NotQueueable("missing required signature")
-
+            block_merge(api, "missing required signature")
+            return
         required: Set[str] = set()
         passing: Set[str] = set()
         if branch_protection.requiresStatusChecks:
@@ -263,12 +388,20 @@ def mergeable(
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-
-                raise NotQueueable(
-                    f"failing required status checks: {failing_required_status_checks!r}"
+                block_merge(
+                    api,
+                    f"failing required status checks: {failing_required_status_checks!r}",
                 )
+                return
             if skippable_contexts:
-                raise MissingSkippableChecks(skippable_contexts)
+                # TODO: How do we wait for skippable checks when merging but not when updating?
+                if merging:
+                    # TODO: retry for a couple times unless we get something useful
+                    raise RetryForSkippableChecks
+                api.set_status(
+                    f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
+                )
+                return
             passing = set(passing_contexts)
 
         need_branch_update = (
@@ -283,18 +416,36 @@ def mergeable(
         # prioritize branch updates over waiting for status checks to complete
         if config.merge.optimistic_updates:
             if need_branch_update:
-                raise NeedsBranchUpdate("behind branch. need update")
+                update_branch(api)
+                return
             if wait_for_checks:
-                raise WaitingForChecks(missing_required_status_checks)
+                if merging:
+                    # TODO: poll
+                    api.set_status(
+                        "waiting for required status checks: {missing_required_status_checks!r}",
+                        kind="loading",
+                    )
+                    raise PollForever
+                return
         # almost the same as the pervious case, but we prioritize status checks
         # over branch updates.
         else:
             if wait_for_checks:
-                raise WaitingForChecks(missing_required_status_checks)
+                if merging:
+                    # TODO: poll
+                    api.set_status(
+                        "waiting for required status checks: {missing_required_status_checks!r}",
+                        kind="loading",
+                    )
+                    return
+                return
             if need_branch_update:
-                raise NeedsBranchUpdate("behind branch. need update")
+                update_branch(api)
+                return
 
-        raise MergeBlocked("Merging blocked by GitHub requirements")
+        block_merge(api, "Merging blocked by GitHub requirements")
+        return
 
     # okay to merge
-    return None
+    api.merge()
+    return
