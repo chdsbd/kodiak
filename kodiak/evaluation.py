@@ -155,56 +155,6 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
             status = review.state
     return status
 
-
-@dataclass
-class SetStatus:
-    message: str
-
-
-class Dequeue:
-    pass
-
-
-class Merge:
-    pass
-
-
-class Poll:
-    pass
-
-
-class UpdateBranch:
-    pass
-
-
-class Retry:
-    pass
-
-
-class DeleteBranch:
-    pass
-
-
-class RemoveAutoMergeLabel:
-    pass
-
-
-class AddMergeConflictComment:
-    pass
-
-
-class TriggerTestCommit:
-    pass
-
-
-def fmt_blocked(message: str) -> str:
-    return f"🛑 cannot merge ({message})"
-
-
-def fmt_cfg_err(message: str) -> str:
-    return f"⚠️ config error ({message})"
-
-
 class PRAPI(Protocol):
     async def dequeue(self) -> None:
         ...
