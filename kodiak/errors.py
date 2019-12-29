@@ -4,3 +4,7 @@ class RetryForSkippableChecks(Exception):
 
 class PollForever(Exception):
     pass
+
+
+class ApiCallException(Exception):
+    pass

@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import kodiak.app_config as conf
 from kodiak.config import V1
-from kodiak.pull_request import PR, EventInfoResponse, MergeabilityResponse
+from kodiak.pull_request import evaluate_pr, get_pr
 from kodiak.queries import Client
 
 logger = structlog.get_logger()
@@ -51,19 +51,20 @@ async def process_webhook_event(
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
-    async with Client(
+
+    async def dequeue() -> None:
+        await connection.zrem(
+            webhook_event.get_merge_queue_name(), [webhook_event.json()]
+        )
+
+    await evaluate_pr(
+        install=webhook_event.installation_id,
         owner=webhook_event.repo_owner,
         repo=webhook_event.repo_name,
-        installation_id=webhook_event.installation_id,
-    ) as api_client:
-        pull_request = PR(
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
-            installation_id=webhook_event.installation_id,
-            client=api_client,
-        )
-        await pull_request.evaluate_mergeability()
+        number=webhook_event.pull_request_number,
+        merging=False,
+        dequeue_callback=dequeue,
+    )
 
 
 async def webhook_event_consumer(
@@ -92,19 +93,20 @@ async def process_repo_queue(
     await connection.set(
         webhook_event.get_merge_target_queue_name(), webhook_event.json()
     )
-    async with Client(
+
+    async def dequeue() -> None:
+        await connection.zrem(
+            webhook_event.get_merge_queue_name(), [webhook_event.json()]
+        )
+
+    await evaluate_pr(
+        install=webhook_event.installation_id,
         owner=webhook_event.repo_owner,
         repo=webhook_event.repo_name,
-        installation_id=webhook_event.installation_id,
-    ) as api_client:
-        pull_request = PR(
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
-            installation_id=webhook_event.installation_id,
-            client=api_client,
-        )
-        await pull_request.evaluate_mergeability(merging=True)
+        number=webhook_event.pull_request_number,
+        dequeue_callback=dequeue,
+        merging=True,
+    )
 
 
 async def repo_queue_consumer(

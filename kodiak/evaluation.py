@@ -1,15 +1,18 @@
 import re
+import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, MutableMapping, Optional, Set, Union
+from html.parser import HTMLParser
+from typing import List, MutableMapping, Optional, Set, Tuple, Union
 
 import pydantic
 import structlog
 import toml
+from markdown_html_finder import find_html_positions
 from typing_extensions import Literal, Protocol
 
 from kodiak import config
-from kodiak.config import V1, MergeMethod
+from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.queries import (
     BranchProtectionRule,
@@ -29,6 +32,102 @@ from kodiak.queries import (
 )
 
 logger = structlog.get_logger()
+
+
+class CommentHTMLParser(HTMLParser):
+    # define this attribute to make mypy accept `self.offset`
+    offset: int
+
+    def __init__(self) -> None:
+        self.comments: List[Tuple[int, int]] = []
+        super().__init__()
+
+    def handle_comment(self, tag: str) -> None:
+        start_token_len = len("<!--")
+        end_token_len = len("-->")
+        tag_len = len(tag)
+        end = start_token_len + tag_len + end_token_len
+        self.comments.append((self.offset, end + self.offset))
+
+    def reset(self) -> None:
+        self.comments = []
+        super().reset()
+
+
+html_parser = CommentHTMLParser()
+
+
+def strip_html_comments_from_markdown(raw_message: str) -> str:
+    """
+    1. parse string into a markdown AST
+    2. find the HTML nodes
+    3. parse HTML nodes into HTML
+    4. find comments in HTML
+    5. slice out comments from original message
+    """
+    # NOTE(chdsbd): Remove carriage returns so find_html_positions can process
+    # html correctly. pulldown-cmark doesn't handle carriage returns well.
+    # remark-parse also doesn't handle carriage returns:
+    # https://github.com/remarkjs/remark/issues/195#issuecomment-230760892
+    message = raw_message.replace("\r", "")
+    html_node_positions = find_html_positions(message)
+    comment_locations = []
+    for html_start, html_end in html_node_positions:
+        html_text = message[html_start:html_end]
+        html_parser.feed(html_text)
+        for comment_start, comment_end in html_parser.comments:
+            comment_locations.append(
+                (html_start + comment_start, html_start + comment_end)
+            )
+        html_parser.reset()
+
+    new_message = message
+    for comment_start, comment_end in reversed(comment_locations):
+        new_message = new_message[:comment_start] + new_message[comment_end:]
+    return new_message
+
+
+def get_body_content(
+    body_type: BodyText, strip_html_comments: bool, pull_request: PullRequest
+) -> str:
+    if body_type == BodyText.markdown:
+        body = pull_request.body
+        if strip_html_comments:
+            return strip_html_comments_from_markdown(body)
+        return body
+    if body_type == BodyText.plain_text:
+        return pull_request.bodyText
+    if body_type == BodyText.html:
+        return pull_request.bodyHTML
+    raise Exception(f"Unknown body_type: {body_type}")
+
+
+EMPTY_STRING = ""
+
+
+@dataclass
+class MergeBody:
+    merge_method: str
+    commit_title: Optional[str] = None
+    commit_message: Optional[str] = None
+
+
+def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
+    merge_body = MergeBody(merge_method=config.merge.method.value)
+    if config.merge.message.body == MergeBodyStyle.pull_request_body:
+        body = get_body_content(
+            config.merge.message.body_type,
+            config.merge.message.strip_html_comments,
+            pull_request,
+        )
+        merge_body.commit_message = body
+    if config.merge.message.body == MergeBodyStyle.empty:
+        merge_body.commit_message = EMPTY_STRING
+    if config.merge.message.title == MergeTitleStyle.pull_request_title:
+        merge_body.commit_title = pull_request.title
+    if config.merge.message.include_pr_number and merge_body.commit_title is not None:
+        merge_body.commit_title += f" (#{pull_request.number})"
+    return merge_body
 
 
 async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
@@ -107,52 +206,61 @@ def fmt_cfg_err(message: str) -> str:
 
 
 class PRAPI(Protocol):
-    def dequeue(self) -> None:
+    async def dequeue(self) -> None:
         ...
 
-    def set_status(
+    async def set_status(
         self,
         msg: str,
         *,
+        latest_commit_sha: str,
         kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
+        markdown_content: Optional[str] = None,
     ) -> None:
         ...
 
-    def delete_branch(self) -> None:
+    async def delete_branch(self, branch_name: str) -> None:
         ...
 
-    def remove_automerge_label(self) -> None:
+    async def remove_label(self, label: str) -> None:
         ...
 
-    def notify_merge_conflict(self) -> None:
+    async def create_comment(self, body: str) -> None:
         ...
 
-    def trigger_test_commit(self) -> None:
+    async def trigger_test_commit(self) -> None:
         ...
 
-    def merge(self) -> None:
+    async def merge(
+        self,
+        merge_method: str,
+        commit_title: Optional[str],
+        commit_message: Optional[str],
+    ) -> None:
         ...
 
-    def update_branch(self) -> None:
+    async def update_branch(self) -> None:
         ...
 
 
-def cfg_err(api: PRAPI, msg: str) -> None:
-    api.dequeue()
-    api.set_status(msg, kind="cfg_err")
+async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
+    await api.dequeue()
+    await api.set_status(msg, kind="cfg_err", latest_commit_sha=pull_request.latest_sha)
 
 
-def block_merge(api: PRAPI, msg: str) -> None:
-    api.dequeue()
-    api.set_status(msg, kind="blocked")
+async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
+    await api.dequeue()
+    await api.set_status(msg, kind="blocked", latest_commit_sha=pull_request.latest_sha)
 
 
-def update_branch(api: PRAPI) -> None:
-    api.update_branch()
-    api.set_status("updating branch", kind="updating")
+async def update_branch(api: PRAPI, pull_request: PullRequest) -> None:
+    await api.update_branch()
+    await api.set_status(
+        "updating branch", kind="updating", latest_commit_sha=pull_request.latest_sha
+    )
 
 
-def mergeable(
+async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
     pull_request: PullRequest,
@@ -177,6 +285,12 @@ def mergeable(
         valid_merge_methods=valid_merge_methods,
     )
 
+    async def set_status(
+        msg: str,
+        kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
+    ) -> None:
+        await api.set_status(msg, latest_commit_sha=pull_request.latest_sha, kind=kind)
+
     if not isinstance(config, V1):
         log.warning("problem fetching config")
         return
@@ -185,17 +299,20 @@ def mergeable(
     # if our app_id from the environment matches the configuration.
     if config.app_id is not None and config.app_id != app_id:
         log.info("missing required app_id")
-        api.dequeue()
+        await api.dequeue()
         return
 
     if branch_protection is None:
         cfg_err(
-            api, f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
+            api,
+            pull_request,
+            f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
     if branch_protection.requiresCommitSignatures:
         cfg_err(
             api,
+            pull_request,
             '"Require signed commits" branch protection is not supported. See Kodiak README for more info.',
         )
         return
@@ -204,11 +321,17 @@ def mergeable(
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
     ):
-        block_merge(api, f"missing automerge_label: {config.merge.automerge_label!r}")
+        await block_merge(
+            api,
+            pull_request,
+            f"missing automerge_label: {config.merge.automerge_label!r}",
+        )
         return
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
-        block_merge(api, f"has blacklist_labels: {blacklist_labels!r}")
+        await block_merge(
+            api, pull_request, f"has blacklist_labels: {blacklist_labels!r}"
+        )
         return
 
     if (
@@ -216,27 +339,29 @@ def mergeable(
         and re.search(config.merge.blacklist_title_regex, pull_request.title)
         is not None
     ):
-        block_merge(
+        await block_merge(
             api,
+            pull_request,
             f"title matches blacklist_title_regex: {config.merge.blacklist_title_regex!r}",
         )
         return
 
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
-        block_merge(api, "pull request is in draft state")
+        await block_merge(api, pull_request, "pull request is in draft state")
         return
 
     if config.merge.method not in valid_merge_methods:
         valid_merge_methods_str = [method.value for method in valid_merge_methods]
         cfg_err(
             api,
+            pull_request,
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
         )
         return
 
     if config.merge.block_on_reviews_requested and review_requests:
         names = [r.name for r in review_requests]
-        block_merge(api, f"reviews requested: {names!r}")
+        await block_merge(api, pull_request, f"reviews requested: {names!r}")
         return
 
     if pull_request.state == PullRequestState.MERGED:
@@ -244,23 +369,29 @@ def mergeable(
             "pull request merged. config.merge.delete_branch_on_merge=%r",
             config.merge.delete_branch_on_merge,
         )
-        api.dequeue()
+        await api.dequeue()
         if config.merge.delete_branch_on_merge:
-            api.delete_branch()
+            await api.delete_branch(branch_name=pull_request.headRefName)
         return
 
     if pull_request.state == PullRequestState.CLOSED:
-        api.dequeue()
+        await api.dequeue()
         return
     if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
         or pull_request.mergeable == MergeableState.CONFLICTING
     ):
-        block_merge(api, "merge conflict")
+        await block_merge(api, pull_request, "merge conflict")
         # remove label if configured and send message
-        if config.merge.notify_on_conflict:
-            api.remove_automerge_label()
-            api.notify_merge_conflict()
+        if config.merge.notify_on_conflict and not config.merge.require_automerge_label:
+            automerge_label = config.merge.automerge_label
+            await api.remove_label(automerge_label)
+            body = textwrap.dedent(
+                f"""
+            This PR currently has a merge conflict. Please resolve this and then re-add the `{automerge_label}` label.
+            """
+            )
+            await api.create_comment(body)
         return
 
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
@@ -271,7 +402,7 @@ def mergeable(
     if pull_request.mergeable == MergeableState.UNKNOWN:
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
-        api.trigger_test_commit()
+        await api.trigger_test_commit()
         return
 
     if pull_request.mergeStateStatus in (
@@ -304,21 +435,24 @@ def mergeable(
                 review_state = review_status(review_list)
                 # blocking review
                 if review_state == PRReviewState.CHANGES_REQUESTED:
-                    block_merge(api, f"changes requested by {author_name!r}")
+                    await block_merge(
+                        api, pull_request, f"changes requested by {author_name!r}"
+                    )
                     return
                 # successful review
                 if review_state == PRReviewState.APPROVED:
                     successful_reviews += 1
             # missing required review count
             if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                block_merge(
+                await block_merge(
                     api,
+                    pull_request,
                     f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}",
                 )
                 return
 
         if branch_protection.requiresCommitSignatures and not valid_signature:
-            block_merge(api, "missing required signature")
+            await block_merge(api, pull_request, "missing required signature")
             return
         required: Set[str] = set()
         passing: Set[str] = set()
@@ -388,8 +522,9 @@ def mergeable(
                 # the merge queue. We may be able to bump it to the back of the
                 # queue, but it's easier just to remove it all together. There
                 # is a similar question for the review counting.
-                block_merge(
+                await block_merge(
                     api,
+                    pull_request,
                     f"failing required status checks: {failing_required_status_checks!r}",
                 )
                 return
@@ -398,7 +533,7 @@ def mergeable(
                 if merging:
                     # TODO: retry for a couple times unless we get something useful
                     raise RetryForSkippableChecks
-                api.set_status(
+                await set_status(
                     f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
                 )
                 return
@@ -416,12 +551,12 @@ def mergeable(
         # prioritize branch updates over waiting for status checks to complete
         if config.merge.optimistic_updates:
             if need_branch_update:
-                update_branch(api)
+                await update_branch(api, pull_request)
                 return
             if wait_for_checks:
                 if merging:
                     # TODO: poll
-                    api.set_status(
+                    await set_status(
                         "waiting for required status checks: {missing_required_status_checks!r}",
                         kind="loading",
                     )
@@ -433,19 +568,24 @@ def mergeable(
             if wait_for_checks:
                 if merging:
                     # TODO: poll
-                    api.set_status(
+                    await set_status(
                         "waiting for required status checks: {missing_required_status_checks!r}",
                         kind="loading",
                     )
                     return
                 return
             if need_branch_update:
-                update_branch(api)
+                await update_branch(api, pull_request)
                 return
 
-        block_merge(api, "Merging blocked by GitHub requirements")
+        await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
         return
 
     # okay to merge
-    api.merge()
+    merge_args = get_merge_body(config, pull_request)
+    await api.merge(
+        merge_method=merge_args.merge_method,
+        commit_title=merge_args.commit_title,
+        commit_message=merge_args.commit_message,
+    )
     return

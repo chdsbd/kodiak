@@ -522,6 +522,12 @@ def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
     return valid_merge_methods
 
 
+class MergeBody(TypedDict):
+    merge_method: str
+    commit_title: Optional[str]
+    commit_message: Optional[str]
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -775,7 +781,18 @@ class Client:
             return None
         return cast(dict, res.json())
 
-    async def merge_pull_request(self, number: int, body: dict) -> http.Response:
+    async def merge_pull_request(
+        self,
+        number: int,
+        merge_method: str,
+        commit_title: Optional[str],
+        commit_message: Optional[str],
+    ) -> http.Response:
+        body = dict(
+            merge_method=merge_method,
+            commit_title=commit_title,
+            commit_message=commit_message,
+        )
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
         async with self.throttler:
@@ -796,6 +813,23 @@ class Client:
         )
         async with self.throttler:
             return await self.session.post(url, headers=headers, json=body)
+
+    async def delete_label(self, label: str, pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.delete(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{label}",
+                headers=headers,
+            )
+
+    async def create_comment(self, body: str, pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments",
+                json=dict(body=body),
+                headers=headers,
+            )
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
