@@ -64,6 +64,7 @@ async def evaluate_pr(
     dequeue_callback: Callable[[], Awaitable],
 ) -> None:
     skippable_check_timeout = 4
+    api_call_retry_timeout = 5
     log = logger.bind(install=install, owner_repo=f"{owner}/{repo}", number=number)
     while True:
         pr = await get_pr(
@@ -99,7 +100,13 @@ async def evaluate_pr(
             await asyncio.sleep(POLL_RATE_SECONDS)
             continue
         except ApiCallException:
-            log.exception("problem contacting remote api")
+            # if we have some api exception, it's likely a temporary error that
+            # can be resolved by calling GitHub again.
+            if api_call_retry_timeout:
+                api_call_retry_timeout -= 1
+                log.exception("problem contacting remote api. retrying")
+                continue
+            log.exception("api_call_retry_timeout")
         break
 
 
