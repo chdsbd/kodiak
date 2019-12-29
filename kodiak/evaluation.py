@@ -283,7 +283,7 @@ async def mergeable(
             config.merge.delete_branch_on_merge,
         )
         await api.dequeue()
-        if config.merge.delete_branch_on_merge:
+        if config.merge.delete_branch_on_merge and not pull_request.isCrossRepository:
             await api.delete_branch(branch_name=pull_request.headRefName)
         return
 
