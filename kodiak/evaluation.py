@@ -461,37 +461,38 @@ async def mergeable(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
-        # TODO: Handle updating immediately
+        if config.merge.update_branch_immediately and need_branch_update:
+            await update_branch(api, pull_request)
+            return
 
-        # prioritize branch updates over waiting for status checks to complete
-        if config.merge.optimistic_updates:
-            if need_branch_update:
-                await update_branch(api, pull_request)
-                return
-            if wait_for_checks:
-                if merging:
-                    # TODO: poll
-                    await set_status(
-                        "waiting for required status checks: {missing_required_status_checks!r}",
-                        kind="loading",
-                    )
-                    raise PollForever
-                return
-        # almost the same as the pervious case, but we prioritize status checks
-        # over branch updates.
-        else:
-            if wait_for_checks:
-                if merging:
-                    # TODO: poll
-                    await set_status(
-                        "waiting for required status checks: {missing_required_status_checks!r}",
-                        kind="loading",
-                    )
+        if merging:
+            # prioritize branch updates over waiting for status checks to complete
+            if config.merge.optimistic_updates:
+                if need_branch_update:
+                    await update_branch(api, pull_request)
                     return
-                return
-            if need_branch_update:
-                await update_branch(api, pull_request)
-                return
+                if wait_for_checks:
+                    if merging:
+                        await set_status(
+                            "waiting for required status checks: {missing_required_status_checks!r}",
+                            kind="loading",
+                        )
+                        raise PollForever
+                    return
+            # almost the same as the pervious case, but we prioritize status checks
+            # over branch updates.
+            else:
+                if wait_for_checks:
+                    if merging:
+                        await set_status(
+                            "waiting for required status checks: {missing_required_status_checks!r}",
+                            kind="loading",
+                        )
+                        raise PollForever
+                    return
+                if need_branch_update:
+                    await update_branch(api, pull_request)
+                    return
 
         await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
         return
