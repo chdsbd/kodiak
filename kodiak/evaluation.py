@@ -445,6 +445,8 @@ async def mergeable(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
+        # TODO: Handle updating immediately
+
         # prioritize branch updates over waiting for status checks to complete
         if config.merge.optimistic_updates:
             if need_branch_update:
@@ -477,6 +479,8 @@ async def mergeable(
 
         await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
         return
+
+    # TODO: Merge immediately when configured otherwise enqueue for merge.
 
     # okay to merge
     merge_args = get_merge_body(config, pull_request)
