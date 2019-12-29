@@ -12,6 +12,7 @@ from typing_extensions import Literal, Protocol
 from kodiak import config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
+from kodiak.messages import get_markdown_for_config
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -160,6 +161,8 @@ async def update_branch(api: PRAPI, pull_request: PullRequest) -> None:
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
+    config_str: str,
+    config_path: str,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
@@ -185,11 +188,24 @@ async def mergeable(
     async def set_status(
         msg: str,
         kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
+        markdown_content: Optional[str] = None,
     ) -> None:
-        await api.set_status(msg, latest_commit_sha=pull_request.latest_sha, kind=kind)
+        await api.set_status(
+            msg,
+            latest_commit_sha=pull_request.latest_sha,
+            kind=kind,
+            markdown_content=markdown_content,
+        )
 
     if not isinstance(config, V1):
         log.warning("problem fetching config")
+        await set_status(
+            '⚠️ Invalid configuration (Click "Details" for more info.)',
+            markdown_content=get_markdown_for_config(
+                config, config_str=config_str, git_path=config_path
+            ),
+        )
+        await api.dequeue()
         return
 
     # if we have an app_id in the config then we only want to work on this repo
