@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import typing
+from typing import Optional
 
 import asyncio_redis
 import inflection
@@ -61,8 +62,8 @@ async def process_webhook_event(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
-    async def queue_for_merge() -> None:
-        await webhook_queue.enqueue_for_repo(event=webhook_event)
+    async def queue_for_merge() -> Optional[int]:
+        return await webhook_queue.enqueue_for_repo(event=webhook_event)
 
     await evaluate_pr(
         install=webhook_event.installation_id,
@@ -108,7 +109,7 @@ async def process_repo_queue(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
-    async def queue_for_merge() -> None:
+    async def queue_for_merge() -> Optional[int]:
         raise NotImplementedError
 
     await evaluate_pr(
@@ -140,6 +141,18 @@ async def repo_queue_consumer(
     log.info("start repo_consumer")
     while True:
         await process_repo_queue(log, connection, queue_name)
+
+
+T = typing.TypeVar("T")
+
+
+def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
+    count = 0
+    for item in x:
+        if item == v:
+            return count
+        count += 1
+    return None
 
 
 class RedisWebhookQueue:
@@ -214,13 +227,15 @@ class RedisWebhookQueue:
 
         self.start_webhook_worker(queue_name=queue_name)
 
-    async def enqueue_for_repo(self, *, event: WebhookEvent) -> typing.List[str]:
+    async def enqueue_for_repo(self, *, event: WebhookEvent) -> Optional[int]:
         """
         1. get the corresponding repo queue for event
         2. add key to MERGE_QUEUE_NAMES so on restart we can recreate the
         worker for the queue.
         3. add event
         4. start worker (will create new worker if one does not exist)
+        
+        returns position of event in queue
         """
         key = get_merge_queue_name(event)
         transaction = await self.connection.multi()
@@ -237,7 +252,7 @@ class RedisWebhookQueue:
         kvs = sorted(
             ((key, value) for key, value in dictionary.items()), key=lambda x: x[1]
         )
-        return [key for key, value in kvs]
+        return find_position((key for key, value in kvs), event.json())
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:

@@ -31,7 +31,7 @@ async def get_pr(
     repo: str,
     number: int,
     dequeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable],
+    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
 ) -> PRV2:
 
     async with Client(installation_id=install, owner=owner, repo=repo) as api_client:
@@ -64,7 +64,7 @@ async def evaluate_pr(
     number: int,
     merging: bool,
     dequeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable],
+    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
     is_active_merging: bool,
 ) -> None:
     skippable_check_timeout = 4
@@ -129,7 +129,7 @@ class PRV2:
         repo: str,
         number: int,
         dequeue_callback: Callable[[], Awaitable],
-        queue_for_merge_callback: Callable[[], Awaitable],
+        queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
     ):
         self.install = install
         self.owner = owner
@@ -202,8 +202,8 @@ class PRV2:
             if not res.ok:
                 raise ApiCallException
 
-    async def queue_for_merge(self) -> None:
-        ...
+    async def queue_for_merge(self) -> Optional[int]:
+        return await self.queue_for_merge_callback()
 
     async def remove_label(self, label: str) -> None:
         """

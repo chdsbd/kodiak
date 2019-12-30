@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, MutableMapping, Optional, Set, Tuple, Union
 
+import inflection
 import pydantic
 import structlog
 import toml
@@ -137,7 +138,7 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
-    async def queue_for_merge(self) -> None:
+    async def queue_for_merge(self) -> Optional[int]:
         ...
 
     async def update_branch(self) -> None:
@@ -522,5 +523,9 @@ async def mergeable(
             commit_message=merge_args.commit_message,
         )
     else:
-        await api.queue_for_merge()
+        position_in_queue = await api.queue_for_merge()
+        if position_in_queue is None:
+            return
+        ordinal_position = inflection.ordinalize(position_in_queue + 1)
+        set_status("📦 enqueued for merge (position={ordinal_position})")
     return
