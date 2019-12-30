@@ -228,14 +228,14 @@ async def mergeable(
         return
 
     if branch_protection is None:
-        cfg_err(
+        await cfg_err(
             api,
             pull_request,
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
     if branch_protection.requiresCommitSignatures:
-        cfg_err(
+        await cfg_err(
             api,
             pull_request,
             '"Require signed commits" branch protection is not supported. See Kodiak README for more info.',
@@ -277,7 +277,7 @@ async def mergeable(
 
     if config.merge.method not in valid_merge_methods:
         valid_merge_methods_str = [method.value for method in valid_merge_methods]
-        cfg_err(
+        await cfg_err(
             api,
             pull_request,
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",

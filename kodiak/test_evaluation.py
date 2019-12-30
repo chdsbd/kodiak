@@ -406,3 +406,81 @@ async def test_mergeable_different_app_id(
         app_id=our_fake_app_id,
     )
     assert api.not_called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_branch_protection(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    We should warn when we cannot retrieve branch protection settings.
+    """
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        #
+        branch_protection=None,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "config error" in api.set_status.calls[0]["msg"]
+
+
+@pytest.mark.asyncio
+async def test_mergeable_requires_commit_signatures(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    requiresCommitSignatures doesn't work with Kodiak.
+    """
+    branch_protection.requiresCommitSignatures = True
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert (
+        '"Require signed commits" branch protection is not supported'
+        in api.set_status.calls[0]["msg"]
+    )
+
