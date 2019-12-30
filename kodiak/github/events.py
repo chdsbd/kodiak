@@ -6,7 +6,6 @@ from enum import Enum
 from typing import Any, Dict, List, MutableMapping, Optional, Type
 
 import pydantic
-from pydantic import UrlStr
 from typing_extensions import Literal
 
 AnyDict = Dict[Any, Any]
@@ -20,7 +19,7 @@ def register(cls: Type["GithubEvent"]) -> Type["GithubEvent"]:
 
 
 class HookConfiguration(pydantic.BaseModel):
-    url: UrlStr
+    url: str
     content_type: str
     insecure_url: Optional[str]
 
@@ -71,7 +70,7 @@ class User(pydantic.BaseModel):
     login: str
     id: int
     node_id: str
-    url: UrlStr
+    url: str
     type: UserType
 
 
@@ -84,7 +83,7 @@ class Repo(pydantic.BaseModel):
     private: bool
     description: Optional[str]
     fork: bool
-    url: UrlStr
+    url: str
     created_at: datetime
     updated_at: datetime
     pushed_at: datetime
@@ -108,7 +107,7 @@ class PullRequestState(Enum):
 class Label(pydantic.BaseModel):
     id: int
     node_id: str
-    url: UrlStr
+    url: str
     name: str
     color: str
     default: bool = False
@@ -119,7 +118,7 @@ class Milestone(pydantic.BaseModel):
 
 
 class BasePullRequest(pydantic.BaseModel):
-    url: UrlStr
+    url: str
     id: int
     node_id: str
     number: int
@@ -255,7 +254,7 @@ class CheckRunConclusion(Enum):
 
 class CheckRunBranchRepo(pydantic.BaseModel):
     id: int
-    url: UrlStr
+    url: str
     name: str
 
 
@@ -266,7 +265,7 @@ class CheckRunBranch(pydantic.BaseModel):
 
 
 class CheckRunPR(pydantic.BaseModel):
-    url: UrlStr
+    url: str
     id: int
     number: int
     head: CheckRunBranch
@@ -277,7 +276,7 @@ class CheckRun(pydantic.BaseModel):
     id: int
     head_sha: str
     external_id: str
-    url: UrlStr
+    url: str
     status: CheckRunStatus
     name: str
     conclusion: Optional[CheckRunConclusion]
@@ -318,7 +317,7 @@ class Commiter(pydantic.BaseModel):
 
 class Tree(pydantic.BaseModel):
     sha: str
-    url: UrlStr
+    url: str
 
 
 class CommitDetails(pydantic.BaseModel):
@@ -326,14 +325,14 @@ class CommitDetails(pydantic.BaseModel):
     commiter: Commiter
     message: str
     tree: Tree
-    url: UrlStr
+    url: str
     comment_count: int
 
 
 class Commit(pydantic.BaseModel):
     sha: str
     node_id: str
-    url: UrlStr
+    url: str
     author: Optional[User]
     committer: Optional[User]
     parents: List[Tree]
@@ -361,7 +360,7 @@ class StatusEvent(GithubEvent):
     id: int
     sha: str
     name: str
-    target_url: Optional[UrlStr]
+    target_url: Optional[str]
     context: str
     description: Optional[str]
     state: StatusEventState
@@ -388,7 +387,7 @@ class PushEventCommit(pydantic.BaseModel):
     id: str
     tree_id: str
     timestamp: datetime
-    url: UrlStr
+    url: str
     distinct: bool
     message: str
     author: PushEventCommitter
@@ -412,7 +411,7 @@ class PushEvent(GithubEvent):
     deleted: bool
     forced: bool
     base_ref: Optional[str]
-    compare: UrlStr
+    compare: str
     commits: List[PushEventCommit]
     head_commit: Optional[PushEventCommit]
     repository: Repo
