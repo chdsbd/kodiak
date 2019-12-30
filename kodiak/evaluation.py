@@ -113,7 +113,6 @@ class PRAPI(Protocol):
         msg: str,
         *,
         latest_commit_sha: str,
-        kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
         markdown_content: Optional[str] = None,
     ) -> None:
         ...
@@ -147,19 +146,21 @@ class PRAPI(Protocol):
 
 async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.dequeue()
-    await api.set_status(msg, kind="cfg_err", latest_commit_sha=pull_request.latest_sha)
+    await api.set_status(
+        f"⚠️ config error ({msg})", latest_commit_sha=pull_request.latest_sha
+    )
 
 
 async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.dequeue()
-    await api.set_status(msg, kind="blocked", latest_commit_sha=pull_request.latest_sha)
+    await api.set_status(
+        f"🛑 cannot merge ({msg})", latest_commit_sha=pull_request.latest_sha
+    )
 
 
 async def update_branch(api: PRAPI, pull_request: PullRequest) -> None:
     await api.update_branch()
-    await api.set_status(
-        "updating branch", kind="updating", latest_commit_sha=pull_request.latest_sha
-    )
+    await api.set_status("🔄 updating branch", latest_commit_sha=pull_request.latest_sha)
 
 
 async def mergeable(
@@ -198,18 +199,13 @@ async def mergeable(
         assert not merging
         return
 
-    async def set_status(
-        msg: str,
-        kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
-        markdown_content: Optional[str] = None,
-    ) -> None:
+    async def set_status(msg: str, markdown_content: Optional[str] = None) -> None:
         # don't clobber statuses set via merge loop.
         if is_active_merge:
             return
         await api.set_status(
             msg,
             latest_commit_sha=pull_request.latest_sha,
-            kind=kind,
             markdown_content=markdown_content,
         )
 
@@ -490,8 +486,7 @@ async def mergeable(
                 if wait_for_checks:
                     if merging:
                         await set_status(
-                            "waiting for required status checks: {missing_required_status_checks!r}",
-                            kind="loading",
+                            f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
                         )
                         raise PollForever
                     return
@@ -501,8 +496,7 @@ async def mergeable(
                 if wait_for_checks:
                     if merging:
                         await set_status(
-                            "waiting for required status checks: {missing_required_status_checks!r}",
-                            kind="loading",
+                            f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
                         )
                         raise PollForever
                     return
@@ -527,5 +521,5 @@ async def mergeable(
         if position_in_queue is None:
             return
         ordinal_position = inflection.ordinalize(position_in_queue + 1)
-        set_status("📦 enqueued for merge (position={ordinal_position})")
+        set_status(f"📦 enqueued for merge (position={ordinal_position})")
     return

@@ -147,7 +147,6 @@ class PRV2:
         msg: str,
         *,
         latest_commit_sha: str,
-        kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
         markdown_content: Optional[str] = None,
     ) -> None:
         """
