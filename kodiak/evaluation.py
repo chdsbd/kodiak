@@ -521,5 +521,5 @@ async def mergeable(
         if position_in_queue is None:
             return
         ordinal_position = inflection.ordinalize(position_in_queue + 1)
-        set_status(f"📦 enqueued for merge (position={ordinal_position})")
+        await set_status(f"📦 enqueued for merge (position={ordinal_position})")
     return

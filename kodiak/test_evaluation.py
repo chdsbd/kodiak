@@ -1,5 +1,6 @@
+import inspect
 from datetime import datetime
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Tuple
 
 import pytest
 from toml import TomlDecodeError
@@ -24,17 +25,13 @@ from kodiak.queries import (
 
 
 class BaseMockFunc:
-    func: str
+    calls: List[Mapping[str, Any]]
 
-    def __init__(self, calls: Mapping[str, List[Mapping[str, Any]]]) -> None:
-        self._total_calls = calls
+    def __init__(self) -> None:
+        self.calls = []
 
     def log_call(self, args: dict) -> None:
-        self._total_calls[self.func].append(args)
-
-    @property
-    def calls(self) -> List[Mapping[str, Any]]:
-        return self._total_calls[self.func]
+        self.calls.append(args)
 
     @property
     def call_count(self) -> int:
@@ -42,15 +39,11 @@ class BaseMockFunc:
 
 
 class MockDequeue(BaseMockFunc):
-    func = "dequeue"
-
     async def __call__(self) -> None:
         self.log_call(dict())
 
 
 class MockSetStatus(BaseMockFunc):
-    func = "set_status"
-
     async def __call__(
         self,
         msg: str,
@@ -68,36 +61,26 @@ class MockSetStatus(BaseMockFunc):
 
 
 class MockDeleteBranch(BaseMockFunc):
-    func = "delete_branch"
-
     async def __call__(self, branch_name: str) -> None:
         self.log_call(dict(branch_name=branch_name))
 
 
 class MockRemoveLabel(BaseMockFunc):
-    func = "remove_label"
-
     async def __call__(self, label: str) -> None:
         self.log_call(dict(label=label))
 
 
 class MockCreateComment(BaseMockFunc):
-    func = "create_comment"
-
     async def __call__(self, body: str) -> None:
         self.log_call(dict(body=body))
 
 
 class MockTriggerTestCommit(BaseMockFunc):
-    func = "trigger_test_commit"
-
     async def __call__(self) -> None:
         self.log_call(dict())
 
 
 class MockMerge(BaseMockFunc):
-    func = "merge"
-
     async def __call__(
         self,
         merge_method: str,
@@ -114,34 +97,40 @@ class MockMerge(BaseMockFunc):
 
 
 class MockQueueForMerge(BaseMockFunc):
-    func = "queue_for_merge"
+    return_value: Optional[int] = None
 
-    async def __call__(self,) -> None:
+    async def __call__(self) -> Optional[int]:
         self.log_call(dict())
+        return self.return_value
 
 
 class MockUpdateBranch(BaseMockFunc):
-    func = "update_branch"
-
-    async def __call__(self,) -> None:
+    async def __call__(self) -> None:
         self.log_call(dict())
 
 
 class MockPrApi:
-    calls: Mapping[str, List[Mapping[str, Any]]] = dict()
+    def __init__(self) -> None:
+        self.dequeue = MockDequeue()
+        self.set_status = MockSetStatus()
+        self.delete_branch = MockDeleteBranch()
+        self.remove_label = MockRemoveLabel()
+        self.create_comment = MockCreateComment()
+        self.trigger_test_commit = MockTriggerTestCommit()
+        self.merge = MockMerge()
+        self.queue_for_merge = MockQueueForMerge()
+        self.update_branch = MockUpdateBranch()
+
+    @property
+    def api_methods(self) -> List[Tuple[str, BaseMockFunc]]:
+        return inspect.getmembers(self, lambda x: isinstance(x, BaseMockFunc))
+
+    @property
+    def calls(self) -> Mapping[str, List[Mapping[str, Any]]]:
+        return {name: obj.calls for name, obj in self.api_methods}
 
     def not_called(self) -> bool:
         return len(self.calls.keys()) == 0
-
-    dequeue = MockDequeue(calls)
-    set_status = MockSetStatus(calls)
-    delete_branch = MockDeleteBranch(calls)
-    remove_label = MockRemoveLabel(calls)
-    create_comment = MockCreateComment(calls)
-    trigger_test_commit = MockTriggerTestCommit(calls)
-    merge = MockMerge(calls)
-    queue_for_merge = MockQueueForMerge(calls)
-    update_branch = MockUpdateBranch(calls)
 
 
 @pytest.fixture
@@ -230,31 +219,47 @@ def test_config_fixtures_equal(config_str: str, config: V1) -> None:
     assert config == V1.parse_toml(config_str)
 
 
-def api_called(api: PRAPI) -> bool:
-    methods = (
-        "dequeue",
-        "set_status",
-        "delete_branch",
-        "remove_label",
-        "create_comment",
-        "trigger_test_commit",
-        "merge",
-        "queue_for_merge",
-        "update_branch",
+@pytest.mark.asyncio
+async def test_mergeable_passing(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    This is the happy case where we want to enqueue the PR for merge.
+    """
+    api.queue_for_merge.return_value = 3
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
     )
-    for method in methods:
-        if getattr(api, method).call_count > 0:
-            return True
-    return False
-
-
-def api_not_called(api: PRAPI) -> bool:
-    return not api_called(api)
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
 async def test_mergeable_abort_is_active_merge(
-    api: PRAPI,
+    api: MockPrApi,
     config: V1,
     config_str: str,
     config_path: str,
@@ -286,12 +291,12 @@ async def test_mergeable_abort_is_active_merge(
         #
         is_active_merge=True,
     )
-    assert api_not_called(api)
+    assert api.not_called
 
 
 @pytest.mark.asyncio
 async def test_mergeable_error_on_invalid_args(
-    api: PRAPI,
+    api: MockPrApi,
     config: V1,
     config_str: str,
     config_path: str,
@@ -322,14 +327,14 @@ async def test_mergeable_error_on_invalid_args(
             merging=True,
             is_active_merge=True,
         )
-    assert api_not_called(api)
+    assert api.not_called
     assert "merging" in str(e)
 
 
 @pytest.mark.asyncio
 async def test_mergeable_config_error_sets_warning(
     api: MockPrApi,
-    config: V1,
+    config_path: str,
     pull_request: PullRequest,
     branch_protection: BranchProtectionRule,
     review: PRReview,
@@ -363,3 +368,41 @@ async def test_mergeable_config_error_sets_warning(
     assert api.set_status.call_count == 1
     assert "Invalid configuration" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_mergeable_different_app_id(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If our app id doesn't match the one in the config, we shouldn't touch the repo.
+    """
+    config.app_id = "1234567"
+    our_fake_app_id = "909090"
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        #
+        app_id=our_fake_app_id,
+    )
+    assert api.not_called
