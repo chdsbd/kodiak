@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from typing import Awaitable, Callable, List, Optional, Tuple, cast
+from typing import Awaitable, Callable, Optional
 
 import structlog
-from typing_extensions import Literal
 
 import kodiak.app_config as conf
-from kodiak import queries
-from kodiak.config import V1
 from kodiak.errors import ApiCallException, PollForever, RetryForSkippableChecks
 from kodiak.evaluation import mergeable
 from kodiak.queries import Client, EventInfoResponse

@@ -2,13 +2,13 @@ import re
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, MutableMapping, Optional, Set, Tuple, Union
+from typing import List, MutableMapping, Optional, Set, Union
 
 import inflection
 import pydantic
 import structlog
 import toml
-from typing_extensions import Literal, Protocol
+from typing_extensions import Protocol
 
 from kodiak import config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle

@@ -3,9 +3,6 @@ from typing import List, Tuple
 
 from markdown_html_finder import find_html_positions
 
-from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
-from kodiak.queries import PullRequest
-
 
 class CommentHTMLParser(HTMLParser):
     # define this attribute to make mypy accept `self.offset`

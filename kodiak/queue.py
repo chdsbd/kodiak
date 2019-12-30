@@ -6,7 +6,6 @@ import typing
 from typing import Optional
 
 import asyncio_redis
-import inflection
 import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
@@ -14,9 +13,7 @@ from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
-from kodiak.config import V1
-from kodiak.pull_request import evaluate_pr, get_pr
-from kodiak.queries import Client
+from kodiak.pull_request import evaluate_pr
 
 logger = structlog.get_logger()
 
