@@ -137,6 +137,9 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
+    async def queue_for_merge(self) -> None:
+        ...
+
     async def update_branch(self) -> None:
         ...
 
@@ -509,13 +512,15 @@ async def mergeable(
         await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
         return
 
-    # TODO: Merge immediately when configured otherwise enqueue for merge.
+    # okay to merge if we reach this point.
 
-    # okay to merge
-    merge_args = get_merge_body(config, pull_request)
-    await api.merge(
-        merge_method=merge_args.merge_method,
-        commit_title=merge_args.commit_title,
-        commit_message=merge_args.commit_message,
-    )
+    if config.merge.prioritize_ready_to_merge or merging:
+        merge_args = get_merge_body(config, pull_request)
+        await api.merge(
+            merge_method=merge_args.merge_method,
+            commit_title=merge_args.commit_title,
+            commit_message=merge_args.commit_message,
+        )
+    else:
+        await api.queue_for_merge()
     return
