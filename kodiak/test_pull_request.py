@@ -14,12 +14,7 @@ from kodiak.config import (
     MergeTitleStyle,
 )
 from kodiak.errors import MissingSkippableChecks
-from kodiak.pull_request import (
-    PR,
-    MergeabilityResponse,
-    get_merge_body,
-    strip_html_comments_from_markdown,
-)
+from kodiak.pull_request import PR, MergeabilityResponse
 from kodiak.test_utils import wrap_future
 
 MERGEABLE_RESPONSES = (
@@ -135,37 +130,6 @@ def test_pr(api_client: queries.Client) -> None:
     assert a in deque([b])
 
 
-def test_pr_get_merge_body_full(pull_request: queries.PullRequest) -> None:
-    actual = get_merge_body(
-        V1(
-            version=1,
-            merge=Merge(
-                method=MergeMethod.squash,
-                message=MergeMessage(
-                    title=MergeTitleStyle.pull_request_title,
-                    body=MergeBodyStyle.pull_request_body,
-                    include_pr_number=True,
-                ),
-            ),
-        ),
-        pull_request,
-    )
-    expected = dict(
-        merge_method="squash",
-        commit_title=pull_request.title + f" (#{pull_request.number})",
-        commit_message=pull_request.body,
-    )
-    assert actual == expected
-
-
-def test_pr_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
-    actual = get_merge_body(
-        V1(version=1, merge=Merge(method=MergeMethod.squash)), pull_request
-    )
-    expected = dict(merge_method="squash")
-    assert actual == expected
-
-
 @pytest.mark.asyncio
 async def test_attempting_to_notify_pr_author_with_no_automerge_label(
     api_client: queries.Client,
@@ -196,109 +160,6 @@ async def test_attempting_to_notify_pr_author_with_no_automerge_label(
 
     assert await pr.notify_pr_creator() is False
     assert not create_comment.called
-
-
-@pytest.mark.parametrize(
-    "original,stripped",
-    [
-        ("hello <!-- testing -->world", "hello world"),
-        (
-            "hello <span>  <p>  <!-- testing --> hello</p></span>world",
-            "hello <span>  <p>   hello</p></span>world",
-        ),
-        (
-            "hello <span>  <p>  <!-- testing --> hello<!-- 123 --></p></span>world",
-            "hello <span>  <p>   hello</p></span>world",
-        ),
-        (
-            """\
-this is an example comment message with a comment from a PR template
-
-<!--
-- bullet one
-- bullet two
-- bullet three
-  + sub bullet one
-  + sub bullet two
--->
-""",
-            """\
-this is an example comment message with a comment from a PR template
-
-
-""",
-        ),
-    ],
-)
-def test_get_merge_body_strip_html_comments(
-    pull_request: queries.PullRequest, original: str, stripped: str
-) -> None:
-    pull_request.body = "hello <!-- testing -->world"
-    actual = get_merge_body(
-        V1(
-            version=1,
-            merge=Merge(
-                method=MergeMethod.squash,
-                message=MergeMessage(
-                    body=MergeBodyStyle.pull_request_body, strip_html_comments=True
-                ),
-            ),
-        ),
-        pull_request,
-    )
-    expected = dict(merge_method="squash", commit_message="hello world")
-    assert actual == expected
-
-
-def test_get_merge_body_empty(pull_request: queries.PullRequest) -> None:
-    pull_request.body = "hello world"
-    actual = get_merge_body(
-        V1(
-            version=1,
-            merge=Merge(
-                method=MergeMethod.squash,
-                message=MergeMessage(body=MergeBodyStyle.empty),
-            ),
-        ),
-        pull_request,
-    )
-    expected = dict(merge_method="squash", commit_message="")
-    assert actual == expected
-
-
-@pytest.mark.parametrize(
-    "original,stripped",
-    [
-        (
-            """\
-Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
-
-Totam dolor [exercitationem laborum](https://numquam.com)
-
-<!--
-- Voluptatem voluptas officiis
-- Voluptates nulla tempora
-- Officia distinctio ut ab
-  + Est ut voluptatum consequuntur recusandae aspernatur
-  + Quidem debitis atque dolorum est enim
--->
-""",
-            """\
-Non dolor velit vel quia mollitia. Placeat cumque a deleniti possimus.
-
-Totam dolor [exercitationem laborum](https://numquam.com)
-
-
-""",
-        ),
-        (
-            'Non dolor velit vel quia mollitia.\r\n\r\nVoluptates nulla tempora.\r\n\r\n<!--\r\n- Voluptatem voluptas officiis\r\n- Voluptates nulla tempora\r\n- Officia distinctio ut ab\r\n  + "Est ut voluptatum" consequuntur recusandae aspernatur\r\n  + Quidem debitis atque dolorum est enim\r\n-->',
-            "Non dolor velit vel quia mollitia.\n\nVoluptates nulla tempora.\n\n",
-        ),
-    ],
-)
-def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
-    assert strip_html_comments_from_markdown(original) == stripped
 
 
 @pytest.mark.asyncio
