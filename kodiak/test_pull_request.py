@@ -3,7 +3,6 @@ from typing import List
 import pytest
 from pytest_mock import MockFixture
 from requests_async import Response
-from starlette.testclient import TestClient
 
 from kodiak import queries
 from kodiak.config import (
@@ -22,13 +21,6 @@ from kodiak.pull_request import (
     strip_html_comments_from_markdown,
 )
 from kodiak.test_utils import wrap_future
-
-
-def test_read_main(client: TestClient) -> None:
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == "OK"
-
 
 MERGEABLE_RESPONSES = (
     MergeabilityResponse.OK,
