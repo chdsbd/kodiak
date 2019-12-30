@@ -176,7 +176,9 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
-            await api_client.update_branch(pull_number=self.number)
+            res = await api_client.update_branch(pull_number=self.number)
+            if not res.ok:
+                raise ApiCallException
 
     async def trigger_test_commit(self) -> None:
         async with Client(
