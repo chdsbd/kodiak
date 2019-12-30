@@ -62,6 +62,7 @@ async def evaluate_pr(
     number: int,
     merging: bool,
     dequeue_callback: Callable[[], Awaitable],
+    is_active_merging: bool,
 ) -> None:
     skippable_check_timeout = 4
     api_call_retry_timeout = 5
@@ -78,6 +79,8 @@ async def evaluate_pr(
             mergeable(
                 api=pr,
                 config=pr.event.config,
+                config_str=pr.event.config_str,
+                config_path=pr.event.config_file_expression,
                 app_id=conf.GITHUB_APP_ID,
                 pull_request=pr.event.pull_request,
                 branch_protection=pr.event.branch_protection,
@@ -88,6 +91,7 @@ async def evaluate_pr(
                 valid_signature=pr.event.valid_signature,
                 valid_merge_methods=pr.event.valid_merge_methods,
                 merging=merging,
+                is_active_merge=is_active_merging,
             )
         except RetryForSkippableChecks:
             if skippable_check_timeout:

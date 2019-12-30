@@ -172,6 +172,7 @@ async def mergeable(
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     merging: bool,
+    is_active_merge: bool,
     app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
@@ -185,11 +186,22 @@ async def mergeable(
         valid_merge_methods=valid_merge_methods,
     )
 
+    # we set is_active_merge when the PR is being merged from the merge queue.
+    # We don't want to clobber any statuses set by that system, so we take no
+    # action. If the PR becomes ineligible for merging that logic will handle
+    # it.
+    if is_active_merge:
+        assert not merging
+        return
+
     async def set_status(
         msg: str,
         kind: Optional[Literal["cfg_err", "blocked", "loading", "updating"]] = None,
         markdown_content: Optional[str] = None,
     ) -> None:
+        # don't clobber statuses set via merge loop.
+        if is_active_merge:
+            return
         await api.set_status(
             msg,
             latest_commit_sha=pull_request.latest_sha,

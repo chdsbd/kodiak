@@ -51,6 +51,10 @@ async def process_webhook_event(
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    is_active_merging = (
+        await connection.get(webhook_event.get_merge_target_queue_name())
+        == webhook_event.json()
+    )
 
     async def dequeue() -> None:
         await connection.zrem(
@@ -64,6 +68,7 @@ async def process_webhook_event(
         number=webhook_event.pull_request_number,
         merging=False,
         dequeue_callback=dequeue,
+        is_active_merging=is_active_merging,
     )
 
 
@@ -106,6 +111,7 @@ async def process_repo_queue(
         number=webhook_event.pull_request_number,
         dequeue_callback=dequeue,
         merging=True,
+        is_active_merging=False,
     )
 
 
