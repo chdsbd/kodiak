@@ -10,7 +10,6 @@ from starlette.testclient import TestClient
 from kodiak import queries
 from kodiak.config import V1
 from kodiak.main import app
-from kodiak.pull_request import PR
 from kodiak.queries import Client
 
 
@@ -164,14 +163,3 @@ def api_client(mocker: MockFixture) -> Client:
     client = Client(installation_id="foo", owner="foo", repo="foo")
     mocker.patch.object(client, "send_query")
     return client
-
-
-@pytest.fixture
-def pr() -> PR:
-    return PR(
-        number=123,
-        owner="tester",
-        repo="repo",
-        installation_id="abc",
-        client=Client(owner="tester", repo="repo", installation_id="abc"),
-    )
