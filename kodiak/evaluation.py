@@ -196,7 +196,7 @@ async def mergeable(
     # action. If the PR becomes ineligible for merging that logic will handle
     # it.
     if is_active_merge:
-        assert not merging
+        assert not merging, "cannot set is_active_merge and merging"
         return
 
     async def set_status(msg: str, markdown_content: Optional[str] = None) -> None:
