@@ -231,44 +231,6 @@ def test_config_fixtures_equal(config_str: str, config: V1) -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_passing(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
-    """
-    This is the happy case where we want to enqueue the PR for merge.
-    """
-    api.queue_for_merge.return_value = 3
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-    )
-    assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
-    assert api.queue_for_merge.call_count == 1
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
 async def test_mergeable_abort_is_active_merge(
     api: MockPrApi,
     config: V1,
@@ -2052,3 +2014,41 @@ async def test_mergeable_prioritize_ready_to_merge(
 
     # verify we haven't tried to merge the PR
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_passing(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    This is the happy case where we want to enqueue the PR for merge.
+    """
+    api.queue_for_merge.return_value = 3
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
