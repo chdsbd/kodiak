@@ -1,4 +1,4 @@
-import re
+import rure as re
 from collections import defaultdict
 from typing import List, MutableMapping, Optional, Set
 
