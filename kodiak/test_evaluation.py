@@ -973,3 +973,149 @@ async def test_mergeable_pull_request_closed(
     assert not api.update_branch.called
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+    config.merge.notify_on_conflict = False
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "merge conflict" in api.set_status.calls[0]["msg"]
+    assert api.remove_label.call_count == 0
+    assert api.create_comment.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+    config.merge.notify_on_conflict = True
+    config.merge.require_automerge_label = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "merge conflict" in api.set_status.calls[0]["msg"]
+    assert api.remove_label.call_count == 1
+    assert api.create_comment.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+    config.merge.notify_on_conflict = True
+    config.merge.require_automerge_label = False
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "merge conflict" in api.set_status.calls[0]["msg"]
+    assert api.remove_label.call_count == 0
+    assert api.create_comment.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
