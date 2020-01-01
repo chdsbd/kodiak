@@ -376,9 +376,6 @@ async def mergeable(
                 )
                 return
 
-        if branch_protection.requiresCommitSignatures and not valid_signature:
-            await block_merge(api, pull_request, "missing required signature")
-            return
         required: Set[str] = set()
         passing: Set[str] = set()
         if branch_protection.requiresStatusChecks:
