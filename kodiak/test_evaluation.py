@@ -1104,8 +1104,7 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR has a merge conflict we can't merge. If configured, we should leave
-    a comment and remove the automerge label.
+    if a PR has a merge conflict we can't merge. If require_automerge_label is set then we shouldn't notify even if notify_on_conflict is configured. This allows prevents infinite commenting.
     """
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
