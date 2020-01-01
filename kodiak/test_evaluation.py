@@ -1,10 +1,9 @@
-import inspect
+import logging
 from datetime import datetime, timedelta
 from typing import Any, List, Mapping, Optional, Tuple
 
 import pytest
 from toml import TomlDecodeError
-import logging
 
 from kodiak.config import V1, MergeMethod
 from kodiak.errors import PollForever, RetryForSkippableChecks
@@ -2638,6 +2637,7 @@ async def test_mergeable_do_not_merge(
     )
     assert api.called is False
 
+
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
     api: MockPrApi,
@@ -2673,6 +2673,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
         is_active_merge=False,
     )
     assert api.called is False
+
 
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update(
@@ -2712,6 +2713,6 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update
 
     assert api.update_branch.called is True
     assert api.set_status.called is True
-    assert "updating branch" in api.set_status.calls[0]['msg']
+    assert "updating branch" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
