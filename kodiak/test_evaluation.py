@@ -1816,7 +1816,6 @@ async def test_mergeable_optimistic_update_need_branch_update(
     # verify we haven't tried to merge the PR
     assert not api.merge.called
     assert not api.queue_for_merge.called
-    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -1921,7 +1920,6 @@ async def test_mergeable_optimistic_update_wait_for_checks(
     # verify we haven't tried to merge the PR
     assert not api.merge.called
     assert not api.queue_for_merge.called
-    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -1968,7 +1966,6 @@ async def test_mergeable_wait_for_checks(
     # verify we haven't tried to merge the PR
     assert not api.merge.called
     assert not api.queue_for_merge.called
-    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -2003,7 +2000,6 @@ async def test_mergeable_unknown_merge_blockage(
         valid_merge_methods=[MergeMethod.squash],
         merging=False,
         is_active_merge=False,
-        #
     )
 
     assert api.set_status.call_count == 1
