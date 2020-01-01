@@ -791,3 +791,143 @@ async def test_mergeable_block_on_reviews_requested(
     assert not api.update_branch.called
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merged_no_delete_branch(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+
+    Here we test with the delete_branch_on_merge config disabled.
+    """
+    pull_request.state = PullRequestState.MERGED
+    config.merge.delete_branch_on_merge = False
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
+    assert api.delete_branch.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merged_delete_branch(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+
+    Here we test with the delete_branch_on_merge config enabled.
+    """
+    pull_request.state = PullRequestState.MERGED
+    config.merge.delete_branch_on_merge = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
+    assert api.delete_branch.call_count == 1
+    assert api.delete_branch.calls[0]["branch_name"] == pull_request.headRefName
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+
+    Here we test with the delete_branch_on_merge config enabled, but we use a cross repository (fork) pull request, which we aren't able to delete. We shouldn't try to delete the branch.
+    """
+    pull_request.state = PullRequestState.MERGED
+    pull_request.isCrossRepository = True
+    config.merge.delete_branch_on_merge = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
+    assert api.delete_branch.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
