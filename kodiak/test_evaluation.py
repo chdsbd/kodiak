@@ -665,6 +665,48 @@ async def test_mergeable_blacklist_title_regex(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_blacklist_title_match_with_exp_regex(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Ensure Kodiak uses a linear time regex engine.
+
+    When using an exponential engine this test will timeout.
+    """
+    # a ReDos regex and accompanying string
+    # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    config.merge.blacklist_title_regex = "^(a+)+$"
+    pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    # we don't really care about the result for this so long as this test
+    # doesn't hang the entire suite.
+
+
+@pytest.mark.asyncio
 async def test_mergeable_draft_pull_request(
     api: MockPrApi,
     config: V1,

@@ -10,7 +10,7 @@ uvicorn = "^0.7.0"
 toml = "^0.10.0"
 requests-async = "^0.4.1"
 PyJWT = "^1.7"
-cryptography = "^2.6"
+cryptography = "2.8"
 structlog = "^19.1"
 colorama = "^0.4.1"
 ujson = "^1.35"
@@ -23,6 +23,7 @@ markupsafe = "^1.1"
 fastapi = "^0.33.0"
 sentry-sdk = "^0.10.2"
 requests = "^2.22"
+rure = "^0.2.2"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
