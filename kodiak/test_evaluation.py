@@ -16,6 +16,7 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewAuthor,
+    PRReviewRequest,
     PRReviewState,
     PullRequest,
     PullRequestState,
@@ -213,6 +214,11 @@ def context() -> StatusContext:
 @pytest.fixture
 def check_run() -> CheckRun:
     return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
+
+
+@pytest.fixture
+def review_request() -> PRReviewRequest:
+    return PRReviewRequest(name="ghost")
 
 
 def test_config_fixtures_equal(config_str: str, config: V1) -> None:
@@ -681,3 +687,43 @@ async def test_mergeable_invalid_merge_method(
     assert (
         "configured merge.method 'squash' is invalid" in api.set_status.calls[0]["msg"]
     )
+
+
+@pytest.mark.asyncio
+async def test_mergeable_block_on_reviews_requested(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    review_request: PRReviewRequest,
+) -> None:
+    """
+    block merge if reviews are requested and merge.block_on_reviews_requested is enabled.
+    """
+    config.merge.block_on_reviews_requested = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[review_request],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "reviews requested: ['ghost']" in api.set_status.calls[0]["msg"]
