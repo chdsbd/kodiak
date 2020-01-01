@@ -502,6 +502,7 @@ async def mergeable(
                     return
 
         await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
+        log.warning("merge blocked for unknown reason")
         return
 
     # okay to merge if we reach this point.
