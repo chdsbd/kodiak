@@ -6,6 +6,7 @@ import pytest
 from toml import TomlDecodeError
 
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import PollForever
 from kodiak.evaluation import PRAPI, mergeable
 from kodiak.queries import (
     BranchProtectionRule,
@@ -1461,6 +1462,112 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
     assert api.dequeue.call_count == 1
     assert (
         "failing required status checks: {'ci/test-api'}"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_travis_ci_checks(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,pull}" become "continuous-integration/travis-ci" in requiredStatusChecks.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
+    context.state = StatusState.FAILURE
+    context.context = "continuous-integration/travis-ci/pr"
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        #
+        check_runs=[],
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert (
+        "failing required status checks: {'continuous-integration/travis-ci/pr'}"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_travis_ci_checks_success(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If continuous-integration/travis-ci/pr passes we shouldn't say we're waiting for continuous-integration/travis-ci.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = [
+        "continuous-integration/travis-ci",
+        "ci/test-api",
+    ]
+    context.state = StatusState.SUCCESS
+    context.context = "continuous-integration/travis-ci/pr"
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            #
+            merging=True,
+            check_runs=[],
+        )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert (
+        "waiting for required status checks: {'ci/test-api'}"
         in api.set_status.calls[0]["msg"]
     )
 

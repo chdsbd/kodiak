@@ -422,6 +422,7 @@ async def mergeable(
                     CheckConclusionState.TIMED_OUT,
                 ):
                     failing_contexts.append(check_run.name)
+            passing = set(passing_contexts)
             failing = set(failing_contexts)
             # we have failing statuses that are required
             failing_required_status_checks = failing & required
@@ -439,6 +440,11 @@ async def mergeable(
                     failing_required_status_checks.add(
                         "continuous-integration/travis-ci/pull"
                     )
+                if (
+                    "continuous-integration/travis-ci/pr" in passing
+                    or "continuous-integration/travis-ci/pull" in passing
+                ):
+                    required.remove("continuous-integration/travis-ci")
             if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
@@ -459,7 +465,6 @@ async def mergeable(
                     f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
                 )
                 return
-            passing = set(passing_contexts)
 
         need_branch_update = (
             branch_protection.requiresStrictStatusChecks
