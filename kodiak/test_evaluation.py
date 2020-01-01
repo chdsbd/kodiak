@@ -1226,6 +1226,7 @@ async def test_mergeable_missing_required_approving_reviews(
     assert not api.merge.called
     assert not api.queue_for_merge.called
 
+
 @pytest.mark.asyncio
 async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms(
     api: MockPrApi,
@@ -1272,6 +1273,7 @@ async def test_mergeable_missing_required_approving_reviews_has_review_with_miss
     assert not api.merge.called
     assert not api.queue_for_merge.called
 
+
 @pytest.mark.asyncio
 async def test_mergeable_missing_required_approving_reviews_changes_requested(
     api: MockPrApi,
@@ -1317,6 +1319,7 @@ async def test_mergeable_missing_required_approving_reviews_changes_requested(
     assert not api.update_branch.called
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_missing_required_approving_reviews_missing_approving_review_count(
