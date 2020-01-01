@@ -509,7 +509,7 @@ async def test_mergeable_missing_automerge_label(
     """
     If we're missing an automerge label we should not merge the PR.
     """
-    assert config.merge.require_automerge_label
+    config.merge.require_automerge_label = True
     pull_request.labels = []
     await mergeable(
         api=api,
