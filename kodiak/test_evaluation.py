@@ -2017,6 +2017,87 @@ async def test_mergeable_prioritize_ready_to_merge(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_merge(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If we're merging we should call api.merge
+    """
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        is_active_merge=False,
+        #
+        merging=True,
+    )
+
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 1
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_queue_for_merge_no_position(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If we're attempting to merge from the frontend we should place the PR on the queue.
+    """
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_mergeable_passing(
     api: MockPrApi,
     config: V1,
