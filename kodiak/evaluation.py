@@ -460,7 +460,6 @@ async def mergeable(
                 )
                 return
             if skippable_contexts:
-                # TODO: How do we wait for skippable checks when merging but not when updating?
                 if merging:
                     # TODO: retry for a couple times unless we get something useful
                     raise RetryForSkippableChecks

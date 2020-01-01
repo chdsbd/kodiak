@@ -6,7 +6,7 @@ import pytest
 from toml import TomlDecodeError
 
 from kodiak.config import V1, MergeMethod
-from kodiak.errors import PollForever
+from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.evaluation import PRAPI, mergeable
 from kodiak.queries import (
     BranchProtectionRule,
@@ -1612,6 +1612,110 @@ async def test_mergeable_travis_ci_checks_success(
         "waiting for required status checks: {'ci/test-api'}"
         in api.set_status.calls[0]["msg"]
     )
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_skippable_contexts(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a skippable check hasn't finished, we shouldn't do anything.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
+    config.merge.dont_wait_on_status_checks = ["WIP"]
+    context.state = StatusState.PENDING
+    context.context = "WIP"
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert (
+        "not waiting for dont_wait_on_status_checks ['WIP']"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_skippable_contexts_merging_pull_request(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a skippable check hasn't finished but we're merging, we need to raise an exception to retry for a short period of time to allow the check to finish. We won't retry forever because skippable checks will likely never finish.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
+    config.merge.dont_wait_on_status_checks = ["WIP"]
+    context.state = StatusState.PENDING
+    context.context = "WIP"
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+
+    with pytest.raises(RetryForSkippableChecks):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            #
+            merging=True,
+        )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
 
     # verify we haven't tried to update/merge the PR
     assert not api.update_branch.called
