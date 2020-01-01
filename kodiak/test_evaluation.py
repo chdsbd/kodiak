@@ -38,6 +38,10 @@ class BaseMockFunc:
     def call_count(self) -> int:
         return len(self.calls)
 
+    @property
+    def called(self) -> bool:
+        return self.call_count > 0
+
 
 class MockDequeue(BaseMockFunc):
     async def __call__(self) -> None:
@@ -173,7 +177,7 @@ def pull_request() -> PullRequest:
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
-        isCrossRepository=True,
+        isCrossRepository=False,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
         baseRefName="master",
@@ -299,6 +303,11 @@ async def test_mergeable_abort_is_active_merge(
     )
     assert api.not_called
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_error_on_invalid_args(
@@ -335,6 +344,11 @@ async def test_mergeable_error_on_invalid_args(
         )
     assert api.not_called
     assert "merging" in str(e)
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -375,6 +389,11 @@ async def test_mergeable_config_error_sets_warning(
     assert "Invalid configuration" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_different_app_id(
@@ -413,6 +432,11 @@ async def test_mergeable_different_app_id(
     )
     assert api.not_called
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_missing_branch_protection(
@@ -449,6 +473,11 @@ async def test_mergeable_missing_branch_protection(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "config error" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -490,6 +519,11 @@ async def test_mergeable_requires_commit_signatures(
         in api.set_status.calls[0]["msg"]
     )
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_missing_automerge_label(
@@ -527,6 +561,11 @@ async def test_mergeable_missing_automerge_label(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -566,6 +605,11 @@ async def test_mergeable_has_blacklist_labels(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -607,6 +651,11 @@ async def test_mergeable_blacklist_title_regex(
     assert "cannot merge" in api.set_status.calls[0]["msg"]
     assert "matches blacklist_title_regex" in api.set_status.calls[0]["msg"]
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_draft_pull_request(
@@ -645,6 +694,11 @@ async def test_mergeable_draft_pull_request(
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
     assert "in draft state" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
 
 
 @pytest.mark.asyncio
@@ -688,6 +742,11 @@ async def test_mergeable_invalid_merge_method(
         "configured merge.method 'squash' is invalid" in api.set_status.calls[0]["msg"]
     )
 
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
 
 @pytest.mark.asyncio
 async def test_mergeable_block_on_reviews_requested(
@@ -727,3 +786,8 @@ async def test_mergeable_block_on_reviews_requested(
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
     assert "reviews requested: ['ghost']" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
