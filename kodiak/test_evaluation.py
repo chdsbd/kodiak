@@ -322,7 +322,10 @@ async def test_mergeable_error_on_invalid_args(
     check_run: CheckRun,
 ) -> None:
     """
-    We shouldn't be able to set merging=True and is_active_merge=True because merging indicates that this function is being called from the merge queue but is_active_merge indicates that the function is being called from the frontend.
+    We shouldn't be able to set merging=True and is_active_merge=True because
+    merging indicates that this function is being called from the merge queue
+    but is_active_merge indicates that the function is being called from the
+    frontend.
     """
     with pytest.raises(AssertionError) as e:
         await mergeable(
@@ -362,7 +365,8 @@ async def test_mergeable_config_error_sets_warning(
     check_run: CheckRun,
 ) -> None:
     """
-    If we have a problem finding or parsing a configuration error we should set a status and remove our item from the merge queue.
+    If we have a problem finding or parsing a configuration error we should set
+    a status and remove our item from the merge queue.
     """
     broken_config_str = "something[invalid["
     broken_config = V1.parse_toml(broken_config_str)
@@ -762,7 +766,8 @@ async def test_mergeable_block_on_reviews_requested(
     review_request: PRReviewRequest,
 ) -> None:
     """
-    block merge if reviews are requested and merge.block_on_reviews_requested is enabled.
+    block merge if reviews are requested and merge.block_on_reviews_requested is
+    enabled.
     """
     config.merge.block_on_reviews_requested = True
 
@@ -806,7 +811,8 @@ async def test_mergeable_pull_request_merged_no_delete_branch(
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+    if a PR is already merged we shouldn't take anymore action on it besides
+    deleting the branch if configured.
 
     Here we test with the delete_branch_on_merge config disabled.
     """
@@ -852,7 +858,8 @@ async def test_mergeable_pull_request_merged_delete_branch(
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+    if a PR is already merged we shouldn't take anymore action on it besides
+    deleting the branch if configured.
 
     Here we test with the delete_branch_on_merge config enabled.
     """
@@ -899,9 +906,12 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR is already merged we shouldn't take anymore action on it besides deleting the branch if configured.
+    if a PR is already merged we shouldn't take anymore action on it besides
+    deleting the branch if configured.
 
-    Here we test with the delete_branch_on_merge config enabled, but we use a cross repository (fork) pull request, which we aren't able to delete. We shouldn't try to delete the branch.
+    Here we test with the delete_branch_on_merge config enabled, but we use a
+    cross repository (fork) pull request, which we aren't able to delete. We
+    shouldn't try to delete the branch.
     """
     pull_request.state = PullRequestState.MERGED
     pull_request.isCrossRepository = True
@@ -988,7 +998,8 @@ async def test_mergeable_pull_request_merge_conflict(
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    if a PR has a merge conflict we can't merge. If configured, we should leave
+    a comment and remove the automerge label.
     """
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
@@ -1036,7 +1047,8 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    if a PR has a merge conflict we can't merge. If configured, we should leave
+    a comment and remove the automerge label.
     """
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
@@ -1085,7 +1097,8 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
     check_run: CheckRun,
 ) -> None:
     """
-    if a PR has a merge conflict we can't merge. If configured, we should leave a comment and remove the automerge label.
+    if a PR has a merge conflict we can't merge. If configured, we should leave
+    a comment and remove the automerge label.
     """
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
