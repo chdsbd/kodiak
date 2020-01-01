@@ -539,6 +539,8 @@ async def mergeable(
     else:
         position_in_queue = await api.queue_for_merge()
         if position_in_queue is None:
+            # this case should be rare/impossible.
+            log.warning("couldn't find position for enqueued PR")
             return
         ordinal_position = inflection.ordinalize(position_in_queue + 1)
         await set_status(f"📦 enqueued for merge (position={ordinal_position})")
