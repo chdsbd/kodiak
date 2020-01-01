@@ -522,6 +522,7 @@ async def mergeable(
             return
 
     if config.merge.do_not_merge:
+        await set_status("✅ okay to merge")
         log.info(
             "eligible to merge, stopping because config.merge.do_not_merge is enabled."
         )

@@ -2635,7 +2635,12 @@ async def test_mergeable_do_not_merge(
         merging=False,
         is_active_merge=False,
     )
-    assert api.called is False
+    assert api.set_status.called is True
+    assert "okay to merge" in api.set_status.calls[0]["msg"]
+
+    assert api.update_branch.called is False
+    assert api.queue_for_merge.called is False
+    assert api.merge.called is False
 
 
 @pytest.mark.asyncio
@@ -2672,7 +2677,63 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
         merging=False,
         is_active_merge=False,
     )
-    assert api.called is False
+    assert api.set_status.called is True
+    assert "okay to merge" in api.set_status.calls[0]["msg"]
+
+    assert api.update_branch.called is False
+    assert api.queue_for_merge.called is False
+    assert api.merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for_checks(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
+    Test when PR doesn't need update but is waiting for checks to finish.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    config.merge.do_not_merge = True
+    config.merge.update_branch_immediately = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.context = "ci/test-api"
+    context.state = StatusState.PENDING
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.called is True
+    assert (
+        "waiting for required status checks: {'ci/test-api'}"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    assert api.update_branch.called is False
+    assert api.queue_for_merge.called is False
+    assert api.merge.called is False
 
 
 @pytest.mark.asyncio
