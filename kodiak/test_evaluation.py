@@ -538,6 +538,48 @@ async def test_mergeable_missing_automerge_label(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_missing_automerge_label_require_automerge_label(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    We can work on a PR if we're missing labels and we have require_automerge_label disabled.
+    """
+    config.merge.require_automerge_label = False
+    pull_request.labels = []
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+
+
+@pytest.mark.asyncio
 async def test_mergeable_has_blacklist_labels(
     api: MockPrApi,
     config: V1,
