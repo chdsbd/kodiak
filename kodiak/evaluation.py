@@ -1,7 +1,7 @@
-import re
 from collections import defaultdict
 from typing import List, MutableMapping, Optional, Set
 
+import rure as re
 import structlog
 
 from kodiak import config

@@ -183,6 +183,36 @@ def test_blacklist_title_match(
     assert config.merge.blacklist_title_regex in str(e_info.value)
 
 
+@pytest.mark.timeout(1)
+def test_blacklist_title_match_with_exp_regex(
+    pull_request: PullRequest,
+    config: V1,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+) -> None:
+    """
+    Ensure Kodiak uses a linear time regex engine.
+
+    When using an exponential engine this test will timeout.
+    """
+    # a ReDos regex and accompanying string
+    # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    config.merge.blacklist_title_regex = "^(a+)+$"
+    pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
+    mergeable(
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.merge, MergeMethod.squash],
+    )
+
+
 def test_bad_merge_method_config(
     pull_request: PullRequest,
     config: V1,
