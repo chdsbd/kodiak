@@ -498,6 +498,8 @@ async def test_mergeable_requires_commit_signatures(
 ) -> None:
     """
     requiresCommitSignatures doesn't work with Kodiak.
+    
+    https://github.com/chdsbd/kodiak/issues/89
     """
     branch_protection.requiresCommitSignatures = True
     await mergeable(
