@@ -486,21 +486,14 @@ async def mergeable(
                     await update_branch(api, pull_request)
                     return
                 if wait_for_checks:
-                    if merging:
-                        await set_status(
-                            f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
-                        )
-                        raise PollForever
-                    return
+                    await set_status(
+                        f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
+                    )
+                    raise PollForever
             # almost the same as the pervious case, but we prioritize status checks
             # over branch updates.
             else:
                 if wait_for_checks:
-                    if merging:
-                        await set_status(
-                            f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
-                        )
-                        raise PollForever
                     return
                 if need_branch_update:
                     await update_branch(api, pull_request)
