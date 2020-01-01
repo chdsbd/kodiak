@@ -1,5 +1,5 @@
 import inspect
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List, Mapping, Optional, Tuple
 
 import pytest
@@ -2217,3 +2217,256 @@ async def test_mergeable_need_update(
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
     assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_regression_mishandling_multiple_reviews_failing_reviews(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    review_request: PRReviewRequest,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 2
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[review_request],
+        reviews=[
+            PRReview(
+                state=PRReviewState.CHANGES_REQUESTED,
+                createdAt=first_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.COMMENTED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="kodiak", permission=Permission.WRITE),
+            ),
+        ],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert "changes requested" in api.set_status.calls[0]["msg"]
+    assert "chdsbd" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_regression_mishandling_multiple_reviews_okay_reviews(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    review_request: PRReviewRequest,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[review_request],
+        reviews=[
+            PRReview(
+                state=PRReviewState.CHANGES_REQUESTED,
+                createdAt=first_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.COMMENTED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+            ),
+        ],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.merge.called
+    assert not api.update_branch.called
+
+
+@pytest.mark.asyncio
+async def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    review_request: PRReviewRequest,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[review_request],
+        reviews=[
+            PRReview(
+                state=PRReviewState.CHANGES_REQUESTED,
+                createdAt=first_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.DISMISSED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+            ),
+        ],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.merge.called
+    assert not api.update_branch.called
+
+
+@pytest.mark.asyncio
+async def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    review_request: PRReviewRequest,
+) -> None:
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    first_review_date = datetime(2010, 5, 15)
+    latest_review_date = first_review_date + timedelta(minutes=20)
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[review_request],
+        reviews=[
+            PRReview(
+                state=PRReviewState.CHANGES_REQUESTED,
+                createdAt=first_review_date,
+                author=PRReviewAuthor(login="chdsbd", permission=Permission.NONE),
+            ),
+            PRReview(
+                state=PRReviewState.APPROVED,
+                createdAt=latest_review_date,
+                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+            ),
+        ],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.merge.called
+    assert not api.update_branch.called
