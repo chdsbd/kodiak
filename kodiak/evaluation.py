@@ -521,6 +521,12 @@ async def mergeable(
             log.warning("merge blocked for unknown reason")
             return
 
+    if config.merge.do_not_merge:
+        log.info(
+            "eligible to merge, stopping because config.merge.do_not_merge is enabled."
+        )
+        return
+
     # okay to merge if we reach this point.
 
     if config.merge.prioritize_ready_to_merge or merging:

@@ -4,6 +4,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 import pytest
 from toml import TomlDecodeError
+import logging
 
 from kodiak.config import V1, MergeMethod
 from kodiak.errors import PollForever, RetryForSkippableChecks
@@ -24,6 +25,8 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
 )
+
+log = logging.getLogger(__name__)
 
 
 class BaseMockFunc:
@@ -152,6 +155,7 @@ class MockPrApi:
     def called(self) -> bool:
         for key, val in self.calls.items():
             if len(val) > 0:
+                log.info("MockPrApi.%s called %r time(s)", key, len(val))
                 return True
         return False
 
@@ -2598,3 +2602,116 @@ async def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
     # verify we haven't tried to update/merge the PR
     assert api.merge.called is False
     assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_do_not_merge(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    merge.do_not_merge should disable merging a PR.
+    """
+    config.merge.do_not_merge = True
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.called is False
+
+@pytest.mark.asyncio
+async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
+    Test when PR doesn't need update.
+    """
+    config.merge.do_not_merge = True
+    config.merge.update_branch_immediately = True
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.called is False
+
+@pytest.mark.asyncio
+async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
+    Test when PR needs update.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    config.merge.do_not_merge = True
+    config.merge.update_branch_immediately = True
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+
+    assert api.update_branch.called is True
+    assert api.set_status.called is True
+    assert "updating branch" in api.set_status.calls[0]['msg']
+    assert api.queue_for_merge.called is False
+    assert api.merge.called is False
