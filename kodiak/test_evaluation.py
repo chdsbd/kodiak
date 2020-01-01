@@ -639,3 +639,45 @@ async def test_mergeable_draft_pull_request(
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
     assert "in draft state" in api.set_status.calls[0]["msg"]
+
+
+@pytest.mark.asyncio
+async def test_mergeable_invalid_merge_method(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    block merge if configured merge method is not enabled
+    """
+    config.merge.method = MergeMethod.squash
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        merging=False,
+        is_active_merge=False,
+        #
+        valid_merge_methods=[MergeMethod.merge],
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "config error" in api.set_status.calls[0]["msg"]
+    assert (
+        "configured merge.method 'squash' is invalid" in api.set_status.calls[0]["msg"]
+    )
