@@ -2009,4 +2009,46 @@ async def test_mergeable_unknown_merge_blockage(
     # verify we haven't tried to merge the PR
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_prioritize_ready_to_merge(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If we enabled merge.prioritize_ready_to_merge, then if a PR is ready to merge when it reaches Kodiak, we merge it immediately. merge.prioritize_ready_to_merge is basically the sibling of merge.update_branch_immediately.
+    """
+    config.merge.prioritize_ready_to_merge = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 1
+
+    # verify we haven't tried to merge the PR
     assert not api.queue_for_merge.called
