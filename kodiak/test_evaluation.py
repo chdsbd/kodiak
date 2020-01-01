@@ -1177,3 +1177,187 @@ async def test_mergeable_pull_request_need_test_commit(
     assert not api.update_branch.called
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_required_approving_reviews(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Don't merge when branch protection requires approving reviews and we don't
+    have enought approving reviews.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "missing required reviews" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Don't merge when branch protection requires approving reviews and we don't have enough reviews. If a reviewer doesn't have permissions we should ignore their review.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    review.state = PRReviewState.APPROVED
+    review.author.permission = Permission.READ
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "missing required reviews" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_required_approving_reviews_changes_requested(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Don't merge when branch protection requires approving reviews and a user requested changes.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    review.state = PRReviewState.CHANGES_REQUESTED
+    review.author.permission = Permission.WRITE
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "changes requested by 'ghost'" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_required_approving_reviews_missing_approving_review_count(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Don't merge when branch protection requires approving reviews and we don't have enough.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 2
+    review.state = PRReviewState.APPROVED
+    review.author.permission = Permission.WRITE
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "missing required reviews, have 1/2" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
