@@ -489,21 +489,37 @@ async def mergeable(
                     return
                 if wait_for_checks:
                     await set_status(
-                        f"🔄 waiting for required status checks: {missing_required_status_checks!r}"
+                        f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
                     )
                     raise PollForever
             # almost the same as the pervious case, but we prioritize status checks
             # over branch updates.
             else:
                 if wait_for_checks:
-                    return
+                    await set_status(
+                        f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+                    )
+                    raise PollForever
                 if need_branch_update:
                     await update_branch(api, pull_request)
                     return
+        else:
+            if wait_for_checks:
+                await set_status(
+                    f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+                )
+                return
+            if need_branch_update:
+                # okay for queuing for merge
+                pass
 
-        await block_merge(api, pull_request, "Merging blocked by GitHub requirements")
-        log.warning("merge blocked for unknown reason")
-        return
+        # if we reach this point and we don't need to wait for checks or update a branch we've failed to calculate why the PR is blocked. This should _not_ happen normally.
+        if not (wait_for_checks or need_branch_update):
+            await block_merge(
+                api, pull_request, "Merging blocked by GitHub requirements"
+            )
+            log.warning("merge blocked for unknown reason")
+            return
 
     # okay to merge if we reach this point.
 
