@@ -320,7 +320,7 @@ async def mergeable(
         return
 
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
-        # TODO: This status means that the pr is mergeable but has failing
+        # TODO(chdsbd): This status means that the pr is mergeable but has failing
         # status checks. we may want to handle this via config
         pass
 
@@ -461,7 +461,6 @@ async def mergeable(
                 return
             if skippable_contexts:
                 if merging:
-                    # TODO: retry for a couple times unless we get something useful
                     raise RetryForSkippableChecks
                 await set_status(
                     f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
