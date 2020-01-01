@@ -1484,7 +1484,7 @@ async def test_mergeable_travis_ci_checks(
     check_run: CheckRun,
 ) -> None:
     """
-    GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,pull}" become "continuous-integration/travis-ci" in requiredStatusChecks.
+    GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,push}" become "continuous-integration/travis-ci" in requiredStatusChecks.
     """
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True

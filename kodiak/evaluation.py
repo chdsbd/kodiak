@@ -429,7 +429,7 @@ async def mergeable(
             failing_required_status_checks = failing & required
             # GitHub has undocumented logic for travis-ci checks in GitHub
             # branch protection rules. GitHub compresses
-            # "continuous-integration/travis-ci/{pr,pull}" to
+            # "continuous-integration/travis-ci/{pr,push}" to
             # "continuous-integration/travis-ci". There is only special handling
             # for these specific checks.
             if "continuous-integration/travis-ci" in required:
@@ -437,13 +437,15 @@ async def mergeable(
                     failing_required_status_checks.add(
                         "continuous-integration/travis-ci/pr"
                     )
-                if "continuous-integration/travis-ci/pull" in failing:
+                if "continuous-integration/travis-ci/push" in failing:
                     failing_required_status_checks.add(
-                        "continuous-integration/travis-ci/pull"
+                        "continuous-integration/travis-ci/push"
                     )
+                # either check can satisfy continuous-integration/travis-ci, but
+                # if either fails they'll also block the merge.
                 if (
                     "continuous-integration/travis-ci/pr" in passing
-                    or "continuous-integration/travis-ci/pull" in passing
+                    or "continuous-integration/travis-ci/push" in passing
                 ):
                     required.remove("continuous-integration/travis-ci")
             if failing_required_status_checks:
