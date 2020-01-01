@@ -158,11 +158,6 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     )
 
 
-async def update_branch(api: PRAPI, pull_request: PullRequest) -> None:
-    await api.update_branch()
-    await api.set_status("🔄 updating branch", latest_commit_sha=pull_request.latest_sha)
-
-
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -461,6 +456,9 @@ async def mergeable(
                 return
             if skippable_contexts:
                 if merging:
+                    await set_status(
+                        f"⛴ merging PR (waiting a bit for dont_wait_on_status_checks: {skippable_contexts!r})"
+                    )
                     raise RetryForSkippableChecks
                 await set_status(
                     f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
@@ -477,18 +475,20 @@ async def mergeable(
         )
 
         if config.merge.update_branch_immediately and need_branch_update:
-            await update_branch(api, pull_request)
+            await set_status("🔄 updating branch")
+            await api.update_branch()
             return
 
         if merging:
             # prioritize branch updates over waiting for status checks to complete
             if config.merge.optimistic_updates:
                 if need_branch_update:
-                    await update_branch(api, pull_request)
+                    await set_status("⛴ merging PR (updating branch)")
+                    await api.update_branch()
                     return
                 if wait_for_checks:
                     await set_status(
-                        f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+                        f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
                     )
                     raise PollForever
             # almost the same as the pervious case, but we prioritize status checks
@@ -496,11 +496,12 @@ async def mergeable(
             else:
                 if wait_for_checks:
                     await set_status(
-                        f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+                        f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
                     )
                     raise PollForever
                 if need_branch_update:
-                    await update_branch(api, pull_request)
+                    await set_status("⛴ merging PR (updating branch)")
+                    await api.update_branch()
                     return
         else:
             if wait_for_checks:
@@ -531,6 +532,7 @@ async def mergeable(
 
     if config.merge.prioritize_ready_to_merge or merging:
         merge_args = get_merge_body(config, pull_request)
+        await set_status("⛴ attempting to merge PR (merging)")
         await api.merge(
             merge_method=merge_args.merge_method,
             commit_title=merge_args.commit_title,

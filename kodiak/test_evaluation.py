@@ -1685,7 +1685,7 @@ async def test_mergeable_travis_ci_checks_success(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert (
-        "waiting for required status checks: {'ci/test-api'}"
+        "merging PR (waiting for status checks: {'ci/test-api'})"
         in api.set_status.calls[0]["msg"]
     )
 
@@ -1894,7 +1894,11 @@ async def test_mergeable_skippable_contexts_merging_pull_request(
             #
             merging=True,
         )
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert (
+        "merging PR (waiting a bit for dont_wait_on_status_checks: ['WIP'])"
+        in api.set_status.calls[0]["msg"]
+    )
     assert api.dequeue.call_count == 0
 
     # verify we haven't tried to update/merge the PR
@@ -2041,7 +2045,7 @@ async def test_mergeable_need_branch_update(
         )
     assert api.set_status.call_count == 1
     assert (
-        "waiting for required status checks: {'ci/test-api'}"
+        "merging PR (waiting for status checks: {'ci/test-api'})"
         in api.set_status.calls[0]["msg"]
     )
     assert api.dequeue.call_count == 0
@@ -2097,7 +2101,7 @@ async def test_mergeable_optimistic_update_wait_for_checks(
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert (
-        "waiting for required status checks: {'ci/test-api'}"
+        "merging PR (waiting for status checks: {'ci/test-api'})"
         in api.set_status.calls[0]["msg"]
     )
 
@@ -2229,7 +2233,8 @@ async def test_mergeable_prioritize_ready_to_merge(
         is_active_merge=False,
     )
 
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert "attempting to merge PR (merging)" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert api.merge.call_count == 1
@@ -2272,7 +2277,8 @@ async def test_mergeable_merge(
         merging=True,
     )
 
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert "attempting to merge PR (merging)" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert api.merge.call_count == 1
