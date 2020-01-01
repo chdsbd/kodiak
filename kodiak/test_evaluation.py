@@ -1623,7 +1623,7 @@ async def test_mergeable_travis_ci_checks_success(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_skippable_contexts(
+async def test_mergeable_skippable_contexts_with_status_check(
     api: MockPrApi,
     config: V1,
     config_path: str,
@@ -1673,6 +1673,110 @@ async def test_mergeable_skippable_contexts(
     assert not api.update_branch.called
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_skippable_contexts_with_check_run(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a skippable check hasn't finished, we shouldn't do anything.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
+    config.merge.dont_wait_on_status_checks = ["WIP"]
+    context.state = StatusState.SUCCESS
+    context.context = "ci/test-api"
+    check_run.name = "WIP"
+    check_run.conclusion = None
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert (
+        "not waiting for dont_wait_on_status_checks ['WIP']"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_skippable_contexts_passing(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a skippable check is passing we should queue the PR for merging
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
+    config.merge.dont_wait_on_status_checks = ["WIP"]
+    context.state = StatusState.SUCCESS
+    context.context = "WIP"
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+    api.queue_for_merge.return_value = 5
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+    assert "enqueued for merge (position=6th)" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert not api.update_branch.called
+    assert not api.merge.called
 
 
 @pytest.mark.asyncio
