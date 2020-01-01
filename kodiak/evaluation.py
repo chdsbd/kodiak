@@ -378,6 +378,7 @@ async def mergeable(
 
         required: Set[str] = set()
         passing: Set[str] = set()
+
         if branch_protection.requiresStatusChecks:
             skippable_contexts: List[str] = []
             failing_contexts: List[str] = []
