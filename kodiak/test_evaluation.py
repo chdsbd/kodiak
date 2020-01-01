@@ -1766,3 +1766,206 @@ async def test_mergeable_update_branch_immediately(
     # verify we haven't tried to merge the PR
     assert not api.merge.called
     assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_optimistic_update_need_branch_update(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    prioritize branch update over waiting for checks when merging if merge.optimistic_updates enabled.
+    """
+    config.merge.optimistic_updates = True
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        is_active_merge=False,
+        #
+        merging=True,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to merge the PR
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_need_branch_update(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    prioritize waiting for checks over branch updates when merging if merge.optimistic_updates is disabled.
+    """
+    config.merge.optimistic_updates = False
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        is_active_merge=False,
+        #
+        merging=True,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.not_called
+
+    # verify we haven't tried to merge the PR
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_optimistic_update_wait_for_checks(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    test merge.optimistic_updates when we don't need a branch update. Since merge.optimistic_updates is enabled we should wait_for_checks
+    """
+    config.merge.optimistic_updates = True
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            #
+            merging=True,
+        )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert (
+        "waiting for required status checks: {'ci/test-api'}"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    # verify we haven't tried to merge the PR
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+    assert not api.queue_for_merge.called
+
+
+@pytest.mark.asyncio
+async def test_mergeable_wait_for_checks(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    test merge.optimistic_updates when we don't have checks to wait for. Since merge.optimistic_updates is disabled we should update the branch.
+    """
+    config.merge.optimistic_updates = False
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        is_active_merge=False,
+        #
+        merging=True,
+    )
+
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    # verify we haven't tried to merge the PR
+    assert not api.merge.called
+    assert not api.queue_for_merge.called
+    assert not api.queue_for_merge.called
