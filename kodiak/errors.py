@@ -7,4 +7,5 @@ class PollForever(Exception):
 
 
 class ApiCallException(Exception):
-    pass
+    def __init__(self, method: str) -> None:
+        self.method = method

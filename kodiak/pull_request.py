@@ -68,6 +68,7 @@ async def evaluate_pr(
 ) -> None:
     skippable_check_timeout = 4
     api_call_retry_timeout = 5
+    api_call_retry_method_name: Optional[str] = None
     log = logger.bind(install=install, owner_repo=f"{owner}/{repo}", number=number)
     while True:
         pr = await get_pr(
@@ -95,9 +96,12 @@ async def evaluate_pr(
                 valid_merge_methods=pr.event.valid_merge_methods,
                 merging=merging,
                 is_active_merge=is_active_merging,
+                skippable_check_timeout=skippable_check_timeout,
+                api_call_retry_timeout=api_call_retry_timeout,
+                api_call_retry_method_name=api_call_retry_method_name,
             )
         except RetryForSkippableChecks:
-            if skippable_check_timeout:
+            if skippable_check_timeout > 0:
                 skippable_check_timeout -= 1
                 log.info("waiting for skippable checks to pass")
                 await asyncio.sleep(RETRY_RATE_SECONDS)
@@ -106,10 +110,11 @@ async def evaluate_pr(
             log.info("polling")
             await asyncio.sleep(POLL_RATE_SECONDS)
             continue
-        except ApiCallException:
+        except ApiCallException as e:
             # if we have some api exception, it's likely a temporary error that
             # can be resolved by calling GitHub again.
             if api_call_retry_timeout:
+                api_call_retry_method_name = e.method
                 api_call_retry_timeout -= 1
                 log.exception("problem contacting remote api. retrying")
                 continue
@@ -189,7 +194,7 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to update branch")
                 # we raise an exception to retry this request.
-                raise ApiCallException
+                raise ApiCallException("update branch")
 
     async def trigger_test_commit(self) -> None:
         async with Client(
@@ -221,7 +226,7 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to merge pull request")
                 # we raise an exception to retry this request.
-                raise ApiCallException
+                raise ApiCallException("merge")
 
     async def queue_for_merge(self) -> Optional[int]:
         return await self.queue_for_merge_callback()
@@ -239,7 +244,7 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to delete label", label=label)
                 # we raise an exception to retry this request.
-                raise ApiCallException
+                raise ApiCallException("delete label")
 
     async def create_comment(self, body: str) -> None:
         """

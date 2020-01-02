@@ -173,6 +173,9 @@ async def mergeable(
     valid_merge_methods: List[MergeMethod],
     merging: bool,
     is_active_merge: bool,
+    skippable_check_timeout: int,
+    api_call_retry_timeout: int,
+    api_call_retry_method_name: Optional[str],
     app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
@@ -213,6 +216,18 @@ async def mergeable(
             ),
         )
         await api.dequeue()
+        return
+
+    if api_call_retry_timeout == 0:
+        log.warning("timeout reached for api calls to GitHub")
+        if api_call_retry_method_name is not None:
+            await set_status(
+                f"⚠️ problem contacting GitHub API with method {api_call_retry_method_name!r}"
+            )
+        else:
+            await set_status(
+                "⚠️ problem contacting GitHub API"
+            )
         return
 
     # if we have an app_id in the config then we only want to work on this repo
@@ -456,10 +471,18 @@ async def mergeable(
                 return
             if skippable_contexts:
                 if merging:
-                    await set_status(
-                        f"⛴ merging PR (waiting a bit for dont_wait_on_status_checks: {skippable_contexts!r})"
+                    if skippable_check_timeout > 0:
+                        await set_status(
+                            f"⛴ merging PR (waiting a bit for dont_wait_on_status_checks: {skippable_contexts!r})"
+                        )
+                        raise RetryForSkippableChecks
+                    log.warning(
+                        "timeout reached waiting for dont_wait_on_status_checks",
+                        skippable_contexts=skippable_contexts,
                     )
-                    raise RetryForSkippableChecks
+                    await set_status(
+                        f"⚠️ timeout reached for dont_wait_on_status_checks: {skippable_contexts!r}"
+                    )
                 await set_status(
                     f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
                 )
