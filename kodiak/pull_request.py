@@ -80,7 +80,7 @@ async def evaluate_pr(
             queue_for_merge_callback=queue_for_merge_callback,
         )
         try:
-            mergeable(
+            await mergeable(
                 api=pr,
                 config=pr.event.config,
                 config_str=pr.event.config_str,
@@ -181,8 +181,11 @@ class PRV2:
             try:
                 res = await api_client.delete_branch(branch=branch_name)
                 res.raise_for_status()
-            except HTTPError:
-                self.log.exception("failed to delete branch")
+            except HTTPError as e:
+                if e.response is not None and e.response.status_code == 422:
+                    self.log.info("branch already deleted, nothing to do")
+                else:
+                    self.log.exception("failed to delete branch")
 
     async def update_branch(self) -> None:
         async with Client(

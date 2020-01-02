@@ -482,7 +482,7 @@ async def mergeable(
                         f"⚠️ timeout reached for dont_wait_on_status_checks: {skippable_contexts!r}"
                     )
                 await set_status(
-                    f"🛑 not waiting for dont_wait_on_status_checks {skippable_contexts!r}"
+                    f"🛑 not waiting for dont_wait_on_status_checks: {skippable_contexts!r}"
                 )
                 return
 
