@@ -225,9 +225,7 @@ async def mergeable(
                 f"⚠️ problem contacting GitHub API with method {api_call_retry_method_name!r}"
             )
         else:
-            await set_status(
-                "⚠️ problem contacting GitHub API"
-            )
+            await set_status("⚠️ problem contacting GitHub API")
         return
 
     # if we have an app_id in the config then we only want to work on this repo

@@ -3038,6 +3038,7 @@ async def test_mergeable_api_call_retry_timeout(
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
 
+
 @pytest.mark.asyncio
 async def test_mergeable_api_call_retry_timeout_missing_method(
     api: MockPrApi,
@@ -3077,10 +3078,7 @@ async def test_mergeable_api_call_retry_timeout_missing_method(
     )
 
     assert api.set_status.called is True
-    assert (
-        "problem contacting GitHub API"
-        in api.set_status.calls[0]["msg"]
-    )
+    assert "problem contacting GitHub API" in api.set_status.calls[0]["msg"]
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
@@ -3139,4 +3137,3 @@ async def test_mergeable_skippable_check_timeout(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
-
