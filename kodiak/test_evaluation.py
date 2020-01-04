@@ -2086,24 +2086,24 @@ async def test_mergeable_optimistic_update_need_branch_update(
     with pytest.raises(PollForever):
         await mergeable(
             api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
-        contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        merging=True,
-    )
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            merging=True,
+        )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 1
@@ -2363,24 +2363,24 @@ async def test_mergeable_wait_for_checks(
     with pytest.raises(PollForever):
         await mergeable(
             api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
-        contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        merging=True,
-    )
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            merging=True,
+        )
 
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
