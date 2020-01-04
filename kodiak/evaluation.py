@@ -506,7 +506,7 @@ async def mergeable(
                 if need_branch_update:
                     await set_status("⛴ merging PR (updating branch)")
                     await api.update_branch()
-                    return
+                    raise PollForever
                 if wait_for_checks:
                     await set_status(
                         f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
@@ -523,7 +523,7 @@ async def mergeable(
                 if need_branch_update:
                     await set_status("⛴ merging PR (updating branch)")
                     await api.update_branch()
-                    return
+                    raise PollForever
         else:
             if wait_for_checks:
                 await set_status(
