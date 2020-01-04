@@ -778,9 +778,15 @@ class Client:
     ) -> http.Response:
         body = dict(
             merge_method=merge_method,
-            commit_title=commit_title,
-            commit_message=commit_message,
         )
+        # we must not pass the keys for commit_title or commit_message when they
+        # are null because GitHub will error saying the title/message cannot be
+        # null. When the keys are not passed, GitHub creates a title and
+        # message.
+        if commit_title is not None:
+            body['commit_title'] = commit_title
+        if commit_message is not None:
+            body['commit_message'] = commit_message
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
         async with self.throttler:
