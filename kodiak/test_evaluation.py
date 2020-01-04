@@ -2172,6 +2172,119 @@ async def test_mergeable_need_branch_update(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_queue_in_progress(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
+    """
+    config.merge.optimistic_updates = False
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_queue_in_progress_with_ready_to_merge(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
+
+    regression test to verify that with config.merge.prioritize_ready_to_merge =
+    true we don't attempt to merge a PR directly but called queue_for_merge
+    instead. If the status checks haven't passed or the branch needs an update
+    it's not good to be merged directly, but it can be queued for the merge
+    queue.
+    """
+    config.merge.optimistic_updates = False
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+    api.queue_for_merge.return_value = 3
+    config.merge.prioritize_ready_to_merge = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_optimistic_update_wait_for_checks(
     api: MockPrApi,
     config: V1,

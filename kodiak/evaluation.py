@@ -335,6 +335,8 @@ async def mergeable(
         await api.trigger_test_commit()
         return
 
+    wait_for_checks = False
+    need_branch_update = False
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,
         MergeStateStatus.BEHIND,
@@ -488,7 +490,7 @@ async def mergeable(
             and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
         )
         missing_required_status_checks = required - passing
-        wait_for_checks = (
+        wait_for_checks = bool(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
@@ -521,15 +523,6 @@ async def mergeable(
                     await set_status("⛴ merging PR (updating branch)")
                     await api.update_branch()
                     raise PollForever
-        else:
-            if wait_for_checks:
-                await set_status(
-                    f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
-                )
-                return
-            if need_branch_update:
-                # okay for queuing for merge
-                pass
 
         # if we reach this point and we don't need to wait for checks or update a branch we've failed to calculate why the PR is blocked. This should _not_ happen normally.
         if not (wait_for_checks or need_branch_update):
@@ -538,6 +531,7 @@ async def mergeable(
             )
             log.warning("merge blocked for unknown reason")
             return
+    ready_to_merge = not (wait_for_checks or need_branch_update)
 
     if config.merge.do_not_merge:
         await set_status("✅ okay to merge")
@@ -548,7 +542,7 @@ async def mergeable(
 
     # okay to merge if we reach this point.
 
-    if config.merge.prioritize_ready_to_merge or merging:
+    if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
         merge_args = get_merge_body(config, pull_request)
         await set_status("⛴ attempting to merge PR (merging)")
         await api.merge(
