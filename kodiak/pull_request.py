@@ -123,6 +123,11 @@ async def evaluate_pr(
 
 
 class PRV2:
+    """
+    Representation of a PR for Kodiak.
+
+    This class implements the PRAPI protocol found in evaluation.py
+    """
     event: EventInfoResponse
 
     def __init__(
@@ -251,7 +256,7 @@ class PRV2:
 
     async def create_comment(self, body: str) -> None:
         """
-       create a comment on the speicifed `pr_number` with the given `body` as text.
+       create a comment on the specified `pr_number` with the given `body` as text.
         """
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
