@@ -2961,6 +2961,7 @@ async def test_mergeable_do_not_merge(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -3006,6 +3007,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -3060,6 +3062,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -3152,6 +3155,7 @@ async def test_mergeable_api_call_retry_timeout(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -3197,6 +3201,7 @@ async def test_mergeable_api_call_retry_timeout_missing_method(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -3252,3 +3257,4 @@ async def test_mergeable_skippable_check_timeout(
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
+    assert api.queue_for_merge.called is False
