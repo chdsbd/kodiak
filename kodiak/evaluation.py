@@ -534,7 +534,26 @@ async def mergeable(
     ready_to_merge = not (wait_for_checks or need_branch_update)
 
     if config.merge.do_not_merge:
-        await set_status("✅ okay to merge")
+        if wait_for_checks:
+            await set_status(
+                f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+            )
+        elif need_branch_update:
+            await set_status(
+                "⚠️ need branch update (suggestion: use merge.update_branch_immediately with merge.do_not_merge)",
+                markdown_content="""\
+When `merge.do_not_merge = true` is configured `merge.update_branch_immediately = true` \
+is recommended so Kodiak can automatically update branches.
+
+By default, Kodiak is efficient and only update branches when merging a PR, but \
+when `merge.do_not_merge` is enabled, Kodiak never has that opportunity to \
+update a branch during merge. `merge.update_branch_immediately = true` will \
+trigger Kodiak to update branches whenever a PR is outdated and not failing any \
+branch protection requirements.
+""",
+            )
+        else:
+            await set_status("✅ okay to merge")
         log.info(
             "eligible to merge, stopping because config.merge.do_not_merge is enabled."
         )
