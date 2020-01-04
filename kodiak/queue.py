@@ -62,6 +62,7 @@ async def process_webhook_event(
     async def queue_for_merge() -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event)
 
+    log.info("evaluate pr for webhook event")
     await evaluate_pr(
         install=webhook_event.installation_id,
         owner=webhook_event.repo_owner,
@@ -109,6 +110,7 @@ async def process_repo_queue(
     async def queue_for_merge() -> Optional[int]:
         raise NotImplementedError
 
+    log.info("evaluate PR for merging")
     await evaluate_pr(
         install=webhook_event.installation_id,
         owner=webhook_event.repo_owner,
