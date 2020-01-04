@@ -274,6 +274,7 @@ async def test_mergeable_abort_is_active_merge(
     is being updated/merged, so in the frontend we don't want to act on the PR
     because the PR is being handled.
     """
+    api.queue_for_merge.return_value = 4
     await mergeable(
         api=api,
         config=config,
@@ -294,60 +295,11 @@ async def test_mergeable_abort_is_active_merge(
         #
         is_active_merge=True,
     )
-    assert api.called is False
+    assert api.queue_for_merge.called is True
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
-    assert api.queue_for_merge.called is False
-
-
-@pytest.mark.asyncio
-async def test_mergeable_error_on_invalid_args(
-    api: MockPrApi,
-    config: V1,
-    config_str: str,
-    config_path: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
-    """
-    We shouldn't be able to set merging=True and is_active_merge=True because
-    merging indicates that this function is being called from the merge queue
-    but is_active_merge indicates that the function is being called from the
-    frontend.
-    """
-    with pytest.raises(AssertionError) as e:
-        await mergeable(
-            api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            contexts=[context],
-            check_runs=[check_run],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
-            merging=True,
-            is_active_merge=True,
-        )
-    assert api.called is False
-    assert "merging" in str(e)
-
-    # verify we haven't tried to update/merge the PR
-    assert api.update_branch.called is False
-    assert api.merge.called is False
-    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio

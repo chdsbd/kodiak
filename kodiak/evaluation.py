@@ -576,5 +576,10 @@ branch protection requirements.
             log.warning("couldn't find position for enqueued PR")
             return
         ordinal_position = inflection.ordinalize(position_in_queue + 1)
-        await set_status(f"📦 enqueued for merge (position={ordinal_position})")
+        if not is_active_merge:
+            await set_status(f"📦 enqueued for merge (position={ordinal_position})")
+        else:
+            log.info(
+                "not setting status message for enqueued job because is_active_merge=True"
+            )
     return
