@@ -5,9 +5,16 @@ from typing import Any, List, Mapping, Optional, Tuple
 import pytest
 from toml import TomlDecodeError
 
-from kodiak.config import V1, MergeMethod
+from kodiak.config import (
+    V1,
+    Merge,
+    MergeBodyStyle,
+    MergeMessage,
+    MergeMethod,
+    MergeTitleStyle,
+)
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.evaluation import PRAPI, mergeable
+from kodiak.evaluation import PRAPI, MergeBody, get_merge_body, mergeable
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -3262,3 +3269,68 @@ async def test_mergeable_skippable_check_timeout(
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+def test_pr_get_merge_body_full(pull_request: PullRequest) -> None:
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    title=MergeTitleStyle.pull_request_title,
+                    body=MergeBodyStyle.pull_request_body,
+                    include_pr_number=True,
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = MergeBody(
+        merge_method="squash",
+        commit_title=pull_request.title + f" (#{pull_request.number})",
+        commit_message=pull_request.body,
+    )
+    assert expected == actual
+
+
+def test_pr_get_merge_body_empty(pull_request: PullRequest) -> None:
+    actual = get_merge_body(
+        V1(version=1, merge=Merge(method=MergeMethod.squash)), pull_request
+    )
+    expected = MergeBody(merge_method="squash")
+    assert actual == expected
+
+
+def test_get_merge_body_strip_html_comments(pull_request: PullRequest) -> None:
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body, strip_html_comments=True
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = MergeBody(merge_method="squash", commit_message="hello world")
+    assert actual == expected
+
+
+def test_get_merge_body_empty(pull_request: PullRequest) -> None:
+    pull_request.body = "hello world"
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(body=MergeBodyStyle.empty),
+            ),
+        ),
+        pull_request,
+    )
+    expected = MergeBody(merge_method="squash", commit_message="")
+    assert actual == expected
