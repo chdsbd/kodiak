@@ -2963,6 +2963,7 @@ async def test_mergeable_do_not_merge(
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
 
+
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_behind_no_update_immediately(
     api: MockPrApi,
@@ -3003,7 +3004,10 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately(
         api_call_retry_method_name=None,
     )
     assert api.set_status.called is True
-    assert "need branch update (suggestion: use merge.update_branch_immediately" in api.set_status.calls[0]["msg"]
+    assert (
+        "need branch update (suggestion: use merge.update_branch_immediately"
+        in api.set_status.calls[0]["msg"]
+    )
     assert isinstance(api.set_status.calls[0]["markdown_content"], str)
 
     assert api.update_branch.called is False
