@@ -128,6 +128,7 @@ class PRV2:
 
     This class implements the PRAPI protocol found in evaluation.py
     """
+
     event: EventInfoResponse
 
     def __init__(
