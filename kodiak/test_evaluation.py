@@ -1834,7 +1834,7 @@ async def test_mergeable_skippable_contexts_with_status_check(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert (
-        "not waiting for dont_wait_on_status_checks ['WIP']"
+        "not waiting for dont_wait_on_status_checks: ['WIP']"
         in api.set_status.calls[0]["msg"]
     )
 
@@ -1890,7 +1890,7 @@ async def test_mergeable_skippable_contexts_with_check_run(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert (
-        "not waiting for dont_wait_on_status_checks ['WIP']"
+        "not waiting for dont_wait_on_status_checks: ['WIP']"
         in api.set_status.calls[0]["msg"]
     )
 
@@ -2083,8 +2083,9 @@ async def test_mergeable_optimistic_update_need_branch_update(
     context.state = StatusState.PENDING
     context.context = "ci/test-api"
 
-    await mergeable(
-        api=api,
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
         config=config,
         config_str=config_str,
         config_path=config_path,
@@ -2246,8 +2247,9 @@ async def test_mergeable_wait_for_checks(
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
 
-    await mergeable(
-        api=api,
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
         config=config,
         config_str=config_str,
         config_path=config_path,
