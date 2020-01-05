@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from logging import add_request_info_processor
 
 import sentry_sdk
 import structlog
@@ -31,6 +32,7 @@ sentry_sdk.init(
     integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
 )
 
+
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -38,6 +40,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        add_request_info_processor,
         SentryProcessor(level=logging.WARNING),
         structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
     ],

@@ -178,7 +178,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to create notification")
+                log.exception("failed to create notification", res=res)
 
     async def delete_branch(self, branch_name: str) -> None:
         async with Client(
@@ -189,9 +189,9 @@ class PRV2:
                 res.raise_for_status()
             except HTTPError as e:
                 if e.response is not None and e.response.status_code == 422:
-                    self.log.info("branch already deleted, nothing to do")
+                    self.log.info("branch already deleted, nothing to do", res=res)
                 else:
-                    self.log.exception("failed to delete branch")
+                    self.log.exception("failed to delete branch", res=res)
 
     async def update_branch(self) -> None:
         async with Client(
@@ -201,7 +201,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to update branch")
+                self.log.exception("failed to update branch", res=res)
                 # we raise an exception to retry this request.
                 raise ApiCallException("update branch")
 
@@ -213,7 +213,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to get pull request for test commit trigger")
+                self.log.exception(
+                    "failed to get pull request for test commit trigger", res=res
+                )
 
     async def merge(
         self,
@@ -225,15 +227,20 @@ class PRV2:
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.merge_pull_request(
-                    number=self.number,
-                    merge_method=merge_method,
-                    commit_title=commit_title,
-                    commit_message=commit_message,
-                )
+                number=self.number,
+                merge_method=merge_method,
+                commit_title=commit_title,
+                commit_message=commit_message,
+            )
             try:
                 res.raise_for_status()
-            except HTTPError:
-                self.log.exception("failed to merge pull request")
+            except HTTPError as e:
+                if e.response is not None and e.response.status_code == 405:
+                    self.log.info(
+                        "branch is not mergeable. PR likely already merged.", res=res
+                    )
+                else:
+                    self.log.exception("failed to merge pull request", res=res)
                 # we raise an exception to retry this request.
                 raise ApiCallException("merge")
 
@@ -251,7 +258,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to delete label", label=label)
+                self.log.exception("failed to delete label", label=label, res=res)
                 # we raise an exception to retry this request.
                 raise ApiCallException("delete label")
 
@@ -262,10 +269,8 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
-            res = await api_client.create_comment(
-                body=body, pull_number=self.number
-            )
+            res = await api_client.create_comment(body=body, pull_number=self.number)
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to create comment")
+                self.log.exception("failed to create comment", res=res)

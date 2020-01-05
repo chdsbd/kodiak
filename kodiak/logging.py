@@ -1,3 +1,12 @@
+import logging
+import sys
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from requests import Response
+from sentry_sdk import capture_event
+from sentry_sdk.utils import event_from_exception
+from typing_extensions import Literal
+
 """
 based on https://github.com/kiwicom/structlog-sentry/blob/18adbfdac85930ca5578e7ef95c1f2dc169c2f2f/structlog_sentry/__init__.py#L10-L86
 MIT License
@@ -22,15 +31,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
-import logging
-import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-from sentry_sdk import capture_event
-from sentry_sdk.utils import event_from_exception
-from typing_extensions import Literal
-
 EventDict = Dict[str, Any]
 SentryLevel = Literal["fatal", "error", "warning", "info", "debug"]
 SentryTagKeys = Optional[Union[List[str], Literal["__all__"]]]
@@ -97,3 +97,21 @@ class SentryProcessor:
         )
 
         return event_dict
+
+
+# end of copied code
+
+
+def add_request_info_processor(_: Any, __: Any, event_dict: dict) -> dict:
+    """
+    Structlog processor for adding more information to log events that provide
+    `res` with a requests Response object.
+    """
+    response = event_dict.get("res", None)
+    if isinstance(response, Response):
+        event_dict["response_text"] = response.text
+        event_dict["response_status_code"] = response.status_code
+        event_dict["request_body"] = response.request.body
+        event_dict["request_url"] = response.request.url
+        event_dict["request_method"] = response.request.url
+    return event_dict
