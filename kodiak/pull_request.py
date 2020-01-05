@@ -170,12 +170,12 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.create_notification(
+                head_sha=self.event.pull_request.latest_sha,
+                message=msg,
+                summary=markdown_content,
+            )
             try:
-                res = await api_client.create_notification(
-                    head_sha=self.event.pull_request.latest_sha,
-                    message=msg,
-                    summary=markdown_content,
-                )
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to create notification")
@@ -184,8 +184,8 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.delete_branch(branch=branch_name)
             try:
-                res = await api_client.delete_branch(branch=branch_name)
                 res.raise_for_status()
             except HTTPError as e:
                 if e.response is not None and e.response.status_code == 422:
@@ -197,8 +197,8 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.update_branch(pull_number=self.number)
             try:
-                res = await api_client.update_branch(pull_number=self.number)
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to update branch")
@@ -209,8 +209,8 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.get_pull_request(number=self.number)
             try:
-                res = await api_client.get_pull_request(number=self.number)
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to get pull request for test commit trigger")
@@ -224,13 +224,13 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
-            try:
-                res = await api_client.merge_pull_request(
+            res = await api_client.merge_pull_request(
                     number=self.number,
                     merge_method=merge_method,
                     commit_title=commit_title,
                     commit_message=commit_message,
                 )
+            try:
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to merge pull request")
@@ -247,8 +247,8 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.delete_label(label, pull_number=self.number)
             try:
-                res = await api_client.delete_label(label, pull_number=self.number)
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to delete label", label=label)
@@ -262,10 +262,10 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
+            res = await api_client.create_comment(
+                body=body, pull_number=self.number
+            )
             try:
-                res = await api_client.create_comment(
-                    body=body, pull_number=self.number
-                )
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to create comment")
