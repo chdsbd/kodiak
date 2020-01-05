@@ -116,7 +116,7 @@ async def evaluate_pr(
             if api_call_retry_timeout:
                 api_call_retry_method_name = e.method
                 api_call_retry_timeout -= 1
-                log.exception("problem contacting remote api. retrying")
+                log.info("problem contacting remote api. retrying")
                 continue
             log.exception("api_call_retry_timeout")
         break
