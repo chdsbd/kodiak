@@ -31,12 +31,13 @@ async def get_pr(
     number: int,
     dequeue_callback: Callable[[], Awaitable],
     queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
-) -> PRV2:
-
+) -> Optional[PRV2]:
+    log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     async with Client(installation_id=install, owner=owner, repo=repo) as api_client:
         default_branch_name = await api_client.get_default_branch_name()
         if default_branch_name is None:
-            raise RuntimeError
+            log.info("failed to find default_branch_name")
+            return None
         event = await api_client.get_event_info(
             config_file_expression=create_git_revision_expression(
                 branch=default_branch_name, file_path=CONFIG_FILE_PATH
@@ -44,7 +45,8 @@ async def get_pr(
             pr_number=number,
         )
         if event is None:
-            raise RuntimeError
+            log.info("failed to find event")
+            return None
         return PRV2(
             event,
             install=install,
@@ -69,8 +71,9 @@ async def evaluate_pr(
     skippable_check_timeout = 4
     api_call_retry_timeout = 5
     api_call_retry_method_name: Optional[str] = None
-    log = logger.bind(install=install, owner_repo=f"{owner}/{repo}", number=number)
+    log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     while True:
+        log.info("get_pr")
         pr = await get_pr(
             install=install,
             owner=owner,
@@ -79,6 +82,9 @@ async def evaluate_pr(
             dequeue_callback=dequeue_callback,
             queue_for_merge_callback=queue_for_merge_callback,
         )
+        if pr is None:
+            log.info("failed to get_pr")
+            return
         try:
             await mergeable(
                 api=pr,
@@ -100,6 +106,7 @@ async def evaluate_pr(
                 api_call_retry_timeout=api_call_retry_timeout,
                 api_call_retry_method_name=api_call_retry_method_name,
             )
+            log.info("evaluate_pr successful")
         except RetryForSkippableChecks:
             if skippable_check_timeout > 0:
                 skippable_check_timeout -= 1
@@ -119,7 +126,7 @@ async def evaluate_pr(
                 log.info("problem contacting remote api. retrying")
                 continue
             log.exception("api_call_retry_timeout")
-        break
+        return
 
 
 class PRV2:
@@ -151,7 +158,7 @@ class PRV2:
         self.log = logger.bind(install=install, owner=owner, repo=repo, number=number)
 
     async def dequeue(self) -> None:
-        self.log.info('dequeue')
+        self.log.info("dequeue")
         await self.dequeue_callback()
 
     async def set_status(
@@ -168,7 +175,7 @@ class PRV2:
         status check. This detail view is accessible via the "Details" link
         alongside the summary/detail content.
         """
-        self.log.info('set_status')
+        self.log.info("set_status")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -183,7 +190,7 @@ class PRV2:
                 self.log.exception("failed to create notification", res=res)
 
     async def delete_branch(self, branch_name: str) -> None:
-        self.log.info('delete_branch')
+        self.log.info("delete_branch")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -197,7 +204,7 @@ class PRV2:
                     self.log.exception("failed to delete branch", res=res)
 
     async def update_branch(self) -> None:
-        self.log.info('update_branch')
+        self.log.info("update_branch")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -210,7 +217,7 @@ class PRV2:
                 raise ApiCallException("update branch")
 
     async def trigger_test_commit(self) -> None:
-        self.log.info('trigger_test_commit')
+        self.log.info("trigger_test_commit")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -228,7 +235,7 @@ class PRV2:
         commit_title: Optional[str],
         commit_message: Optional[str],
     ) -> None:
-        self.log.info('merge')
+        self.log.info("merge")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -251,14 +258,14 @@ class PRV2:
                 raise ApiCallException("merge")
 
     async def queue_for_merge(self) -> Optional[int]:
-        self.log.info('queue_for_merge')
+        self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback()
 
     async def remove_label(self, label: str) -> None:
         """
         remove the PR label specified by `label_id` for a given `pr_number`
         """
-        self.log.info('remove_label')
+        self.log.info("remove_label")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -274,7 +281,7 @@ class PRV2:
         """
        create a comment on the specified `pr_number` with the given `body` as text.
         """
-        self.log.info('create_comment')
+        self.log.info("create_comment")
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
