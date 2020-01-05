@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - removed potential Regex Denial of Service (ReDoS) vulnerability from `merge.blacklist_title_regex` by using a regex engine ([rure][rure-python]) that guarantees linear time searching.
 
-[rure-python](https://github.com/davidblewett/rure-python)
+[rure-python]: https://github.com/davidblewett/rure-python
 
 ## 0.11.0 - 2019-12-20
 
