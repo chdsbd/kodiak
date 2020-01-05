@@ -178,7 +178,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                log.exception("failed to create notification", res=res)
+                self.log.exception("failed to create notification", res=res)
 
     async def delete_branch(self, branch_name: str) -> None:
         async with Client(

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from logging import add_request_info_processor
 
 import sentry_sdk
 import structlog
@@ -13,7 +12,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
-from kodiak.logging import SentryProcessor
+from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
