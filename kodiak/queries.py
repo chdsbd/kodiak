@@ -544,7 +544,7 @@ class Client:
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
         self.log = logger.bind(
-            repo=f"{self.owner}/{self.repo}", install=self.installation_id
+            owner=self.owner, repo=self.repo, install=self.installation_id
         )
 
     async def __aenter__(self) -> Client:
@@ -729,9 +729,7 @@ class Client:
     async def get_pull_requests_for_sha(
         self, sha: str
     ) -> Optional[List[events.BasePullRequest]]:
-        log = logger.bind(
-            repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
-        )
+        log = self.log.bind(sha=sha)
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(

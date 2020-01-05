@@ -223,7 +223,7 @@ class RedisWebhookQueue:
             queue_name, {event.json(): time.time()}, only_if_not_exists=True
         )
         await transaction.exec()
-
+        logger.info("enqueue webhook event", event=WebhookEvent, queue_name=queue_name)
         self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(self, *, event: WebhookEvent) -> Optional[int]:
@@ -236,16 +236,16 @@ class RedisWebhookQueue:
         
         returns position of event in queue
         """
-        key = get_merge_queue_name(event)
+        queue_name = get_merge_queue_name(event)
         transaction = await self.connection.multi()
-        await transaction.sadd(MERGE_QUEUE_NAMES, [key])
+        await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
         await transaction.zadd(
-            key, {event.json(): time.time()}, only_if_not_exists=True
+            queue_name, {event.json(): time.time()}, only_if_not_exists=True
         )
-        future_results = await transaction.zrange(key, 0, 1000)
+        future_results = await transaction.zrange(queue_name, 0, 1000)
         await transaction.exec()
-
-        self.start_repo_worker(key)
+        logger.info("enqueue repo event", event=WebhookEvent, queue_name=queue_name)
+        self.start_repo_worker(queue_name)
         results = await future_results
         dictionary = await results.asdict()
         kvs = sorted(
