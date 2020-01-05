@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.12.0 - 2020-01-04
+
+### Changed
+- refactored core update/merge eligibility logic. This was a large change and should make future features significantly easier to implement and test.
+
+
+### Fixed
+- removed potential Regex Denial of Service (ReDoS) vulnerability from `merge.blacklist_title_regex` by using a regex engine ([rure][rure-python]) that guarantees linear time searching.
+
+[rure-python]: https://github.com/davidblewett/rure-python
+
+## 0.11.0 - 2019-12-20
+
+### Added
+- updating of PRs made from forks. The merges API endpoint Kodiak had been using for updating branches didn't work across forks due to GitHub permissions. A [new API endpoint][update-branch-blog] was released in late May 2019 that avoided any permission issue, but wasn't noticed until 2019-12-12 🤦‍♀️. This change should make Kodiak more useful for public projects.
+
+[update-branch-blog]: https://developer.github.com/changes/2019-05-29-update-branch-api/
+
 ## 0.10.0 - 2019-12-04
 
 ### Added

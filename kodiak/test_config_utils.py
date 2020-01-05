@@ -1,8 +1,7 @@
 from pathlib import Path
 
 from kodiak.config import V1
-
-from .config_utils import get_markdown_for_config
+from kodiak.messages import get_markdown_for_config
 
 
 def load_config_fixture(fixture_name: str) -> Path:

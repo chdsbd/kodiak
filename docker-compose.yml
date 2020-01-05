@@ -1,0 +1,32 @@
+version: '3'
+services:
+  kodiak:
+    build: ./ 
+    environment:
+      - "PORT=3000"
+      - "REDISCLOUD_URL=http://redis:6379"
+      - "GITHUB_PRIVATE_KEY_PATH=/var/app/kodiaktest.private-key.pem"
+    volumes:
+      - ./.env:/var/app/.env
+      - ./kodiaktest.private-key.pem:/var/app/kodiaktest.private-key.pem
+    ports:
+      - 3000:3000
+    networks:
+      - redis-net
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:5.0.7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    hostname: redis
+    networks:
+      - redis-net
+    volumes:
+      - redis-data:/data
+
+networks:
+  redis-net:
+
+volumes:
+  redis-data:

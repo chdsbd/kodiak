@@ -38,6 +38,13 @@ def private_key() -> str:
     ).read_text()
 
 
+@pytest.fixture
+def api_client(mocker: MockFixture) -> Client:
+    client = Client(installation_id="foo", owner="foo", repo="foo")
+    mocker.patch.object(client, "send_query")
+    return client
+
+
 @pytest.mark.asyncio
 async def test_get_default_branch_name_error(
     api_client: Client, mocker: MockFixture
@@ -70,7 +77,7 @@ def blocked_response() -> dict:
 
 
 @pytest.fixture
-def block_event(config_file_expression: str, config_str: str) -> EventInfoResponse:
+def block_event() -> EventInfoResponse:
     config = V1(
         version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
@@ -112,8 +119,12 @@ def block_event(config_file_expression: str, config_str: str) -> EventInfoRespon
 
     return EventInfoResponse(
         config=config,
-        config_str=config_str,
-        config_file_expression=config_file_expression,
+        config_str="""\
+version = 1
+[merge]
+method = "squash"
+""",
+        config_file_expression="master:.kodiak.toml",
         head_exists=True,
         pull_request=pr,
         repo=rep_info,

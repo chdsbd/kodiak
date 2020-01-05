@@ -522,6 +522,12 @@ def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
     return valid_merge_methods
 
 
+class MergeBody(TypedDict):
+    merge_method: str
+    commit_title: Optional[str]
+    commit_message: Optional[str]
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -538,12 +544,12 @@ class Client:
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
         self.log = logger.bind(
-            repo=f"{self.owner}/{self.repo}", install=self.installation_id
+            owner=self.owner, repo=self.repo, install=self.installation_id
         )
 
     async def __aenter__(self) -> Client:
         self.throttler = get_thottler_for_installation(
-            installation_id=self.installation_id, log=self.log
+            installation_id=self.installation_id
         )
         return self
 
@@ -723,9 +729,7 @@ class Client:
     async def get_pull_requests_for_sha(
         self, sha: str
     ) -> Optional[List[events.BasePullRequest]]:
-        log = logger.bind(
-            repo=f"{self.owner}/{self.repo}", install=self.installation_id, sha=sha
-        )
+        log = self.log.bind(sha=sha)
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
@@ -737,46 +741,48 @@ class Client:
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
-    async def delete_branch(self, branch: str) -> bool:
+    async def delete_branch(self, branch: str) -> http.Response:
         """
         delete a branch by name
         """
-        log = logger.bind(
-            repo=f"{self.owner}/{self.repo}",
-            install=self.installation_id,
-            branch=branch,
-        )
         headers = await get_headers(installation_id=self.installation_id)
         ref = f"heads/{branch}"
         async with self.throttler:
-            res = await self.session.delete(
+            return await self.session.delete(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
                 headers=headers,
             )
-        if res.status_code != 204:
-            log.error("problem deleting branch", res=res, res_json=res.json())
-            return False
-        return True
 
-    async def merge_branch(self, head: str, base: str) -> http.Response:
+    async def update_branch(self, *, pull_number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
-            return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/merges",
-                json=dict(head=head, base=base),
+            return await self.session.put(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch",
                 headers=headers,
             )
 
-    async def get_pull_request(self, number: int) -> Optional[dict]:
+    async def get_pull_request(self, number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
         async with self.throttler:
-            res = await self.session.get(url, headers=headers)
-        if not res.ok:
-            return None
-        return cast(dict, res.json())
+            return await self.session.get(url, headers=headers)
 
-    async def merge_pull_request(self, number: int, body: dict) -> http.Response:
+    async def merge_pull_request(
+        self,
+        number: int,
+        merge_method: str,
+        commit_title: Optional[str],
+        commit_message: Optional[str],
+    ) -> http.Response:
+        body = dict(merge_method=merge_method)
+        # we must not pass the keys for commit_title or commit_message when they
+        # are null because GitHub will error saying the title/message cannot be
+        # null. When the keys are not passed, GitHub creates a title and
+        # message.
+        if commit_title is not None:
+            body["commit_title"] = commit_title
+        if commit_message is not None:
+            body["commit_message"] = commit_message
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
         async with self.throttler:
@@ -797,6 +803,23 @@ class Client:
         )
         async with self.throttler:
             return await self.session.post(url, headers=headers, json=body)
+
+    async def delete_label(self, label: str, pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.delete(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{label}",
+                headers=headers,
+            )
+
+    async def create_comment(self, body: str, pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments",
+                json=dict(body=body),
+                headers=headers,
+            )
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
@@ -845,5 +868,5 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
     token = await get_token_for_install(installation_id=installation_id)
     return dict(
         Authorization=f"token {token}",
-        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
     )

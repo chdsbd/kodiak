@@ -57,7 +57,6 @@ updated when their targets were updated.
 - Due to a limitation with the GitHub API, Kodiak doesn't support [requiring
   signed commits](https://help.github.com/en/articles/about-required-commit-signing).
   ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
-- Due to permission limitations for GitHub Apps, Kodiak doesn't support updating forks of branches. ([kodiak#104](https://github.com/chdsbd/kodiak/issues/104))
 - GitHub CODEOWNERS are not supported. Kodiak will prematurely update PRs that still require a review from a Code Owner. However, Kodiak will be able to merge the PR once all checks pass. ([kodiak#87](https://github.com/chdsbd/kodiak/issues/87))
 - Using `merge.block_on_reviews_requested` is not recommended. If a PR is blocked by this rule a reviewer's comment will allow the PR to be merged, not just a positive approval. This is a limitation of the GitHub API. Please try GitHub's required approvals branch protection setting instead. ([kodiak#153](https://github.com/chdsbd/kodiak/issues/153))
 
@@ -370,7 +369,7 @@ GitHub App and a testing GitHub repo.
     ```
 
     Now we can copy the **Forwarding** url into the GitHub app form.
-    Don't forget to append the path: `/api/github/hook` and sure to copy the
+    Don't forget to append the path: `/api/github/hook` and make sure to copy the
     `https`.
 
     Then hit create.
@@ -429,6 +428,23 @@ create_mock_pr() {
   git checkout master
 }
 ```
+### Integration testing with docker
+The following steps will set your test-app up with little effort:
+
+* Copy the private key that you generated on github for the app to your repository root and name it ```kodiaktest.private-key.pem```,
+* Create a file ```.env``` that sets the following environment variables: ```GITHUB_APP_ID```, ```SECRET_KEY```.
+* By using the ```docker-compose.yml``` file in conjunction with the ```Dockerfile``` in the repository
+   doing integration tests with WIP code is as easy as running these commands from the root of the repository:
+   ``` bash
+   docker-compose build
+   docker-compose up
+   ```
+* In a separate terminal you have to open up a tunnel to make your machine reachable from outside your local network:
+   ``` bash
+   ngrok http 3000
+   ```
+* Copy the address from the ```ngrok``` output to the webhook settings of your github app and it should work.
+
 
 ### Releasing a new version
 

@@ -12,7 +12,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
-from kodiak.logging import SentryProcessor
+from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
@@ -38,6 +38,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        add_request_info_processor,
         SentryProcessor(level=logging.WARNING),
         structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
     ],

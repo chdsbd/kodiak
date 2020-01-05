@@ -1,9 +1,8 @@
 import asyncio
 import time
 from collections import defaultdict, deque
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
-import structlog
 from typing_extensions import Deque
 
 
@@ -35,16 +34,11 @@ class Throttler:
     """
 
     def __init__(
-        self,
-        rate_limit: float,
-        period: float = 1.0,
-        retry_interval: float = 0.01,
-        log: Optional[structlog.BoundLogger] = None,
+        self, rate_limit: float, period: float = 1.0, retry_interval: float = 0.01
     ) -> None:
         self.rate_limit = rate_limit
         self.period = period
         self.retry_interval = retry_interval
-        self.log = log
 
         self._task_logs: Deque[float] = deque()
 
@@ -61,9 +55,6 @@ class Throttler:
             self.flush()
             if len(self._task_logs) < self.rate_limit:
                 break
-
-            if self.log is not None:
-                self.log.info("rate limit reached, waiting")
             await asyncio.sleep(self.retry_interval)
 
         self._task_logs.append(time.time())
@@ -82,9 +73,5 @@ THROTTLER_CACHE: Mapping[str, Throttler] = defaultdict(
 )
 
 
-def get_thottler_for_installation(
-    *, installation_id: str, log: Optional[structlog.BoundLogger] = None
-) -> Throttler:
-    throttler = THROTTLER_CACHE[installation_id]
-    throttler.log = log
-    return throttler
+def get_thottler_for_installation(*, installation_id: str) -> Throttler:
+    return THROTTLER_CACHE[installation_id]
