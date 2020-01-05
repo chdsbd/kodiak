@@ -223,7 +223,13 @@ class RedisWebhookQueue:
             queue_name, {event.json(): time.time()}, only_if_not_exists=True
         )
         await transaction.exec()
-        logger.info("enqueue webhook event", event=WebhookEvent, queue_name=queue_name)
+        log = logger.bind(
+            owner=event.repo_owner,
+            repo=event.repo_name,
+            number=event.pull_request_number,
+            install=event.installation_id,
+        )
+        log.info("enqueue webhook event")
         self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(self, *, event: WebhookEvent) -> Optional[int]:
@@ -244,7 +250,14 @@ class RedisWebhookQueue:
         )
         future_results = await transaction.zrange(queue_name, 0, 1000)
         await transaction.exec()
-        logger.info("enqueue repo event", event=WebhookEvent, queue_name=queue_name)
+        log = logger.bind(
+            owner=event.repo_owner,
+            repo=event.repo_name,
+            number=event.pull_request_number,
+            install=event.installation_id,
+        )
+
+        log.info("enqueue repo event")
         self.start_repo_worker(queue_name)
         results = await future_results
         dictionary = await results.asdict()

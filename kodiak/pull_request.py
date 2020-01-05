@@ -175,7 +175,7 @@ class PRV2:
         status check. This detail view is accessible via the "Details" link
         alongside the summary/detail content.
         """
-        self.log.info("set_status")
+        self.log.info("set_status", message=msg, markdown_content=markdown_content)
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -190,7 +190,7 @@ class PRV2:
                 self.log.exception("failed to create notification", res=res)
 
     async def delete_branch(self, branch_name: str) -> None:
-        self.log.info("delete_branch")
+        self.log.info("delete_branch", branch_name=branch_name)
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -235,7 +235,7 @@ class PRV2:
         commit_title: Optional[str],
         commit_message: Optional[str],
     ) -> None:
-        self.log.info("merge")
+        self.log.info("merge", method=merge_method)
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -265,7 +265,7 @@ class PRV2:
         """
         remove the PR label specified by `label_id` for a given `pr_number`
         """
-        self.log.info("remove_label")
+        self.log.info("remove_label", label=label)
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
@@ -281,7 +281,7 @@ class PRV2:
         """
        create a comment on the specified `pr_number` with the given `body` as text.
         """
-        self.log.info("create_comment")
+        self.log.info("create_comment", body=body)
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
