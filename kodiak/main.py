@@ -32,7 +32,6 @@ sentry_sdk.init(
     integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
 )
 
-
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
