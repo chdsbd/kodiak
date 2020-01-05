@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from requests import Response
 from sentry_sdk import capture_event
@@ -110,9 +110,9 @@ def add_request_info_processor(_: Any, __: Any, event_dict: dict) -> dict:
     """
     response = event_dict.get("res", None)
     if isinstance(response, Response):
-        event_dict["response_text"] = response.text
+        event_dict["response_content"] = cast(Any, response)._content
         event_dict["response_status_code"] = response.status_code
         event_dict["request_body"] = response.request.body
         event_dict["request_url"] = response.request.url
-        event_dict["request_method"] = response.request.url
+        event_dict["request_method"] = response.request.method
     return event_dict
