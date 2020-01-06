@@ -3386,6 +3386,7 @@ async def test_mergeable_update_always(
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
 
+
 @pytest.mark.asyncio
 async def test_mergeable_update_always_require_automerge_label_missing_label(
     api: MockPrApi,
@@ -3437,6 +3438,7 @@ async def test_mergeable_update_always_require_automerge_label_missing_label(
     assert api.merge.call_count == 0
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
+
 
 @pytest.mark.asyncio
 async def test_mergeable_update_always_no_require_automerge_label_missing_label(

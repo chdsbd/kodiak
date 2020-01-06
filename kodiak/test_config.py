@@ -10,11 +10,11 @@ from kodiak.config import (
     V1,
     BodyText,
     Merge,
-    Update,
     MergeBodyStyle,
     MergeMessage,
     MergeMethod,
     MergeTitleStyle,
+    Update,
 )
 
 
