@@ -10,6 +10,7 @@ from kodiak.config import (
     V1,
     BodyText,
     Merge,
+    Update,
     MergeBodyStyle,
     MergeMessage,
     MergeMethod,
@@ -60,6 +61,7 @@ def test_config_default() -> None:
                         strip_html_comments=True,
                     ),
                 ),
+                update=Update(always=True, require_automerge_label=False),
             ),
         ),
         (
@@ -89,6 +91,7 @@ def test_config_default() -> None:
                         strip_html_comments=True,
                     ),
                 ),
+                update=Update(always=True, require_automerge_label=False),
             ),
         ),
     ],

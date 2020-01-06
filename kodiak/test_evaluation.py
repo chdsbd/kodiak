@@ -3334,3 +3334,158 @@ def test_get_merge_body_empty(pull_request: PullRequest) -> None:
     )
     expected = MergeBody(merge_method="squash", commit_message="")
     assert actual == expected
+
+
+@pytest.mark.asyncio
+async def test_mergeable_update_always(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Kodiak should update PR even when failing requirements for merge
+    """
+    config.update.always = True
+    config.update.require_automerge_label = True
+
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.update_branch.call_count == 1
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+
+@pytest.mark.asyncio
+async def test_mergeable_update_always_require_automerge_label_missing_label(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Kodiak should not update branch if update.require_automerge_label is True and we're missing the automerge label.
+    """
+    config.update.always = True
+    config.update.require_automerge_label = True
+
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    pull_request.labels = []
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.update_branch.call_count == 0
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+
+@pytest.mark.asyncio
+async def test_mergeable_update_always_no_require_automerge_label_missing_label(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Kodiak should update branch if update.require_automerge_label is True and we're missing the automerge label.
+    """
+    config.update.always = True
+    config.update.require_automerge_label = False
+
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    pull_request.labels = []
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.update_branch.call_count == 1
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
