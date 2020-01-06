@@ -3434,10 +3434,12 @@ async def test_mergeable_update_always_require_automerge_label_missing_label(
     )
     assert api.update_branch.call_count == 0
 
+    assert api.set_status.call_count == 1
+    assert "missing automerge_label:" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.set_status.call_count == 0
-    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio

@@ -247,6 +247,15 @@ async def mergeable(
         )
         return
 
+    meets_label_requirement = (
+        config.merge.automerge_label in pull_request.labels
+        or not config.update.require_automerge_label
+    )
+    if config.update.always and meets_label_requirement:
+        log.info("update.always")
+        await api.update_branch()
+        return
+
     if (
         config.merge.require_automerge_label
         and config.merge.automerge_label not in pull_request.labels
