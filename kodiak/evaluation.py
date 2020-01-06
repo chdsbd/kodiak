@@ -247,11 +247,15 @@ async def mergeable(
         )
         return
 
+    need_branch_update = (
+        branch_protection.requiresStrictStatusChecks
+        and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
+    )
     meets_label_requirement = (
         config.merge.automerge_label in pull_request.labels
         or not config.update.require_automerge_label
     )
-    if config.update.always and meets_label_requirement:
+    if need_branch_update and config.update.always and meets_label_requirement:
         log.info("update.always")
         await api.update_branch()
         return
@@ -345,7 +349,6 @@ async def mergeable(
         return
 
     wait_for_checks = False
-    need_branch_update = False
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,
         MergeStateStatus.BEHIND,
@@ -494,10 +497,6 @@ async def mergeable(
                 )
                 return
 
-        need_branch_update = (
-            branch_protection.requiresStrictStatusChecks
-            and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
-        )
         missing_required_status_checks = required - passing
         wait_for_checks = bool(
             branch_protection.requiresStatusChecks and missing_required_status_checks
