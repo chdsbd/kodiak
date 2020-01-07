@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Awaitable, Callable, Optional
 
 import structlog
@@ -13,7 +14,20 @@ from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
 
-CONFIG_FILE_PATH = ".kodiak.toml"
+CONFIG_FILE = ".kodiak.toml"
+
+
+def find_configuration_file() -> str:
+    """Lookup for the configuration file in various locations."""
+    locations = [".", ".github"]
+    for location in locations:
+        loc = Path(location)
+        c = loc / CONFIG_FILE
+        if c.exists():
+            return str(c)
+    raise ValueError(
+        f'the "{CONFIG_FILE}" configuration file was not found in any of the following locations: "{", ".join(locations)}"'
+    )
 
 
 def create_git_revision_expression(branch: str, file_path: str) -> str:
@@ -40,7 +54,7 @@ async def get_pr(
             return None
         event = await api_client.get_event_info(
             config_file_expression=create_git_revision_expression(
-                branch=default_branch_name, file_path=CONFIG_FILE_PATH
+                branch=default_branch_name, file_path=find_configuration_file()
             ),
             pr_number=number,
         )
