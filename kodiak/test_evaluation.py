@@ -2013,6 +2013,7 @@ async def test_mergeable_update_branch_immediately(
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 1
     assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
 
     # verify we haven't tried to merge the PR
     assert api.merge.called is False
@@ -3380,10 +3381,12 @@ async def test_mergeable_update_always(
         api_call_retry_method_name=None,
     )
     assert api.update_branch.call_count == 1
+    assert api.set_status.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
 
 
@@ -3488,10 +3491,12 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
         api_call_retry_method_name=None,
     )
     assert api.update_branch.call_count == 1
+    assert api.set_status.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
 
 
