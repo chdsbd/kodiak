@@ -81,6 +81,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       mergeStateStatus
       state
       mergeable
+      canBeRebased
       isCrossRepository
       reviewRequests(first: 100) {
         nodes {
@@ -210,6 +211,7 @@ class PullRequest(BaseModel):
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState
+    canBeRebased: bool
     isCrossRepository: bool
     labels: List[str]
     # the SHA of the most recent commit
