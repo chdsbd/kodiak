@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add `update.always` and `update.require_automerge_label` configuration options. When enabled, `update.always` triggers Kodiak to update a branch immediately, regardless of failing mergeability requirements (e.g. missing/failing checks, title blacklist regex, blacklist labels). When `update.require_automerge_label` is enabled with `update.always`, Kodiak will update a PR even if missing the automerge label defined in `merge.automerge_label`.
 
 ### Deprecated
-- `merge.update_branch_immediately` configuration option. This setting will not be removed, but its use is discouraged because it can produce unexpected results. The behavior of `update.always` is easier to understand.
+- discourage use of `merge.update_branch_immediately` configuration option. This setting will not be removed, but its use is discouraged because it can produce unexpected results. The behavior of `update.always` is easier to understand.
 
 ## 0.12.0 - 2020-01-04
 
