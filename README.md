@@ -126,7 +126,7 @@ updated when their targets were updated.
 
     # once a PR is merged into master, delete the branch
     delete_branch_on_merge = false # default: false
-    
+
     # DEPRECATED
     # Due to limitations with the GitHub API this feature is
     # fundamentally broken and cannot be fixed. Please use the GitHub branch
@@ -200,11 +200,12 @@ updated when their targets were updated.
     strip_html_comments = false # default: false
 
     [update]
-    # update PR whenever the PR is out of date with the base branch. PR will be
+    # update PR whenever out of date with the base branch. PR will be
     # updated regardless of failing requirements for merge (e.g. failing status
-    # checks, missing reviews, blacklist labels). Kodiak will only update the PR
-    # if the automerge label is enabled or `update.require_automerge_label` is
-    # false.
+    # checks, missing reviews, blacklist labels).
+    # 
+    # Kodiak will only update the PR if the automerge label is enabled or
+    # `update.require_automerge_label` is false.
     always = false # default: false
     # enable updating PRs missing automerge label. automerge label is defined by `merge.automerge_label`.
     require_automerge_label = true # default: true
