@@ -261,7 +261,10 @@ async def mergeable(
         and config.update.always
         and meets_label_requirement
     ):
-        log.info("update.always")
+        await set_status(
+            "🔄 updating branch",
+            markdown_content="branch updated because `update.always = true` is configured.",
+        )
         await api.update_branch()
         return
 
@@ -508,7 +511,10 @@ async def mergeable(
         )
 
         if config.merge.update_branch_immediately and need_branch_update:
-            await set_status("🔄 updating branch")
+            await set_status(
+                "🔄 updating branch",
+                markdown_content="branch updated because `merge.update_branch_immediately = true` is configured.",
+            )
             await api.update_branch()
             return
 
