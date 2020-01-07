@@ -255,7 +255,12 @@ async def mergeable(
         config.merge.automerge_label in pull_request.labels
         or not config.update.require_automerge_label
     )
-    if need_branch_update and config.update.always and meets_label_requirement:
+    if (
+        need_branch_update
+        and not merging
+        and config.update.always
+        and meets_label_requirement
+    ):
         log.info("update.always")
         await api.update_branch()
         return
