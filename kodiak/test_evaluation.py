@@ -3583,7 +3583,7 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request(
             merging=True,
         )
     assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]['msg']
+    assert "updating branch" in api.set_status.calls[0]["msg"]
     assert api.update_branch.call_count == 1
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
