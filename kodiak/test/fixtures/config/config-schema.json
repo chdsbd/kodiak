@@ -2,8 +2,14 @@
   "title": "V1",
   "type": "object",
   "properties": {
-    "version": { "title": "Version", "type": "integer" },
-    "app_id": { "title": "App_Id", "type": "string" },
+    "version": {
+      "title": "Version",
+      "type": "integer"
+    },
+    "app_id": {
+      "title": "App_Id",
+      "type": "string"
+    },
     "merge": {
       "title": "Merge",
       "default": {
@@ -28,10 +34,28 @@
         "prioritize_ready_to_merge": false,
         "do_not_merge": false
       },
-      "allOf": [{ "$ref": "#/definitions/Merge" }]
+      "allOf": [
+        {
+          "$ref": "#/definitions/Merge"
+        }
+      ]
+    },
+    "update": {
+      "title": "Update",
+      "default": {
+        "always": false,
+        "require_automerge_label": true
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Update"
+        }
+      ]
     }
   },
-  "required": ["version"],
+  "required": [
+    "version"
+  ],
   "definitions": {
     "MergeMessage": {
       "title": "MergeMessage",
@@ -41,12 +65,19 @@
         "title": {
           "title": "Title",
           "default": "github_default",
-          "enum": ["github_default", "pull_request_title"]
+          "enum": [
+            "github_default",
+            "pull_request_title"
+          ]
         },
         "body": {
           "title": "Body",
           "default": "github_default",
-          "enum": ["github_default", "pull_request_body", "empty"]
+          "enum": [
+            "github_default",
+            "pull_request_body",
+            "empty"
+          ]
         },
         "include_pr_number": {
           "title": "Include_Pr_Number",
@@ -56,7 +87,11 @@
         "body_type": {
           "title": "Body_Type",
           "default": "markdown",
-          "enum": ["plain_text", "markdown", "html"]
+          "enum": [
+            "plain_text",
+            "markdown",
+            "html"
+          ]
         },
         "strip_html_comments": {
           "title": "Strip_Html_Comments",
@@ -88,12 +123,18 @@
           "title": "Blacklist_Labels",
           "default": [],
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "method": {
           "title": "Method",
           "default": "merge",
-          "enum": ["merge", "squash", "rebase"],
+          "enum": [
+            "merge",
+            "squash",
+            "rebase"
+          ],
           "type": "string"
         },
         "delete_branch_on_merge": {
@@ -125,7 +166,11 @@
             "body_type": "markdown",
             "strip_html_comments": false
           },
-          "allOf": [{ "$ref": "#/definitions/MergeMessage" }]
+          "allOf": [
+            {
+              "$ref": "#/definitions/MergeMessage"
+            }
+          ]
         },
         "dont_wait_on_status_checks": {
           "title": "Dont_Wait_On_Status_Checks",
@@ -148,6 +193,22 @@
         "do_not_merge": {
           "title": "Do_Not_Merge",
           "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    "Update": {
+      "title": "Update",
+      "type": "object",
+      "properties": {
+        "always": {
+          "title": "Always",
+          "default": false,
+          "type": "boolean"
+        },
+        "require_automerge_label": {
+          "title": "Require_Automerge_Label",
+          "default": true,
           "type": "boolean"
         }
       }

@@ -14,6 +14,7 @@ from kodiak.config import (
     MergeMessage,
     MergeMethod,
     MergeTitleStyle,
+    Update,
 )
 
 
@@ -60,6 +61,7 @@ def test_config_default() -> None:
                         strip_html_comments=True,
                     ),
                 ),
+                update=Update(always=True, require_automerge_label=False),
             ),
         ),
         (
@@ -89,6 +91,7 @@ def test_config_default() -> None:
                         strip_html_comments=True,
                     ),
                 ),
+                update=Update(always=True, require_automerge_label=False),
             ),
         ),
     ],
