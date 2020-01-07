@@ -57,7 +57,8 @@ class Merge(BaseModel):
     method: MergeMethod = MergeMethod.merge
     # delete branch when PR is merged
     delete_branch_on_merge: bool = False
-    # deprecated. this feature is flawed and cannot be fixed. see https://github.com/chdsbd/kodiak/issues/153#issuecomment-523057332.
+    # DEPRECATED. this feature is flawed and cannot be fixed. see
+    # https://github.com/chdsbd/kodiak/issues/153#issuecomment-523057332.
     #
     # block merging if there are outstanding review requests
     block_on_reviews_requested: bool = False
@@ -72,10 +73,11 @@ class Merge(BaseModel):
     # indefinite amount of time, like the wip-app checks or status checks
     # requiring manual approval.
     dont_wait_on_status_checks: List[str] = []
-    # deprecated. This setting only applies to PRs that are passing passing all
+    # DEPRECATED. This setting only updates PRs that are passing passing all
     # requirements or waiting for status checks to pass. `update.always = True`
-    # will deliver better behavior in many use cases. immediately update a PR
-    # whenever the target updates
+    # will deliver better behavior in many use cases.
+    #
+    # immediately update a PR whenever the target updates
     update_branch_immediately: bool = False
     # if a PR is passing all checks and is able to be merged, merge it without
     # placing it in the queue. This will introduce some unfairness where those

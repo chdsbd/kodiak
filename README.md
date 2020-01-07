@@ -127,7 +127,7 @@ updated when their targets were updated.
     # once a PR is merged into master, delete the branch
     delete_branch_on_merge = false # default: false
     
-    # Deprecated: Due to limitations with the GitHub API this feature is
+    # DEPRECATED. Due to limitations with the GitHub API this feature is
     # fundamentally broken and cannot be fixed. Please use the GitHub branch
     # protection "required reviewers" setting instead. See this issue/comment
     # for more information about why this feature is not fixable: https://github.com/chdsbd/kodiak/issues/153#issuecomment-523057332.
@@ -148,6 +148,10 @@ updated when their targets were updated.
     # WIP GitHub App
     dont_wait_on_status_checks = [] # default: [], options: list of check names (e.g. ["ci/circleci: lint_api"])
 
+    # DEPRECATED. This setting only updates PRs that are passing passing all
+    # requirements or waiting for status checks to pass. `update.always = True`
+    # will deliver better behavior in many use cases.
+    #
     # immediately update a PR whenever the target updates. If enabled, Kodiak will
     # not be able to efficiently update PRs. Any time the target of a PR updates,
     # the PR will update.
@@ -192,6 +196,16 @@ updated when their targets were updated.
 
     # useful for stripping HTML comments created by PR templates when the `markdown` `body_type` is used.
     strip_html_comments = false # default: false
+
+    [update]
+    # update PR whenever the PR is out of date with the base branch. PR will be
+    # updated regardless of failing requirements for merge (e.g. failing status
+    # checks, missing reviews, blacklist labels). Kodiak will only update the PR
+    # if the automerge label is enabled or `update.require_automerge_label` is
+    # false.
+    always = false # default: false
+    # enable updating PRs missing automerge label. automerge label is defined by `merge.automerge_label`.
+    require_automerge_label = true # default: true
     ```
 
     See [`kodiak/test/fixtures/config`](kodiak/test/fixtures/config) for more examples and [`kodiak/config.py`](kodiak/config.py) for the Python models.
