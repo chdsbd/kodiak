@@ -2355,6 +2355,7 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge_merge_optimistic_
     assert api.merge.called is False
     assert api.update_branch.called is False
 
+
 @pytest.mark.asyncio
 async def test_mergeable_ready_to_merge_merge_optimistic_disabled(
     api: MockPrApi,
