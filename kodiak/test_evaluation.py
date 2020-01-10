@@ -2304,6 +2304,112 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_queue_in_progress_with_ready_to_merge_merge_optimistic_disabled(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    with merge.optimistic_merge enabled if a PR has in progress checks we assume they will pass and queue the PR for merge. With merge.optimistic_merge disabled we will wait for them to pass before queuing for merge.
+
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.PENDING
+    context.context = "ci/test-api"
+    config.merge.optimistic_merge = False
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert "waiting for required status checks" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.update_branch.called is False
+
+@pytest.mark.asyncio
+async def test_mergeable_ready_to_merge_merge_optimistic_disabled(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    with merge.optimistic_merge enabled if a PR has in progress checks we assume they will pass and queue the PR for merge. With merge.optimistic_merge disabled we will wait for them to pass before queuing for merge.
+
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.CLEAN
+    branch_protection.requiresStrictStatusChecks = True
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    context.state = StatusState.SUCCESS
+    context.context = "ci/test-api"
+    config.merge.optimistic_merge = False
+    api.queue_for_merge.return_value = 4
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        check_runs=[check_run],
+        contexts=[context],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_optimistic_update_wait_for_checks(
     api: MockPrApi,
     config: V1,
