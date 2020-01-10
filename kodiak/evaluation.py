@@ -239,11 +239,14 @@ async def mergeable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
-    if branch_protection.requiresCommitSignatures:
+    if branch_protection.requiresCommitSignatures and config.merge.method in (
+        MergeMethod.rebase,
+        MergeMethod.squash,
+    ):
         await cfg_err(
             api,
             pull_request,
-            '"Require signed commits" branch protection is not supported. See Kodiak README for more info.',
+            '"Require signed commits" branch protection is only supported with merge commits. Squash and rebase are not supported by GitHub.',
         )
         return
 
