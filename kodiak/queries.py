@@ -625,7 +625,9 @@ class Client:
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
         reviewer_names: Set[str] = {
-            review.author.login for review in reviews if review.type != ReviewerTypes.Bot
+            review.author.login
+            for review in reviews
+            if review.type != ReviewerTypes.Bot
         }
 
         bot_reviews: List[PRReview] = []
