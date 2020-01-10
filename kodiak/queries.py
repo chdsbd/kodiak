@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
 import arrow
 import jwt
@@ -107,6 +107,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         nodes {
           createdAt
           state
+          type: __typename
           author {
             login
           }
@@ -281,10 +282,16 @@ class PRReviewAuthor:
     permission: Permission
 
 
+class ReviewerTypes(Enum):
+    Bot = "Bot"
+    User = "User"
+
+
 class PRReviewSchema(BaseModel):
     state: PRReviewState
     createdAt: datetime
     author: PRReviewAuthorSchema
+    type: ReviewerTypes
 
 
 @dataclass
@@ -617,7 +624,27 @@ class Client:
     async def get_reviewers_and_permissions(
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
-        reviewer_names = {review.author.login for review in reviews}
+        reviewer_names: Set[str] = {
+            review.author.login for review in reviews if review.type != ReviewerTypes.Bot
+        }
+
+        bot_reviews: List[PRReview] = []
+        for review in reviews:
+            if review.type == ReviewerTypes.User:
+                reviewer_names.add(review.author.login)
+            elif review.type == ReviewerTypes.Bot:
+                # Bots either have read or write permissions for a pull request,
+                # so if they've been able to write a review on a PR, their
+                # review counts as a user with write access.
+                bot_reviews.append(
+                    PRReview(
+                        state=review.state,
+                        createdAt=review.createdAt,
+                        author=PRReviewAuthor(
+                            login=review.author.login, permission=Permission.WRITE
+                        ),
+                    )
+                )
 
         requests = [
             self.get_permissions_for_username(username) for username in reviewer_names
@@ -629,7 +656,7 @@ class Client:
             for username, permission in zip(reviewer_names, permissions)
         }
 
-        return [
+        return bot_reviews + [
             PRReview(
                 state=review.state,
                 createdAt=review.createdAt,
