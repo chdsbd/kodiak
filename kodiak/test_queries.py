@@ -214,9 +214,7 @@ async def test_get_event_info_blocked(
         api_client, "get_permissions_for_username", get_permissions_for_username_patch
     )
 
-    res = await api_client.get_event_info(
-        config_file_expression="master:.kodiak.toml", pr_number=100
-    )
+    res = await api_client.get_event_info(branch_name="master", pr_number=100)
     assert res is not None
     assert res == block_event
 

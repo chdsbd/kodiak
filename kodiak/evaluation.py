@@ -240,11 +240,14 @@ async def mergeable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
-    if branch_protection.requiresCommitSignatures:
+    if branch_protection.requiresCommitSignatures and config.merge.method in (
+        MergeMethod.rebase,
+        MergeMethod.squash,
+    ):
         await cfg_err(
             api,
             pull_request,
-            '"Require signed commits" branch protection is not supported. See Kodiak README for more info.',
+            '"Require signed commits" branch protection is only supported with merge commits. Squash and rebase are not supported by GitHub.',
         )
         return
 
@@ -604,7 +607,7 @@ branch protection requirements.
             commit_title=merge_args.commit_title,
             commit_message=merge_args.commit_message,
         )
-    else:
+    elif ready_to_merge or config.merge.optimistic_merge:
         position_in_queue = await api.queue_for_merge()
         if position_in_queue is None:
             # this case should be rare/impossible.
@@ -617,4 +620,14 @@ branch protection requirements.
             log.info(
                 "not setting status message for enqueued job because is_active_merge=True"
             )
+    elif not config.merge.optimistic_merge and wait_for_checks:
+        await set_status(
+            f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
+        )
+    else:
+        log.info(
+            "no action to take against mergeable PR.",
+            wait_for_checks=wait_for_checks,
+            need_branch_update=need_branch_update,
+        )
     return

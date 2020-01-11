@@ -13,12 +13,6 @@ from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
 
-CONFIG_FILE_PATH = ".kodiak.toml"
-
-
-def create_git_revision_expression(branch: str, file_path: str) -> str:
-    return f"{branch}:{file_path}"
-
 
 RETRY_RATE_SECONDS = 2
 POLL_RATE_SECONDS = 3
@@ -39,10 +33,7 @@ async def get_pr(
             log.info("failed to find default_branch_name")
             return None
         event = await api_client.get_event_info(
-            config_file_expression=create_git_revision_expression(
-                branch=default_branch_name, file_path=CONFIG_FILE_PATH
-            ),
-            pr_number=number,
+            branch_name=default_branch_name, pr_number=number
         )
         if event is None:
             log.info("failed to find event")
