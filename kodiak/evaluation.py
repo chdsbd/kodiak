@@ -164,6 +164,7 @@ async def mergeable(
     config_str: str,
     config_path: str,
     pull_request: PullRequest,
+    associated_pr_numbers: Set[int],
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
     reviews: List[PRReview],
@@ -316,13 +317,20 @@ async def mergeable(
         return
 
     if pull_request.state == PullRequestState.MERGED:
-        log.info(
-            "pull request merged. config.merge.delete_branch_on_merge=%r",
-            config.merge.delete_branch_on_merge,
-        )
         await api.dequeue()
-        if config.merge.delete_branch_on_merge and not pull_request.isCrossRepository:
-            await api.delete_branch(branch_name=pull_request.headRefName)
+        if not config.merge.delete_branch_on_merge:
+            return
+        if pull_request.isCrossRepository:
+            return
+        associated_pr_numbers.discard(pull_request.number)
+        branch_has_dependent_prs = len(associated_pr_numbers) > 0
+        if branch_has_dependent_prs:
+            log.info(
+                "not deleting branch because of dependent prs",
+                dependent_prs=associated_pr_numbers,
+            )
+            return
+        await api.delete_branch(branch_name=pull_request.headRefName)
         return
 
     if pull_request.state == PullRequestState.CLOSED:
