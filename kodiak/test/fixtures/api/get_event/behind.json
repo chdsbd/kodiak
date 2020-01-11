@@ -69,35 +69,40 @@
               "state": "COMMENTED",
               "author": {
                 "login": "ghost"
-              }
+              },
+              "type": "User"
             },
             {
               "createdAt": "2019-05-22T15:29:52Z",
               "state": "CHANGES_REQUESTED",
               "author": {
                 "login": "ghost"
-              }
+              },
+              "type": "User"
             },
             {
               "createdAt": "2019-05-22T15:30:52Z",
               "state": "COMMENTED",
               "author": {
                 "login": "kodiak"
-              }
+              },
+              "type": "User"
             },
             {
               "createdAt": "2019-05-22T15:43:17Z",
               "state": "APPROVED",
               "author": {
                 "login": "ghost"
-              }
+              },
+              "type": "User"
             },
             {
               "createdAt": "2019-05-23T15:13:29Z",
               "state": "APPROVED",
               "author": {
                 "login": "walrus"
-              }
+              },
+              "type": "User"
             }
           ],
           "totalCount": 2
