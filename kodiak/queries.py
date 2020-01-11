@@ -25,6 +25,7 @@ logger = structlog.get_logger()
 
 CHECK_RUN_NAME = "kodiakhq: status"
 APPLICATION_ID = "kodiak"
+CONFIG_FILE_NAME = ".kodiak.toml"
 
 
 class ErrorLocation(TypedDict):
@@ -56,7 +57,7 @@ query ($owner: String!, $repo: String!) {
 
 
 GET_EVENT_INFO_QUERY = """
-query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: String!, $PRNumber: Int!) {
+query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $githubConfigFileExpression: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -154,7 +155,12 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         totalCount
       }
     }
-    object(expression: $configFileExpression) {
+    rootConfigFile: object(expression: $rootConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    githubConfigFile: object(expression: $githubConfigFileExpression) {
       ... on Blob {
         text
       }
@@ -365,9 +371,16 @@ def get_repo(*, data: dict) -> Optional[dict]:
         return None
 
 
-def get_config_str(*, repo: dict) -> Optional[str]:
+def get_root_config_str(*, repo: dict) -> Optional[str]:
     try:
-        return cast(str, repo["object"]["text"])
+        return cast(str, repo["rootConfigFile"]["text"])
+    except (KeyError, TypeError):
+        return None
+
+
+def get_github_config_str(*, repo: dict) -> Optional[str]:
+    try:
+        return cast(str, repo["githubConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
@@ -537,6 +550,14 @@ class MergeBody(TypedDict):
     commit_message: Optional[str]
 
 
+def create_root_config_file_expression(branch: str) -> str:
+    return f"{branch}:{CONFIG_FILE_NAME}"
+
+
+def create_github_config_file_expression(branch: str) -> str:
+    return f"{branch}:.github/{CONFIG_FILE_NAME}"
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -676,7 +697,7 @@ class Client:
         )
 
     async def get_event_info(
-        self, config_file_expression: str, pr_number: int
+        self, branch_name: str, pr_number: int
     ) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
@@ -686,12 +707,20 @@ class Client:
 
         log = self.log.bind(pr=pr_number)
 
+        root_config_file_expression = create_root_config_file_expression(
+            branch=branch_name
+        )
+        github_config_file_expression = create_github_config_file_expression(
+            branch=branch_name
+        )
+
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
-                configFileExpression=config_file_expression,
+                rootConfigFileExpression=root_config_file_expression,
+                githubConfigFileExpression=github_config_file_expression,
                 PRNumber=pr_number,
             ),
             installation_id=self.installation_id,
@@ -710,8 +739,15 @@ class Client:
             log.warning("could not find repository")
             return None
 
-        config_str = get_config_str(repo=repository)
-        if config_str is None:
+        root_config_str = get_root_config_str(repo=repository)
+        github_config_str = get_github_config_str(repo=repository)
+        if root_config_str is not None:
+            config_str = root_config_str
+            config_file_expression = root_config_file_expression
+        elif github_config_str is not None:
+            config_str = github_config_str
+            config_file_expression = github_config_file_expression
+        else:
             # NOTE(chdsbd): we don't want to show a message for this as the lack
             # of a config allows kodiak to be selectively installed
             log.info("could not find configuration file")

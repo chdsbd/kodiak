@@ -65,8 +65,10 @@ class Merge(BaseModel):
     block_on_reviews_requested: bool = False
     # comment on merge conflict and remove automerge label
     notify_on_conflict: bool = True
-    # don't wait for status checks to run before updating branch
+    # don't wait for status checks to run before updating branch during merge process
     optimistic_updates: bool = True
+    # don't wait for status checks to run before queuing PR for merge.
+    optimistic_merge: bool = True
     # configuration for commit message of merge
     message: MergeMessage = MergeMessage()
     # status checks that we don't want to wait to complete when they are in a

@@ -176,9 +176,10 @@
           "totalCount": 1
         }
       },
-      "object": {
+      "rootConfigFile": {
         "text": "version = 1\n[merge]\nmethod = \"squash\"\n"
-      }
+      },
+      "githubConfigFile": null
     }
   }
 }
