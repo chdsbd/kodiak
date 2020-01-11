@@ -325,6 +325,8 @@ async def mergeable(
             return
         if pull_request.isCrossRepository:
             return
+        
+        # ignore our current PR for determining dependencies.
         prs_on_branch.discard(pull_request.number)
         branch_has_dependent_prs = len(prs_on_branch) > 0
         if branch_has_dependent_prs:
