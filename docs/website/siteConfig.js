@@ -33,7 +33,6 @@ const siteConfig = {
   installUrl,
   changeLogUrl,
   issuesUrl,
-  docsUrl: null,
 
   // For no header links in the top nav bar -> headerLinks: [],
   headerLinks: [
@@ -81,15 +80,15 @@ const siteConfig = {
   cleanUrl: true,
 
   // Open Graph and Twitter card images.
-  ogImage: "img/undraw_online.svg",
-  twitterImage: "img/undraw_tweetstorm.svg",
+  ogImage: "img/wordmark.svg",
+  twitterImage: "img/wordmark.svg",
 
   // For sites with a sizable amount of content, set collapsible to true.
   // Expand/collapse the links and subcategories under categories.
-  docsSideNavCollapsible: false,
+  // docsSideNavCollapsible: false,
 
   // Show documentation's last contributor's name.
-  enableUpdateBy: true,
+  // enableUpdateBy: true,
 
   // Show documentation's last update time.
   enableUpdateTime: true

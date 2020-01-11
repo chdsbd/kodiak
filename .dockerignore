@@ -9,5 +9,6 @@ assets/
 .vscode/
 pip-wheel-metadata/
 *egg-info/
+docs/
 .github
 .circleci

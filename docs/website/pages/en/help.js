@@ -30,8 +30,8 @@ The team is happy to help!`,
       title: `[File an Issue on GitHub](${props.config.issuesUrl})`
     },
     {
-      content: `Take a look around Kodiak's [Docs](${docUrl(
-        "recipes.html"
+      content: `Take a look around Kodiak's [Troubleshooting page](${docUrl(
+        "troubleshooting.html"
       )}) and [Quick Start Guide](${docUrl("quickstart.html")}).`,
       title: "Browse Docs"
     }

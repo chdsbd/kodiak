@@ -40,14 +40,11 @@ function Footer(props) {
         </a>
         <div>
           <h5>Docs</h5>
-          <a href={docUrl("doc1.html", props.language)}>
-            Getting Started (or other categories)
-          </a>
-          <a href={docUrl("doc2.html", props.language)}>
-            Guides (or other categories)
-          </a>
-          <a href={docUrl("doc3.html", props.language)}>
-            API Reference (or other categories)
+          <a href={docUrl("quick-start.html", props.language)}>Quick Start</a>
+          <a href={docUrl("recipes.html", props.language)}>Recipes</a>
+          <a href={docUrl("why-and-how.html", props.language)}>Why and How</a>
+          <a href={docUrl("detailed-setup.html", props.language)}>
+            Detailed Setup
           </a>
         </div>
         <div>

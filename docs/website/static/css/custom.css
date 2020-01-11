@@ -26,6 +26,16 @@
   margin-bottom: 1rem;
 }
 
+/* with our purple of choice, links are difficult to identify without the text-decoration */
+a {
+  text-decoration: underline;
+}
+
+nav a,
+header a {
+  text-decoration: none;
+}
+
 .gh-install-btn {
   background-image: linear-gradient(-180deg, #34d058, #28a745 90%);
   background-color: #28a745;
@@ -42,6 +52,7 @@
   border-radius: 0.25rem;
   font-weight: 600;
   font-size: 20px;
+  text-decoration: none;
 }
 .gh-install-btn:hover {
   color: #fff;
