@@ -538,7 +538,7 @@ def get_prs_on_branch(*, pr: dict) -> Set[int]:
         return pr_numbers
     for associated_pr in associated_prs:
         try:
-            pr_numbers.add(int(associated_prs["number"]))
+            pr_numbers.add(int(associated_pr["number"]))
         except (KeyError, TypeError, ValueError):
             pass
     return pr_numbers
