@@ -1,0 +1,12 @@
+{
+  "docs": {
+    "Getting Started": [
+      "quickstart",
+      "detailed-setup",
+      "recipes",
+      "troubleshooting",
+      "self-hosting",
+      "contributing"
+    ]
+  }
+}
