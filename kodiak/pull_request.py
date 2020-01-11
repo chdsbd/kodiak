@@ -79,6 +79,7 @@ async def evaluate_pr(
         try:
             await mergeable(
                 api=pr,
+                prs_on_branch=pr.event.prs_on_branch,
                 config=pr.event.config,
                 config_str=pr.event.config_str,
                 config_path=pr.event.config_file_expression,

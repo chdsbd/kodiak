@@ -128,6 +128,7 @@ method = "squash"
         config_file_expression="master:.kodiak.toml",
         head_exists=True,
         pull_request=pr,
+        prs_on_branch={pr.number, 122},
         repo=rep_info,
         branch_protection=branch_protection,
         review_requests=[
