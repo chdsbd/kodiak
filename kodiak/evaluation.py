@@ -613,4 +613,10 @@ branch protection requirements.
         await set_status(
             f"⌛️ waiting for required status checks: {missing_required_status_checks!r}"
         )
+    else:
+        log.info(
+            "no action to take against mergeable PR.",
+            wait_for_checks=wait_for_checks,
+            need_branch_update=need_branch_update,
+        )
     return
