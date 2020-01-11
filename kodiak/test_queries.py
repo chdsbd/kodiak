@@ -161,6 +161,11 @@ method = "squash"
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="walrus", permission=Permission.WRITE),
             ),
+            PRReview(
+                createdAt=arrow.get("2019-05-24T10:21:32Z").datetime,
+                state=PRReviewState.APPROVED,
+                author=PRReviewAuthor(login="kodiakhq", permission=Permission.WRITE),
+            ),
         ],
         status_contexts=[
             StatusContext(

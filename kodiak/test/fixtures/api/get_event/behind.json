@@ -103,6 +103,14 @@
                 "login": "walrus"
               },
               "type": "User"
+            },
+            {
+              "createdAt": "2019-05-24T10:21:32Z",
+              "state": "APPROVED",
+              "author": {
+                "login": "kodiakhq"
+              },
+              "type": "Bot"
             }
           ],
           "totalCount": 2

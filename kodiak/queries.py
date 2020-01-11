@@ -658,17 +658,22 @@ class Client:
             for username, permission in zip(reviewer_names, permissions)
         }
 
-        return bot_reviews + [
-            PRReview(
-                state=review.state,
-                createdAt=review.createdAt,
-                author=PRReviewAuthor(
-                    login=review.author.login,
-                    permission=user_permission_mapping[review.author.login],
-                ),
-            )
-            for review in reviews
-        ]
+        return sorted(
+            bot_reviews
+            + [
+                PRReview(
+                    state=review.state,
+                    createdAt=review.createdAt,
+                    author=PRReviewAuthor(
+                        login=review.author.login,
+                        permission=user_permission_mapping[review.author.login],
+                    ),
+                )
+                for review in reviews
+                if review.type == ReviewerTypes.User
+            ],
+            key=lambda x: x.createdAt,
+        )
 
     async def get_event_info(
         self, config_file_expression: str, pr_number: int
