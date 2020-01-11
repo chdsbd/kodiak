@@ -248,7 +248,7 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
-    associated_pr_numbers: Set[int]
+    prs_on_branch: Set[int]
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
@@ -530,7 +530,7 @@ def get_head_exists(*, pr: dict) -> bool:
         return False
 
 
-def get_associated_pr_numbers(*, pr: dict) -> Set[int]:
+def get_prs_on_branch(*, pr: dict) -> Set[int]:
     pr_numbers: Set[int] = set()
     try:
         associated_prs = pr["headRef"]["associatedPullRequests"]["nodes"]
@@ -780,7 +780,7 @@ class Client:
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
-            associated_pr_numbers=get_associated_pr_numbers(pr=pull_request),
+            prs_on_branch=get_prs_on_branch(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
