@@ -159,8 +159,8 @@ class MergeableState(Enum):
 
 class PullRequest(BasePullRequest):
     merged: bool
-    mergeable: bool
-    rebaseable: bool
+    mergeable: Optional[bool]
+    rebaseable: Optional[bool]
     mergeable_state: MergeableState
     merged_by: Optional[User]
     comments: int

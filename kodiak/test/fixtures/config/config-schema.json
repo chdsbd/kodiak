@@ -7,7 +7,7 @@
       "type": "integer"
     },
     "app_id": {
-      "title": "App_Id",
+      "title": "App Id",
       "type": "string"
     },
     "merge": {
@@ -44,8 +44,8 @@
     "update": {
       "title": "Update",
       "default": {
-        "always": false,
-        "require_automerge_label": true
+        "require_automerge_label": true,
+        "always": false
       },
       "allOf": [
         {
@@ -81,12 +81,12 @@
           ]
         },
         "include_pr_number": {
-          "title": "Include_Pr_Number",
+          "title": "Include Pr Number",
           "default": true,
           "type": "boolean"
         },
         "body_type": {
-          "title": "Body_Type",
+          "title": "Body Type",
           "default": "markdown",
           "enum": [
             "plain_text",
@@ -95,7 +95,7 @@
           ]
         },
         "strip_html_comments": {
-          "title": "Strip_Html_Comments",
+          "title": "Strip Html Comments",
           "default": false,
           "type": "boolean"
         }
@@ -106,22 +106,22 @@
       "type": "object",
       "properties": {
         "automerge_label": {
-          "title": "Automerge_Label",
+          "title": "Automerge Label",
           "default": "automerge",
           "type": "string"
         },
         "require_automerge_label": {
-          "title": "Require_Automerge_Label",
+          "title": "Require Automerge Label",
           "default": true,
           "type": "boolean"
         },
         "blacklist_title_regex": {
-          "title": "Blacklist_Title_Regex",
+          "title": "Blacklist Title Regex",
           "default": "^WIP:.*",
           "type": "string"
         },
         "blacklist_labels": {
-          "title": "Blacklist_Labels",
+          "title": "Blacklist Labels",
           "default": [],
           "type": "array",
           "items": {
@@ -139,27 +139,27 @@
           "type": "string"
         },
         "delete_branch_on_merge": {
-          "title": "Delete_Branch_On_Merge",
+          "title": "Delete Branch On Merge",
           "default": false,
           "type": "boolean"
         },
         "block_on_reviews_requested": {
-          "title": "Block_On_Reviews_Requested",
+          "title": "Block On Reviews Requested",
           "default": false,
           "type": "boolean"
         },
         "notify_on_conflict": {
-          "title": "Notify_On_Conflict",
+          "title": "Notify On Conflict",
           "default": true,
           "type": "boolean"
         },
         "optimistic_updates": {
-          "title": "Optimistic_Updates",
+          "title": "Optimistic Updates",
           "default": true,
           "type": "boolean"
         },
         "optimistic_merge": {
-          "title": "Optimistic_Merge",
+          "title": "Optimistic Merge",
           "default": true,
           "type": "boolean"
         },
@@ -179,7 +179,7 @@
           ]
         },
         "dont_wait_on_status_checks": {
-          "title": "Dont_Wait_On_Status_Checks",
+          "title": "Dont Wait On Status Checks",
           "default": [],
           "type": "array",
           "items": {
@@ -187,17 +187,17 @@
           }
         },
         "update_branch_immediately": {
-          "title": "Update_Branch_Immediately",
+          "title": "Update Branch Immediately",
           "default": false,
           "type": "boolean"
         },
         "prioritize_ready_to_merge": {
-          "title": "Prioritize_Ready_To_Merge",
+          "title": "Prioritize Ready To Merge",
           "default": false,
           "type": "boolean"
         },
         "do_not_merge": {
-          "title": "Do_Not_Merge",
+          "title": "Do Not Merge",
           "default": false,
           "type": "boolean"
         }
@@ -207,14 +207,14 @@
       "title": "Update",
       "type": "object",
       "properties": {
+        "require_automerge_label": {
+          "title": "Require Automerge Label",
+          "default": true,
+          "type": "boolean"
+        },
         "always": {
           "title": "Always",
           "default": false,
-          "type": "boolean"
-        },
-        "require_automerge_label": {
-          "title": "Require_Automerge_Label",
-          "default": true,
           "type": "boolean"
         }
       }
