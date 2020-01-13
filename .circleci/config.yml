@@ -64,7 +64,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
             - docs-site-v1-{{ .Branch }}-
             - docs-site-v1-
       - run:
@@ -74,7 +74,7 @@ jobs:
       - save_cache:
           paths:
             - ./docs/website/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
       - run:
           name: run typechecker
           working_directory: docs/website/
@@ -88,7 +88,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
             - docs-site-v1-{{ .Branch }}-
             - docs-site-v1-
       - run:
@@ -97,7 +97,7 @@ jobs:
       - save_cache:
           paths:
             - ./docs/website/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
       - run:
           name: run fmt
           working_directory: docs/website/
