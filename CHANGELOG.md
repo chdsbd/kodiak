@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.14.0 - 2020-01-12
+
+### Added
+- add support for placing `.kodiak.toml` at `.github/.kodiak.toml`.
+
+
+### Changed
+- updated warnings to allow commit signature branch protection setting when "merge" is configured as Kodiak's merge method. Kodiak is able to create signatures for merge commits, but not for squash and rebase merge methods (GitHub limitation).
+
+
+### Fixed
+- add handling to support reviews created by bots. A bot is not compatible with user API endpoints, so when a bot review was added Kodiak would fail when evaluating permissions on the bot.
+
 ## 0.13.0 - 2020-01-06
 
 ### Added
