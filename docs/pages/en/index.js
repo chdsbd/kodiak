@@ -12,17 +12,6 @@ const CompLibrary = require("../../core/CompLibrary.js")
 const Container = CompLibrary.Container
 const GridBlock = CompLibrary.GridBlock
 
-/**
- * @param {{baseUrl: string, docsUrl?: string}} siteConfig
- * @param {string} language
- */
-function createDocUrl({ baseUrl }, language) {
-  const langPart = `${language ? `${language}/` : ""}`
-  /** @param {string} doc */
-  const docUrl = doc => `${baseUrl}${langPart}${doc}`
-  return docUrl
-}
-
 /** @param {{language?: string, siteConfig: typeof import("../../siteConfig")}} props */
 function HomeSplash(props) {
   const { siteConfig } = props
@@ -116,8 +105,6 @@ function Index(props) {
   const { config: siteConfig, language = "" } = props
   const { baseUrl } = siteConfig
 
-  const docUrl = createDocUrl(siteConfig, language)
-
   /** @param {{id?: string, background?: string, children: React.ReactNode, layout?: string, align?: "center" | "left" | undefined, paddingTop?: boolean}} props */
   const Block = ({
     paddingTop = true,
@@ -153,7 +140,6 @@ function Index(props) {
 
     \`\`\`toml
     # .kodiak.toml
-    # Minimal config. version is the only required field.
     version = 1
     \`\`\`
 
@@ -165,7 +151,7 @@ function Index(props) {
 
     Label your PRs with your \`automerge\` label and let Kodiak do the rest! 🎉
 
-See the [docs](${docUrl("quickstart.html")}) for additional setup information.
+See the [docs](/docs/quickstart) for additional setup information.
 
 If you have any questions please review [our help page](./help).
 

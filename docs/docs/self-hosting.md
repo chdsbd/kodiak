@@ -10,7 +10,7 @@ If you don't want to use the [GitHub App](https://github.com/marketplace/kodiakh
 
 These instructions describe setting up Kodiak on Heroku using a Docker container, but you should be able to adapt this for other container platforms.
 
-1.  Create a new GitHub app via https://github.com/settings/apps/new with the permissions described in the [Permissions](#permissions) sections of this document and with the event subscriptions specified below
+1.  Create a new GitHub app via https://github.com/settings/apps/new with the permissions described in the [Permissions](/docs/permissions) sections of this document and with the event subscriptions specified below
 
     More information on creating a GitHub app can be found at: https://developer.github.com/apps/building-github-apps/creating-a-github-app/
 
