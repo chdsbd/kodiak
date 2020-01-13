@@ -87,7 +87,6 @@ def block_event() -> EventInfoResponse:
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
-        canBeRebased=True,
         isCrossRepository=False,
         labels=["automerge"],
         latest_sha="8d728d017cac4f5ba37533debe65730abe65730a",
