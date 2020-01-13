@@ -57,6 +57,52 @@ jobs:
           name: run lints
           command: ./s/lint
 
+  docs_site_typecheck:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-
+            - docs-site-v1-
+      - run:
+          name: install dependencies
+          command: |
+            yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./docs/website/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+      - run:
+          name: run typechecker
+          working_directory: docs/website/
+          command: |
+            yarn typecheck
+
+  docs_site_fmt:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-
+            - docs-site-v1-
+      - run:
+          name: install dependencies
+          command: yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./docs/website/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "yarn.lock" }}
+      - run:
+          name: run fmt
+          working_directory: docs/website/
+          command: yarn fmt-ci
+
   # https://circleci.com/docs/2.0/building-docker-images/
   build_container:
     docker:
@@ -74,6 +120,8 @@ workflows:
     jobs:
       - test_api
       - lint_api
+      - docs_site_typecheck
+      - docs_site_fmt
       - build_container:
           filters:
             branches:

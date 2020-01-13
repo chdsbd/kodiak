@@ -7,6 +7,7 @@
 
 const React = require("react");
 
+// @ts-ignore
 const CompLibrary = require("../../core/CompLibrary.js");
 
 const Container = CompLibrary.Container;
@@ -15,12 +16,11 @@ const GridBlock = CompLibrary.GridBlock;
 /** @param {{language?: string, config: typeof import("../../siteConfig")}} props */
 function Help(props) {
   const { config: siteConfig, language = "" } = props;
-  const { baseUrl, docsUrl } = siteConfig;
-  const docsPart = `${docsUrl ? `${docsUrl}/` : ""}`;
+  const { baseUrl } = siteConfig;
   const langPart = `${language ? `${language}/` : ""}`;
 
   /** @param {string} doc */
-  const docUrl = doc => `${baseUrl}${docsPart}${langPart}${doc}`;
+  const docUrl = doc => `${baseUrl}${langPart}${doc}`;
 
   const supportLinks = [
     {

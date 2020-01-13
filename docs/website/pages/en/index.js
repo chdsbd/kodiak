@@ -7,9 +7,8 @@
 
 const React = require("react");
 
+// @ts-ignore
 const CompLibrary = require("../../core/CompLibrary.js");
-
-const MarkdownBlock = CompLibrary.MarkdownBlock; /* Used to read markdown */
 const Container = CompLibrary.Container;
 const GridBlock = CompLibrary.GridBlock;
 

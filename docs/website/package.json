@@ -3,6 +3,8 @@
     "examples": "docusaurus-examples",
     "start": "docusaurus-start",
     "build": "docusaurus-build",
+    "fmt": "yarn prettier '**/*.{md,js,json}' --write",
+    "fmt-ci": "yarn prettier '**/*.{md,js,json}' --check",
     "typecheck": "tsc --project tsconfig.json",
     "publish-gh-pages": "docusaurus-publish",
     "write-translations": "docusaurus-write-translations",
@@ -12,6 +14,7 @@
   "devDependencies": {
     "@types/react": "^16.9.17",
     "docusaurus": "^1.14.3",
+    "prettier": "^1.19.1",
     "typescript": "^3.7.4"
   }
 }
