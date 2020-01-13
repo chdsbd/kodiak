@@ -341,19 +341,11 @@ async def mergeable(
     if pull_request.state == PullRequestState.CLOSED:
         await api.dequeue()
         return
-
-    normal_merge_conflict = (
+    if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
         or pull_request.mergeable == MergeableState.CONFLICTING
-    )
-    rebase_merge_conflict = (
-        not pull_request.canBeRebased and config.merge.method == MergeMethod.rebase
-    )
-    if normal_merge_conflict or rebase_merge_conflict:
-        msg = "merge conflict"
-        if rebase_merge_conflict:
-            msg = "merge conflict prevents rebase"
-        await block_merge(api, pull_request, msg)
+    ):
+        await block_merge(api, pull_request, "merge conflict")
         # remove label if configured and send message
         if config.merge.notify_on_conflict and config.merge.require_automerge_label:
             automerge_label = config.merge.automerge_label

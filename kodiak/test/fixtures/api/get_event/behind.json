@@ -34,7 +34,6 @@
         "mergeStateStatus": "BEHIND",
         "state": "OPEN",
         "mergeable": "MERGEABLE",
-        "canBeRebased": true,
         "isCrossRepository": false,
         "reviewRequests": {
           "nodes": [
