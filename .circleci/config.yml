@@ -69,6 +69,7 @@ jobs:
             - docs-site-v1-
       - run:
           name: install dependencies
+          working_directory: docs/
           command: |
             yarn install --frozen-lockfile --non-interactive
       - save_cache:
@@ -93,6 +94,7 @@ jobs:
             - docs-site-v1-
       - run:
           name: install dependencies
+          working_directory: docs/
           command: yarn install --frozen-lockfile --non-interactive
       - save_cache:
           paths:
