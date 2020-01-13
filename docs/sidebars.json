@@ -1,0 +1,15 @@
+{
+  "docs": {
+    "Getting Started": [
+      "quickstart",
+      "detailed-setup",
+      "recipes",
+      "why-and-how",
+      "permissions",
+      "troubleshooting",
+      "prior-art-and-alternatives",
+      "self-hosting"
+    ],
+    "Contributing": ["contributing"]
+  }
+}

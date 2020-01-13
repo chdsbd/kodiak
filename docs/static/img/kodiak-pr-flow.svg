@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="349px" height="271px" viewBox="0 0 349 271" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 52.4 (67378) - http://www.bohemiancoding.com/sketch -->
+    <title>diagram thin</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="40" height="40" rx="3"></rect>
+        <rect id="path-3" x="0" y="0" width="20" height="20" rx="3"></rect>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-5">
+            <stop stop-color="#FAD961" offset="0%"></stop>
+            <stop stop-color="#F76B1C" offset="100%"></stop>
+        </linearGradient>
+        <rect id="path-6" x="0" y="0" width="20" height="20" rx="3"></rect>
+    </defs>
+    <g id="diagram-thin" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#FFFFFF" x="0" y="0" width="349" height="271"></rect>
+        <path d="M55,257.5 L55,98" id="Line" stroke="#979797" stroke-width="2" stroke-linecap="square"></path>
+        <g id="chdsbd-rounded">
+            <g id="chdsbd-copy">
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="Mask" fill="#D8D8D8" xlink:href="#path-1"></use>
+                <g id="chdsbd" mask="url(#mask-2)">
+                    <polygon id="Path" fill="#F0F0F0" points="0 0 40 0 40 40 0 40"></polygon>
+                    <polygon id="Path" fill="#DD7663" points="23.3333333 3.33333333 23.3333333 16.6666667 16.6666667 16.6666667 16.6666667 3.33333333"></polygon>
+                    <polygon id="Path" fill="#DD7663" points="3.33333333 23.3333333 36.6666667 23.3333333 36.6666667 30 23.3333333 30 23.3333333 36.6666667 16.6666667 36.6666667 16.6666667 30 3.33333333 30"></polygon>
+                </g>
+            </g>
+        </g>
+        <g id="chdsbd-rounded" transform="translate(75.000000, 87.000000)">
+            <g id="chdsbd-copy">
+                <mask id="mask-4" fill="white">
+                    <use xlink:href="#path-3"></use>
+                </mask>
+                <use id="Mask" fill="#D8D8D8" xlink:href="#path-3"></use>
+                <g id="chdsbd" mask="url(#mask-4)">
+                    <polygon id="Path" fill="#F0F0F0" points="0 0 20 0 20 20 0 20"></polygon>
+                    <polygon id="Path" fill="#DD7663" points="11.6666667 1.66666667 11.6666667 8.33333333 8.33333333 8.33333333 8.33333333 1.66666667"></polygon>
+                    <polygon id="Path" fill="#DD7663" points="1.66666667 11.6666667 18.3333333 11.6666667 18.3333333 15 11.6666667 15 11.6666667 18.3333333 8.33333333 18.3333333 8.33333333 15 1.66666667 15"></polygon>
+                </g>
+            </g>
+        </g>
+        <g id="add-label" transform="translate(41.000000, 83.000000)">
+            <rect id="Rectangle" fill="#FFFFFF" x="0" y="0" width="28" height="30"></rect>
+            <circle id="add-label-circle" fill="#E1E4E8" cx="14" cy="14" r="14"></circle>
+            <g id="github-label" transform="translate(8.000000, 8.000000)" fill="#444D56">
+                <path d="M6.73,0.73 C6.26,0.26 5.62,-1.42108547e-14 4.96,-1.42108547e-14 L2.5,-1.42108547e-14 C1.13,-1.42108547e-14 0,1.13 0,2.5 L0,4.97 C0,5.63 0.27,6.27 0.73,6.74 L6.79,12.8 C7.18,13.19 7.81,13.19 8.2,12.8 L12.79,8.21 C13.18,7.82 13.18,7.19 12.79,6.8 L6.73,0.73 Z M1.38,6.09 C1.07,5.79 0.91,5.39 0.91,4.96 L0.91,2.5 C0.91,1.62 1.63,0.91 2.5,0.91 L4.97,0.91 C5.39,0.91 5.8,1.07 6.1,1.38 L12.24,7.51 L7.51,12.24 L1.38,6.09 Z M2.01,2 L4.01,2 L4.01,4 L2,4 L2,2 L2.01,2 Z" id="Shape"></path>
+            </g>
+        </g>
+        <g id="Group-2" transform="translate(105.000000, 81.000000)">
+            <text id="added" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+                <tspan x="0.25390625" y="20">added</tspan>
+            </text>
+            <text id="label-copy" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+                <tspan x="139.097656" y="20">label</tspan>
+            </text>
+            <g id="automerge-label" transform="translate(48.000000, 3.000000)">
+                <g id="Group" transform="translate(2.717209, 0.725586)">
+                    <rect id="Rectangle-Copy" fill="#D4D5D5" x="0.860776673" y="0.555071277" width="84" height="23.320366" rx="2"></rect>
+                    <rect id="Rectangle" fill="#EDEDED" x="0.860776673" y="0.555071277" width="84" height="22.1947778" rx="2"></rect>
+                </g>
+                <text id="automerge" font-family="Helvetica-Bold, Helvetica" font-size="14" font-weight="bold" letter-spacing="0.400000006" fill="#000000">
+                    <tspan x="7.61386716" y="17.7255859">automerg</tspan>
+                    <tspan x="74.6" y="17.7255859">e</tspan>
+                </text>
+            </g>
+        </g>
+        <g id="Group" transform="translate(46.000000, 0.000000)" fill="#EDF6FF">
+            <rect id="Rectangle-Copy-3" transform="translate(15.556349, 19.556349) rotate(45.000000) translate(-15.556349, -19.556349) " x="4.55634919" y="8.55634919" width="22" height="22" rx="3"></rect>
+            <rect id="Rectangle" x="9" y="0" width="294" height="68" rx="6"></rect>
+        </g>
+        <g id="blurb" transform="translate(75.000000, 8.000000)" fill="#FFFFFF">
+            <rect id="Rectangle" x="0" y="0" width="120" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-8" x="0" y="28" width="179" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-4" x="136" y="0" width="120" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-6" x="92" y="14" width="120" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-5" x="0" y="14" width="80" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-10" x="0" y="41" width="44" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-11" x="57" y="41" width="79" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-12" x="148" y="41" width="60" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-13" x="215" y="41" width="40" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-9" x="184" y="28" width="73" height="9" rx="4.5"></rect>
+            <rect id="Rectangle-Copy-7" x="225" y="14" width="33" height="9" rx="4.5"></rect>
+        </g>
+        <g id="merge" transform="translate(41.000000, 201.000000)">
+            <rect id="Rectangle" fill="#FFFFFF" x="0" y="0" width="28" height="32"></rect>
+            <circle id="merge-oval" fill="#6F42C1" cx="14" cy="16" r="14"></circle>
+            <g id="git-merge" transform="translate(8.000000, 9.000000)" fill="#FFFFFF">
+                <path d="M10,6.01 C9.27,6.01 8.62,6.42 8.27,7.03 L8.27,7.01 C7.22,6.99 6,6.65 5.14,5.99 C4.39,5.41 3.64,4.38 3.25,3.55 C3.7,3.19 4,2.63 4,2 C4,0.89 3.11,-4.4408921e-15 2,-4.4408921e-15 C0.89,-4.4408921e-15 0,0.9 0,2.01 C0,2.74 0.41,3.39 1,3.73 L1,10.29 C0.41,10.64 0,11.28 0,12.01 C0,13.12 0.89,14.01 2,14.01 C3.11,14.01 4,13.12 4,12.01 C4,11.28 3.59,10.63 3,10.29 L3,6.68 C3.67,7.38 4.44,7.95 5.3,8.37 C6.16,8.79 7.33,9 8.27,9.01 L8.27,8.99 C8.63,9.6 9.27,10.01 10,10.01 C11.11,10.01 12,9.12 12,8.01 C12,6.9 11.11,6.01 10,6.01 Z M3.2,12.01 C3.2,12.67 2.65,13.21 2,13.21 C1.35,13.21 0.8,12.66 0.8,12.01 C0.8,11.36 1.35,10.81 2,10.81 C2.65,10.81 3.2,11.36 3.2,12.01 Z M2,3.21 C1.34,3.21 0.8,2.66 0.8,2.01 C0.8,1.36 1.35,0.81 2,0.81 C2.65,0.81 3.2,1.36 3.2,2.01 C3.2,2.66 2.65,3.21 2,3.21 Z M10,9.21 C9.34,9.21 8.8,8.66 8.8,8.01 C8.8,7.36 9.35,6.81 10,6.81 C10.65,6.81 11.2,7.36 11.2,8.01 C11.2,8.66 10.65,9.21 10,9.21 Z" id="Shape"></path>
+            </g>
+        </g>
+        <text id="kodiak" font-family="Helvetica-Bold, Helvetica" font-size="16" font-weight="bold" fill="#000000">
+            <tspan x="105.15625" y="223">kodiak</tspan>
+        </text>
+        <text id="merged-this-pull-req" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+            <tspan x="161.121094" y="223">merged this pull request</tspan>
+        </text>
+        <circle id="Oval" fill="url(#linearGradient-5)" cx="85" cy="257" r="10"></circle>
+        <text id="approved-these-chang" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+            <tspan x="105.378906" y="143">approved these changes</tspan>
+        </text>
+        <g id="sbdchd-rounded" transform="translate(75.000000, 127.000000)">
+            <g id="sbdchd">
+                <mask id="mask-7" fill="white">
+                    <use xlink:href="#path-6"></use>
+                </mask>
+                <use id="Mask" fill="#D8D8D8" xlink:href="#path-6"></use>
+                <g mask="url(#mask-7)">
+                    <polygon id="Path" fill="#F0F0F0" points="0.0191102667 0.030780017 19.9526651 0.030780017 19.9526651 19.9643348 0.0191102667 19.9643348"></polygon>
+                    <path d="M14.9692764,14.9809461 L11.6470172,14.9809461 L11.6470172,18.3032053 L8.32475811,18.3032053 L8.32475811,14.9809461 L5.00249897,14.9809461 L5.00249897,18.3032053 L1.68023983,18.3032053 L1.68023983,8.33642786 L5.00249897,8.33642786 L5.00249897,5.01416872 L14.9692764,5.01416872 L14.9692764,8.33642786 L18.2915355,8.33642786 L18.2915355,18.3032053 L14.9692764,18.3032053 L14.9692764,14.9809461 Z M14.9692764,1.69190959 L18.2915355,1.69190959 L18.2915355,5.01416872 L14.9692764,5.01416872 L14.9692764,1.69190959 Z M1.68023983,1.69190959 L5.00249897,1.69190959 L5.00249897,5.01416872 L1.68023983,5.01416872 L1.68023983,1.69190959 Z M8.30564784,8.30564784 L8.30564784,11.627907 L11.627907,11.627907 L11.627907,8.30564784 L8.30564784,8.30564784 Z" id="Shape" fill="#DAC87B"></path>
+                </g>
+            </g>
+        </g>
+        <g id="approval" transform="translate(41.000000, 121.000000)">
+            <rect id="Rectangle" fill="#FFFFFF" x="0" y="0" width="28" height="32"></rect>
+            <circle id="approval-circle" fill="#28A745" cx="14" cy="16" r="14"></circle>
+            <g id="check" transform="translate(8.000000, 11.000000)" fill="#FFFFFF">
+                <polygon id="Path" points="12 1.5 4 9.5 0 5.5 1.5 4 4 6.5 10.5 0"></polygon>
+            </g>
+        </g>
+        <text id="kodiak" font-family="Helvetica-Bold, Helvetica" font-size="16" font-weight="bold" fill="#000000">
+            <tspan x="105.15625" y="183">kodiak</tspan>
+        </text>
+        <text id="updated-branch" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+            <tspan x="161.398438" y="183">updated branch</tspan>
+        </text>
+        <circle id="Oval-Copy" fill="url(#linearGradient-5)" cx="85" cy="177" r="10"></circle>
+        <g id="delete-branch" transform="translate(41.000000, 241.000000)">
+            <rect id="Rectangle" fill="#FFFFFF" x="0" y="0" width="28" height="32"></rect>
+            <circle id="delete-branch-circle" fill="#E1E4E8" cx="14" cy="16" r="14"></circle>
+            <path d="M19,13 C19,11.89 18.11,11 17,11 C15.89,11 15,11.89 15,13 C15,13.73 15.41,14.38 16,14.72 L16,15.02 C15.98,15.54 15.77,16 15.37,16.4 C14.97,16.8 14.51,17.01 13.99,17.03 C13.16,17.05 12.51,17.19 11.99,17.48 L11.99,12.72 C12.58,12.38 12.99,11.74 12.99,11 C12.99,9.89 12.1,9 10.99,9 C9.88,9 9,9.89 9,11 C9,11.73 9.41,12.38 10,12.72 L10,19.28 C9.41,19.63 9,20.27 9,21 C9,22.11 9.89,23 11,23 C12.11,23 13,22.11 13,21 C13,20.47 12.8,20 12.47,19.64 C12.56,19.58 12.95,19.23 13.06,19.17 C13.31,19.06 13.62,19 14,19 C15.05,18.95 15.95,18.55 16.75,17.75 C17.55,16.95 17.95,15.77 18,14.73 L17.98,14.73 C18.59,14.37 19,13.73 19,13 Z M11,9.8 C11.66,9.8 12.2,10.35 12.2,11 C12.2,11.65 11.65,12.2 11,12.2 C10.35,12.2 9.8,11.65 9.8,11 C9.8,10.35 10.35,9.8 11,9.8 Z M11,22.21 C10.34,22.21 9.8,21.66 9.8,21.01 C9.8,20.36 10.35,19.81 11,19.81 C11.65,19.81 12.2,20.36 12.2,21.01 C12.2,21.66 11.65,22.21 11,22.21 Z M17,14.21 C16.34,14.21 15.8,13.66 15.8,13.01 C15.8,12.36 16.35,11.81 17,11.81 C17.65,11.81 18.2,12.36 18.2,13.01 C18.2,13.66 17.65,14.21 17,14.21 Z" id="Shape" fill="#444D56"></path>
+        </g>
+        <circle id="Oval-Copy-2" fill="url(#linearGradient-5)" cx="85" cy="217" r="10"></circle>
+        <text id="kodiak" font-family="Helvetica-Bold, Helvetica" font-size="16" font-weight="bold" fill="#000000">
+            <tspan x="105.15625" y="263">kodiak</tspan>
+        </text>
+        <text id="deleted-branch" font-family="Helvetica" font-size="16" font-weight="normal" fill="#000000">
+            <tspan x="161.070312" y="263">deleted branch</tspan>
+        </text>
+        <g id="commit" transform="translate(41.000000, 163.000000)">
+            <circle id="delete-branch-circle" cx="14" cy="14" r="14"></circle>
+            <rect id="Rectangle" fill="#FFFFFF" x="8" y="8" width="12" height="12"></rect>
+            <path d="M17.86,13 C17.41,11.28 15.86,10 14,10 C12.14,10 10.59,11.28 10.14,13 L7,13 L7,15 L10.14,15 C10.59,16.72 12.14,18 14,18 C15.86,18 17.41,16.72 17.86,15 L21,15 L21,13 L17.86,13 Z M14,16.2 C12.78,16.2 11.8,15.22 11.8,14 C11.8,12.78 12.78,11.8 14,11.8 C15.22,11.8 16.2,12.78 16.2,14 C16.2,15.22 15.22,16.2 14,16.2 Z" id="Shape" fill="#959DA5"></path>
+        </g>
+    </g>
+</svg>

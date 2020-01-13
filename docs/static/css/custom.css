@@ -1,0 +1,116 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+/* your custom css */
+
+@media only screen and (min-device-width: 360px) and (max-device-width: 736px) {
+}
+
+@media only screen and (min-width: 1024px) {
+}
+
+@media only screen and (max-width: 1023px) {
+}
+
+@media only screen and (min-width: 1400px) {
+}
+
+@media only screen and (min-width: 1500px) {
+}
+
+/* overrides */
+
+.container .wrapper .imageAlignSide p {
+  margin-bottom: 1rem;
+}
+
+/* with our purple of choice, links are difficult to identify without the text-decoration */
+a {
+  text-decoration: underline;
+}
+
+nav a,
+header a {
+  text-decoration: none;
+}
+
+.homeContainer .homeWrapper .projectLogo {
+  right: unset;
+  left: unset;
+  bottom: unset;
+  top: unset;
+}
+
+@media only screen and (min-width: 1300px) {
+  .homeContainer .homeWrapper .projLogo {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    position: absolute;
+  }
+}
+.projLogo {
+  padding-bottom: 2rem;
+}
+
+/* custom */
+
+.gh-install-btn {
+  background-image: linear-gradient(-180deg, #34d058, #28a745 90%);
+  background-color: #28a745;
+  background-position: -1px -1px;
+  background-repeat: repeat-x;
+  background-size: 110% 110%;
+  color: #fff;
+  padding-left: 80px;
+  padding-right: 80px;
+  padding-bottom: 14px;
+  padding-top: 14px;
+  cursor: pointer;
+  border: 1px solid rgba(27, 31, 35, 0.2);
+  border-radius: 0.25rem;
+  font-weight: 600;
+  font-size: 20px;
+  text-decoration: none;
+}
+.gh-install-btn:hover {
+  color: #fff;
+  background-color: #269f42;
+  background-image: linear-gradient(-180deg, #2fcb53, #269f42 90%);
+  background-position: -0.5em;
+  border-color: rgba(27, 31, 35, 0.5);
+}
+.gh-install-btn:active {
+  color: #fff;
+  background-color: #279f43;
+  background-image: none;
+  border-color: rgba(27, 31, 35, 0.5);
+  box-shadow: inset 0 0.15em 0.3em rgba(27, 31, 35, 0.15);
+}
+
+.mb-4 {
+  margin-bottom: 1rem !important;
+}
+
+.d-flex {
+  display: flex !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+.justify-start {
+  justify-content: flex-start !important;
+}
+
+.align-center {
+  align-items: center !important;
+}
+
+.mr-3 {
+  margin-right: 0.75rem !important;
+}

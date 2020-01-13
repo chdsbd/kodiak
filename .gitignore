@@ -123,3 +123,4 @@ dmypy.json
 .pyre/
 
 *.pem
+i18n
