@@ -8,10 +8,10 @@
 // See https://docusaurus.io/docs/site-config for all the possible
 // site configuration options.
 
-const repoUrl = "https://github.com/chdsbd/kodiak";
-const installUrl = "https://github.com/marketplace/kodiakhq#pricing-and-setup";
-const changeLogUrl = "https://github.com/chdsbd/kodiak/releases";
-const issuesUrl = "https://github.com/chdsbd/kodiak/issues/new/choose";
+const repoUrl = "https://github.com/chdsbd/kodiak"
+const installUrl = "https://github.com/marketplace/kodiakhq#pricing-and-setup"
+const changeLogUrl = "https://github.com/chdsbd/kodiak/releases"
+const issuesUrl = "https://github.com/chdsbd/kodiak/issues/new/choose"
 
 const siteConfig = {
   title: "Kodiak", // Title for your website.
@@ -44,12 +44,12 @@ const siteConfig = {
     { href: changeLogUrl, label: "Changelog" },
     {
       href: repoUrl,
-      label: "GitHub"
+      label: "GitHub",
     },
     {
       href: installUrl,
-      label: "Install"
-    }
+      label: "Install",
+    },
   ],
 
   /* path to images for header/footer */
@@ -62,7 +62,7 @@ const siteConfig = {
   // "#50396c",
   colors: {
     primaryColor: "#47325f",
-    secondaryColor: "#b2a0bb"
+    secondaryColor: "#b2a0bb",
   },
 
   // This copyright info is used in /core/Footer.js and blog RSS/Atom feeds.
@@ -70,7 +70,7 @@ const siteConfig = {
 
   highlight: {
     // Highlight.js theme to use for syntax highlighting in code blocks.
-    theme: "default"
+    theme: "default",
   },
 
   // Add custom scripts here that would be placed in <script> tags.
@@ -93,10 +93,10 @@ const siteConfig = {
   // enableUpdateBy: true,
 
   // Show documentation's last update time.
-  enableUpdateTime: true
+  enableUpdateTime: true,
 
   // You may provide arbitrary config keys to be used as needed by your
   // template. For example, if you need your repo's URL...
-};
+}
 
-module.exports = siteConfig;
+module.exports = siteConfig

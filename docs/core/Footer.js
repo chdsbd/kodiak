@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-const React = require("react");
+const React = require("react")
 
 /** @param {{config: typeof import("../siteConfig"), language?: string}} props */
 function Footer(props) {
@@ -14,9 +14,9 @@ function Footer(props) {
    * @param {string=} language
    */
   function docUrl(doc, language) {
-    const baseUrl = props.config.baseUrl;
-    const langPart = `${language ? `${language}/` : ""}`;
-    return `${baseUrl}${langPart}${doc}`;
+    const baseUrl = props.config.baseUrl
+    const langPart = `${language ? `${language}/` : ""}`
+    return `${baseUrl}${langPart}${doc}`
   }
 
   return (
@@ -31,7 +31,7 @@ function Footer(props) {
                 minWidth: "58px",
                 minHeight: "58px",
                 width: "58px",
-                height: "58px"
+                height: "58px",
               }}
               width="58"
               height="58"
@@ -57,7 +57,7 @@ function Footer(props) {
       </section>
       <section className="copyright">{props.config.copyright}</section>
     </footer>
-  );
+  )
 }
 
-module.exports = Footer;
+module.exports = Footer

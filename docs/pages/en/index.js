@@ -5,28 +5,28 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-const React = require("react");
+const React = require("react")
 
 // @ts-ignore
-const CompLibrary = require("../../core/CompLibrary.js");
-const Container = CompLibrary.Container;
-const GridBlock = CompLibrary.GridBlock;
+const CompLibrary = require("../../core/CompLibrary.js")
+const Container = CompLibrary.Container
+const GridBlock = CompLibrary.GridBlock
 
 /**
  * @param {{baseUrl: string, docsUrl?: string}} siteConfig
  * @param {string} language
  */
 function createDocUrl({ baseUrl }, language) {
-  const langPart = `${language ? `${language}/` : ""}`;
+  const langPart = `${language ? `${language}/` : ""}`
   /** @param {string} doc */
-  const docUrl = doc => `${baseUrl}${langPart}${doc}`;
-  return docUrl;
+  const docUrl = doc => `${baseUrl}${langPart}${doc}`
+  return docUrl
 }
 
 /** @param {{language?: string, siteConfig: typeof import("../../siteConfig")}} props */
 function HomeSplash(props) {
-  const { siteConfig, language = "" } = props;
-  const baseUrl = siteConfig.baseUrl;
+  const { siteConfig } = props
+  const baseUrl = siteConfig.baseUrl
 
   /** @param {{children: React.ReactNode}} props */
   const SplashContainer = props => (
@@ -35,7 +35,7 @@ function HomeSplash(props) {
         <div className="wrapper homeWrapper">{props.children}</div>
       </div>
     </div>
-  );
+  )
 
   /** @param {{img_src: string, width?: number, height?: number, className?: string}} props */
   const Logo = props => (
@@ -46,7 +46,7 @@ function HomeSplash(props) {
       height={props.width}
       width={props.height}
     />
-  );
+  )
 
   /** @param {{children: React.ReactNode, marginBottom?: boolean}} props */
   const PromoSection = props => (
@@ -55,7 +55,7 @@ function HomeSplash(props) {
         <div className="pluginRowBlock">{props.children}</div>
       </div>
     </div>
-  );
+  )
 
   /** @param {{href: string, target?: string, children: React.ReactNode}} props */
   const Button = props => (
@@ -64,7 +64,7 @@ function HomeSplash(props) {
         {props.children}
       </a>
     </div>
-  );
+  )
 
   const ProjectTitle = () => (
     <h2 className="projectTitle">
@@ -79,7 +79,7 @@ function HomeSplash(props) {
       </span>
       <small>{siteConfig.tagline}</small>
     </h2>
-  );
+  )
 
   const InstallButton = () => (
     <div className="pluginWrapper buttonWrapper">
@@ -87,7 +87,7 @@ function HomeSplash(props) {
         Install on GitHub
       </a>
     </div>
-  );
+  )
 
   return (
     <SplashContainer>
@@ -108,15 +108,15 @@ function HomeSplash(props) {
         </PromoSection>
       </div>
     </SplashContainer>
-  );
+  )
 }
 
 /** @param {{language: string | undefined, config: typeof import("../../siteConfig") }} props */
 function Index(props) {
-  const { config: siteConfig, language = "" } = props;
-  const { baseUrl } = siteConfig;
+  const { config: siteConfig, language = "" } = props
+  const { baseUrl } = siteConfig
 
-  const docUrl = createDocUrl(siteConfig, language);
+  const docUrl = createDocUrl(siteConfig, language)
 
   /** @param {{id?: string, background?: string, children: React.ReactNode, layout?: string, align?: "center" | "left" | undefined, paddingTop?: boolean}} props */
   const Block = ({
@@ -139,8 +139,8 @@ function Index(props) {
           layout={layout}
         />
       </Container>
-    );
-  };
+    )
+  }
 
   const QuickStart = () => (
     <Block id="quickstart" align="left">
@@ -172,11 +172,11 @@ If you have any questions please review [our help page](./help).
 `,
           image: `${baseUrl}img/undraw_code_review.svg`,
           imageAlign: "left",
-          title: "Quickstart"
-        }
+          title: "Quickstart",
+        },
       ]}
     </Block>
-  );
+  )
 
   const Why = () => (
     <Block background="dark" align="left" id="why">
@@ -191,11 +191,11 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
 `,
           image: `${baseUrl}img/undraw_uploading.svg`,
           imageAlign: "right",
-          title: "Why?"
-        }
+          title: "Why?",
+        },
       ]}
     </Block>
-  );
+  )
 
   // Simple & Configurable — a simple configuration file with smart defaults will get you started in minutes
   // Update — update your branches automatically
@@ -207,46 +207,46 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
       {[
         {
           content: "Keep your PRs up to date with `master` automatically.",
-          title: "Auto Update"
+          title: "Auto Update",
         },
         {
           content:
             "Add the `automerge` label or configure Kodiak to auto merge without a label once CI and Approvals pass. Configure Eco Merge to only update branches when necessary.",
-          title: "Auto Merge"
+          title: "Auto Merge",
         },
         {
           content:
             "A short and sweet configuration file, `.kodiak.toml`, with smart defaults, will get you started in minutes.",
-          title: "Simple & Configurable"
+          title: "Simple & Configurable",
         },
         {
           content:
             "Once enabled, Kodiak will use your PR's `title` and `body` along with the PR number to create a rich commit message on merge.",
-          title: "Smart Commit Messages"
+          title: "Smart Commit Messages",
         },
         {
           content:
             "Kodiak understands there is no I in Team and works well with other Bots. Combine Kodiak with a dependency bot ([dependabot](https://dependabot.com), [snyk](https://snyk.io), [greenskeeper.io](https://greenkeeper.io)) to automate updating of dependencies.",
-          title: "Bot Collaboration"
+          title: "Bot Collaboration",
         },
         {
           content:
             "When configured, Kodiak will comment on your PR if a merge conflict gets in the way of an auto merge.",
-          title: "Merge Conflict Alerts"
+          title: "Merge Conflict Alerts",
         },
         {
           content:
             "Remove your old branches automatically. Kodiak will cleanup after auto merging your PR. GitHub has this built in but Kodiak deletes those old branches faster.",
-          title: "Tidy Up"
+          title: "Tidy Up",
         },
         {
           content:
             "Add a feature, fix a bug, or self host, it's Open Source. Take a [peek under the hood.](https://github.com/chdsbd/kodiak)",
-          title: "Open Source"
-        }
+          title: "Open Source",
+        },
       ]}
     </Block>
-  );
+  )
 
   return (
     <div>
@@ -257,7 +257,7 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
         <QuickStart />
       </div>
     </div>
-  );
+  )
 }
 
-module.exports = Index;
+module.exports = Index
