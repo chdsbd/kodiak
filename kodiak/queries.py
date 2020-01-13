@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
 import arrow
 import jwt
@@ -109,6 +109,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
           state
           author {
             login
+            type: __typename
           }
           authorAssociation
         }
@@ -275,8 +276,21 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
+class Actor(Enum):
+    """
+    https://developer.github.com/v4/interface/actor/
+    """
+
+    Bot = "Bot"
+    EnterpriseUserAccount = "EnterpriseUserAccount"
+    Mannequin = "Mannequin"
+    Organization = "Organization"
+    User = "User"
+
+
 class PRReviewAuthorSchema(BaseModel):
     login: str
+    type: Actor
 
 
 @dataclass
@@ -380,7 +394,7 @@ def get_pull_request(*, repo: dict) -> Optional[dict]:
     try:
         return cast(dict, repo["pullRequest"])
     except (KeyError, TypeError):
-        logger.warning("Could not find PR")
+        logger.warning("Could not find PR", exc_info=True)
         return None
 
 
@@ -420,7 +434,7 @@ def get_branch_protection(
                 try:
                     return BranchProtectionRule.parse_obj(rule)
                 except ValueError:
-                    logger.warning("Could not parse branch protection")
+                    logger.warning("Could not parse branch protection", exc_info=True)
                     return None
     return None
 
@@ -447,7 +461,7 @@ def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
                 name = request["name"]
             review_requests.append(PRReviewRequest(name=name))
         except ValueError:
-            logger.warning("Could not parse PRReviewRequest")
+            logger.warning("Could not parse PRReviewRequest", exc_info=True)
     return review_requests
 
 
@@ -465,7 +479,7 @@ def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
         try:
             reviews.append(PRReviewSchema.parse_obj(review_dict))
         except ValueError:
-            logger.warning("Could not parse PRReviewSchema")
+            logger.warning("Could not parse PRReviewSchema", exc_info=True)
     return reviews
 
 
@@ -482,7 +496,7 @@ def get_status_contexts(*, pr: dict) -> List[StatusContext]:
         try:
             status_contexts.append(StatusContext.parse_obj(commit_status))
         except ValueError:
-            logger.warning("Could not parse StatusContext")
+            logger.warning("Could not parse StatusContext", exc_info=True)
 
     return status_contexts
 
@@ -504,7 +518,7 @@ def get_check_runs(*, pr: dict) -> List[CheckRun]:
         try:
             check_runs.append(CheckRun.parse_obj(check_run_dict))
         except ValueError:
-            logger.warning("Could not parse CheckRun")
+            logger.warning("Could not parse CheckRun", exc_info=True)
     return check_runs
 
 
@@ -636,7 +650,27 @@ class Client:
     async def get_reviewers_and_permissions(
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
-        reviewer_names = {review.author.login for review in reviews}
+        reviewer_names: Set[str] = {
+            review.author.login for review in reviews if review.author.type != Actor.Bot
+        }
+
+        bot_reviews: List[PRReview] = []
+        for review in reviews:
+            if review.author.type == Actor.User:
+                reviewer_names.add(review.author.login)
+            elif review.author.type == Actor.Bot:
+                # Bots either have read or write permissions for a pull request,
+                # so if they've been able to write a review on a PR, their
+                # review counts as a user with write access.
+                bot_reviews.append(
+                    PRReview(
+                        state=review.state,
+                        createdAt=review.createdAt,
+                        author=PRReviewAuthor(
+                            login=review.author.login, permission=Permission.WRITE
+                        ),
+                    )
+                )
 
         requests = [
             self.get_permissions_for_username(username) for username in reviewer_names
@@ -648,17 +682,22 @@ class Client:
             for username, permission in zip(reviewer_names, permissions)
         }
 
-        return [
-            PRReview(
-                state=review.state,
-                createdAt=review.createdAt,
-                author=PRReviewAuthor(
-                    login=review.author.login,
-                    permission=user_permission_mapping[review.author.login],
-                ),
-            )
-            for review in reviews
-        ]
+        return sorted(
+            bot_reviews
+            + [
+                PRReview(
+                    state=review.state,
+                    createdAt=review.createdAt,
+                    author=PRReviewAuthor(
+                        login=review.author.login,
+                        permission=user_permission_mapping[review.author.login],
+                    ),
+                )
+                for review in reviews
+                if review.author.type == Actor.User
+            ],
+            key=lambda x: x.createdAt,
+        )
 
     async def get_event_info(
         self, branch_name: str, pr_number: int
