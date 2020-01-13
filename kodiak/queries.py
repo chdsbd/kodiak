@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
 import arrow
 import jwt
@@ -25,6 +25,7 @@ logger = structlog.get_logger()
 
 CHECK_RUN_NAME = "kodiakhq: status"
 APPLICATION_ID = "kodiak"
+CONFIG_FILE_NAME = ".kodiak.toml"
 
 
 class ErrorLocation(TypedDict):
@@ -56,7 +57,7 @@ query ($owner: String!, $repo: String!) {
 
 
 GET_EVENT_INFO_QUERY = """
-query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: String!, $PRNumber: Int!) {
+query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $githubConfigFileExpression: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -81,7 +82,6 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
       mergeStateStatus
       state
       mergeable
-      canBeRebased
       isCrossRepository
       reviewRequests(first: 100) {
         nodes {
@@ -109,6 +109,7 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
           state
           author {
             login
+            type: __typename
           }
           authorAssociation
         }
@@ -153,7 +154,12 @@ query GetEventInfo($owner: String!, $repo: String!, $configFileExpression: Strin
         totalCount
       }
     }
-    object(expression: $configFileExpression) {
+    rootConfigFile: object(expression: $rootConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    githubConfigFile: object(expression: $githubConfigFileExpression) {
       ... on Blob {
         text
       }
@@ -211,7 +217,6 @@ class PullRequest(BaseModel):
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState
-    canBeRebased: bool
     isCrossRepository: bool
     labels: List[str]
     # the SHA of the most recent commit
@@ -271,8 +276,21 @@ class PRReviewState(Enum):
     PENDING = "PENDING"
 
 
+class Actor(Enum):
+    """
+    https://developer.github.com/v4/interface/actor/
+    """
+
+    Bot = "Bot"
+    EnterpriseUserAccount = "EnterpriseUserAccount"
+    Mannequin = "Mannequin"
+    Organization = "Organization"
+    User = "User"
+
+
 class PRReviewAuthorSchema(BaseModel):
     login: str
+    type: Actor
 
 
 @dataclass
@@ -358,9 +376,16 @@ def get_repo(*, data: dict) -> Optional[dict]:
         return None
 
 
-def get_config_str(*, repo: dict) -> Optional[str]:
+def get_root_config_str(*, repo: dict) -> Optional[str]:
     try:
-        return cast(str, repo["object"]["text"])
+        return cast(str, repo["rootConfigFile"]["text"])
+    except (KeyError, TypeError):
+        return None
+
+
+def get_github_config_str(*, repo: dict) -> Optional[str]:
+    try:
+        return cast(str, repo["githubConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
@@ -369,7 +394,7 @@ def get_pull_request(*, repo: dict) -> Optional[dict]:
     try:
         return cast(dict, repo["pullRequest"])
     except (KeyError, TypeError):
-        logger.warning("Could not find PR")
+        logger.warning("Could not find PR", exc_info=True)
         return None
 
 
@@ -409,7 +434,7 @@ def get_branch_protection(
                 try:
                     return BranchProtectionRule.parse_obj(rule)
                 except ValueError:
-                    logger.warning("Could not parse branch protection")
+                    logger.warning("Could not parse branch protection", exc_info=True)
                     return None
     return None
 
@@ -436,7 +461,7 @@ def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
                 name = request["name"]
             review_requests.append(PRReviewRequest(name=name))
         except ValueError:
-            logger.warning("Could not parse PRReviewRequest")
+            logger.warning("Could not parse PRReviewRequest", exc_info=True)
     return review_requests
 
 
@@ -454,7 +479,7 @@ def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
         try:
             reviews.append(PRReviewSchema.parse_obj(review_dict))
         except ValueError:
-            logger.warning("Could not parse PRReviewSchema")
+            logger.warning("Could not parse PRReviewSchema", exc_info=True)
     return reviews
 
 
@@ -471,7 +496,7 @@ def get_status_contexts(*, pr: dict) -> List[StatusContext]:
         try:
             status_contexts.append(StatusContext.parse_obj(commit_status))
         except ValueError:
-            logger.warning("Could not parse StatusContext")
+            logger.warning("Could not parse StatusContext", exc_info=True)
 
     return status_contexts
 
@@ -493,7 +518,7 @@ def get_check_runs(*, pr: dict) -> List[CheckRun]:
         try:
             check_runs.append(CheckRun.parse_obj(check_run_dict))
         except ValueError:
-            logger.warning("Could not parse CheckRun")
+            logger.warning("Could not parse CheckRun", exc_info=True)
     return check_runs
 
 
@@ -528,6 +553,14 @@ class MergeBody(TypedDict):
     merge_method: str
     commit_title: Optional[str]
     commit_message: Optional[str]
+
+
+def create_root_config_file_expression(branch: str) -> str:
+    return f"{branch}:{CONFIG_FILE_NAME}"
+
+
+def create_github_config_file_expression(branch: str) -> str:
+    return f"{branch}:.github/{CONFIG_FILE_NAME}"
 
 
 class Client:
@@ -617,7 +650,27 @@ class Client:
     async def get_reviewers_and_permissions(
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
-        reviewer_names = {review.author.login for review in reviews}
+        reviewer_names: Set[str] = {
+            review.author.login for review in reviews if review.author.type != Actor.Bot
+        }
+
+        bot_reviews: List[PRReview] = []
+        for review in reviews:
+            if review.author.type == Actor.User:
+                reviewer_names.add(review.author.login)
+            elif review.author.type == Actor.Bot:
+                # Bots either have read or write permissions for a pull request,
+                # so if they've been able to write a review on a PR, their
+                # review counts as a user with write access.
+                bot_reviews.append(
+                    PRReview(
+                        state=review.state,
+                        createdAt=review.createdAt,
+                        author=PRReviewAuthor(
+                            login=review.author.login, permission=Permission.WRITE
+                        ),
+                    )
+                )
 
         requests = [
             self.get_permissions_for_username(username) for username in reviewer_names
@@ -629,20 +682,25 @@ class Client:
             for username, permission in zip(reviewer_names, permissions)
         }
 
-        return [
-            PRReview(
-                state=review.state,
-                createdAt=review.createdAt,
-                author=PRReviewAuthor(
-                    login=review.author.login,
-                    permission=user_permission_mapping[review.author.login],
-                ),
-            )
-            for review in reviews
-        ]
+        return sorted(
+            bot_reviews
+            + [
+                PRReview(
+                    state=review.state,
+                    createdAt=review.createdAt,
+                    author=PRReviewAuthor(
+                        login=review.author.login,
+                        permission=user_permission_mapping[review.author.login],
+                    ),
+                )
+                for review in reviews
+                if review.author.type == Actor.User
+            ],
+            key=lambda x: x.createdAt,
+        )
 
     async def get_event_info(
-        self, config_file_expression: str, pr_number: int
+        self, branch_name: str, pr_number: int
     ) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
@@ -652,12 +710,20 @@ class Client:
 
         log = self.log.bind(pr=pr_number)
 
+        root_config_file_expression = create_root_config_file_expression(
+            branch=branch_name
+        )
+        github_config_file_expression = create_github_config_file_expression(
+            branch=branch_name
+        )
+
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
-                configFileExpression=config_file_expression,
+                rootConfigFileExpression=root_config_file_expression,
+                githubConfigFileExpression=github_config_file_expression,
                 PRNumber=pr_number,
             ),
             installation_id=self.installation_id,
@@ -676,8 +742,15 @@ class Client:
             log.warning("could not find repository")
             return None
 
-        config_str = get_config_str(repo=repository)
-        if config_str is None:
+        root_config_str = get_root_config_str(repo=repository)
+        github_config_str = get_github_config_str(repo=repository)
+        if root_config_str is not None:
+            config_str = root_config_str
+            config_file_expression = root_config_file_expression
+        elif github_config_str is not None:
+            config_str = github_config_str
+            config_file_expression = github_config_file_expression
+        else:
             # NOTE(chdsbd): we don't want to show a message for this as the lack
             # of a config allows kodiak to be selectively installed
             log.info("could not find configuration file")

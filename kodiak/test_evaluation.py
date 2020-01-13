@@ -212,7 +212,6 @@ def pull_request() -> PullRequest:
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
-        canBeRebased=True,
         isCrossRepository=False,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
@@ -462,11 +461,66 @@ async def test_mergeable_requires_commit_signatures(
     check_run: CheckRun,
 ) -> None:
     """
-    requiresCommitSignatures doesn't work with Kodiak.
+    requiresCommitSignatures doesn't work with Kodiak when squash or rebase are configured
     
     https://github.com/chdsbd/kodiak/issues/89
     """
     branch_protection.requiresCommitSignatures = True
+    for method in (MergeMethod.squash, MergeMethod.rebase):
+        config.merge.method = method
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            merging=False,
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            valid_merge_methods=[method],
+        )
+        assert (
+            '"Require signed commits" branch protection is only supported'
+            in api.set_status.calls[0]["msg"]
+        )
+
+    assert api.set_status.call_count == 2
+    assert api.dequeue.call_count == 2
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_requires_commit_signatures_with_merge_commits(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    requiresCommitSignatures works with merge commits
+    
+    https://github.com/chdsbd/kodiak/issues/89
+    """
+    branch_protection.requiresCommitSignatures = True
+    config.merge.method = MergeMethod.merge
+    api.queue_for_merge.return_value = 3
     await mergeable(
         api=api,
         config=config,
@@ -479,24 +533,22 @@ async def test_mergeable_requires_commit_signatures(
         contexts=[context],
         check_runs=[check_run],
         valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
         merging=False,
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
+        #
+        valid_merge_methods=[MergeMethod.merge],
     )
     assert api.set_status.call_count == 1
-    assert api.dequeue.call_count == 1
-    assert (
-        '"Require signed commits" branch protection is not supported'
-        in api.set_status.calls[0]["msg"]
-    )
+    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
-    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio
@@ -603,7 +655,7 @@ async def test_mergeable_has_blacklist_labels(
     check_run: CheckRun,
 ) -> None:
     """
-    requiresCommitSignatures doesn't work with Kodiak.
+    blacklist labels should prevent merge
     """
     config.merge.blacklist_labels = ["dont merge!"]
     pull_request.labels = ["bug", "dont merge!", "needs review"]
@@ -1117,65 +1169,7 @@ async def test_mergeable_pull_request_merge_conflict(
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
-    assert api.set_status.calls[0]["msg"] == ("🛑 cannot merge (merge conflict)")
-    assert api.remove_label.call_count == 0
-    assert api.create_comment.call_count == 0
-
-    # verify we haven't tried to update/merge the PR
-    assert api.update_branch.called is False
-    assert api.merge.called is False
-    assert api.queue_for_merge.called is False
-
-
-@pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict_rebase(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
-    """
-    if a PR has a merge conflict we can't merge. If configured, we should leave
-    a comment and remove the automerge label. If the merge conflict is a rebase conflict, we cannot merge.
-    """
-    pull_request.mergeStateStatus = MergeStateStatus.CLEAN
-    pull_request.mergeable = MergeableState.MERGEABLE
-    pull_request.canBeRebased = False
-    config.merge.notify_on_conflict = False
-    config.merge.method = MergeMethod.rebase
-
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        valid_merge_methods=[MergeMethod.rebase],
-    )
-    assert api.set_status.call_count == 1
-    assert api.dequeue.call_count == 1
-    assert "cannot merge" in api.set_status.calls[0]["msg"]
-    assert (
-        api.set_status.calls[0]["msg"]
-        == "🛑 cannot merge (merge conflict prevents rebase)"
-    )
+    assert "merge conflict" in api.set_status.calls[0]["msg"]
     assert api.remove_label.call_count == 0
     assert api.create_comment.call_count == 0
 

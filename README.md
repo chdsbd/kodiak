@@ -4,7 +4,7 @@
 
 A bot to automatically merge GitHub PRs
 
-[![install](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/button-small.svg?v=123)](https://github.com/apps/kodiakhq/installations/new)
+[![install](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/button-small.svg?v=123)](https://github.com/marketplace/kodiakhq#pricing-and-setup)
 
 ## Why?
 
@@ -64,7 +64,7 @@ updated when their targets were updated.
 
 1.  Install the GitHub app
 
-    [![install](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/button-small.svg?v=123)](https://github.com/apps/kodiakhq/installations/new)
+    [![install](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/button-small.svg?v=123)](https://github.com/marketplace/kodiakhq#pricing-and-setup)
 
 2.  Create a `.kodiak.toml` file in the root of your repository with the following contents:
 
