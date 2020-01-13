@@ -64,7 +64,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
             - docs-site-v1-{{ .Branch }}-
             - docs-site-v1-
       - run:
@@ -73,11 +73,11 @@ jobs:
             yarn install --frozen-lockfile --non-interactive
       - save_cache:
           paths:
-            - ./docs/website/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
+            - ./docs/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run typechecker
-          working_directory: docs/website/
+          working_directory: docs/
           command: |
             yarn typecheck
 
@@ -88,7 +88,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
+            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
             - docs-site-v1-{{ .Branch }}-
             - docs-site-v1-
       - run:
@@ -96,11 +96,11 @@ jobs:
           command: yarn install --frozen-lockfile --non-interactive
       - save_cache:
           paths:
-            - ./docs/website/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/website/yarn.lock" }}
+            - ./docs/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run fmt
-          working_directory: docs/website/
+          working_directory: docs/
           command: yarn fmt-ci
 
   # https://circleci.com/docs/2.0/building-docker-images/
