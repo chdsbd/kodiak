@@ -69,7 +69,7 @@ jobs:
             - docs-site-v1-
       - run:
           name: install dependencies
-          working_directory: docs/
+          working_directory: docs
           command: |
             yarn install --frozen-lockfile --non-interactive
       - save_cache:
@@ -78,7 +78,7 @@ jobs:
           key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run typechecker
-          working_directory: docs/
+          working_directory: docs
           command: |
             yarn typecheck
 
@@ -94,7 +94,7 @@ jobs:
             - docs-site-v1-
       - run:
           name: install dependencies
-          working_directory: docs/
+          working_directory: docs
           command: yarn install --frozen-lockfile --non-interactive
       - save_cache:
           paths:
@@ -102,7 +102,7 @@ jobs:
           key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run fmt
-          working_directory: docs/
+          working_directory: docs
           command: yarn fmt-ci
 
   # https://circleci.com/docs/2.0/building-docker-images/
