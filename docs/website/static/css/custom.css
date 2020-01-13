@@ -22,6 +22,8 @@
 @media only screen and (min-width: 1500px) {
 }
 
+/* overrides */
+
 .container .wrapper .imageAlignSide p {
   margin-bottom: 1rem;
 }
@@ -35,6 +37,28 @@ nav a,
 header a {
   text-decoration: none;
 }
+
+.homeContainer .homeWrapper .projectLogo {
+  right: unset;
+  left: unset;
+  bottom: unset;
+  top: unset;
+}
+
+@media only screen and (min-width: 1500px) {
+  .homeContainer .homeWrapper .projLogo {
+    align-items: center;
+    display: flex;
+    justify-content: flex-start;
+    padding: 2em 100px 4em;
+    position: absolute;
+  }
+}
+.projLogo {
+  padding-bottom: 2rem;
+}
+
+/* custom */
 
 .gh-install-btn {
   background-image: linear-gradient(-180deg, #34d058, #28a745 90%);
@@ -79,6 +103,9 @@ header a {
 
 .justify-center {
   justify-content: center !important;
+}
+.justify-start {
+  justify-content: flex-start !important;
 }
 
 .align-center {

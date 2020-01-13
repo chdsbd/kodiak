@@ -38,25 +38,15 @@ function HomeSplash(props) {
     </div>
   );
 
-  /** @param {{img_src: string}} props */
+  /** @param {{img_src: string, width?: number, height?: number, className?: string}} props */
   const Logo = props => (
     <img
       src={props.img_src}
       alt="Project Logo"
-      className="mr-3"
-      height={40}
-      width={40}
+      className={props.className}
+      height={props.width}
+      width={props.height}
     />
-  );
-
-  const ProjectTitle = () => (
-    <h2 className="projectTitle">
-      <span className="d-flex justify-center align-center">
-        <Logo img_src={`${baseUrl}img/favicon.ico`} />
-        {siteConfig.title}
-      </span>
-      <small>{siteConfig.tagline}</small>
-    </h2>
   );
 
   /** @param {{children: React.ReactNode, marginBottom?: boolean}} props */
@@ -77,6 +67,21 @@ function HomeSplash(props) {
     </div>
   );
 
+  const ProjectTitle = () => (
+    <h2 className="projectTitle">
+      <span className="d-flex justify-center align-center">
+        <Logo
+          img_src={`${baseUrl}img/favicon.ico`}
+          width={40}
+          height={40}
+          className="mr-3"
+        />
+        {siteConfig.title}
+      </span>
+      <small>{siteConfig.tagline}</small>
+    </h2>
+  );
+
   const InstallButton = () => (
     <div className="pluginWrapper buttonWrapper">
       <a className="gh-install-btn" href={siteConfig.installUrl}>
@@ -87,16 +92,20 @@ function HomeSplash(props) {
 
   return (
     <SplashContainer>
+      <div className="projLogo">
+        <Logo img_src={`${baseUrl}img/kodiak-pr-flow.svg`} />
+      </div>
       <div className="inner">
         <ProjectTitle />
 
         <PromoSection marginBottom>
           <InstallButton />
         </PromoSection>
+
         <PromoSection>
           <Button href="#quickstart">Quick Start</Button>
           <Button href="#why">Why?</Button>
-          <Button href={props.siteConfig.changeLogUrl}>Changelog</Button>
+          <Button href={siteConfig.changeLogUrl}>Changelog</Button>
         </PromoSection>
       </div>
     </SplashContainer>
