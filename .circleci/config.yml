@@ -125,7 +125,7 @@ jobs:
           key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
       - run:
           name: build
-          working_directory: docs build
+          working_directory: docs
           command: yarn build
 
   # https://circleci.com/docs/2.0/building-docker-images/
