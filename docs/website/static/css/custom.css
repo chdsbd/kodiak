@@ -45,12 +45,11 @@ header a {
   top: unset;
 }
 
-@media only screen and (min-width: 1500px) {
+@media only screen and (min-width: 1300px) {
   .homeContainer .homeWrapper .projLogo {
     align-items: center;
     display: flex;
     justify-content: flex-start;
-    padding: 2em 100px 4em;
     position: absolute;
   }
 }

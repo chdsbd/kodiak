@@ -119,20 +119,22 @@ function Index(props) {
 
   const docUrl = createDocUrl(siteConfig, language);
 
-  /** @param {{id?: string, background?: string, children: React.ReactNode, layout?: string, align?: "center" | "left" | undefined}} props */
-  const Block = props => (
-    <Container
-      padding={["bottom", "top"]}
-      id={props.id}
-      background={props.background}
-    >
-      <GridBlock
-        align={props.align || "center"}
-        contents={props.children}
-        layout={props.layout}
-      />
-    </Container>
-  );
+  /** @param {{id?: string, background?: string, children: React.ReactNode, layout?: string, align?: "center" | "left" | undefined, paddingTop?: boolean}} props */
+  const Block = ({ paddingTop = true, ...props }) => {
+    let padding = ["bottom"];
+    if (paddingTop) {
+      padding.push("top");
+    }
+    return (
+      <Container padding={padding} id={props.id} background={props.background}>
+        <GridBlock
+          align={props.align || "center"}
+          contents={props.children}
+          layout={props.layout}
+        />
+      </Container>
+    );
+  };
 
   const QuickStart = () => (
     <Block id="quickstart" align="left">
@@ -195,7 +197,7 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
   // Delete — remove your old branches automatically
 
   const Features = () => (
-    <Block layout="fourColumn">
+    <Block layout="fourColumn" paddingTop={false}>
       {[
         {
           content: "Keep your PRs up to date with `master` automatically.",
