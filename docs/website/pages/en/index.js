@@ -119,17 +119,24 @@ function Index(props) {
   const docUrl = createDocUrl(siteConfig, language);
 
   /** @param {{id?: string, background?: string, children: React.ReactNode, layout?: string, align?: "center" | "left" | undefined, paddingTop?: boolean}} props */
-  const Block = ({ paddingTop = true, ...props }) => {
-    let padding = ["bottom"];
+  const Block = ({
+    paddingTop = true,
+    id,
+    background,
+    align,
+    children,
+    layout,
+  }) => {
+    let padding = ["bottom"]
     if (paddingTop) {
-      padding.push("top");
+      padding.push("top")
     }
     return (
-      <Container padding={padding} id={props.id} background={props.background}>
+      <Container padding={padding} id={id} background={background}>
         <GridBlock
-          align={props.align || "center"}
-          contents={props.children}
-          layout={props.layout}
+          align={align || "center"}
+          contents={children}
+          layout={layout}
         />
       </Container>
     );
