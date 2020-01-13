@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import arrow
 import jwt
@@ -118,11 +118,6 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       headRefName
       headRef {
         id
-        associatedPullRequests(first: 2) {
-          nodes {
-            number
-          }
-        }
       }
       commits(last: 1) {
         nodes {
@@ -246,7 +241,6 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
-    prs_on_branch: Set[int]
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
@@ -528,20 +522,6 @@ def get_head_exists(*, pr: dict) -> bool:
         return False
 
 
-def get_prs_on_branch(*, pr: dict) -> Set[int]:
-    pr_numbers: Set[int] = set()
-    try:
-        associated_prs = pr["headRef"]["associatedPullRequests"]["nodes"]
-    except (KeyError, TypeError):
-        return pr_numbers
-    for associated_pr in associated_prs:
-        try:
-            pr_numbers.add(int(associated_pr["number"]))
-        except (KeyError, TypeError, ValueError):
-            pass
-    return pr_numbers
-
-
 def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
     valid_merge_methods: List[MergeMethod] = []
     if repo.get("mergeCommitAllowed"):
@@ -778,7 +758,6 @@ class Client:
             status_contexts=get_status_contexts(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
-            prs_on_branch=get_prs_on_branch(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
