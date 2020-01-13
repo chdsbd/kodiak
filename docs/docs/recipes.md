@@ -27,7 +27,3 @@ include_pr_number = true
 body_type = "markdown"
 strip_html_comments = true # remove html comments to auto remove PR templates
 ```
-
-## Keeping Branch in Sync With Master
-
-## With Depdenency Bots (Dependabot, Snyk, Greenskeeper)

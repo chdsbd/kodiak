@@ -1,6 +1,6 @@
 # Kodiak Docs
 
-The docs site is uses <https://docusaurus.io/>.
+The docs site uses <https://docusaurus.io/>.
 
 For the most part content is created with markdown and placed in the `docs/`
 folder. Some pages like the `index.html` and the help page require editing

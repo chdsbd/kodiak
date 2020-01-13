@@ -22,6 +22,4 @@ sidebar_label: Quick Start
 
     Label your PRs with your `automerge` label and let Kodiak do the rest! 🎉
 
-See the [docs](<docUrl("quickstart.html")>) for additional setup information.
-
-If you have any questions please review [our help page](./help).
+If you have any questions please review [our help page](/help).
