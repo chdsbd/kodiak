@@ -22,7 +22,6 @@
         "block_on_reviews_requested": false,
         "notify_on_conflict": true,
         "optimistic_updates": true,
-        "optimistic_merge": true,
         "message": {
           "title": "github_default",
           "body": "github_default",
@@ -155,11 +154,6 @@
         },
         "optimistic_updates": {
           "title": "Optimistic_Updates",
-          "default": true,
-          "type": "boolean"
-        },
-        "optimistic_merge": {
-          "title": "Optimistic_Merge",
           "default": true,
           "type": "boolean"
         },
