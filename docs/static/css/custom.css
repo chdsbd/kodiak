@@ -45,6 +45,13 @@ header a {
   top: unset;
 }
 
+@media (max-width: 480px) {
+  /* by default the project title hides on mobile leaving just the logo */
+  .headerTitleWithLogo {
+    display: block !important;
+  }
+}
+
 @media only screen and (min-width: 1300px) {
   .homeContainer .homeWrapper .projLogo {
     align-items: center;

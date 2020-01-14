@@ -7,18 +7,8 @@
 
 const React = require("react")
 
-/** @param {{config: typeof import("../siteConfig"), language?: string}} props */
+/** @param {{config: typeof import("../siteConfig")}} props */
 function Footer(props) {
-  /**
-   * @param {string} doc
-   * @param {string=} language
-   */
-  function docUrl(doc, language) {
-    const baseUrl = props.config.baseUrl
-    const langPart = `${language ? `${language}/` : ""}`
-    return `${baseUrl}${langPart}${doc}`
-  }
-
   return (
     <footer className="nav-footer" id="footer">
       <section className="sitemap">
@@ -40,12 +30,10 @@ function Footer(props) {
         </a>
         <div>
           <h5>Docs</h5>
-          <a href={docUrl("quick-start.html", props.language)}>Quick Start</a>
-          <a href={docUrl("recipes.html", props.language)}>Recipes</a>
-          <a href={docUrl("why-and-how.html", props.language)}>Why and How</a>
-          <a href={docUrl("detailed-setup.html", props.language)}>
-            Detailed Setup
-          </a>
+          <a href="/docs/quickstart">Quick Start</a>
+          <a href="/docs/recipes">Recipes</a>
+          <a href="/docs/why-and-how">Why and How</a>
+          <a href="/docs/detailed-setup">Detailed Setup</a>
         </div>
         <div>
           <h5>More</h5>

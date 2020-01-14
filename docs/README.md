@@ -18,4 +18,5 @@ Add another markdown file to the `docs/` folder and update the
 yarn install
 yarn start
 yarn typecheck --watch
+yarn fmt
 ```
