@@ -36,4 +36,4 @@ Helpful Links:
 
 Feel free to file feature requests, bug reports, help requests through the issue tracker.
 
-If you'd like to add a feature, fix a big, update the docs, etc. take a peek at our [Contributing guide](https://kodiakhq.com/docs/contributing).
+If you'd like to add a feature, fix a big, update the docs, etc, take a peek at our [contributing guide](https://kodiakhq.com/docs/contributing).
