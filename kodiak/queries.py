@@ -18,7 +18,6 @@ from starlette import status
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
-from kodiak.github import events
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -801,20 +800,13 @@ class Client:
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
-    async def get_pull_requests_for_sha(
-        self, sha: str
-    ) -> Optional[List[events.BasePullRequest]]:
-        log = self.log.bind(sha=sha)
+    async def get_pull_requests_for_sha(self, sha: str) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
-            res = await self.session.get(
+            return await self.session.get(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
                 headers=headers,
             )
-        if res.status_code != 200:
-            log.error("problem finding prs", res=res, res_json=res.json())
-            return None
-        return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
     async def delete_branch(self, branch: str) -> http.Response:
         """
