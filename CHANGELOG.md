@@ -10,39 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.14.0 - 2020-01-12
 
 ### Added
-- add support for placing `.kodiak.toml` at `.github/.kodiak.toml`.
+- add support for placing `.kodiak.toml` at `.github/.kodiak.toml`. (#227)
 
 
 ### Changed
-- updated warnings to allow commit signature branch protection setting when "merge" is configured as Kodiak's merge method. Kodiak is able to create signatures for merge commits, but not for squash and rebase merge methods (GitHub limitation).
+- updated warnings to allow commit signature branch protection setting when "merge" is configured as Kodiak's merge method. Kodiak is able to create signatures for merge commits, but not for squash and rebase merge methods (GitHub limitation). (#230)
 
 
 ### Fixed
-- add handling to support reviews created by bots. A bot is not compatible with user API endpoints, so when a bot review was added Kodiak would fail when evaluating permissions on the bot.
+- add handling to support reviews created by bots. A bot is not compatible with user API endpoints, so when a bot review was added Kodiak would fail when evaluating permissions on the bot. (#231)
 
 ## 0.13.0 - 2020-01-06
 
 ### Added
-- add `update.always` and `update.require_automerge_label` configuration options. When `update.always = true`, Kodiak will update a branch immediately, regardless of failing mergeability requirements (e.g. missing/failing checks, title blacklist regex, blacklist labels). When `update.require_automerge_label = false` with `update.always = true`, Kodiak will update a PR even if missing the automerge label defined in `merge.automerge_label`.
+- add `update.always` and `update.require_automerge_label` configuration options. When `update.always = true`, Kodiak will update a branch immediately, regardless of failing mergeability requirements (e.g. missing/failing checks, title blacklist regex, blacklist labels). When `update.require_automerge_label = false` with `update.always = true`, Kodiak will update a PR even if missing the automerge label defined in `merge.automerge_label`. (#174, #198, #213)
 
 ### Deprecated
-- discourage use of `merge.update_branch_immediately` configuration option. This setting will not be removed, but its use is discouraged because it can produce unexpected results. The behavior of `update.always` is easier to understand.
+- discourage use of `merge.update_branch_immediately` configuration option. This setting will not be removed, but its use is discouraged because it can produce unexpected results. The behavior of `update.always` is easier to understand. (#198)
 
 ## 0.12.0 - 2020-01-04
 
 ### Changed
-- refactored core update/merge eligibility logic. This was a large change and should make future features significantly easier to implement and test.
+- refactored core update/merge eligibility logic. This was a large change and should make future features significantly easier to implement and test. (#207)
 
 
 ### Security
-- removed potential Regex Denial of Service (ReDoS) vulnerability from `merge.blacklist_title_regex` by using a regex engine ([rure][rure-python]) that guarantees linear time searching.
+- removed potential Regex Denial of Service (ReDoS) vulnerability from `merge.blacklist_title_regex` by using a regex engine ([rure][rure-python]) that guarantees linear time searching. (#211)
 
 [rure-python]: https://github.com/davidblewett/rure-python
 
 ## 0.11.0 - 2019-12-20
 
 ### Added
-- updating of PRs made from forks. The merges API endpoint Kodiak had been using for updating branches didn't work across forks due to GitHub permissions. A [new API endpoint][update-branch-blog] was released in late May 2019 that avoided any permission issue, but wasn't noticed until 2019-12-12 🤦‍♀️. This change should make Kodiak more useful for public projects.
+- updating of PRs made from forks. The merges API endpoint Kodiak had been using for updating branches didn't work across forks due to GitHub permissions. A [new API endpoint][update-branch-blog] was released in late May 2019 that avoided any permission issue, but wasn't noticed until 2019-12-12 🤦‍♀️. This change should make Kodiak more useful for public projects. (#104, #202)
 
 [update-branch-blog]: https://developer.github.com/changes/2019-05-29-update-branch-api/
 
