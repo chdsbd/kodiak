@@ -333,7 +333,9 @@ async def mergeable(
         # if we couldn't access the dependent PR count or we have dependent PRs
         # we will abort deleting this branch.
         if pr_count is None or pr_count > 0:
-            log.info("skipping branch deletion because of dependent PRs", pr_count=pr_count)
+            log.info(
+                "skipping branch deletion because of dependent PRs", pr_count=pr_count
+            )
             return
         await api.delete_branch(branch_name=pull_request.headRefName)
         return
