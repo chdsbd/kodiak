@@ -816,6 +816,14 @@ class Client:
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
+    async def get_open_pull_request_count_for_ref(self, ref: str) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&base={ref}",
+                headers=headers,
+            )
+
     async def delete_branch(self, branch: str) -> http.Response:
         """
         delete a branch by name

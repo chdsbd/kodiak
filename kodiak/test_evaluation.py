@@ -75,6 +75,14 @@ class MockSetStatus(BaseMockFunc):
         )
 
 
+class MockPullRequestsForRef(BaseMockFunc):
+    return_value: Optional[int] = 0
+
+    async def __call__(self, ref: str) -> Optional[int]:
+        self.log_call(dict(ref=ref))
+        return self.return_value
+
+
 class MockDeleteBranch(BaseMockFunc):
     async def __call__(self, branch_name: str) -> None:
         self.log_call(dict(branch_name=branch_name))
@@ -128,6 +136,7 @@ class MockPrApi:
     def __init__(self) -> None:
         self.dequeue = MockDequeue()
         self.set_status = MockSetStatus()
+        self.pull_requests_for_ref = MockPullRequestsForRef()
         self.delete_branch = MockDeleteBranch()
         self.remove_label = MockRemoveLabel()
         self.create_comment = MockCreateComment()
