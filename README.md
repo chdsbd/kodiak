@@ -26,9 +26,11 @@ If you'd rather run Kodiak yourself, check out the [self hosting page]() in our 
 Helpful Links:
 
 - [Getting Started](https://kodiakhq.com/docs/quickstart)
+- [Configuration Guide](https://kodiakhq.com/docs/detailed-setup)
 - [Why and How](https://kodiakhq.com/docs/why-and-how)
 - [Troubleshooting](https://kodiakhq.com/docs/troubleshooting)
 - [Help](https://kodiakhq.com/help)
+- [Prior Art / Alternatives](https://kodiakhq.com/docs/prior-art-and-alternatives)
 
 ## Contributing
 
