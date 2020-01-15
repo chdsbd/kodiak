@@ -801,14 +801,17 @@ class Client:
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
-    async def get_pull_requests_for_sha(
-        self, sha: str
+    async def get_pull_requests_for_ref(
+        self, ref_name: str
     ) -> Optional[List[events.BasePullRequest]]:
-        log = self.log.bind(sha=sha)
+        """
+        Find all the pull requests that depend on a ref.
+        """
+        log = self.log.bind(ref_name=ref_name)
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&ref={ref_name}",
                 headers=headers,
             )
         if res.status_code != 200:

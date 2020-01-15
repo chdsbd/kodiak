@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import List, Optional
 
 import sentry_sdk
 import structlog
@@ -12,6 +13,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
+from kodiak.github.events import Branch
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
@@ -93,17 +95,46 @@ async def check_run(check_run_event: events.CheckRunEvent) -> None:
         )
 
 
+def find_ref(sha: str, branches: List[Branch]) -> Optional[str]:
+    """
+    from the docs:
+        The "branches" key is "an array of branch objects containing the status'
+        SHA. Each branch contains the given SHA, but the SHA may or may not be
+        the head of the branch. The array includes a maximum of 10 branches.""
+    https://developer.github.com/v3/activity/events/types/#statusevent
+
+    Here we only consider branches
+    """
+    for branch in branches:
+        if branch.commit.sha == sha:
+            return branch.name
+    return None
+
+
 @webhook()
 async def status_event(status_event: events.StatusEvent) -> None:
+    """
+    When we get a status event we want to find the PR that has the commit.
+
+    If we get a status event for master, we want to find all the PRs that depend
+    against that branch so we can update them if configured.
+    """
     assert status_event.installation
     sha = status_event.commit.sha
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
+
+    log = logger.bind(install=installation_id, owner=owner, repo=repo, sha=sha)
+    ref = find_ref(sha=status_event.commit.sha, branches=status_event.branches)
+    if ref is None:
+        log.warning("could not find branch name for sha")
+        return None
+
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
-        prs = await api_client.get_pull_requests_for_sha(sha=sha)
+        prs = await api_client.get_pull_requests_for_ref(ref_name=ref)
         if prs is None:
             logger.warning("problem finding prs for sha")
             return None
