@@ -16,7 +16,7 @@ const issuesUrl = "https://github.com/chdsbd/kodiak/issues/new/choose"
 const siteConfig = {
   title: "Kodiak", // Title for your website.
   tagline: "Automate your GitHub Pull Requests",
-  url: "kodiakhq.com", // Your website URL
+  url: "https://kodiakhq.com", // Your website URL
   baseUrl: "/", // Base URL for your project */
   // For github.io type URLs, you would set the url and baseUrl like:
   //   url: 'https://facebook.github.io',
