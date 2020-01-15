@@ -29,6 +29,11 @@ const siteConfig = {
   // e.g., for the https://JoelMarcey.github.io site, it would be set like...
   //   organizationName: 'JoelMarcey'
 
+  algolia: {
+    apiKey: process.env.AGOLIA_API_KEY,
+    indexName: process.env.AGOLIA_INDEX_NAME,
+  },
+
   repoUrl,
   installUrl,
   changeLogUrl,
@@ -50,6 +55,7 @@ const siteConfig = {
       href: installUrl,
       label: "Install",
     },
+    { search: true },
   ],
 
   /* path to images for header/footer */
