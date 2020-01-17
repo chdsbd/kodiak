@@ -816,6 +816,34 @@ class Client:
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
+    async def get_open_pull_requests(
+        self, base: Optional[str] = None, head: Optional[str] = None
+    ) -> List[events.BasePullRequest]:
+        """
+        https://developer.github.com/v3/pulls/#list-pull-requests
+        """
+        log = self.log.bind(base=base, head=head)
+        headers = await get_headers(installation_id=self.installation_id)
+        params = dict(state="open", sort="updated")
+        if base is not None:
+            params["base"] = base
+        if head is not None:
+            params["head"] = head
+        async with self.throttler:
+            res = await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls",
+                params=params,
+                headers=headers,
+            )
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning(
+                "problem finding prs", res=res, res_json=res.json(), exc_info=True
+            )
+            return []
+        return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
+
     async def delete_branch(self, branch: str) -> http.Response:
         """
         delete a branch by name
