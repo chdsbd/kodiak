@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
-from typing import List, Optional
+from typing import List, Set
 
 import sentry_sdk
 import structlog
@@ -95,7 +96,7 @@ async def check_run(check_run_event: events.CheckRunEvent) -> None:
         )
 
 
-def find_ref(sha: str, branches: List[Branch]) -> Optional[str]:
+def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
     """
     from the docs:
         The "branches" key is "an array of branch objects containing the status'
@@ -103,12 +104,10 @@ def find_ref(sha: str, branches: List[Branch]) -> Optional[str]:
         the head of the branch. The array includes a maximum of 10 branches.""
     https://developer.github.com/v3/activity/events/types/#statusevent
 
-    Here we only consider branches
+    NOTE(chdsbd): only take branches with commit at branch head to reduce
+    potential number of api requests we need to make.
     """
-    for branch in branches:
-        if branch.commit.sha == sha:
-            return branch.name
-    return None
+    return [branch.name for branch in branches if branch.commit.sha == sha]
 
 
 @webhook()
@@ -118,33 +117,35 @@ async def status_event(status_event: events.StatusEvent) -> None:
     status event commit.
     """
     assert status_event.installation
-    sha = status_event.commit.sha
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
 
-    log = logger.bind(install=installation_id, owner=owner, repo=repo, sha=sha)
-    ref = find_ref(sha=status_event.commit.sha, branches=status_event.branches)
-    if ref is None:
-        log.warning("could not find branch name for sha")
-        return None
+    refs = find_branch_names_latest(
+        sha=status_event.commit.sha, branches=status_event.branches
+    )
 
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
-        prs = await api_client.get_pull_requests_for_ref(ref_name=ref)
-        if prs is None:
-            logger.warning("problem finding prs for sha")
-            return None
-        for pr in prs:
-            await redis_webhook_queue.enqueue(
-                event=WebhookEvent(
-                    repo_owner=owner,
-                    repo_name=repo,
-                    pull_request_number=pr.number,
-                    installation_id=str(installation_id),
+        pr_requests = [
+            api_client.get_pull_requests_for_ref(ref_name=ref) for ref in refs
+        ]
+        pr_results = await asyncio.gather(*pr_requests)
+
+        all_events: Set[WebhookEvent] = set()
+        for prs in pr_results:
+            for pr in prs:
+                all_events.add(
+                    WebhookEvent(
+                        repo_owner=owner,
+                        repo_name=repo,
+                        pull_request_number=pr.number,
+                        installation_id=str(installation_id),
+                    )
                 )
-            )
+        for event in all_events:
+            await redis_webhook_queue.enqueue(event=event)
 
 
 @webhook()

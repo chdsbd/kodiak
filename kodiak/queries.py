@@ -811,12 +811,16 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&ref={ref_name}",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={self.owner}:{ref_name}",
                 headers=headers,
             )
-        if res.status_code != 200:
-            log.error("problem finding prs", res=res, res_json=res.json())
-            return None
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning(
+                "problem finding prs", res=res, res_json=res.json(), exec_info=True
+            )
+            return []
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
     async def delete_branch(self, branch: str) -> http.Response:

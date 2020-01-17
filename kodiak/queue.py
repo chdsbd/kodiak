@@ -38,6 +38,14 @@ class WebhookEvent(BaseModel):
     def get_merge_target_queue_name(self) -> str:
         return self.get_merge_queue_name() + ":target"
 
+    def __hash__(self) -> int:
+        return (
+            hash(self.repo_owner)
+            + hash(self.repo_name)
+            + hash(self.pull_request_number)
+            + hash(self.installation_id)
+        )
+
 
 async def process_webhook_event(
     connection: RedisConnection,
