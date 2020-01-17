@@ -32,13 +32,14 @@ Helpful Links:
 - [Help](https://kodiakhq.com/help)
 - [Prior Art / Alternatives](https://kodiakhq.com/docs/prior-art-and-alternatives)
 
+## :money_with_wings: Sponsoring
+
+Using Kodiak for your commercial project?
+
+[Support Kodiak with GitHub Sponsors](https://github.com/sponsors/chdsbd) to help cover server costs and support development.
+
 ## Contributing
 
 Feel free to file feature requests, bug reports, help requests through the issue tracker.
 
 If you'd like to add a feature, fix a big, update the docs, etc, take a peek at our [contributing guide](https://kodiakhq.com/docs/contributing).
-
-## :money_with_wings: Sponsoring
-
-You use Kodiak in production and your deployment/build pipeline depends on our open-source project?
-[Consider supporting the project with :moneybag:](https://github.com/sponsors/chdsbd) to make sure we can deliver the best quality for your deployment/build process.
