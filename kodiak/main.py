@@ -114,10 +114,8 @@ def find_ref(sha: str, branches: List[Branch]) -> Optional[str]:
 @webhook()
 async def status_event(status_event: events.StatusEvent) -> None:
     """
-    When we get a status event we want to find the PR that has the commit.
-
-    If we get a status event for master, we want to find all the PRs that depend
-    against that branch so we can update them if configured.
+    When we get a status event we want to find the PRs associated with the
+    status event commit.
     """
     assert status_event.installation
     sha = status_event.commit.sha
