@@ -812,7 +812,7 @@ class Client:
                 headers=headers,
             )
         if res.status_code != 200:
-            log.error("problem finding prs", res=res, res_json=res.json())
+            log.error("problem finding prs", res=res)
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
@@ -839,7 +839,7 @@ class Client:
             res.raise_for_status()
         except http.HTTPError:
             log.warning(
-                "problem finding prs", res=res, res_json=res.json(), exc_info=True
+                "problem finding prs", res=res, exc_info=True
             )
             return []
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
