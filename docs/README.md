@@ -19,4 +19,5 @@ yarn install
 yarn start
 yarn typecheck --watch
 yarn fmt
+AGOLIA_API_KEY= AGOLIA_INDEX_NAME= yarn build
 ```

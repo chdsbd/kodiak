@@ -801,26 +801,30 @@ class Client:
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
-    async def get_pull_requests_for_ref(
-        self, ref_name: str
+    async def get_open_pull_requests(
+        self, base: Optional[str] = None, head: Optional[str] = None
     ) -> Optional[List[events.BasePullRequest]]:
         """
-        Find all the pull requests that depend on a ref.
+        https://developer.github.com/v3/pulls/#list-pull-requests
         """
-        log = self.log.bind(ref_name=ref_name)
+        log = self.log.bind(base=base, head=head)
         headers = await get_headers(installation_id=self.installation_id)
+        params = dict(state="open", sort="updated")
+        if base is not None:
+            params["base"] = base
+        if head is not None:
+            params["head"] = head
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={self.owner}:{ref_name}",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls",
+                params=params,
                 headers=headers,
             )
         try:
             res.raise_for_status()
         except http.HTTPError:
-            log.warning(
-                "problem finding prs", res=res, res_json=res.json(), exec_info=True
-            )
-            return []
+            log.warning("problem finding prs", res=res, exc_info=True)
+            return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
     async def delete_branch(self, branch: str) -> http.Response:

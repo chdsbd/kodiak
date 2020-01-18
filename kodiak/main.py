@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from typing import Optional
 from typing import List, Set
 
 import sentry_sdk
@@ -68,6 +69,9 @@ async def root() -> str:
 
 @webhook()
 async def pr_event(pr: events.PullRequestEvent) -> None:
+    """
+    Trigger evaluation of modified PR.
+    """
     assert pr.installation is not None
     await redis_webhook_queue.enqueue(
         event=WebhookEvent(
@@ -81,6 +85,9 @@ async def pr_event(pr: events.PullRequestEvent) -> None:
 
 @webhook()
 async def check_run(check_run_event: events.CheckRunEvent) -> None:
+    """
+    Trigger evaluation of all PRs included in check run.
+    """
     assert check_run_event.installation
     # Prevent an infinite loop when we update our check run
     if check_run_event.check_run.name == queries.CHECK_RUN_NAME:
@@ -113,8 +120,7 @@ def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
 @webhook()
 async def status_event(status_event: events.StatusEvent) -> None:
     """
-    When we get a status event we want to find the PRs associated with the
-    status event commit.
+    Trigger evaluation of all PRs associated with the status event commit SHA.
     """
     assert status_event.installation
     owner = status_event.repository.owner.login
@@ -129,13 +135,15 @@ async def status_event(status_event: events.StatusEvent) -> None:
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
         pr_requests = [
-            api_client.get_pull_requests_for_ref(ref_name=ref) for ref in refs
+            api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
         ]
         pr_results = await asyncio.gather(*pr_requests)
 
         all_events: Set[WebhookEvent] = set()
         for prs in pr_results:
             for pr in prs:
+                if pr is None:
+                    continue
                 all_events.add(
                     WebhookEvent(
                         repo_owner=owner,
@@ -150,6 +158,9 @@ async def status_event(status_event: events.StatusEvent) -> None:
 
 @webhook()
 async def pr_review(review: events.PullRequestReviewEvent) -> None:
+    """
+    Trigger evaluation of the modified PR.
+    """
     assert review.installation
     await redis_webhook_queue.enqueue(
         event=WebhookEvent(
@@ -159,6 +170,50 @@ async def pr_review(review: events.PullRequestReviewEvent) -> None:
             installation_id=str(review.installation.id),
         )
     )
+
+
+def get_branch_name(raw_ref: str) -> Optional[str]:
+    """
+    Extract the branch name from the ref
+    """
+    if raw_ref.startswith("refs/heads/"):
+        return raw_ref.split("refs/heads/", 1)[1]
+    return None
+
+
+@webhook()
+async def push(push_event: events.PushEvent) -> None:
+    """
+    Trigger evaluation of PRs that depend on the pushed branch.
+    """
+    owner = push_event.repository.owner.login
+    repo = push_event.repository.name
+    assert push_event.installation
+    installation_id = str(push_event.installation.id)
+    branch_name = get_branch_name(push_event.ref)
+    log = logger.bind(ref=push_event.ref, branch_name=branch_name)
+    if branch_name is None:
+        log.info("could not extract branch name from ref")
+        return
+    async with Client(
+        owner=owner, repo=repo, installation_id=installation_id
+    ) as api_client:
+        # find all the PRs that depend on the branch affected by this push and
+        # queue them for evaluation.
+        # Any PR that has a base ref matching our event ref is dependent.
+        prs = await api_client.get_open_pull_requests(base=branch_name)
+        if prs is None:
+            log.info("api call to find pull requests failed")
+            return None
+        for pr in prs:
+            await redis_webhook_queue.enqueue(
+                event=WebhookEvent(
+                    repo_owner=owner,
+                    repo_name=repo,
+                    pull_request_number=pr.number,
+                    installation_id=installation_id,
+                )
+            )
 
 
 @app.on_event("startup")

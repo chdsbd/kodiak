@@ -180,6 +180,19 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to create notification", res=res)
 
+    async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
+        log = self.log.bind(ref=ref)
+        log.info("pull_requests_for_ref", ref=ref)
+        async with Client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            prs = await api_client.get_open_pull_requests(base=ref)
+            if prs is None:
+                # our api request failed.
+                log.info("failed to get pull request info for ref")
+                return None
+            return len(prs)
+
     async def delete_branch(self, branch_name: str) -> None:
         self.log.info("delete_branch", branch_name=branch_name)
         async with Client(

@@ -33,7 +33,7 @@ function Footer(props) {
           <a href="/docs/quickstart">Quick Start</a>
           <a href="/docs/recipes">Recipes</a>
           <a href="/docs/why-and-how">Why and How</a>
-          <a href="/docs/detailed-setup">Detailed Setup</a>
+          <a href="/docs/config-reference">Configuration Reference</a>
         </div>
         <div>
           <h5>More</h5>
