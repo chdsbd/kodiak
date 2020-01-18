@@ -1,6 +1,6 @@
 ---
-id: detailed-setup
-title: Detailed Setup
+id: config-reference
+title: Configuration Reference
 ---
 
 Below is a Kodiak config with all options set and commented.
