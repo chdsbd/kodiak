@@ -13,26 +13,17 @@ const CompLibrary = require("../../core/CompLibrary.js")
 const Container = CompLibrary.Container
 const GridBlock = CompLibrary.GridBlock
 
-/** @param {{language?: string, config: typeof import("../../siteConfig")}} props */
+/** @param {{config: typeof import("../../siteConfig")}} props */
 function Help(props) {
-  const { config: siteConfig, language = "" } = props
-  const { baseUrl } = siteConfig
-  const langPart = `${language ? `${language}/` : ""}`
-
-  /** @param {string} doc */
-  const docUrl = doc => `${baseUrl}${langPart}${doc}`
-
   const supportLinks = [
     {
-      content: `If you need help installing or configuring Kodiak please open an issue on GitHub.
+      content: `If you need help installing or configuring Kodiak please [open an issue on GitHub](${props.config.issuesUrl}).
 
 The team is happy to help!`,
       title: `[File an Issue on GitHub](${props.config.issuesUrl})`,
     },
     {
-      content: `Take a look around Kodiak's [Troubleshooting page](${docUrl(
-        "troubleshooting.html"
-      )}) and [Quick Start Guide](${docUrl("quickstart.html")}).`,
+      content: `Take a look around Kodiak's [Troubleshooting page](/docs/troubleshooting) and [Quick Start Guide](/docs/quickstart).`,
       title: "Browse Docs",
     },
   ]

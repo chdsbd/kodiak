@@ -16,7 +16,7 @@ const issuesUrl = "https://github.com/chdsbd/kodiak/issues/new/choose"
 const siteConfig = {
   title: "Kodiak", // Title for your website.
   tagline: "Automate your GitHub Pull Requests",
-  url: "kodiakhq.com", // Your website URL
+  url: "https://kodiakhq.com", // Your website URL
   baseUrl: "/", // Base URL for your project */
   // For github.io type URLs, you would set the url and baseUrl like:
   //   url: 'https://facebook.github.io',
@@ -28,6 +28,11 @@ const siteConfig = {
   // For top-level user or org sites, the organization is still the same.
   // e.g., for the https://JoelMarcey.github.io site, it would be set like...
   //   organizationName: 'JoelMarcey'
+
+  algolia: {
+    apiKey: process.env.AGOLIA_API_KEY,
+    indexName: process.env.AGOLIA_INDEX_NAME,
+  },
 
   repoUrl,
   installUrl,
@@ -50,6 +55,7 @@ const siteConfig = {
       href: installUrl,
       label: "Install",
     },
+    { search: true },
   ],
 
   /* path to images for header/footer */
