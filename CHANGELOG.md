@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.15.0 - 2020-01-18
+
+### Fixed
+- fixed `merge.delete_branch_on_merge` deleting branches that had open PRs against them. This fix eliminates a confusing bug where it would look like Kodiak closed the dependent PR. What happened was Kodiak deleted a branch on which that PR was dependent, so the PR was forced to be closed by GitHub. (#232)
+- fixed bug in webhook event handling where we wouldn't trigger evaluation for PRs when their dependent branch updated. We now use the `push` event to trigger evaluation of PRs that depend on the pushed ref. (#244)
+
 ## 0.14.0 - 2020-01-12
 
 ### Added
