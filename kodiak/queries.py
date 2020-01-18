@@ -801,33 +801,31 @@ class Client:
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
-    async def get_pull_requests_for_sha(
-        self, sha: str
+    async def get_open_pull_requests(
+        self, base: Optional[str] = None, head: Optional[str] = None
     ) -> Optional[List[events.BasePullRequest]]:
-        log = self.log.bind(sha=sha)
+        """
+        https://developer.github.com/v3/pulls/#list-pull-requests
+        """
+        log = self.log.bind(base=base, head=head)
         headers = await get_headers(installation_id=self.installation_id)
+        params = dict(state="open", sort="updated")
+        if base is not None:
+            params["base"] = base
+        if head is not None:
+            params["head"] = head
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&sort=updated&head={sha}",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls",
+                params=params,
                 headers=headers,
             )
-        if res.status_code != 200:
-            log.error("problem finding prs", res=res, res_json=res.json())
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning("problem finding prs", res=res, exc_info=True)
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
-
-    async def get_open_pull_requests_for_ref(self, ref: str) -> http.Response:
-        """
-        Find all the PRs that depend on a ref.
-
-        We find all the PRs with their base reference equal to the head of our PR.
-        """
-        headers = await get_headers(installation_id=self.installation_id)
-        async with self.throttler:
-            return await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&base={ref}",
-                headers=headers,
-            )
 
     async def delete_branch(self, branch: str) -> http.Response:
         """
