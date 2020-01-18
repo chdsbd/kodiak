@@ -146,16 +146,17 @@ async def push(push_event: events.PushEvent) -> None:
     owner = push_event.repository.owner.login
     repo = push_event.repository.name
     assert push_event.installation
-    installation_id = push_event.installation.id
-    assert installation_id is not None
+    installation_id = str(push_event.installation.id)
     branch_name = get_branch_name(push_event.ref)
     if branch_name is None:
+        logger.info("could not extract branch name from ref", ref=push_event.ref)
         return
     async with Client(
-        owner=owner, repo=repo, installation_id=str(installation_id)
+        owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
         # find all the PRs that depend on the branch affected by this push and
         # queue them for evaluation.
+        # Any PR that has a base ref matching our event ref is dependent.
         prs = await api_client.get_open_pull_requests(base=branch_name)
         for pr in prs:
             await redis_webhook_queue.enqueue(
@@ -163,7 +164,7 @@ async def push(push_event: events.PushEvent) -> None:
                     repo_owner=owner,
                     repo_name=repo,
                     pull_request_number=pr.number,
-                    installation_id=str(installation_id),
+                    installation_id=installation_id,
                 )
             )
 
