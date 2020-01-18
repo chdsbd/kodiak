@@ -185,15 +185,11 @@ class PRV2:
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
-            res = await api_client.get_open_pull_requests_for_ref(ref=ref)
-            try:
-                res.raise_for_status()
-            except HTTPError:
-                self.log.warning(
-                    "failed to get pull request info for ref", ref=ref, exc_info=True
-                )
+            prs = await api_client.get_open_pull_requests(base=ref)
+            if prs is None:
+                # our api request failed.
                 return None
-            return len(res.json())
+            return len(prs)
 
     async def delete_branch(self, branch_name: str) -> None:
         self.log.info("delete_branch", branch_name=branch_name)
