@@ -816,6 +816,19 @@ class Client:
             return None
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
+    async def get_open_pull_requests_for_ref(self, ref: str) -> http.Response:
+        """
+        Find all the PRs that depend on a ref.
+
+        We find all the PRs with their base reference equal to the head of our PR.
+        """
+        headers = await get_headers(installation_id=self.installation_id)
+        async with self.throttler:
+            return await self.session.get(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=open&base={ref}",
+                headers=headers,
+            )
+
     async def get_open_pull_requests(
         self, base: Optional[str] = None, head: Optional[str] = None
     ) -> List[events.BasePullRequest]:

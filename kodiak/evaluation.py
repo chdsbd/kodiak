@@ -117,6 +117,9 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
+    async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
+        ...
+
     async def delete_branch(self, branch_name: str) -> None:
         ...
 
@@ -324,8 +327,17 @@ async def mergeable(
             config.merge.delete_branch_on_merge,
         )
         await api.dequeue()
-        if config.merge.delete_branch_on_merge and not pull_request.isCrossRepository:
-            await api.delete_branch(branch_name=pull_request.headRefName)
+        if not config.merge.delete_branch_on_merge or pull_request.isCrossRepository:
+            return
+        pr_count = await api.pull_requests_for_ref(ref=pull_request.headRefName)
+        # if we couldn't access the dependent PR count or we have dependent PRs
+        # we will abort deleting this branch.
+        if pr_count is None or pr_count > 0:
+            log.info(
+                "skipping branch deletion because of dependent PRs", pr_count=pr_count
+            )
+            return
+        await api.delete_branch(branch_name=pull_request.headRefName)
         return
 
     if pull_request.state == PullRequestState.CLOSED:
