@@ -189,7 +189,7 @@ class PRV2:
             prs = await api_client.get_open_pull_requests(base=ref)
             if prs is None:
                 # our api request failed.
-                log.warning("failed to get pull request info for ref")
+                log.info("failed to get pull request info for ref")
                 return None
             return len(prs)
 
