@@ -1,0 +1,5 @@
+# see: https://docs.netlify.com/configure-builds/file-based-configuration/
+[[redirects]]
+  from = "/docs/detailed-setup"
+  to = "/docs/config-reference"
+  status = 302
