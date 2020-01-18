@@ -838,9 +838,7 @@ class Client:
         try:
             res.raise_for_status()
         except http.HTTPError:
-            log.warning(
-                "problem finding prs", res=res, exc_info=True
-            )
+            log.warning("problem finding prs", res=res, exc_info=True)
             return []
         return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
 
