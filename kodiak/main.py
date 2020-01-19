@@ -125,6 +125,7 @@ async def status_event(status_event: events.StatusEvent) -> None:
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
+    log = logger.bind(owner=owner, repo=repo, install=installation_id)
 
     refs = find_branch_names_latest(
         sha=status_event.commit.sha, branches=status_event.branches
@@ -142,6 +143,7 @@ async def status_event(status_event: events.StatusEvent) -> None:
             # I worry that we might miss some events where `branches` is empty,
             # but not because of a fork.
             pr_results = [await api_client.get_open_pull_requests()]
+            log.warning("could not find refs for status_event")
         else:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
