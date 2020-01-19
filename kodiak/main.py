@@ -3,8 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import Optional
-from typing import List, Set
+from typing import List, Optional, Set
 
 import sentry_sdk
 import structlog
@@ -134,10 +133,20 @@ async def status_event(status_event: events.StatusEvent) -> None:
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
-        pr_requests = [
-            api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
-        ]
-        pr_results = await asyncio.gather(*pr_requests)
+        if len(refs) == 0:
+            # when a pull request is from a fork the status event will not have
+            # any `branches`, so to be able to trigger evaluation of the PR, we
+            # fetch all pull requests.
+            #
+            # I think we could optimize this by selecting only the fork PRs, but
+            # I worry that we might miss some events where `branches` is empty,
+            # but not because of a fork.
+            pr_results = [await api_client.get_open_pull_requests()]
+        else:
+            pr_requests = [
+                api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
+            ]
+            pr_results = await asyncio.gather(*pr_requests)
 
         all_events: Set[WebhookEvent] = set()
         for prs in pr_results:
