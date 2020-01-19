@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import List, Optional, Set
+from typing import List, Optional, Set, cast
 
 import sentry_sdk
 import structlog
@@ -14,7 +14,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
-from kodiak.github.events import Branch
+from kodiak.github.events import BasePullRequest, Branch
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
@@ -146,13 +146,16 @@ async def status_event(status_event: events.StatusEvent) -> None:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
-            pr_results = await asyncio.gather(*pr_requests)
+            pr_results = cast(
+                List[Optional[List[BasePullRequest]]],
+                await asyncio.gather(*pr_requests),
+            )
 
         all_events: Set[WebhookEvent] = set()
         for prs in pr_results:
+            if prs is None:
+                continue
             for pr in prs:
-                if pr is None:
-                    continue
                 all_events.add(
                     WebhookEvent(
                         repo_owner=owner,
