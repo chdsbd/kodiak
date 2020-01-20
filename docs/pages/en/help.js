@@ -26,6 +26,10 @@ The team is happy to help!`,
       content: `Take a look around Kodiak's [Troubleshooting page](/docs/troubleshooting) and [Quick Start Guide](/docs/quickstart).`,
       title: "Browse Docs",
     },
+    {
+      content: `Reach us privately at support@kodiakhq.com.`,
+      title: `Send an Email`,
+    },
   ]
 
   return (
