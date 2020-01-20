@@ -51,6 +51,17 @@
           "$ref": "#/definitions/Update"
         }
       ]
+    },
+    "approve": {
+      "title": "Approve",
+      "default": {
+        "auto_approve_usernames": []
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Approve"
+        }
+      ]
     }
   },
   "required": [
@@ -210,6 +221,18 @@
           "title": "Require_Automerge_Label",
           "default": true,
           "type": "boolean"
+        }
+      }
+    },
+    "Approve": {
+      "title": "Approve",
+      "type": "object",
+      "properties": {
+        "auto_approve_usernames": {
+          "title": "Auto_Approve_Usernames",
+          "default": [],
+          "type": "array",
+          "items": {}
         }
       }
     }

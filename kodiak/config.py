@@ -100,6 +100,11 @@ class Update(BaseModel):
     require_automerge_label: bool = True
 
 
+class Approve(BaseModel):
+    # auto approve any PR created by a listed user.
+    auto_approve_usernames: list = []
+
+
 class InvalidVersion(ValueError):
     pass
 
@@ -114,6 +119,7 @@ class V1(BaseModel):
     app_id: Optional[str]
     merge: Merge = Merge()
     update: Update = Update()
+    approve: Approve = Approve()
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v: int) -> int:
