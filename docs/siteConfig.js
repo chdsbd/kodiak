@@ -88,8 +88,8 @@ const siteConfig = {
   cleanUrl: true,
 
   // Open Graph and Twitter card images.
-  ogImage: "img/wordmark.svg",
-  twitterImage: "img/wordmark.svg",
+  ogImage: "img/wordmark.png",
+  twitterImage: "img/wordmark.png",
 
   // For sites with a sizable amount of content, set collapsible to true.
   // Expand/collapse the links and subcategories under categories.
