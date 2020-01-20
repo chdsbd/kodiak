@@ -14,7 +14,7 @@ Add another markdown file to the `docs/` folder and update the
 ## Dev
 
 ```shell
-# /docs/website/
+# docs/
 yarn install
 yarn start
 yarn typecheck --watch

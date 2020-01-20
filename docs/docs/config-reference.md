@@ -3,7 +3,9 @@ id: config-reference
 title: Configuration Reference
 ---
 
-Below is a Kodiak config with all options set and commented.
+Below is a Kodiak configuration with all options set and commented.
+
+The Kodiak `.kodiak.toml` configuration file can be placed at the repository root or at `.github/.kodiak.toml`.
 
 ```toml
 # .kodiak.toml
