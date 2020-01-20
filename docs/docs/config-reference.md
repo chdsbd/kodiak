@@ -413,4 +413,4 @@ require_automerge_label = true # default: true
 
 ## other resources
 
-See [`kodiak/test/fixtures/config`](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config) for more examples and [`kodiak/config.py`](https://github.com/chdsbd/kodiak/blob/master/kodiak/config.py) for the Python models.
+See [`kodiak/test/fixtures/config`](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config) for more examples and [`kodiak/config.py`](https://github.com/chdsbd/kodiak/blob/master/kodiak/config.py) for the Python models that codify this configuration.
