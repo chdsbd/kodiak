@@ -121,3 +121,12 @@ header a {
 .mr-3 {
   margin-right: 0.75rem !important;
 }
+
+/* Prevent wrapping on right sidebar. */
+.toc-headings > li {
+    text-overflow: ellipsis;
+    overflow-x: hidden;
+}
+.toc-headings > li > a > code {
+    white-space: nowrap;
+}
