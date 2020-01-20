@@ -38,7 +38,7 @@ body = "pull_request_body" # default: "github_default"
 
 ## Efficiency and Speed
 
-This config prioritizes resource conservation by only updating a PR when it is ready to merge and favors speed by immediately merging any that is ready to merge.
+This config prioritizes resource conservation by only updating a PR when it is ready to merge and favors speed by immediately merging any PR that is ready to merge.
 
 Disabling `merge.prioritize_ready_to_merge` would improve fairness by ensuring a first-come-first-served policy for the merge queue.
 
