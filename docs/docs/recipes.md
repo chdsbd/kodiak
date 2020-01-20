@@ -4,26 +4,81 @@ title: Recipes
 sidebar_label: Recipes
 ---
 
-## Better Merge Messages
+## Sync with Master
 
-In the config below we setup merge messages to use the PR title and body with
-an included PR number. Additionally we strip html comments from the body
-which can be useful if your GitHub repo has PR templates.
+A config to keep every PR up-to-date with master. Whenever the target branch of a PR updates, the PR will update.
+
+```toml
+# .kodiak.toml
+version = 1
+
+[update]
+always = true # default: false
+require_automerge_label = false # default: true
+```
+
+## The Favourite
+
+This is the config use by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
+
+We squash all PR commits and use the PR title and body for the merge commit. Once merged, we delete the PR's branch.
+
+```
+# .kodiak.toml
+version = 1
+
+[merge]
+method = "squash" # default: "merge"
+delete_branch_on_merge = true # default: false
+
+[merge.message]
+title = "pull_request_title" # default: "github_default"
+body = "pull_request_body" # default: "github_default"
+```
+
+## Efficiency and Speed
+
+This config prioritizes resource conservation by only updating a PR when it is ready to merge and favors speed by immediately merging any that is ready to merge.
+
+Disabling `merge.prioritize_ready_to_merge` would improve fairness by ensuring a first-come-first-served policy for the merge queue.
 
 ```toml
 # .kodiak.toml
 version = 1
 
 [merge]
-method = "squash"
-delete_branch_on_merge = true
-# Skip jobs that will never finish, like the WIP GitHub app
-dont_wait_on_status_checks = ["WIP"] # handle github.com/apps/wip
+# don't wait for running status checks when a PR needs update.
+optimistic_updates = true # default: true
+
+# if a PR is ready, merge it, don't place it in the merge queue.
+prioritize_ready_to_merge = true # default: false
+```
+
+## Better Merge Messages
+
+GitHub's default merge commits are _ugly_. GitHub uses the title of the first commit for the merge title and combines all of the other commit titles and bodies for the merge body.
+
+Using the pull request title and body give a cleaner, more useful merge commit.
+
+This config uses the PR title and body, along with the PR number to create a nice merge commit. Additionally we strip HTML comments from the PR markdown body which can be useful if your GitHub repo has PR templates.
+
+```toml
+# .kodiak.toml
+version = 1
 
 [merge.message]
-title = "pull_request_title"
-body = "pull_request_body"
-include_pr_number = true
-body_type = "markdown"
-strip_html_comments = true # remove html comments to auto remove PR templates
+# use title of PR for merge commit.
+title = "pull_request_title" # default: "github_default"
+
+# use body of PR for merge commit.
+body = "pull_request_body" # default: "github_default"
+
+# add the PR number to the merge commit title, like GitHub.
+include_pr_number = true # default: true
+
+# use the default markdown content of the PR for the merge commit.
+body_type = "markdown" # default: "markdown"
+
+# remove html comments to auto remove PR templates.
+strip_html_comments = true # default: false
 ```
