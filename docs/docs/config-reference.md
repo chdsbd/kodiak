@@ -280,14 +280,14 @@ automerge_label = "automerge" # default: "automerge"
 
 # Require that the automerge label (`merge.automerge_label`) be set for Kodiak
 # to merge a PR.
-# 
+#
 # When disabled, Kodiak will immediately attempt to merge any PR that passes all
 # GitHub branch protection requirements.
 require_automerge_label = true
 
 # If a PR's title matches this regex, Kodiak will not merge the PR. This is
 # useful to prevent merging work-in-progress PRs.
-# 
+#
 # Setting `merge.blacklist_title_regex = ""` disables this option.
 blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
@@ -295,10 +295,10 @@ blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a
 blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 
 # Choose merge method for Kodiak to use.
-# 
+#
 # Kodiak will report a configuration error if the selected merge method is
 # disabled for a repository.
-# 
+#
 # If you're using the "Require signed commits" GitHub Branch Protection setting
 # to require commit signatures, _`"merge"` is the only compatible option_. Any
 # other option will cause Kodiak to raise a configuration error.
