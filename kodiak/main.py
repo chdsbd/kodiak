@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
-from typing import Optional
+from typing import List, Optional, Set, cast
 
 import sentry_sdk
 import structlog
@@ -13,6 +14,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.github import Webhook, events
+from kodiak.github.events import BasePullRequest, Branch
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import Client
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
@@ -100,32 +102,72 @@ async def check_run(check_run_event: events.CheckRunEvent) -> None:
         )
 
 
+def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
+    """
+    from the docs:
+        The "branches" key is "an array of branch objects containing the status'
+        SHA. Each branch contains the given SHA, but the SHA may or may not be
+        the head of the branch. The array includes a maximum of 10 branches.""
+    https://developer.github.com/v3/activity/events/types/#statusevent
+
+    NOTE(chdsbd): only take branches with commit at branch head to reduce
+    potential number of api requests we need to make.
+    """
+    return [branch.name for branch in branches if branch.commit.sha == sha]
+
+
 @webhook()
 async def status_event(status_event: events.StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
     """
     assert status_event.installation
-    sha = status_event.commit.sha
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
+    log = logger.bind(owner=owner, repo=repo, install=installation_id)
+
+    refs = find_branch_names_latest(
+        sha=status_event.commit.sha, branches=status_event.branches
+    )
+
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
-        prs = await api_client.get_open_pull_requests(head=sha)
-        if prs is None:
-            logger.warning("problem finding prs for sha")
-            return None
-        for pr in prs:
-            await redis_webhook_queue.enqueue(
-                event=WebhookEvent(
-                    repo_owner=owner,
-                    repo_name=repo,
-                    pull_request_number=pr.number,
-                    installation_id=str(installation_id),
-                )
+        if len(refs) == 0:
+            # when a pull request is from a fork the status event will not have
+            # any `branches`, so to be able to trigger evaluation of the PR, we
+            # fetch all pull requests.
+            #
+            # I think we could optimize this by selecting only the fork PRs, but
+            # I worry that we might miss some events where `branches` is empty,
+            # but not because of a fork.
+            pr_results = [await api_client.get_open_pull_requests()]
+            log.warning("could not find refs for status_event")
+        else:
+            pr_requests = [
+                api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
+            ]
+            pr_results = cast(
+                List[Optional[List[BasePullRequest]]],
+                await asyncio.gather(*pr_requests),
             )
+
+        all_events: Set[WebhookEvent] = set()
+        for prs in pr_results:
+            if prs is None:
+                continue
+            for pr in prs:
+                all_events.add(
+                    WebhookEvent(
+                        repo_owner=owner,
+                        repo_name=repo,
+                        pull_request_number=pr.number,
+                        installation_id=str(installation_id),
+                    )
+                )
+        for event in all_events:
+            await redis_webhook_queue.enqueue(event=event)
 
 
 @webhook()
