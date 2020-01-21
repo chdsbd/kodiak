@@ -3742,7 +3742,6 @@ async def test_mergeable_auto_approve(
         pull_request=pull_request,
         branch_protection=branch_protection,
         review_requests=[],
-        reviews=[review],
         contexts=[context],
         check_runs=[check_run],
         valid_signature=False,
@@ -3752,6 +3751,8 @@ async def test_mergeable_auto_approve(
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
+        #
+        reviews=[],
     )
     assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
@@ -3782,7 +3783,7 @@ async def test_mergeable_auto_approve_existing_approval(
     api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
-    review.author.login = "kodiakhq"
+    review.author.login = "kodiak-test-app"
     review.state = PRReviewState.APPROVED
     await mergeable(
         api=api,
@@ -3832,6 +3833,8 @@ async def test_mergeable_auto_approve_old_approval(
     api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
+    review.author.login = "kodiak-test-app"
+    review.state = PRReviewState.DISMISSED
     await mergeable(
         api=api,
         config=config,
