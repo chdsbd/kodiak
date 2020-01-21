@@ -23,11 +23,11 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAuthor,
     PullRequestState,
     RepoInfo,
     StatusContext,
     StatusState,
-    PullRequestAuthor,
 )
 from kodiak.test_utils import wrap_future
 

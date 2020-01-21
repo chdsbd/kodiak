@@ -8,6 +8,7 @@ import toml
 
 from kodiak.config import (
     V1,
+    Approve,
     BodyText,
     Merge,
     MergeBodyStyle,
@@ -15,7 +16,6 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
     Update,
-    Approve,
 )
 
 

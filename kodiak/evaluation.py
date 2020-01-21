@@ -32,6 +32,8 @@ from kodiak.queries import (
 )
 from kodiak.text import strip_html_comments_from_markdown
 
+KODIAK_LOGIN = "kodiakhq"
+
 logger = structlog.get_logger()
 
 
@@ -245,6 +247,18 @@ async def mergeable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
+
+    if pull_request.author.login in config.approve.auto_approve_usernames:
+        # if the PR was created by an approve author and we have not previously
+        # given an approval, approve the PR.
+        sorted_reviews = sorted(reviews, key=lambda x: x.createdAt)
+        kodiak_reviews = [
+            review for review in sorted_reviews if review.author.login == KODIAK_LOGIN
+        ]
+        status = review_status(kodiak_reviews)
+        if status != PRReviewState.APPROVED:
+            await api.approve_pr()
+
     if branch_protection.requiresCommitSignatures and config.merge.method in (
         MergeMethod.rebase,
         MergeMethod.squash,

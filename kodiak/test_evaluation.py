@@ -27,10 +27,10 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAuthor,
     PullRequestState,
     StatusContext,
     StatusState,
-    PullRequestAuthor,
 )
 
 log = logging.getLogger(__name__)
@@ -3782,6 +3782,8 @@ async def test_mergeable_auto_approve_existing_approval(
     api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
+    review.author.login = "kodiakhq"
+    review.state = PRReviewState.APPROVED
     await mergeable(
         api=api,
         config=config,
