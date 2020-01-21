@@ -148,7 +148,7 @@ class PRAPI(Protocol):
     async def update_branch(self) -> None:
         ...
 
-    async def approve_pr(self) -> None:
+    async def approve_pull_request(self) -> None:
         ...
 
 
@@ -257,7 +257,7 @@ async def mergeable(
         ]
         status = review_status(kodiak_reviews)
         if status != PRReviewState.APPROVED:
-            await api.approve_pr()
+            await api.approve_pull_request()
 
     if branch_protection.requiresCommitSignatures and config.merge.method in (
         MergeMethod.rebase,

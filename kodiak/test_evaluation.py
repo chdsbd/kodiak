@@ -133,7 +133,7 @@ class MockUpdateBranch(BaseMockFunc):
         self.log_call(dict())
 
 
-class MockApprovePR(BaseMockFunc):
+class MockApprovePullRequest(BaseMockFunc):
     async def __call__(self) -> None:
         self.log_call(dict())
 
@@ -150,7 +150,7 @@ class MockPrApi:
         self.merge = MockMerge()
         self.queue_for_merge = MockQueueForMerge()
         self.update_branch = MockUpdateBranch()
-        self.approve_pr = MockApprovePR()
+        self.approve_pull_request = MockApprovePullRequest()
 
     def get_api_methods(self) -> List[Tuple[str, BaseMockFunc]]:
         cls = type(self)
@@ -3753,7 +3753,7 @@ async def test_mergeable_auto_approve(
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
     )
-    assert api.approve_pr.call_count == 1
+    assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
@@ -3803,7 +3803,7 @@ async def test_mergeable_auto_approve_existing_approval(
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
     )
-    assert api.approve_pr.call_count == 0
+    assert api.approve_pull_request.call_count == 0
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
@@ -3851,7 +3851,7 @@ async def test_mergeable_auto_approve_old_approval(
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
     )
-    assert api.approve_pr.call_count == 1
+    assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1

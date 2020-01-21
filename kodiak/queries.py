@@ -855,6 +855,19 @@ class Client:
                 headers=headers,
             )
 
+    async def approve_pull_request(self, *, pull_number: int) -> http.Response:
+        """
+        https://developer.github.com/v3/pulls/reviews/#create-a-pull-request-review
+        """
+        headers = await get_headers(installation_id=self.installation_id)
+        body = dict(event="APPROVE")
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews",
+                headers=headers,
+                json=body,
+            )
+
     async def get_pull_request(self, number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
