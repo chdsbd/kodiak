@@ -126,6 +126,8 @@ This option only applies when `merge.require_automerge_label` is enabled.
 
 Don't wait for in-progress status checks on a PR to finish before updating the branch.
 
+This setting can speed up merges but increases chance of running extra CI jobs.
+
 ### `merge.dont_wait_on_status_checks`
 
 - **type:** `string[]`
