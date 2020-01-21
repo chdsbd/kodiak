@@ -11,6 +11,7 @@ import toml
 from typing_extensions import Protocol
 
 from kodiak import config
+from kodiak import app_config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.messages import get_markdown_for_config
@@ -32,9 +33,8 @@ from kodiak.queries import (
 )
 from kodiak.text import strip_html_comments_from_markdown
 
-KODIAK_LOGIN = "kodiakhq"
-
-logger = structlog.get_logger()
+# TODO(chdsbd): We could make an API request to `/app` on start to get this information, but this is pretty simple.
+KODIAK_LOGIN = app_config.GITHUB_APP_NAME
 
 
 def get_body_content(
@@ -258,6 +258,8 @@ async def mergeable(
         status = review_status(kodiak_reviews)
         if status != PRReviewState.APPROVED:
             await api.approve_pull_request()
+        else:
+            log.info("approval already exists, not adding another")
 
     if branch_protection.requiresCommitSignatures and config.merge.method in (
         MergeMethod.rebase,

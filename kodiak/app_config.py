@@ -18,6 +18,7 @@ GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
 GITHUB_PRIVATE_KEY_PATH = config("GITHUB_PRIVATE_KEY_PATH", default=None)
 GITHUB_PRIVATE_KEY_BASE64 = config("GITHUB_PRIVATE_KEY_BASE64", default=None)
 LOGGING_LEVEL = get_logging_level(config("LOGGING_LEVEL", default="INFO"))
+GITHUB_APP_NAME = config("GITHUB_APP_NAME")
 
 
 if GITHUB_PRIVATE_KEY is not None:
