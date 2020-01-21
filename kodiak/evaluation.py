@@ -10,8 +10,7 @@ import structlog
 import toml
 from typing_extensions import Protocol
 
-from kodiak import config
-from kodiak import app_config
+from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.messages import get_markdown_for_config
@@ -35,6 +34,8 @@ from kodiak.text import strip_html_comments_from_markdown
 
 # TODO(chdsbd): We could make an API request to `/app` on start to get this information, but this is pretty simple.
 KODIAK_LOGIN = app_config.GITHUB_APP_NAME
+
+logger = structlog.get_logger()
 
 
 def get_body_content(
