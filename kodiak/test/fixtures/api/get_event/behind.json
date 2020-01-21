@@ -35,6 +35,9 @@
         "state": "OPEN",
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
+        "author": {
+            "login": "arnold"
+        },
         "reviewRequests": {
           "nodes": [
             {

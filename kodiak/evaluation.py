@@ -146,6 +146,9 @@ class PRAPI(Protocol):
     async def update_branch(self) -> None:
         ...
 
+    async def approve_pr(self) -> None:
+        ...
+
 
 async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.dequeue()

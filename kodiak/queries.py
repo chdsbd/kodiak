@@ -79,6 +79,9 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
     squashMergeAllowed
     pullRequest(number: $PRNumber) {
       id
+      author {
+        login
+      }
       mergeStateStatus
       state
       mergeable
@@ -207,6 +210,10 @@ class PullRequestState(Enum):
     MERGED = "MERGED"
 
 
+class PullRequestAuthor(BaseModel):
+    login: str
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -214,6 +221,7 @@ class PullRequest(BaseModel):
     body: str
     bodyText: str
     bodyHTML: str
+    author: PullRequestAuthor
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState

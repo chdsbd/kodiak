@@ -30,6 +30,7 @@ from kodiak.queries import (
     PullRequestState,
     StatusContext,
     StatusState,
+    PullRequestAuthor,
 )
 
 log = logging.getLogger(__name__)
@@ -130,6 +131,8 @@ class MockQueueForMerge(BaseMockFunc):
 class MockUpdateBranch(BaseMockFunc):
     async def __call__(self) -> None:
         self.log_call(dict())
+
+
 class MockApprovePR(BaseMockFunc):
     async def __call__(self) -> None:
         self.log_call(dict())
@@ -222,6 +225,7 @@ def pull_request() -> PullRequest:
     return PullRequest(
         id="FDExOlB1bGxSZXX1ZXN0MjgxODQ0Nzg7",
         number=142,
+        author=PullRequestAuthor(login="barry"),
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
@@ -3711,6 +3715,7 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request(
     assert api.merge.call_count == 0
     assert api.dequeue.call_count == 0
 
+
 @pytest.mark.asyncio
 async def test_mergeable_auto_approve(
     api: MockPrApi,
@@ -3727,6 +3732,8 @@ async def test_mergeable_auto_approve(
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
     """
     api.queue_for_merge.return_value = 3
+    config.approve.auto_approve_usernames = ["dependency-updater"]
+    pull_request.author.login = "dependency-updater"
     await mergeable(
         api=api,
         config=config,
@@ -3754,6 +3761,7 @@ async def test_mergeable_auto_approve(
     assert api.merge.call_count == 0
     assert api.update_branch.call_count == 0
 
+
 @pytest.mark.asyncio
 async def test_mergeable_auto_approve_existing_approval(
     api: MockPrApi,
@@ -3772,6 +3780,8 @@ async def test_mergeable_auto_approve_existing_approval(
     If we have an existing, valid approval, we should not add another.
     """
     api.queue_for_merge.return_value = 3
+    config.approve.auto_approve_usernames = ["dependency-updater"]
+    pull_request.author.login = "dependency-updater"
     await mergeable(
         api=api,
         config=config,
@@ -3799,6 +3809,7 @@ async def test_mergeable_auto_approve_existing_approval(
     assert api.merge.call_count == 0
     assert api.update_branch.call_count == 0
 
+
 @pytest.mark.asyncio
 async def test_mergeable_auto_approve_old_approval(
     api: MockPrApi,
@@ -3817,6 +3828,8 @@ async def test_mergeable_auto_approve_old_approval(
     If we have a dismissed approval, we should add a fresh one.
     """
     api.queue_for_merge.return_value = 3
+    config.approve.auto_approve_usernames = ["dependency-updater"]
+    pull_request.author.login = "dependency-updater"
     await mergeable(
         api=api,
         config=config,
