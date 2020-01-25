@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import inspect
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
@@ -126,6 +127,8 @@ class Webhook:
                 raise TypeError(
                     f"invalid number of arguments '{arg_count}'. Only one argument should be provided."
                 )
+            if not inspect.isawaitable(func):
+                raise TypeError("Only async functions are supported.")
             # we will only have one argument/annotation at this point
             typehints = list(annotations.values())[0]
 
