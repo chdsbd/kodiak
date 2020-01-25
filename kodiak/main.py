@@ -13,11 +13,17 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
 from kodiak import queries
-from kodiak.events import PushEvent
-from kodiak.github import Webhook, events
-from kodiak.github.events import BasePullRequest, Branch
+from kodiak.events import (
+    CheckRunEvent,
+    PullRequestEvent,
+    PullRequestReviewEvent,
+    PushEvent,
+    StatusEvent,
+)
+from kodiak.events.status import Branch
+from kodiak.github import Webhook
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queries import Client
+from kodiak.queries import Client, GetOpenPullRequestsResponse
 from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
@@ -68,7 +74,7 @@ async def root() -> str:
 
 
 @webhook()
-async def pr_event(pr: events.PullRequestEvent) -> None:
+async def pr_event(pr: PullRequestEvent) -> None:
     """
     Trigger evaluation of modified PR.
     """
@@ -84,7 +90,7 @@ async def pr_event(pr: events.PullRequestEvent) -> None:
 
 
 @webhook()
-async def check_run(check_run_event: events.CheckRunEvent) -> None:
+async def check_run(check_run_event: CheckRunEvent) -> None:
     """
     Trigger evaluation of all PRs included in check run.
     """
@@ -118,7 +124,7 @@ def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
 
 
 @webhook()
-async def status_event(status_event: events.StatusEvent) -> None:
+async def status_event(status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
     """
@@ -129,7 +135,7 @@ async def status_event(status_event: events.StatusEvent) -> None:
     log = logger.bind(owner=owner, repo=repo, install=installation_id)
 
     refs = find_branch_names_latest(
-        sha=status_event.commit.sha, branches=status_event.branches
+        sha=status_event.sha, branches=status_event.branches
     )
 
     async with Client(
@@ -150,7 +156,7 @@ async def status_event(status_event: events.StatusEvent) -> None:
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
             pr_results = cast(
-                List[Optional[List[BasePullRequest]]],
+                List[Optional[List[GetOpenPullRequestsResponse]]],
                 await asyncio.gather(*pr_requests),
             )
 
@@ -172,7 +178,7 @@ async def status_event(status_event: events.StatusEvent) -> None:
 
 
 @webhook()
-async def pr_review(review: events.PullRequestReviewEvent) -> None:
+async def pr_review(review: PullRequestReviewEvent) -> None:
     """
     Trigger evaluation of the modified PR.
     """

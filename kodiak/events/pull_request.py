@@ -12,10 +12,10 @@ class Repository(pydantic.BaseModel):
     owner: Owner
 
 
-class PushEvent(GithubEvent):
+class PullRequestEvent(GithubEvent):
     """
-    https://developer.github.com/v3/activity/events/types/#pushevent
+    https://developer.github.com/v3/activity/events/types/#pullrequestevent
     """
 
-    ref: str
+    number: int
     repository: Repository

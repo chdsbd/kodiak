@@ -3,6 +3,10 @@ import pydantic
 from kodiak.events.base import GithubEvent
 
 
+class PullRequest(pydantic.BaseModel):
+    number: int
+
+
 class Owner(pydantic.BaseModel):
     login: str
 
@@ -12,10 +16,10 @@ class Repository(pydantic.BaseModel):
     owner: Owner
 
 
-class PushEvent(GithubEvent):
+class PullRequestReviewEvent(GithubEvent):
     """
-    https://developer.github.com/v3/activity/events/types/#pushevent
+    https://developer.github.com/v3/activity/events/types/#pullrequestreviewevent
     """
 
-    ref: str
+    pull_request: PullRequest
     repository: Repository
