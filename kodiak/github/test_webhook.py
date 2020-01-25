@@ -174,7 +174,7 @@ def test_event_parsing(
         headers={"X-Github-Event": event_name, "X-Hub-Signature": sha},
     )
     assert res.status_code == status.HTTP_200_OK
-    assert hook_run == 1, "push_async should both be called"
+    assert hook_run == 1, "push_async should be called"
 
 
 def test_event_count() -> None:
