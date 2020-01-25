@@ -112,9 +112,7 @@ class Webhook:
         return None
 
     def register_events(
-        self,
-        func: Callable[[object], Awaitable[None]],
-        events: List[Type[events.GithubEvent]],
+        self, func: Callable, events: List[Type[events.GithubEvent]]
     ) -> None:
         for event in events:
             self.event_mapping[event].append(func)
