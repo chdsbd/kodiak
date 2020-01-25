@@ -19,7 +19,6 @@ from typing_extensions import Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
-from kodiak.github import events
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()

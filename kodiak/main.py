@@ -78,7 +78,6 @@ async def pr_event(pr: PullRequestEvent) -> None:
     """
     Trigger evaluation of modified PR.
     """
-    assert pr.installation is not None
     await redis_webhook_queue.enqueue(
         event=WebhookEvent(
             repo_owner=pr.repository.owner.login,
@@ -94,7 +93,6 @@ async def check_run(check_run_event: CheckRunEvent) -> None:
     """
     Trigger evaluation of all PRs included in check run.
     """
-    assert check_run_event.installation
     # Prevent an infinite loop when we update our check run
     if check_run_event.check_run.name == queries.CHECK_RUN_NAME:
         return
@@ -128,7 +126,6 @@ async def status_event(status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
     """
-    assert status_event.installation
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
@@ -182,7 +179,6 @@ async def pr_review(review: PullRequestReviewEvent) -> None:
     """
     Trigger evaluation of the modified PR.
     """
-    assert review.installation
     await redis_webhook_queue.enqueue(
         event=WebhookEvent(
             repo_owner=review.repository.owner.login,
@@ -209,7 +205,6 @@ async def push(push_event: PushEvent) -> None:
     """
     owner = push_event.repository.owner.login
     repo = push_event.repository.name
-    assert push_event.installation
     installation_id = str(push_event.installation.id)
     branch_name = get_branch_name(push_event.ref)
     log = logger.bind(ref=push_event.ref, branch_name=branch_name)
