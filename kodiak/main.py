@@ -13,6 +13,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
 from kodiak import queries
+from kodiak.events import PushEvent
 from kodiak.github import Webhook, events
 from kodiak.github.events import BasePullRequest, Branch
 from kodiak.logging import SentryProcessor, add_request_info_processor
@@ -196,7 +197,7 @@ def get_branch_name(raw_ref: str) -> Optional[str]:
 
 
 @webhook()
-async def push(push_event: events.PushEvent) -> None:
+async def push(push_event: PushEvent) -> None:
     """
     Trigger evaluation of PRs that depend on the pushed branch.
     """
