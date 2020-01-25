@@ -44,7 +44,7 @@ def test_correct_case(
     hook_run = False
 
     @webhook()
-    def push(data: events.PullRequestEvent) -> None:
+    async def push(data: events.PullRequestEvent) -> None:
         nonlocal hook_run
         hook_run = True
         assert isinstance(data, events.PullRequestEvent)
@@ -141,10 +141,11 @@ def get_body_and_hash(data: dict) -> Tuple[bytes, str]:
     return body, sha
 
 
-@pytest.mark.parametrize("event, file_name", fixtures.MAPPING)
+@pytest.mark.parametrize("event_name, event, file_name", fixtures.MAPPING)
 def test_event_parsing(
     client: TestClient,
     webhook: Webhook,
+    event_name: str,
     event: Type[events.GithubEvent],
     file_name: str,
 ) -> None:
@@ -153,34 +154,27 @@ def test_event_parsing(
 
     hook_run = 0
 
-    def push(data: events.GithubEvent) -> None:
-        nonlocal hook_run
-        hook_run += 1
-        assert isinstance(data, event)
-
     async def push_async(data: events.GithubEvent) -> None:
         nonlocal hook_run
         hook_run += 1
         assert isinstance(data, event)
 
-    # manually configure push and push_async to listen for parameterized event
-    push.__annotations__["data"] = event
+    # manually configure push_async to listen for parameterized event
     push_async.__annotations__["data"] = event
-    webhook()(push)
     webhook()(push_async)
 
-    assert webhook.event_mapping[event] == [push, push_async]
-    assert len(webhook.event_mapping) == 1, "we have one event mapping to two listeners"
+    assert webhook.event_mapping[event] == [push_async]
+    assert len(webhook.event_mapping) == 1, "we have one event mapping to one listener"
 
     body, sha = get_body_and_hash(data)
 
     res = client.post(
         "/api/github/hook",
         data=body,
-        headers={"X-Github-Event": event._event_name, "X-Hub-Signature": sha},
+        headers={"X-Github-Event": event_name, "X-Hub-Signature": sha},
     )
     assert res.status_code == status.HTTP_200_OK
-    assert hook_run == 2, "push and push_async should both be called"
+    assert hook_run == 1, "push_async should be called"
 
 
 def test_event_count() -> None:
@@ -199,5 +193,5 @@ def test_event_count() -> None:
             all_events.append(item)
 
     assert set(all_events) == {
-        event_class for event_class, _fixture_name in fixtures.MAPPING
+        event_class for _event_name, event_class, _fixture_name in fixtures.MAPPING
     }

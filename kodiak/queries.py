@@ -15,10 +15,10 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
+from typing_extensions import Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
-from kodiak.github import events
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -563,6 +563,14 @@ def create_github_config_file_expression(branch: str) -> str:
     return f"{branch}:.github/{CONFIG_FILE_NAME}"
 
 
+class GetOpenPullRequestsResponse(Protocol):
+    number: int
+
+
+class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
+    number: int
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -803,7 +811,7 @@ class Client:
 
     async def get_open_pull_requests(
         self, base: Optional[str] = None, head: Optional[str] = None
-    ) -> Optional[List[events.BasePullRequest]]:
+    ) -> Optional[List[GetOpenPullRequestsResponse]]:
         """
         https://developer.github.com/v3/pulls/#list-pull-requests
         """
@@ -825,7 +833,7 @@ class Client:
         except http.HTTPError:
             log.warning("problem finding prs", res=res, exc_info=True)
             return None
-        return [events.BasePullRequest.parse_obj(pr) for pr in res.json()]
+        return [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in res.json()]
 
     async def delete_branch(self, branch: str) -> http.Response:
         """

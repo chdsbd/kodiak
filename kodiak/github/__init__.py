@@ -1,10 +1,9 @@
 import hashlib
 import hmac
-import inspect
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import (
-    Any,
+    Awaitable,
     Callable,
     List,
     MutableMapping,
@@ -21,7 +20,7 @@ from starlette import status
 from starlette.config import Config
 from starlette.requests import Request
 
-from kodiak.github import events
+from kodiak import events
 
 config = Config(".env")
 SECRET_KEY = config("SECRET_KEY")
@@ -29,8 +28,8 @@ SECRET_KEY = config("SECRET_KEY")
 log = structlog.get_logger()
 
 
-def valid_event(arg: Any) -> bool:
-    return arg in events.event_registry.values()
+def valid_event(arg: object) -> bool:
+    return arg in events.event_schema_mapping.values()
 
 
 class UnsupportType(TypeError):
@@ -48,7 +47,9 @@ DecoratorFunc = Union[
 @dataclass(init=False)
 class Webhook:
 
-    event_mapping: MutableMapping[Type[events.GithubEvent], List[Callable]]
+    event_mapping: MutableMapping[
+        Type[events.GithubEvent], List[Callable[[object], Awaitable[None]]]
+    ]
 
     def __init__(self, app: FastAPI, path: str = "/api/github/hook"):
         self.event_mapping = defaultdict(list)
@@ -93,23 +94,20 @@ class Webhook:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid signature: X-Hub-Signature",
             )
-        handler = events.event_registry.get(github_event)
-        if handler is None:
+        event_schema = events.event_schema_mapping.get(github_event)
+        if event_schema is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Event '{github_event}' has no registered handler. Support likely doesn't exist for this kind of event.",
+                detail=f"Event '{github_event}' has no registered schema. Support likely doesn't exist for this kind of event.",
             )
-        listeners = self.event_mapping.get(handler)
+        listeners = self.event_mapping.get(event_schema)
         bound_log = log.bind(github_event=github_event)
         if listeners is None:
             bound_log.info("No event listeners registered")
             return None
         bound_log.info("Processing listeners for event", listener_count=len(listeners))
         for listener in listeners:
-            res = listener(handler.parse_obj(event))
-            # support async and non-async functions
-            if inspect.isawaitable(res):
-                await res
+            await listener(event_schema.parse_obj(event))
         return None
 
     def register_events(
