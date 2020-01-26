@@ -232,7 +232,9 @@
           "title": "Auto_Approve_Usernames",
           "default": [],
           "type": "array",
-          "items": {}
+          "items": {
+            "type": "string"
+          }
         }
       }
     }
