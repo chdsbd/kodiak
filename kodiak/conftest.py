@@ -1,12 +1,4 @@
 import pytest
-from starlette.testclient import TestClient
-
-from kodiak.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
