@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.17.0 - 2020-01-26
+
+### Added
+- add `approve.auto_approve_usernames` to enable Kodiak to auto approve PRs. This option enables bots like Dependabot to automatically merge PRs when the GitHub Branch Protection "Required approving reviews" is configured. See https://kodiakhq.com/docs/recipes#automated-dependency-updates-with-dependabot for an example.
+
 ## 0.16.0 - 2020-01-25
 
 ### Fixed
