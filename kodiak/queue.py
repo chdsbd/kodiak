@@ -281,3 +281,6 @@ def get_merge_queue_name(event: WebhookEvent) -> str:
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
+
+
+redis_webhook_queue = RedisWebhookQueue()
