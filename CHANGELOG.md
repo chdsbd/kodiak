@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.16.0 - 2020-01-25
+
+### Fixed
+- fixed status event handler triggering reevaluations of all PRs in a repository. Now we only trigger updates for PRs directly related to a status event. (#248)
+- replaced inaccurate webhook event schemas with simplified versions to curtail parsing errors. Now we only parse the little information we need from each webhook event. This issue was preventing some webhook events from triggering reevaluations of PRs. (#262, #261)
+
 ## 0.15.0 - 2020-01-18
 
 ### Fixed
