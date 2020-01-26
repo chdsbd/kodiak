@@ -27,3 +27,6 @@ strip_html_comments = true # default: false
 [update]
 always = true
 require_automerge_label = false
+
+[approve]
+auto_approve_usernames = ["dependabot"]

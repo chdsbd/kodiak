@@ -79,6 +79,9 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
     squashMergeAllowed
     pullRequest(number: $PRNumber) {
       id
+      author {
+        login
+      }
       mergeStateStatus
       state
       mergeable
@@ -207,6 +210,10 @@ class PullRequestState(Enum):
     MERGED = "MERGED"
 
 
+class PullRequestAuthor(BaseModel):
+    login: str
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -214,6 +221,7 @@ class PullRequest(BaseModel):
     body: str
     bodyText: str
     bodyHTML: str
+    author: PullRequestAuthor
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState
@@ -853,6 +861,19 @@ class Client:
             return await self.session.put(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch",
                 headers=headers,
+            )
+
+    async def approve_pull_request(self, *, pull_number: int) -> http.Response:
+        """
+        https://developer.github.com/v3/pulls/reviews/#create-a-pull-request-review
+        """
+        headers = await get_headers(installation_id=self.installation_id)
+        body = dict(event="APPROVE")
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews",
+                headers=headers,
+                json=body,
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
