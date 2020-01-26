@@ -102,7 +102,7 @@ class Update(BaseModel):
 
 class Approve(BaseModel):
     # auto approve any PR created by a listed user.
-    auto_approve_usernames: list = []
+    auto_approve_usernames: List[str] = []
 
 
 class InvalidVersion(ValueError):
