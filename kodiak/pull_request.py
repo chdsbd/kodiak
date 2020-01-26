@@ -220,6 +220,17 @@ class PRV2:
                 # we raise an exception to retry this request.
                 raise ApiCallException("update branch")
 
+    async def approve_pull_request(self) -> None:
+        self.log.info("approve_pull_request")
+        async with Client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.approve_pull_request(pull_number=self.number)
+            try:
+                res.raise_for_status()
+            except HTTPError:
+                self.log.exception("failed to approve pull request", res=res)
+
     async def trigger_test_commit(self) -> None:
         self.log.info("trigger_test_commit")
         async with Client(

@@ -10,7 +10,7 @@ import structlog
 import toml
 from typing_extensions import Protocol
 
-from kodiak import config
+from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
 from kodiak.messages import get_markdown_for_config
@@ -31,6 +31,9 @@ from kodiak.queries import (
     StatusState,
 )
 from kodiak.text import strip_html_comments_from_markdown
+
+# TODO(chdsbd): We could make an API request to `/app` on start to get this information, but this is pretty simple.
+KODIAK_LOGIN = app_config.GITHUB_APP_NAME
 
 logger = structlog.get_logger()
 
@@ -146,6 +149,9 @@ class PRAPI(Protocol):
     async def update_branch(self) -> None:
         ...
 
+    async def approve_pull_request(self) -> None:
+        ...
+
 
 async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.dequeue()
@@ -242,6 +248,20 @@ async def mergeable(
             f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
         )
         return
+
+    if pull_request.author.login in config.approve.auto_approve_usernames:
+        # if the PR was created by an approve author and we have not previously
+        # given an approval, approve the PR.
+        sorted_reviews = sorted(reviews, key=lambda x: x.createdAt)
+        kodiak_reviews = [
+            review for review in sorted_reviews if review.author.login == KODIAK_LOGIN
+        ]
+        status = review_status(kodiak_reviews)
+        if status != PRReviewState.APPROVED:
+            await api.approve_pull_request()
+        else:
+            log.info("approval already exists, not adding another")
+
     if branch_protection.requiresCommitSignatures and config.merge.method in (
         MergeMethod.rebase,
         MergeMethod.squash,

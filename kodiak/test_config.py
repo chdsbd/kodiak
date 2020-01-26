@@ -8,6 +8,7 @@ import toml
 
 from kodiak.config import (
     V1,
+    Approve,
     BodyText,
     Merge,
     MergeBodyStyle,
@@ -62,6 +63,7 @@ def test_config_default() -> None:
                     ),
                 ),
                 update=Update(always=True, require_automerge_label=False),
+                approve=Approve(auto_approve_usernames=["dependabot"]),
             ),
         ),
         (
@@ -92,6 +94,7 @@ def test_config_default() -> None:
                     ),
                 ),
                 update=Update(always=True, require_automerge_label=False),
+                approve=Approve(auto_approve_usernames=["dependabot"]),
             ),
         ),
     ],

@@ -26,3 +26,6 @@ strip_html_comments = false
 [update]
 always = false
 require_automerge_label = true
+
+[approve]
+auto_approve_usernames = []
