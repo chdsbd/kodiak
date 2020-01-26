@@ -186,4 +186,4 @@ async def handle_webhook_event(event_name: str, payload: dict) -> None:
     elif event_name == "status":
         await status_event(StatusEvent.parse_obj(payload))
     else:
-        logger.warning("no handler for event", event=event_name)
+        logger.warning("no handler for event", event_name=event_name)
