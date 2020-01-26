@@ -58,6 +58,7 @@ async def root() -> str:
     return "OK"
 
 
+@app.post("/api/github/hook")
 async def webhook_event(
     event: dict,
     *,
@@ -94,9 +95,6 @@ async def webhook_event(
         )
 
     await handle_webhook_event(event_name=github_event, payload=event)
-
-
-app.add_api_route(path="/api/github/hook", endpoint=webhook_event, methods=["POST"])
 
 
 @app.on_event("startup")
