@@ -23,6 +23,7 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAuthor,
     PullRequestState,
     RepoInfo,
     StatusContext,
@@ -84,6 +85,7 @@ def block_event() -> EventInfoResponse:
     pr = PullRequest(
         id="e14ff7599399478fb9dbc2dacb87da72",
         number=100,
+        author=PullRequestAuthor(login="arnold"),
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
