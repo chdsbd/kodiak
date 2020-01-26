@@ -11,7 +11,7 @@ version = 12
 ## configuration error message
 <pre>
 # pretty 
-1 validation error
+1 validation error for V1
 version
   Version must be `1` (type=value_error.invalidversion)
 
