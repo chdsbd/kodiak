@@ -260,6 +260,8 @@ If Kodiak's review is dismissed, it will add a review again.
 
 This setting is useful when the "Required approving reviews" GitHub Branch Protection setting is configured and dependency upgrade bots like dependabot, greenkeeper, etc, run on the repository. When these bots open a PR, Kodiak can automatically add a review so dependency upgrade PRs can be automatically merged.
 
+See the "[Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot)" recipe for an example of this feature in action.
+
 ## full examples
 
 ### minimal
