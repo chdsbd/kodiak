@@ -13,7 +13,7 @@ from kodiak.test_events import MAPPING
 from kodiak.test_utils import wrap_future
 
 
-def test_read_main(client: TestClient) -> None:
+def test_root(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == "OK"
@@ -38,7 +38,7 @@ def get_body_and_hash(data: dict) -> Tuple[bytes, str]:
 
 
 @pytest.mark.parametrize("event_name", (event_name for event_name, _schema in MAPPING))
-def test_event_parsing(
+def test_webhook_event(
     client: TestClient, event_name: str, mocker: MockFixture
 ) -> None:
     """Test all of the events we have"""
@@ -64,7 +64,7 @@ def test_event_parsing(
         assert handle_webhook_event.call_count == index + 1
 
 
-def test_event_parsing_missing_github_event(
+def test_webhook_event_missing_github_event(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
@@ -80,7 +80,7 @@ def test_event_parsing_missing_github_event(
     assert handle_webhook_event.called is False
 
 
-def test_event_parsing_invalid_signature(
+def test_webhook_event_invalid_signature(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
