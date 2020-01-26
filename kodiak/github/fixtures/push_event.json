@@ -131,5 +131,8 @@
         "received_events_url": "https://api.github.com/users/Codertocat/received_events",
         "type": "User",
         "site_admin": false
+    },
+    "installation": {
+        "id": 65412
     }
 }
