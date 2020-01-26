@@ -39,4 +39,4 @@ Kodiak uses Digital Ocean for infrastructure hosting, Cloudflare for API protect
 
 Kodiak does not clone any repository and does not use `git` at all.
 
-Kodiak uses the GitHub API to perform actions on repositories and pull requests, so repository contents stays within GitHub.
+Kodiak uses the GitHub API to perform actions on repositories and pull requests, so repository content stays within GitHub.
