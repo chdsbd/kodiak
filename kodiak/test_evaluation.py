@@ -53,6 +53,12 @@ class BaseMockFunc:
     def called(self) -> bool:
         return self.call_count > 0
 
+    def __str__(self) -> str:
+        return repr(self)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}: id={id(self)} call_count={self.call_count!r} called={self.called!r} calls={self.calls!r}>"
+
 
 class MockDequeue(BaseMockFunc):
     async def __call__(self) -> None:
@@ -3859,5 +3865,111 @@ async def test_mergeable_auto_approve_old_approval(
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
     assert api.dequeue.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "pull_request_state", (PullRequestState.CLOSED, PullRequestState.MERGED)
+)
+@pytest.mark.asyncio
+async def test_mergeable_auto_approve_ignore_closed_merged_prs(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    pull_request_state: PullRequestState,
+) -> None:
+    """
+    If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
+
+    Kodiak should only approve open PRs (not merged or closed).
+    """
+    config.approve.auto_approve_usernames = ["dependency-updater"]
+    pull_request.author.login = "dependency-updater"
+    pull_request.state = pull_request_state
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        #
+        reviews=[],
+    )
+    assert api.approve_pull_request.call_count == 0
+    assert api.set_status.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert (
+        api.dequeue.call_count == 1
+    ), "dequeue because the PR is closed. This isn't related to this test."
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_auto_approve_ignore_draft_pr(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
+
+    Kodiak should not approve draft PRs.
+    """
+    config.approve.auto_approve_usernames = ["dependency-updater"]
+    pull_request.author.login = "dependency-updater"
+    pull_request.mergeStateStatus = MergeStateStatus.DRAFT
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        #
+        reviews=[],
+    )
+    assert api.approve_pull_request.call_count == 0
+    assert api.set_status.call_count == 1
+    assert (
+        "cannot merge (pull request is in draft state)"
+        in api.set_status.calls[0]["msg"]
+    )
+    assert api.queue_for_merge.call_count == 0
+    assert api.dequeue.call_count == 1
     assert api.merge.call_count == 0
     assert api.update_branch.call_count == 0

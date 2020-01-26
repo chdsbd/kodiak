@@ -249,7 +249,11 @@ async def mergeable(
         )
         return
 
-    if pull_request.author.login in config.approve.auto_approve_usernames:
+    if (
+        pull_request.author.login in config.approve.auto_approve_usernames
+        and pull_request.state == PullRequestState.OPEN
+        and pull_request.mergeStateStatus != MergeStateStatus.DRAFT
+    ):
         # if the PR was created by an approve author and we have not previously
         # given an approval, approve the PR.
         sorted_reviews = sorted(reviews, key=lambda x: x.createdAt)
