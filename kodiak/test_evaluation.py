@@ -236,6 +236,7 @@ def pull_request() -> PullRequest:
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
         isCrossRepository=False,
+        maintainerCanModify=True,
         labels=["bugfix", "automerge"],
         latest_sha="f89be6c",
         baseRefName="master",
@@ -1147,6 +1148,59 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
         api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
+    assert api.delete_branch.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_update_cross_repo_no_maintainer_can_modify(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    if a PR is opened from a fork, but maintainerCanModify is false, we won't be able to update the branch through the GitHub API. So we should warn.
+    """
+    pull_request.state = PullRequestState.OPEN
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    pull_request.isCrossRepository = True
+    pull_request.maintainerCanModify = False
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert (
+        "Cannot update. 'Allow edits from maintainers' is disabled"
+        in api.set_status.calls[0]["msg"]
+    )
     assert api.dequeue.call_count == 1
     assert api.delete_branch.call_count == 0
 

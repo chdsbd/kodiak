@@ -153,10 +153,17 @@ class PRAPI(Protocol):
         ...
 
 
-async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
+async def cfg_err(
+    api: PRAPI,
+    pull_request: PullRequest,
+    msg: str,
+    markdown_content: Optional[str] = None,
+) -> None:
     await api.dequeue()
     await api.set_status(
-        f"⚠️ config error ({msg})", latest_commit_sha=pull_request.latest_sha
+        f"⚠️ config error ({msg})",
+        latest_commit_sha=pull_request.latest_sha,
+        markdown_content=markdown_content,
     )
 
 
@@ -266,6 +273,19 @@ async def mergeable(
             api,
             pull_request,
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
+        )
+        return
+
+    if (
+        branch_protection.requiresStrictStatusChecks
+        and pull_request.isCrossRepository
+        and not pull_request.maintainerCanModify
+    ):
+        await cfg_err(
+            api,
+            pull_request,
+            "Cannot update. 'Allow edits from maintainers' is disabled.",
+            markdown_content="Kodiak requires 'Allow edits from maintainers' to be able to update pull requests. See the [GitHub documentation](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork) for more information.",
         )
         return
 

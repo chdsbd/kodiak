@@ -35,6 +35,7 @@
         "state": "OPEN",
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
+        "maintainerCanModify": true,
         "author": {
             "login": "arnold"
         },

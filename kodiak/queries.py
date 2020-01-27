@@ -86,6 +86,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       state
       mergeable
       isCrossRepository
+      maintainerCanModify
       reviewRequests(first: 100) {
         nodes {
           requestedReviewer {
@@ -226,6 +227,7 @@ class PullRequest(BaseModel):
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool
+    maintainerCanModify: bool
     labels: List[str]
     # the SHA of the most recent commit
     latest_sha: str
