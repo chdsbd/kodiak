@@ -249,6 +249,29 @@ async def mergeable(
         )
         return
 
+    if branch_protection.requiresCommitSignatures and config.merge.method in (
+        MergeMethod.rebase,
+        MergeMethod.squash,
+    ):
+        await cfg_err(
+            api,
+            pull_request,
+            '"Require signed commits" branch protection is only supported with merge commits. Squash and rebase are not supported by GitHub.',
+        )
+        return
+
+    if config.merge.method not in valid_merge_methods:
+        valid_merge_methods_str = [method.value for method in valid_merge_methods]
+        await cfg_err(
+            api,
+            pull_request,
+            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
+        )
+        return
+
+    # we keep the configuration errors before the rest of the application logic
+    # so configuration issues are surfaced as early as possible.
+
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
         and pull_request.state == PullRequestState.OPEN
@@ -265,17 +288,6 @@ async def mergeable(
             await api.approve_pull_request()
         else:
             log.info("approval already exists, not adding another")
-
-    if branch_protection.requiresCommitSignatures and config.merge.method in (
-        MergeMethod.rebase,
-        MergeMethod.squash,
-    ):
-        await cfg_err(
-            api,
-            pull_request,
-            '"Require signed commits" branch protection is only supported with merge commits. Squash and rebase are not supported by GitHub.',
-        )
-        return
 
     need_branch_update = (
         branch_protection.requiresStrictStatusChecks
@@ -329,15 +341,6 @@ async def mergeable(
 
     if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
         await block_merge(api, pull_request, "pull request is in draft state")
-        return
-
-    if config.merge.method not in valid_merge_methods:
-        valid_merge_methods_str = [method.value for method in valid_merge_methods]
-        await cfg_err(
-            api,
-            pull_request,
-            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
-        )
         return
 
     if config.merge.block_on_reviews_requested and review_requests:
