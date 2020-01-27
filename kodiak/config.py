@@ -96,7 +96,7 @@ class Update(BaseModel):
     # checks, missing reviews, blacklist labels). Kodiak will only update the PR
     # if the automerge label is enabled or `update.require_automerge_label` is
     # false.
-    always = False
+    always: bool = False
     require_automerge_label: bool = True
 
 
