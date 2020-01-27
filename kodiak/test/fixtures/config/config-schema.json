@@ -43,8 +43,8 @@
     "update": {
       "title": "Update",
       "default": {
-        "require_automerge_label": true,
-        "always": false
+        "always": false,
+        "require_automerge_label": true
       },
       "allOf": [
         {
@@ -212,14 +212,14 @@
       "title": "Update",
       "type": "object",
       "properties": {
-        "require_automerge_label": {
-          "title": "Require Automerge Label",
-          "default": true,
-          "type": "boolean"
-        },
         "always": {
           "title": "Always",
           "default": false,
+          "type": "boolean"
+        },
+        "require_automerge_label": {
+          "title": "Require Automerge Label",
+          "default": true,
           "type": "boolean"
         }
       }
