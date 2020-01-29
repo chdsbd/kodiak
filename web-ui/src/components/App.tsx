@@ -518,6 +518,7 @@ const chartOptions: ChartOptions = {
     xAxes: [
       {
         type: "time",
+        offset: true,
         stacked: true,
         gridLines: {
           zeroLineWidth: 0,
