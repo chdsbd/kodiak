@@ -521,6 +521,14 @@ const chartOptions: ChartOptions = {
         type: "time",
         offset: true,
         stacked: true,
+        scaleLabel: {
+          display: true,
+          labelString: "Time",
+          padding: 0,
+          fontFamily,
+          fontColor,
+          fontSize: 16,
+        },
         gridLines: {
           display: false,
           // zeroLineWidth: 0,
@@ -542,7 +550,14 @@ const chartOptions: ChartOptions = {
     yAxes: [
       {
         stacked: true,
-
+        scaleLabel: {
+          display: true,
+          labelString: "Event Count",
+          padding: 0,
+          fontFamily,
+          fontColor,
+          fontSize: 16,
+        },
         gridLines: {
           drawBorder: false,
           color: "rgba(0, 0, 0, 0.1)",
