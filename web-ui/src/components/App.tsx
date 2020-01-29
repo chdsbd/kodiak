@@ -30,6 +30,9 @@ import {
   GoQuestion,
 } from "react-icons/go"
 import sortBy from "lodash/sortBy"
+import { Bar } from "react-chartjs-2"
+import { ChartOptions } from "chart.js"
+import format from "date-fns/format"
 
 function Page({ children }: { children: React.ReactNode }) {
   const accountIsOver = false
@@ -461,17 +464,148 @@ function ApexChart() {
     </div>
   )
 }
+const color = {
+  updated: "#D29D0D",
+  merged: "#5B28B3",
+  approved: "#2AB53E",
+}
+
+const fontFamily =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"'
+
+const fontColor = "#212529"
+const backgroundColor = "white"
+
+const chartOptions: ChartOptions = {
+  tooltips: {
+    mode: "index",
+    intersect: false,
+    backgroundColor,
+    titleFontColor: fontColor,
+    bodyFontColor: fontColor,
+    borderWidth: 1,
+    // borderColor: "rgb(222, 226, 230)",
+    borderColor: fontColor,
+    titleFontFamily: fontFamily,
+    bodyFontFamily: fontFamily,
+    bodyFontStyle: "bold",
+    footerFontFamily: fontFamily,
+    callbacks: {
+      title: (tooltipItem, data) => {
+        const label = tooltipItem[0].label
+        if (label == null) {
+          return "unknown"
+        }
+        const date = new Date(label)
+        // debugger
+        return format(date, "MMM do")
+        return String(tooltipItem[0].label)
+      },
+      // label: function(tooltipItem, data) {
+      //   console.log(tooltipItem.label)
+      //   return String(tooltipItem.label)
+      //     // var label = data.datasets[tooltipItem.datasetIndex].label || '';
+
+      //     // if (label) {
+      //     //     label += ': ';
+      //     // }
+      //     // label += Math.round(tooltipItem.yLabel * 100) / 100;
+      //     // return label;
+      // }
+    },
+  },
+  scales: {
+    xAxes: [
+      {
+        type: "time",
+        stacked: true,
+        gridLines: {
+          zeroLineWidth: 0,
+          display: false,
+          drawBorder: false,
+        },
+        ticks: {
+          fontColor,
+          fontFamily,
+          fontStyle: "bold",
+        },
+      },
+    ],
+    yAxes: [
+      {
+        stacked: true,
+        gridLines: {
+          drawBorder: false,
+          color: "rgba(0, 0, 0, 0.1)",
+          lineWidth: 1,
+        },
+        ticks: {
+          fontColor,
+          fontFamily,
+          fontStyle: "bold",
+        },
+      },
+    ],
+  },
+  responsive: true,
+  maintainAspectRatio: false,
+  legend: {
+    display: false,
+  },
+}
+
+function ChartJSChart() {
+  const barChartData = {
+    labels: Array(30)
+      .fill(0)
+      .map((_, i) => `01/${i + 1}/2011 GMT`),
+    datasets: [
+      {
+        label: "Approved",
+        backgroundColor: color.approved,
+        data: Array(30)
+          .fill(0)
+          .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
+      },
+      {
+        label: "Merged",
+        backgroundColor: color.merged,
+        data: Array(30)
+          .fill(0)
+          .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
+      },
+      {
+        label: "Updated",
+        backgroundColor: color.updated,
+        data: Array(30)
+          .fill(0)
+          .map((_, i) => [44, 55, 41, 67, 22, 43, 2, 7, 9, 8][i % 10]),
+      },
+    ],
+  }
+  // -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
+  return (
+    <div className="chart-container">
+      <Bar data={barChartData} options={chartOptions} />
+    </div>
+  )
+}
 
 function Activity() {
   return (
     <Container>
       <h2>Activity</h2>
 
-      <h3 className="h5">Pull Request Activity</h3>
+      {/* <h3 className="h5">Pull Request Activity</h3>
       <ApexChart></ApexChart>
 
       <h3 className="h5">Kodiak Activity</h3>
-      <ApexChart></ApexChart>
+      <ApexChart></ApexChart> */}
+      <h3 className="h5">Pull Request Activity</h3>
+      <ChartJSChart />
+
+      <h3 className="h5">Kodiak Activity</h3>
+      <ChartJSChart />
     </Container>
   )
 }
