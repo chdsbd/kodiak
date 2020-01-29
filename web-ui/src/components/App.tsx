@@ -522,29 +522,38 @@ const chartOptions: ChartOptions = {
         offset: true,
         stacked: true,
         gridLines: {
-          zeroLineWidth: 0,
           display: false,
-          drawBorder: false,
+          // zeroLineWidth: 0,
+          // drawOnChartArea: false,
+          // color: "rgba(0, 0, 0, 0.1)",
+          // lineWidth: 1,
+          // tickMarkLength: 5,
+          // drawBorder: false,
         },
         ticks: {
           fontColor,
           fontFamily,
-          fontStyle: "bold",
+          // fontStyle: "bold",
+          maxRotation: 0,
+          padding: -5,
         },
       },
     ],
     yAxes: [
       {
         stacked: true,
+
         gridLines: {
           drawBorder: false,
           color: "rgba(0, 0, 0, 0.1)",
           lineWidth: 1,
+          tickMarkLength: 0,
         },
         ticks: {
           fontColor,
           fontFamily,
-          fontStyle: "bold",
+          padding: 5,
+          // fontStyle: "bold",
         },
       },
     ],
