@@ -490,6 +490,7 @@ const chartOptions: ChartOptions = {
     bodyFontFamily: fontFamily,
     bodyFontStyle: "bold",
     footerFontFamily: fontFamily,
+    cornerRadius: 4,
     callbacks: {
       title: (tooltipItem, data) => {
         const label = tooltipItem[0].label
