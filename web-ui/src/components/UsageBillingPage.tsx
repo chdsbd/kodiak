@@ -1,14 +1,10 @@
 import React from "react"
-import {
-  Table,
-  Row,
-  Col,
-  Popover,
-  OverlayTrigger,
-  Spinner,
-} from "react-bootstrap"
+import { Table, Row, Col, Popover, OverlayTrigger } from "react-bootstrap"
 import { Image } from "./Image"
 import { modifyPlanLink, activeUserUrl } from "../settings"
+import { sleep } from "../sleep"
+import { WebData } from "../webdata"
+import { Spinner } from "./Spinner"
 
 function Question({ content }: { content: string | React.ReactNode }) {
   const popover = (
@@ -28,8 +24,6 @@ export function UsageBillingPage() {
   const data = useUsageBillingData()
   return <UsageBillingPageInner data={data} />
 }
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const data: IUsageBillingPageData = {
   seats: { current: 8, total: 15 },
@@ -136,20 +130,10 @@ interface IUsageBillingPageInnerProps {
   data: WebData<IUsageBillingPageData>
 }
 
-type WebData<T> =
-  | { status: "loading" }
-  | { status: "refetching"; data: T }
-  | { status: "success"; data: T }
-  | { status: "failure" }
-
 function Loading() {
   return (
     <UsageAndBillingContainer>
-      <div className="d-flex align-items-center justify-content-center">
-        <Spinner animation="grow" role="status">
-          <span className="sr-only">Loading...</span>
-        </Spinner>
-      </div>
+      <Spinner />
     </UsageAndBillingContainer>
   )
 }
