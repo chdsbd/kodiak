@@ -691,7 +691,14 @@ function Usage() {
     },
   ]
 
-  const sections = [
+  const sections: {
+    name: React.ReactNode
+    rows: {
+      name: React.ReactNode
+      content: React.ReactNode
+      description?: React.ReactNode
+    }[]
+  }[] = [
     {
       name: "Usage",
       rows: [
@@ -699,7 +706,22 @@ function Usage() {
           name: "Seats",
           content: (
             <>
-              {seats.current}/{seats.total}
+              {seats.current} of {seats.total} available
+            </>
+          ),
+        },{
+          name: "Next Billing Date",
+          content: nextBillingDate,
+        },
+        {
+          name: "Cost",
+          content: (
+            <>
+              ${perMonthUSD}/month{" "}
+              <Question
+                content={`$${perUserUSD}/user * ${seats.total} users = $${perMonthUSD}`}
+              />{" "}
+              <a href={modifyPlanLink}>change plan</a>
             </>
           ),
         },
@@ -724,22 +746,7 @@ function Usage() {
             </>
           ),
         },
-        {
-          name: "Next Billing Date",
-          content: nextBillingDate,
-        },
-        {
-          name: "Cost",
-          content: (
-            <>
-              ${perMonthUSD}/month{" "}
-              <Question
-                content={`$${perUserUSD}/user * ${seats.total} users = $${perMonthUSD}`}
-              />{" "}
-              <a href={modifyPlanLink}>change plan</a>
-            </>
-          ),
-        },
+        
       ],
     },
   ]
