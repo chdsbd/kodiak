@@ -1,6 +1,5 @@
 import React from "react"
-import { Link } from "react-router-dom"
-import { docsUrl, helpUrl, installUrl } from "../settings"
+import { docsUrl, helpUrl, installUrl, loginUrl } from "../settings"
 
 export function LoginPage() {
   return (
@@ -19,9 +18,9 @@ export function LoginPage() {
         </div>
 
         <div>
-          <Link to="/" className="gh-install-btn">
+          <a href={loginUrl} className="gh-install-btn">
             Login with GitHub
-          </Link>
+          </a>
         </div>
 
         <p className="mb-0">
