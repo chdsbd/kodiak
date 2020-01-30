@@ -12,6 +12,7 @@ const repoUrl = "https://github.com/chdsbd/kodiak"
 const installUrl = "https://github.com/marketplace/kodiakhq#pricing-and-setup"
 const changeLogUrl = "https://github.com/chdsbd/kodiak/releases"
 const issuesUrl = "https://github.com/chdsbd/kodiak/issues/new/choose"
+const editUrl = "https://github.com/chdsbd/kodiak/tree/master/docs/docs/"
 
 const siteConfig = {
   title: "Kodiak", // Title for your website.
@@ -38,6 +39,8 @@ const siteConfig = {
   installUrl,
   changeLogUrl,
   issuesUrl,
+
+  editUrl,
 
   customDocsPath: "docs/docs",
 
