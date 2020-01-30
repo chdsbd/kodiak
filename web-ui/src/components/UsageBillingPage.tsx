@@ -1,5 +1,12 @@
 import React from "react"
-import { Table, Row, Col, Popover, OverlayTrigger } from "react-bootstrap"
+import {
+  Table,
+  Row,
+  Col,
+  Popover,
+  OverlayTrigger,
+  Spinner,
+} from "react-bootstrap"
 import { Image } from "./Image"
 import { modifyPlanLink, activeUserUrl } from "../settings"
 
@@ -18,16 +25,17 @@ function Question({ content }: { content: string | React.ReactNode }) {
 }
 
 export function UsageBillingPage() {
-  const perUserUSD = 5
-  const perMonthUSD = 75
-  const billingPeriod = { start: "Jan 17", end: "Feb 16" }
-  const seats = { current: 8, total: 15 }
-  const nextBillingDate = "February 21st, 2019"
-  const repos = [
-    { name: "backend", id: 50234 },
-    { name: "api-frontend", id: 23485 },
-  ]
-  const activeUsers = [
+  const data = useUsageBillingData()
+  return <UsageBillingPageInner data={data} />
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+const data: IUsageBillingPageData = {
+  seats: { current: 8, total: 15 },
+  nextBillingDate: "February 21st, 2019",
+  billingPeriod: { start: "Jan 17", end: "Feb 16" },
+  activeUsers: [
     {
       name: "bernard",
       profileImgUrl:
@@ -56,7 +64,123 @@ export function UsageBillingPage() {
       interactions: 15,
       lastActiveDate: "Jan 3",
     },
-  ]
+  ],
+  repos: [
+    { name: "backend", id: 50234 },
+    { name: "api-frontend", id: 23485 },
+  ],
+  perUserUSD: 5,
+  perMonthUSD: 75,
+}
+
+interface Api {
+  getUsageBillingData: () => Promise<WebData<IUsageBillingPageData>>
+}
+
+interface World {
+  api: Api
+}
+
+const Current: World = {
+  api: {
+    getUsageBillingData: async () => {
+      await sleep(400)
+      return { status: "success", data }
+    },
+  },
+}
+
+// Current.api.getUsageBillingData = async () => {
+//   return { status: "failure" }
+// }
+
+function useUsageBillingData(): WebData<IUsageBillingPageData> {
+  const [state, setState] = React.useState<WebData<IUsageBillingPageData>>({
+    status: "loading",
+  })
+
+  React.useEffect(() => {
+    Current.api.getUsageBillingData().then(res => {
+      setState(res)
+    })
+  }, [])
+
+  return state
+}
+
+interface IUsageBillingPageData {
+  seats: {
+    current: number
+    total: number
+  }
+  perUserUSD: number
+  perMonthUSD: number
+  nextBillingDate: string
+  billingPeriod: {
+    start: string
+    end: string
+  }
+  activeUsers: Array<{
+    name: string
+    profileImgUrl: string
+    interactions: number
+    lastActiveDate: string
+  }>
+  repos: Array<{
+    name: string
+    id: number
+  }>
+}
+
+interface IUsageBillingPageInnerProps {
+  data: WebData<IUsageBillingPageData>
+}
+
+type WebData<T> =
+  | { status: "loading" }
+  | { status: "refetching"; data: T }
+  | { status: "success"; data: T }
+  | { status: "failure" }
+
+function Loading() {
+  return (
+    <UsageAndBillingContainer>
+      <div className="d-flex align-items-center justify-content-center">
+        <Spinner animation="grow" role="status">
+          <span className="sr-only">Loading...</span>
+        </Spinner>
+      </div>
+    </UsageAndBillingContainer>
+  )
+}
+
+function Failure() {
+  return (
+    <UsageAndBillingContainer>
+      <p className="text-center">failed to fetch data</p>
+    </UsageAndBillingContainer>
+  )
+}
+
+function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      <h2>Usage & Billing</h2>
+      {children}
+    </div>
+  )
+}
+
+function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
+  if (props.data.status === "loading") {
+    return <Loading />
+  }
+
+  if (props.data.status === "failure") {
+    return <Failure />
+  }
+
+  const data = props.data.data
 
   const sections: {
     name: React.ReactNode
@@ -73,21 +197,21 @@ export function UsageBillingPage() {
           name: "Seats",
           content: (
             <>
-              {seats.current} of {seats.total} available
+              {data.seats.current} of {data.seats.total} available
             </>
           ),
         },
         {
           name: "Next Billing Date",
-          content: nextBillingDate,
+          content: data.nextBillingDate,
         },
         {
           name: "Cost",
           content: (
             <>
-              ${perMonthUSD}/month{" "}
+              ${data.perMonthUSD}/month{" "}
               <Question
-                content={`$${perUserUSD}/user * ${seats.total} users = $${perMonthUSD}`}
+                content={`$${data.perUserUSD}/user * ${data.seats.total} users = $${data.perMonthUSD}`}
               />{" "}
               <a href={modifyPlanLink}>change plan</a>
             </>
@@ -103,7 +227,7 @@ export function UsageBillingPage() {
           name: "Seats",
           content: (
             <>
-              {seats.total} <a href={modifyPlanLink}>add/remove seats</a>
+              {data.seats.total} <a href={modifyPlanLink}>add/remove seats</a>
             </>
           ),
           description: (
@@ -119,13 +243,11 @@ export function UsageBillingPage() {
   ]
 
   return (
-    <div>
-      <h2>Usage & Billing</h2>
-
+    <UsageAndBillingContainer>
       <p>
         Current activity for billing period{" "}
         <b>
-          {billingPeriod.start} – {billingPeriod.end}
+          {data.billingPeriod.start} – {data.billingPeriod.end}
         </b>
       </p>
 
@@ -156,10 +278,10 @@ export function UsageBillingPage() {
 
       <div className="mb-4">
         <div className="d-flex justify-content-between">
-          <h3 className="h5">Active Users ({activeUsers.length})</h3>
+          <h3 className="h5">Active Users ({data.activeUsers.length})</h3>
           <select>
             <option>All Repositories</option>
-            {repos.map(r => (
+            {data.repos.map(r => (
               <option value={r.id}>{r.name}</option>
             ))}
           </select>
@@ -182,7 +304,7 @@ export function UsageBillingPage() {
               </tr>
             </thead>
             <tbody>
-              {activeUsers.map(u => (
+              {data.activeUsers.map(u => (
                 <tr>
                   <td>
                     <Image
@@ -200,6 +322,6 @@ export function UsageBillingPage() {
           </Table>
         </div>
       </div>
-    </div>
+    </UsageAndBillingContainer>
   )
 }
