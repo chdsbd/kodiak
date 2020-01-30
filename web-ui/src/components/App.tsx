@@ -17,7 +17,6 @@ import {
   OverlayTrigger,
   Alert,
 } from "react-bootstrap"
-import ReactApexChart from "react-apexcharts"
 import {
   GoGraph,
   GoCreditCard,
@@ -351,119 +350,6 @@ const CustomToggle = React.forwardRef(
   ),
 )
 
-function ApexChart() {
-  const axisStyle = {
-    color: undefined,
-    fontSize: "1rem",
-    cssClass: "h5 text-body",
-  }
-
-  const color = {
-    updated: "#D29D0D",
-    merged: "#5B28B3",
-    approved: "#2AB53E",
-  }
-  const state = {
-    series: [
-      {
-        name: "Updated",
-        data: Array(30)
-          .fill(0)
-          .map((_, i) => [11, 17, 15, 15, 21, 14, 0, 1, 2, 3][i % 10]),
-      },
-      {
-        name: "Merged",
-        data: Array(30)
-          .fill(0)
-          .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
-      },
-      {
-        name: "Approved",
-        data: Array(30)
-          .fill(0)
-          .map((_, i) => [44, 55, 41, 67, 22, 43, 2, 7, 9, 8][i % 10]),
-      },
-    ],
-    options: {
-      noData: {
-        text: "no data",
-      },
-      // states: {
-      //   hover: {
-      //     filter: {
-      //       type: "none",
-      //     },
-      //   },
-      //   active: { filter: { type: "none" } },
-      // },
-      tooltip: {
-        shared: true,
-        followCursor: true,
-      },
-      chart: {
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
-        type: "bar",
-        height: 350,
-        stacked: true,
-        toolbar: {
-          show: false,
-        },
-        zoom: {
-          enabled: false,
-        },
-        animations: {
-          enabled: false,
-        },
-      },
-      colors: [color.updated, color.merged, color.approved],
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          dataLabels: {
-            hideOverflowingLabels: true,
-          },
-        },
-      },
-      yaxis: {
-        title: {
-          text: "Event Count",
-          style: axisStyle,
-        },
-      },
-      xaxis: {
-        title: {
-          text: "Time",
-          offsetY: 10,
-          style: axisStyle,
-        },
-        type: "datetime",
-        categories: Array(30)
-          .fill(0)
-          .map((_, i) => `01/${i + 1}/2011 GMT`),
-      },
-      legend: {
-        show: false,
-        position: "bottom",
-        offsetY: -10,
-      },
-      fill: {
-        opacity: 1,
-      },
-    },
-  }
-
-  return (
-    <div id="chart">
-      <ReactApexChart
-        options={state.options}
-        series={state.series}
-        type="bar"
-        height={350}
-      />
-    </div>
-  )
-}
 const color = {
   updated: "#D29D0D",
   merged: "#5B28B3",
@@ -484,7 +370,6 @@ const chartOptions: ChartOptions = {
     titleFontColor: fontColor,
     bodyFontColor: fontColor,
     borderWidth: 1,
-    // borderColor: "rgb(222, 226, 230)",
     borderColor: fontColor,
     titleFontFamily: fontFamily,
     bodyFontFamily: fontFamily,
@@ -498,21 +383,8 @@ const chartOptions: ChartOptions = {
           return "unknown"
         }
         const date = new Date(label)
-        // debugger
         return format(date, "MMM do")
-        return String(tooltipItem[0].label)
       },
-      // label: function(tooltipItem, data) {
-      //   console.log(tooltipItem.label)
-      //   return String(tooltipItem.label)
-      //     // var label = data.datasets[tooltipItem.datasetIndex].label || '';
-
-      //     // if (label) {
-      //     //     label += ': ';
-      //     // }
-      //     // label += Math.round(tooltipItem.yLabel * 100) / 100;
-      //     // return label;
-      // }
     },
   },
   scales: {
@@ -531,17 +403,10 @@ const chartOptions: ChartOptions = {
         },
         gridLines: {
           display: false,
-          // zeroLineWidth: 0,
-          // drawOnChartArea: false,
-          // color: "rgba(0, 0, 0, 0.1)",
-          // lineWidth: 1,
-          // tickMarkLength: 5,
-          // drawBorder: false,
         },
         ticks: {
           fontColor,
           fontFamily,
-          // fontStyle: "bold",
           maxRotation: 0,
           padding: -5,
         },
@@ -568,7 +433,6 @@ const chartOptions: ChartOptions = {
           fontColor,
           fontFamily,
           padding: 5,
-          // fontStyle: "bold",
         },
       },
     ],
@@ -609,7 +473,6 @@ function ChartJSChart() {
       },
     ],
   }
-  // -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"
   return (
     <div className="chart-container">
       <Bar data={barChartData} options={chartOptions} />
@@ -621,12 +484,6 @@ function Activity() {
   return (
     <Container>
       <h2>Activity</h2>
-
-      {/* <h3 className="h5">Pull Request Activity</h3>
-      <ApexChart></ApexChart>
-
-      <h3 className="h5">Kodiak Activity</h3>
-      <ApexChart></ApexChart> */}
       <h3 className="h5">Pull Request Activity</h3>
       <ChartJSChart />
 
