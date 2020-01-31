@@ -1,16 +1,22 @@
 from fastapi import FastAPI
+
 # from starlette.requests import Request
 
 from app.api import api_router
+from app import config  # noqa
+
 # from app.db.session import Session
+from starlette.responses import PlainTextResponse
 
 app = FastAPI()
 
+
 @app.get("/")
 def root():
-    return "Kodiak web API"
+    return PlainTextResponse("OK")
 
-app.include_router(api_router, prefix="/api/v1")
+
+app.include_router(api_router, prefix="/v1")
 
 
 # @app.middleware("http")

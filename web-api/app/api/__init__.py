@@ -1,1 +1,1 @@
-from app.api.endpoints import api_router # noqa
+from app.api.endpoints import api_router  # noqa
