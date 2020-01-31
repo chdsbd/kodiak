@@ -249,14 +249,14 @@ async def mergeable(
         )
         return
 
-    if branch_protection.requiresCommitSignatures and config.merge.method in (
-        MergeMethod.rebase,
-        MergeMethod.squash,
+    if (
+        branch_protection.requiresCommitSignatures
+        and config.merge.method == MergeMethod.rebase
     ):
         await cfg_err(
             api,
             pull_request,
-            '"Require signed commits" branch protection is only supported with merge commits. Squash and rebase are not supported by GitHub.',
+            '"Require signed commits" branch protection is only supported with "squash" or "merge" commits. Rebase is not supported by GitHub.',
         )
         return
 
