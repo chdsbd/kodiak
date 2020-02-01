@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-# from app.db.session import Session
 from starlette.responses import PlainTextResponse, Response
 
 from app import config  # noqa
 from app.api import api_router
 
+# from app.db.session import Session
 # from starlette.requests import Request
 
 
