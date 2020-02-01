@@ -1,16 +1,17 @@
+from urllib.parse import parse_qs
+
+import requests_async as http
 from fastapi import APIRouter, HTTPException
-from starlette.responses import Response, PlainTextResponse, RedirectResponse
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from yarl import URL
+
 from app.config import (
     GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET,
     KODIAK_API_AUTH_REDIRECT_URL,
     KODIAK_WEB_AUTHED_LANDING_PATH,
 )
-from starlette.requests import Request
-import requests_async as http
-from urllib.parse import parse_qs
-from yarl import URL
-
 
 api_router = APIRouter()
 

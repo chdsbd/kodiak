@@ -1,7 +1,7 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, DateTime, func
-from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -23,6 +23,8 @@ class Session(Model):
     Data is stored on the server side and a session ID in a cookie maps to this
     on the client side.
     """
+
+    __tablename__ = "session"
 
     session_key = Column(String, unique=True, index=True, nullable=False)
     session_data = Column(JSONB, nullable=False)
