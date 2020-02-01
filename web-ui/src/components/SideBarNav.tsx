@@ -19,6 +19,9 @@ import { WebData } from "../webdata"
 import { useApi } from "../useApi"
 import { Current } from "../world"
 
+// TODO(sbdchd): before merge, the bootstrap types are incorrect D;
+const DropdownToggle = Dropdown.Toggle as any
+
 interface IProfileImgProps {
   readonly profileImgUrl: string
   readonly name: string
@@ -107,60 +110,60 @@ export function SideBarNav() {
   return <SideBarNavInner accounts={data} />
 }
 
-interface ISideBarNavInnerProps {
-  readonly accounts: WebData<{
-    readonly accounts: ReadonlyArray<{
-      readonly name: string
-      readonly profileImgUrl: string
-    }>
-    readonly org: {
-      readonly name: string
-      readonly profileImgUrl: string
-    }
-    readonly user: {
-      readonly name: string
-      readonly profileImgUrl: string
-    }
-  }>
-}
-function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
-  if (accounts.status === "loading") {
-    return <p>loading</p>
-  }
-  if (accounts.status === "failure") {
-    return <p>failure</p>
-  }
-  // TODO(sbdchd): before merge, the bootstrap types are incorrect D;
-  const DropdownToggle = Dropdown.Toggle as any
+function SkeletonProfileImage() {
   return (
-    <div className="bg-light p-3 h-100 d-flex flex-column justify-content-between">
+    <div className="d-flex align-items-center">
+      <div
+        style={{
+          height: 30,
+          width: 30,
+          backgroundColor: "lightgray",
+        }}
+        className="mr-2 rounded"></div>
+      <span
+        className="h4 mb-0 rounded"
+        style={{
+          width: 75,
+          height: 30,
+          backgroundColor: "lightgray",
+        }}></span>
+    </div>
+  )
+}
+
+function Loading() {
+  return (
+    <SideBarNavContainer
+      userContent={<SkeletonProfileImage />}
+      orgContent={<SkeletonProfileImage />}
+      switchAccountContent={<></>}
+    />
+  )
+}
+
+interface ISideBarNavContainerProps {
+  readonly orgContent: React.ReactNode
+  readonly userContent: React.ReactNode
+  readonly switchAccountContent: React.ReactNode
+}
+function SideBarNavContainer({
+  orgContent,
+  userContent,
+  switchAccountContent,
+}: ISideBarNavContainerProps) {
+  return (
+    <div
+      className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
+      style={{ width: 230 }}>
       <div>
         <div>
           <Dropdown as={ButtonGroup}>
             <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
-              <div className="d-flex align-items-center">
-                <Image
-                  url={accounts.data.org.profileImgUrl}
-                  alt="kodiak avatar"
-                  size={30}
-                  className="mr-2"></Image>
-                <span className="h4 mb-0">{accounts.data.org.name}</span>
-              </div>
+              {orgContent}
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
               <Dropdown.Header>switch account</Dropdown.Header>
-              {sortBy(accounts.data.accounts, "name").map(x => (
-                <Dropdown.Item as="button">
-                  <>
-                    <Image
-                      url={x.profileImgUrl}
-                      alt={x.name}
-                      size={30}
-                      className="mr-3"></Image>
-                    {x.name}
-                  </>
-                </Dropdown.Item>
-              ))}
+              {switchAccountContent}
             </Dropdown.Menu>
           </Dropdown>
         </div>
@@ -222,11 +225,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
       <div>
         <Dropdown as={ButtonGroup}>
           <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
-            <ProfileImg
-              profileImgUrl={accounts.data.user.profileImgUrl}
-              name={accounts.data.user.name}
-              size={30}
-            />
+            {userContent}
           </DropdownToggle>
           <Dropdown.Menu className="super-colors shadow-sm">
             <Dropdown.Item as="button">
@@ -237,5 +236,68 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
         </Dropdown>
       </div>
     </div>
+  )
+}
+
+interface ISideBarNavInnerProps {
+  readonly accounts: WebData<{
+    readonly accounts: ReadonlyArray<{
+      readonly name: string
+      readonly profileImgUrl: string
+    }>
+    readonly org: {
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+    readonly user: {
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+  }>
+}
+function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
+  if (accounts.status === "loading") {
+    return <Loading />
+  }
+  if (accounts.status === "failure") {
+    return <p>failure</p>
+  }
+
+  return (
+    <SideBarNavContainer
+      userContent={
+        <ProfileImg
+          profileImgUrl={accounts.data.user.profileImgUrl}
+          name={accounts.data.user.name}
+          size={30}
+        />
+      }
+      orgContent={
+        <div className="d-flex align-items-center">
+          <Image
+            url={accounts.data.org.profileImgUrl}
+            alt="kodiak avatar"
+            size={30}
+            className="mr-2"></Image>
+          <span className="h4 mb-0">{accounts.data.org.name}</span>
+        </div>
+      }
+      switchAccountContent={
+        <>
+          {sortBy(accounts.data.accounts, "name").map(x => (
+            <Dropdown.Item as="button">
+              <>
+                <Image
+                  url={x.profileImgUrl}
+                  alt={x.name}
+                  size={30}
+                  className="mr-3"></Image>
+                {x.name}
+              </>
+            </Dropdown.Item>
+          ))}
+        </>
+      }
+    />
   )
 }
