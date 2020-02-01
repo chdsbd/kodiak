@@ -1,31 +1,22 @@
-from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+import databases
 from alembic import context
+from alembic.config import Config as AlembicConfig
+from sqlalchemy import create_engine, pool
+from starlette.config import Config as AppConfig
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
+from app.db.models import Base
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-fileConfig(config.config_file_name)
+app_config = AppConfig(".env")
+DATABASE_URL = app_config("DATABASE_URL", cast=databases.DatabaseURL)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+alembic_config = AlembicConfig()
+alembic_config.set_main_option("script_location", "app:migrations")
+alembic_config.set_main_option("timezone", "UTC")
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+target_metadata = Base.metadata
 
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -37,33 +28,39 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=str(DATABASE_URL),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # compare_type was specified in the fastapi cookie cutter project and is
+        # not a default on generation:
+        # https://alembic.sqlalchemy.org/en/latest/autogenerate.html?highlight=compare_type#comparing-types
+        compare_type=True,
     )
 
     with context.begin_transaction():
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(str(DATABASE_URL), poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            # compare_type was specified in the fastapi cookie cutter project
+            # and is not a default on generation:
+            # https://alembic.sqlalchemy.org/en/latest/autogenerate.html?highlight=compare_type#comparing-types
+            compare_type=True,
+        )
 
         with context.begin_transaction():
             context.run_migrations()

@@ -3,7 +3,7 @@ from urllib.parse import parse_qs
 import requests_async as http
 from fastapi import APIRouter, HTTPException
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response
 from yarl import URL
 
 from app.config import (
@@ -64,7 +64,6 @@ async def auth_callback(request: Request) -> Response:
     res = await http.post("https://github.com/login/oauth/access_token", payload)
     query_string = parse_qs(res.text)
     access_token = query_string["access_token"][0]
-    token_type = query_string["token_type"][0]
     res = await http.get(
         "https://api.github.com/user",
         headers=dict(authorization=f"Bearer {access_token}"),
@@ -72,6 +71,6 @@ async def auth_callback(request: Request) -> Response:
     login = res.json()["login"]
     account_id = res.json()["id"]
     print(res.json())
-    print(access_token)
+    print(login, account_id, access_token)
     # TODO: Store access token for API use.
     return RedirectResponse(KODIAK_WEB_AUTHED_LANDING_PATH)
