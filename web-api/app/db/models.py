@@ -1,4 +1,6 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from uuid import uuid4
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -9,10 +11,26 @@ Base = declarative_base()
 class Model(Base):
     __abstract__ = True
 
-    id = Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+        index=True,
+        nullable=False,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
     updated_at = Column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 
@@ -29,7 +47,9 @@ class Session(Model):
     session_key = Column(String, unique=True, index=True, nullable=False)
     session_data = Column(JSONB, nullable=False)
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
     user = relationship("User", back_populates="sessions")
 
 
