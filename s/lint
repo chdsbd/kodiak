@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -ex
 
+cd $(dirname $(dirname "$0"))
+
 # format code
 if [[ $CI ]]; then
     poetry run black --check .
