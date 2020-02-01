@@ -2,7 +2,10 @@ import React from "react"
 import { SideBarNav } from "./SideBarNav"
 import { Container, Alert } from "react-bootstrap"
 
-export function Page({ children }: { children: React.ReactNode }) {
+interface IPageProps {
+  readonly children: React.ReactNode
+}
+export function Page({ children }: IPageProps) {
   const accountIsOver = false
   const seats = { current: 16, total: 15 }
   const nextBillingPeriod = "Feb 21"

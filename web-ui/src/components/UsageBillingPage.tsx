@@ -2,11 +2,15 @@ import React from "react"
 import { Table, Row, Col, Popover, OverlayTrigger } from "react-bootstrap"
 import { Image } from "./Image"
 import { modifyPlanLink, activeUserUrl } from "../settings"
-import { sleep } from "../sleep"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
+import { Current } from "../world"
+import { useApi } from "../useApi"
 
-function Question({ content }: { content: string | React.ReactNode }) {
+interface IQuestionProps {
+  readonly content: string | React.ReactNode
+}
+function Question({ content }: IQuestionProps) {
   const popover = (
     <Popover id="popover-basic">
       <Popover.Content>{content}</Popover.Content>
@@ -21,113 +25,36 @@ function Question({ content }: { content: string | React.ReactNode }) {
 }
 
 export function UsageBillingPage() {
-  const data = useUsageBillingData()
+  const data = useApi(Current.api.getUsageBilling)
   return <UsageBillingPageInner data={data} />
 }
 
-const data: IUsageBillingPageData = {
-  seats: { current: 8, total: 15 },
-  nextBillingDate: "February 21st, 2019",
-  billingPeriod: { start: "Jan 17", end: "Feb 16" },
-  activeUsers: [
-    {
-      name: "bernard",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-      interactions: 15,
-      lastActiveDate: "Jan 22",
-    },
-    {
-      name: "william",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-      interactions: 15,
-      lastActiveDate: "Jan 22",
-    },
-    {
-      name: "deloris",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-      interactions: 15,
-      lastActiveDate: "Jan 15",
-    },
-    {
-      name: "maeve",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-      interactions: 15,
-      lastActiveDate: "Jan 3",
-    },
-  ],
-  repos: [
-    { name: "backend", id: 50234 },
-    { name: "api-frontend", id: 23485 },
-  ],
-  perUserUSD: 5,
-  perMonthUSD: 75,
-}
-
-interface Api {
-  getUsageBillingData: () => Promise<WebData<IUsageBillingPageData>>
-}
-
-interface World {
-  api: Api
-}
-
-const Current: World = {
-  api: {
-    getUsageBillingData: async () => {
-      await sleep(400)
-      return { status: "success", data }
-    },
-  },
-}
-
-// Current.api.getUsageBillingData = async () => {
-//   return { status: "failure" }
-// }
-
-function useUsageBillingData(): WebData<IUsageBillingPageData> {
-  const [state, setState] = React.useState<WebData<IUsageBillingPageData>>({
-    status: "loading",
-  })
-
-  React.useEffect(() => {
-    Current.api.getUsageBillingData().then(res => {
-      setState(res)
-    })
-  }, [])
-
-  return state
-}
-
-interface IUsageBillingPageData {
-  seats: {
-    current: number
-    total: number
+interface IUsageBillingData {
+  readonly seats: {
+    readonly current: number
+    readonly total: number
   }
-  perUserUSD: number
-  perMonthUSD: number
-  nextBillingDate: string
-  billingPeriod: {
-    start: string
-    end: string
+  readonly perUserUSD: number
+  readonly perMonthUSD: number
+  readonly nextBillingDate: string
+  readonly billingPeriod: {
+    readonly start: string
+    readonly end: string
   }
-  activeUsers: Array<{
-    name: string
-    profileImgUrl: string
-    interactions: number
-    lastActiveDate: string
+  readonly activeUsers: ReadonlyArray<{
+    readonly name: string
+    readonly profileImgUrl: string
+    readonly interactions: number
+    readonly lastActiveDate: string
   }>
-  repos: Array<{
-    name: string
-    id: number
+  readonly repos: ReadonlyArray<{
+    readonly name: string
+    readonly id: number
   }>
 }
 
 interface IUsageBillingPageInnerProps {
-  data: WebData<IUsageBillingPageData>
+  readonly data: WebData<IUsageBillingData>
 }
 
 function Loading() {

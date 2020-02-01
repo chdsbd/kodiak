@@ -1,16 +1,16 @@
 import React from "react"
 import { Container } from "react-bootstrap"
 import { WebData } from "../webdata"
-import { sleep } from "../sleep"
 import { Spinner } from "./Spinner"
 import { ActivityChart } from "./ActivityChart"
+import { Current } from "../world"
 
 interface IActivityData {
-  labels: Array<string>
-  datasets: {
-    approved: Array<number>
-    merged: Array<number>
-    updated: Array<number>
+  readonly labels: Array<string>
+  readonly datasets: {
+    readonly approved: Array<number>
+    readonly merged: Array<number>
+    readonly updated: Array<number>
   }
 }
 
@@ -20,37 +20,25 @@ export function ActivityPage() {
 }
 
 function useActivityData(): WebData<IActivityData> {
-  const data = {
-    labels: Array(30)
-      .fill(0)
-      .map((_, i) => `01/${i + 1}/2011 GMT`),
-    datasets: {
-      approved: Array(30)
-        .fill(0)
-        .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
-      merged: Array(30)
-        .fill(0)
-        .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
-      updated: Array(30)
-        .fill(0)
-        .map((_, i) => [44, 55, 41, 67, 22, 43, 2, 7, 9, 8][i % 10]),
-    },
-  }
-
   const [state, setState] = React.useState<WebData<IActivityData>>({
     status: "loading",
   })
 
   React.useEffect(() => {
-    sleep(400).then(() => {
-      setState({ status: "success", data })
-    })
-  }, [data])
+    Current.api
+      .getActivity()
+      .then(res => {
+        setState({ status: "success", data: res })
+      })
+      .catch(() => {
+        setState({ status: "failure" })
+      })
+  }, [])
   return state
 }
 
 interface IActivityPageInnerProps {
-  data: WebData<IActivityData>
+  readonly data: WebData<IActivityData>
 }
 function ActivityPageInner({ data }: IActivityPageInnerProps) {
   if (data.status === "loading") {
@@ -78,7 +66,10 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   )
 }
 
-function ActivityPageContainer({ children }: { children: React.ReactNode }) {
+interface IActivityPageContainer {
+  readonly children: React.ReactNode
+}
+function ActivityPageContainer({ children }: IActivityPageContainer) {
   return (
     <Container>
       <h2>Activity</h2>

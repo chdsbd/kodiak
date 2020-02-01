@@ -98,12 +98,12 @@ const chartOptions: ChartOptions = {
 }
 
 interface IActivityChartProps {
-  data: {
-    labels: Array<string>
-    datasets: {
-      approved: Array<number>
-      merged: Array<number>
-      updated: Array<number>
+  readonly data: {
+    readonly labels: Array<string>
+    readonly datasets: {
+      readonly approved: Array<number>
+      readonly merged: Array<number>
+      readonly updated: Array<number>
     }
   }
 }

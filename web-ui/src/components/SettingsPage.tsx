@@ -1,9 +1,7 @@
 import React from "react"
-import { sleep } from "../sleep"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
-
-const data = { notifyOnExceedBilledSeats: true }
+import { Current } from "../world"
 
 export function SettingsPage() {
   const { data, updateSettings } = useSettingsData()
@@ -11,32 +9,46 @@ export function SettingsPage() {
 }
 
 function useSettingsData(): {
-  data: WebData<ISettingsData>
-  updateSettings: (settings: ISettingsData) => void
+  readonly data: WebData<ISettingsData>
+  readonly updateSettings: (settings: ISettingsData) => void
 } {
   const [state, setState] = React.useState<WebData<ISettingsData>>({
     status: "loading",
   })
 
   React.useEffect(() => {
-    sleep(400).then(() => {
-      setState({ status: "success", data })
-    })
+    Current.api
+      .getSettings()
+      .then(res => {
+        setState({ status: "success", data: res })
+      })
+      .catch(() => {
+        setState({ status: "failure" })
+      })
   }, [])
 
-  // TODO(sbdchd): handle updates
-  function updateSettings() {}
+  function updateSettings(data: ISettingsData) {
+    setState({ status: "success", data: data })
+    Current.api
+      .updateSettings(data)
+      .then(res => {
+        setState({ status: "success", data: res })
+      })
+      .catch(() => {
+        setState({ status: "failure" })
+      })
+  }
 
   return { data: state, updateSettings }
 }
 
 interface ISettingsData {
-  notifyOnExceedBilledSeats: boolean
+  readonly notifyOnExceedBilledSeats: boolean
 }
 
 interface ISettingsPageInnerProps {
-  data: WebData<ISettingsData>
-  updateSettings: (data: ISettingsData) => void
+  readonly data: WebData<ISettingsData>
+  readonly updateSettings: (data: ISettingsData) => void
 }
 function SettingsPageInner({ data, updateSettings }: ISettingsPageInnerProps) {
   if (data.status === "loading") {
@@ -78,7 +90,11 @@ function SettingsPageInner({ data, updateSettings }: ISettingsPageInnerProps) {
   )
 }
 
-function SettingsPageContainer({ children }: { children: React.ReactNode }) {
+interface ISettingsPageContainerProps {
+  readonly children: React.ReactNode
+}
+
+function SettingsPageContainer({ children }: ISettingsPageContainerProps) {
   return (
     <div>
       <h2>Settings</h2>

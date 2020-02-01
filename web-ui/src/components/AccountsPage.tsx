@@ -1,29 +1,30 @@
 import React from "react"
 import { Image } from "./Image"
+import { useApi } from "../useApi"
+import { Current } from "../world"
+import { WebData } from "../webdata"
 
 export function AccountsPage() {
-  const accounts = [
-    {
-      name: "bernard",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-    },
-    {
-      name: "william",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-    },
-    {
-      name: "deloris",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-    },
-    {
-      name: "maeve",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-    },
-  ]
+  const accounts = useApi(Current.api.getAccounts)
+  return <AccountsPageInner accounts={accounts} />
+}
+
+interface IAccount {
+  readonly name: string
+  readonly profileImgUrl: string
+}
+
+interface IAccountsPageInnerProps {
+  readonly accounts: WebData<ReadonlyArray<IAccount>>
+}
+function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
+  if (accounts.status === "loading") {
+    return <p>loading...</p>
+  }
+  if (accounts.status === "failure") {
+    return <p>failure...</p>
+  }
+
   return (
     <div className="h-100 d-flex justify-content-center align-items-center flex-column">
       <div
@@ -31,7 +32,7 @@ export function AccountsPage() {
         style={{ minHeight: 300 }}>
         <h1 className="h4">Select an Account</h1>
         <ul className="list-unstyled">
-          {accounts.map(a => (
+          {accounts.data.map(a => (
             <li className="d-flex align-items-center">
               <a href="https://github.com/" className="pb-3">
                 <Image

@@ -15,18 +15,22 @@ import {
 import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
 import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
+import { WebData } from "../webdata"
+import { useApi } from "../useApi"
+import { Current } from "../world"
 
+interface IProfileImgProps {
+  readonly profileImgUrl: string
+  readonly name: string
+  readonly className?: string
+  readonly size: number
+}
 function ProfileImg({
   profileImgUrl,
   name,
   className = "",
   size,
-}: {
-  profileImgUrl: string
-  name: string
-  className?: string
-  size: number
-}) {
+}: IProfileImgProps) {
   return (
     <div className={className}>
       <Image
@@ -39,15 +43,13 @@ function ProfileImg({
   )
 }
 
+interface ICustomToggleProps {
+  readonly children: React.ReactNode
+  readonly onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void
+}
 const CustomToggle = React.forwardRef(
   (
-    {
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void
-    },
+    { children, onClick }: ICustomToggleProps,
     ref: React.Ref<HTMLButtonElement>,
   ) => (
     <button
@@ -69,17 +71,18 @@ const CustomToggle = React.forwardRef(
   ),
 )
 
+interface ISideBarNavLinkProps {
+  readonly to: string
+  readonly children: React.ReactChild
+  readonly external?: boolean
+  readonly className?: string
+}
 function SideBarNavLink({
   to,
   children,
   external = false,
   className,
-}: {
-  to: string
-  children: React.ReactChild
-  external?: boolean
-  className?: string
-}) {
+}: ISideBarNavLinkProps) {
   return (
     <li>
       {external ? (
@@ -100,43 +103,34 @@ function SideBarNavLink({
 }
 
 export function SideBarNav() {
-  const user = {
-    name: "sbdchd",
-    profileImgUrl: "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-  }
-  const org = {
-    name: "Kodiak",
-    profileImgUrl: "https://avatars1.githubusercontent.com/in/29196?s=400&v=4",
-  }
+  const data = useApi(Current.api.getCurrentAccount)
+  return <SideBarNavInner accounts={data} />
+}
 
-  const accounts = [
-    {
-      name: "sbdchd",
-      profileImgUrl:
-        "https://avatars0.githubusercontent.com/u/7340772?s=200&v=4",
-    },
-    {
-      name: "recipeyak",
-      profileImgUrl:
-        "https://avatars2.githubusercontent.com/u/32210060?s=200&v=4",
-    },
-    {
-      name: "AdmitHub",
-      profileImgUrl:
-        "https://avatars3.githubusercontent.com/u/7806836?s=200&v=4",
-    },
-    {
-      name: "getdoug",
-      profileImgUrl:
-        "https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
-    },
-    {
-      name: "pytest-dev",
-      profileImgUrl:
-        "https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
-    },
-  ]
-
+interface ISideBarNavInnerProps {
+  readonly accounts: WebData<{
+    readonly accounts: ReadonlyArray<{
+      readonly name: string
+      readonly profileImgUrl: string
+    }>
+    readonly org: {
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+    readonly user: {
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+  }>
+}
+function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
+  if (accounts.status === "loading") {
+    return <p>loading</p>
+  }
+  if (accounts.status === "failure") {
+    return <p>failure</p>
+  }
+  // TODO(sbdchd): before merge, the bootstrap types are incorrect D;
   const DropdownToggle = Dropdown.Toggle as any
   return (
     <div className="bg-light p-3 h-100 d-flex flex-column justify-content-between">
@@ -146,16 +140,16 @@ export function SideBarNav() {
             <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
               <div className="d-flex align-items-center">
                 <Image
-                  url={org.profileImgUrl}
+                  url={accounts.data.org.profileImgUrl}
                   alt="kodiak avatar"
                   size={30}
                   className="mr-2"></Image>
-                <span className="h4 mb-0">{org.name}</span>
+                <span className="h4 mb-0">{accounts.data.org.name}</span>
               </div>
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
               <Dropdown.Header>switch account</Dropdown.Header>
-              {sortBy(accounts, "name").map(x => (
+              {sortBy(accounts.data.accounts, "name").map(x => (
                 <Dropdown.Item as="button">
                   <>
                     <Image
@@ -229,8 +223,8 @@ export function SideBarNav() {
         <Dropdown as={ButtonGroup}>
           <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
             <ProfileImg
-              profileImgUrl={user.profileImgUrl}
-              name={user.name}
+              profileImgUrl={accounts.data.user.profileImgUrl}
+              name={accounts.data.user.name}
               size={30}
             />
           </DropdownToggle>
