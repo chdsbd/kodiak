@@ -27,6 +27,11 @@ def get_auth_url() -> str:
     )
 
 
+@api_router.get("/")
+def api_root() -> Response:
+    return Response("Api Root")
+
+
 @api_router.get("/login")
 def login() -> Response:
     """
