@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import Response, PlainTextResponse, RedirectResponse
 from app.config import (
     GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET,
@@ -27,7 +27,7 @@ def get_auth_url() -> str:
 
 
 @api_router.get("/login")
-def login():
+def login() -> Response:
     """
     Entry point to oauth flow.
 
@@ -44,7 +44,7 @@ def login():
 
 
 @api_router.get("/auth-callback")
-async def auth_callback(request: Request):
+async def auth_callback(request: Request) -> Response:
     """
     OAuth callback handler from GitHub.
 
@@ -64,5 +64,13 @@ async def auth_callback(request: Request):
     query_string = parse_qs(res.text)
     access_token = query_string["access_token"][0]
     token_type = query_string["token_type"][0]
+    res = await http.get(
+        "https://api.github.com/user",
+        headers=dict(authorization=f"Bearer {access_token}"),
+    )
+    login = res.json()["login"]
+    account_id = res.json()["id"]
+    print(res.json())
+    print(access_token)
     # TODO: Store access token for API use.
     return RedirectResponse(KODIAK_WEB_AUTHED_LANDING_PATH)

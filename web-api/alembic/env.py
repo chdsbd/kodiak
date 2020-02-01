@@ -1,5 +1,3 @@
-from __future__ import with_statement
-
 import os
 
 from alembic import context
@@ -20,7 +18,7 @@ fileConfig(config.config_file_name)
 # target_metadata = mymodel.Base.metadata
 # target_metadata = None
 
-from app.db.base import Base  # noqa
+from app.db.models import Base
 
 target_metadata = Base.metadata
 
@@ -67,11 +65,9 @@ def run_migrations_online():
 
     """
     configuration = config.get_section(config.config_ini_section)
-    configuration['sqlalchemy.url'] = get_url()
+    configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+        configuration, prefix="sqlalchemy.", poolclass=pool.NullPool
     )
 
     with connectable.connect() as connection:

@@ -26,6 +26,7 @@ requests = "^2.22"
 rure = "^0.2.2"
 alembic = "^1.3"
 yarl = "^1.4"
+sqlalchemy-stubs = "^0.3.0"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'

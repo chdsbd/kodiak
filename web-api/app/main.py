@@ -6,13 +6,13 @@ from app.api import api_router
 from app import config  # noqa
 
 # from app.db.session import Session
-from starlette.responses import PlainTextResponse
+from starlette.responses import Response, PlainTextResponse
 
 app = FastAPI()
 
 
 @app.get("/")
-def root():
+def root() -> Response:
     return PlainTextResponse("OK")
 
 
