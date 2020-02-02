@@ -34,6 +34,7 @@ flask = "^1.1"
 flask-sqlalchemy = "^2.4"
 flask-migrate = "^2.5"
 flask-login = "^0.4.1"
+python-dotenv = "^0.10.5"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'

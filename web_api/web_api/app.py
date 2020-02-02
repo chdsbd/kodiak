@@ -8,22 +8,10 @@ from flask_migrate import Migrate
 from sqlalchemy.exc import DatabaseError
 from yarl import URL
 
-from web_api import config
-from web_api.config import (
-    GITHUB_CLIENT_ID,
-    GITHUB_CLIENT_SECRET,
-    KODIAK_API_AUTH_REDIRECT_URL,
-    KODIAK_WEB_AUTHED_LANDING_PATH,
-)
+from web_api.config import create_app, login_manager
 from web_api.models import User, db
 
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = str(config.DATABASE_URL)
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.secret_key = '?:n???PYۜ?F"Wr'
-db.init_app(app)
-migrate = Migrate(app, db)
-login_manager = LoginManager(app)
+app = create_app()
 
 
 @login_manager.user_loader
@@ -69,8 +57,8 @@ def login() -> Any:
     github_oauth_url = str(
         URL("https://github.com/login/oauth/authorize").with_query(
             dict(
-                client_id=str(GITHUB_CLIENT_ID),
-                redirect_uri=str(KODIAK_API_AUTH_REDIRECT_URL),
+                client_id=app.config["GITHUB_CLIENT_ID"],
+                redirect_uri=app.config["KODIAK_API_AUTH_REDIRECT_URL"],
             )
         )
     )
@@ -96,7 +84,9 @@ def auth_callback() -> Any:
     if code is None:
         raise Exception("Missing code parameter")
     payload = dict(
-        client_id=GITHUB_CLIENT_ID, client_secret=GITHUB_CLIENT_SECRET, code=code
+        client_id=app.config["GITHUB_CLIENT_ID"],
+        client_secret=app.config["GITHUB_CLIENT_SECRET"],
+        code=code,
     )
     access_res = requests.post("https://github.com/login/oauth/access_token", payload)
     assert access_res.ok
@@ -123,4 +113,4 @@ def auth_callback() -> Any:
     db.session.commit()
 
     login_user(user)
-    return redirect(KODIAK_WEB_AUTHED_LANDING_PATH)
+    return redirect(app.config["KODIAK_WEB_AUTHED_LANDING_PATH"])
