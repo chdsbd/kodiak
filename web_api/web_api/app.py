@@ -48,14 +48,12 @@ def installations() -> Any:
 @app.route("/v1/me")
 @login_required
 def me() -> Any:
-    return jsonify(
-        {
-            "id": current_user.id,
-            "github_login": current_user.github_login,
-            "created_at": current_user.created_at,
-            "updated_at": current_user.updated_at,
-        }
-    )
+    return {
+        "id": current_user.id,
+        "github_login": current_user.github_login,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at,
+    }
 
 
 @app.route("/v1/login")
