@@ -1,23 +1,21 @@
+from typing import Any, Optional, cast
 from urllib.parse import parse_qs
 
 import requests
-from flask import Flask, abort, redirect, url_for, request, jsonify, Response
+from flask import Flask, jsonify, redirect, request
+from flask_login import LoginManager, current_user, login_required, login_user
 from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import DatabaseError
 from yarl import URL
-from typing import Optional, Any,cast
-from werkzeug import Response as WResponse
 
+from web_api import config
 from web_api.config import (
     GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET,
     KODIAK_API_AUTH_REDIRECT_URL,
     KODIAK_WEB_AUTHED_LANDING_PATH,
 )
-from web_api import config
-from web_api.models import db, User
-from flask_login import LoginManager, login_required, login_user, current_user
-from web_api.schemas import UserModel
+from web_api.models import User, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = str(config.DATABASE_URL)
@@ -32,7 +30,7 @@ login_manager = LoginManager(app)
 def load_user(user_id: str) -> Optional[User]:
     try:
         return cast(User, db.session.query(User).get(user_id))
-    except Exception:
+    except DatabaseError:
         return None
 
 

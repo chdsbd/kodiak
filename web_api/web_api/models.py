@@ -1,13 +1,13 @@
 from uuid import uuid4
 
+from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import UUID
-from flask_login import UserMixin
 
 db = SQLAlchemy()
 
 
-class Base(db.Model): # type: ignore
+class Base(db.Model):  # type: ignore
     __abstract__ = True
 
     id = db.Column(
