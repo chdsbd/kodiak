@@ -2,9 +2,8 @@ from typing import Any, Optional, cast
 from urllib.parse import parse_qs
 
 import requests
-from flask import Flask, jsonify, redirect, request
-from flask_login import LoginManager, current_user, login_required, login_user
-from flask_migrate import Migrate
+from flask import jsonify, redirect, request
+from flask_login import current_user, login_required, login_user
 from sqlalchemy.exc import DatabaseError
 from yarl import URL
 

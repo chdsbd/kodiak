@@ -13,8 +13,8 @@ else
 fi
 
 # type check code
-poetry run mypy . web_api web_api/web_api/migrations web_api/web_api/migrations/versions
+poetry run mypy . web_api web_api/web_api/tests web_api/web_api/migrations web_api/web_api/migrations/versions
 
 # lint
 poetry run flake8 kodiak web_api
-poetry run pylint --rcfile='.pylintrc' kodiak web_api/web_api web_api/web_api/migrations/*.py web_api/web_api/migrations/versions/*.py
+poetry run pylint --rcfile='.pylintrc' kodiak web_api/web_api web_api/web_api/tests web_api/web_api/migrations/*.py web_api/web_api/migrations/versions/*.py

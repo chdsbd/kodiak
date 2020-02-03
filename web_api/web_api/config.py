@@ -14,7 +14,7 @@ migrate = Migrate()
 login_manager = LoginManager()
 
 
-def create_app(config: dict = None) -> Flask:
+def create_app(**config: str) -> Flask:
     app = Flask(__name__)
     app.config["GITHUB_CLIENT_ID"] = os.environ.get("GITHUB_CLIENT_ID")
     app.config["GITHUB_CLIENT_SECRET"] = os.environ.get("GITHUB_CLIENT_SECRET")
@@ -26,6 +26,8 @@ def create_app(config: dict = None) -> Flask:
     app.config["KODIAK_WEB_AUTHED_LANDING_PATH"] = os.environ.get(
         "KODIAK_WEB_AUTHED_LANDING_PATH"
     )
+
+    app.config.update(config)
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
