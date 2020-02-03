@@ -112,10 +112,8 @@ jobs:
   docs_site_build:
     docker:
       - image: circleci/node:12.4.0
-    working_directory: '~/project/bot'
     steps:
-      - checkout:
-          path: '~/project'
+      - checkout
       - restore_cache:
           keys:
             - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
@@ -138,8 +136,10 @@ jobs:
   build_container:
     docker:
       - image: docker:18.05.0-ce
+    working_directory: '~/project/bot'
     steps:
-      - checkout
+      - checkout:
+          path: '~/project'
       - setup_remote_docker
       - run:
           name: build container
