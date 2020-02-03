@@ -159,13 +159,3 @@ workflows:
               only: master
             tags:
               only: /^v.*/
-
-  # restrict build behind approval so we can test build on PRs without building
-  # every time we run CI
-  build:
-    jobs:
-      - hold:
-          type: approval
-      - build_container:
-          requires:
-            - hold
