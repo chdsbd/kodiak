@@ -1,6 +1,3 @@
 #!/usr/bin/env sh
 set -eu
-
-cd $(dirname $(dirname "$0"))
-
 poetry run black .

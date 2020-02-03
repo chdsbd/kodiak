@@ -4,10 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Christopher Dignam <chris@dignam.xyz>"]
 
-packages = [
-    { include = "web_api", from = "web_api" },
-]
-
 [tool.poetry.dependencies]
 python = "^3.7"
 uvicorn = "^0.7.0"
@@ -28,14 +24,6 @@ fastapi = "^0.47.0"
 sentry-sdk = "^0.10.2"
 requests = "^2.22"
 rure = "^0.2.2"
-yarl = "^1.4"
-psycopg2 = "^2.8"
-flask = "^1.1"
-flask-sqlalchemy = "^2.4"
-flask-migrate = "^2.5"
-flask-login = "^0.4.1"
-python-dotenv = "^0.10.5"
-pytest-flask-sqlalchemy = "^1.0"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'

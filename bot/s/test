@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 set -eux
 
-cd $(dirname $(dirname "$0"))
-
 # test code
-poetry run pytest kodiak web_api $@
+poetry run pytest $@
