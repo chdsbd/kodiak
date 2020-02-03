@@ -43,3 +43,7 @@ Using Kodiak for your commercial project?
 Feel free to file feature requests, bug reports, help requests through the issue tracker.
 
 If you'd like to add a feature, fix a big, update the docs, etc, take a peek at our [contributing guide](https://kodiakhq.com/docs/contributing).
+
+## Project Layout
+
+This repository contains multiple services that make up Kodiak. The GitHub App which receives webhook events from GitHub and operates of pull requests is stored at `bot/`. The web API powering the Kodiak dashboard (WIP) is stored at `web_api/` and the Kodiak dashboard frontend (WIP) that talks to the web api is stored at `web_ui/`.

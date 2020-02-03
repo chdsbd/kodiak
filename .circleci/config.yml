@@ -9,11 +9,12 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
             - api-v1-{{ .Branch }}-
             - api-v1-
       - run:
           name: install dependencies
+          working_directory: bot
           command: |
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
@@ -22,11 +23,12 @@ jobs:
             poetry install
       - save_cache:
           paths:
-            - ./.mypy_cache
+            - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
+          working_directory: bot
           command: ./s/test
 
   lint_api:
@@ -37,11 +39,12 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
             - api-v1-{{ .Branch }}-
             - api-v1-
       - run:
           name: install dependencies
+          working_directory: bot
           command: |
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
@@ -50,11 +53,12 @@ jobs:
             poetry install
       - save_cache:
           paths:
-            - ./.mypy_cache
+            - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
+          working_directory: bot
           command: ./s/lint
 
   docs_site_typecheck:
@@ -137,6 +141,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: build container
+          working_directory: bot
           command: ./s/build
 
 workflows:
