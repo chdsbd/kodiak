@@ -4,8 +4,10 @@ jobs:
   test_api:
     docker:
       - image: python:3.7
+    working_directory: '~/project/bot'
     steps:
-      - checkout
+      - checkout:
+          path: '~/project'
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -32,8 +34,10 @@ jobs:
   lint_api:
     docker:
       - image: python:3.7
+    working_directory: '~/project/bot'
     steps:
-      - checkout
+      - checkout:
+          path: '~/project'
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -108,8 +112,10 @@ jobs:
   docs_site_build:
     docker:
       - image: circleci/node:12.4.0
+    working_directory: '~/project/bot'
     steps:
-      - checkout
+      - checkout:
+          path: '~/project'
       - restore_cache:
           keys:
             - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
@@ -154,3 +160,10 @@ workflows:
               only: master
             tags:
               only: /^v.*/
+  build:
+    jobs:
+      - hold:
+          type: approval
+      - build_container:
+          requires:
+            - hold
