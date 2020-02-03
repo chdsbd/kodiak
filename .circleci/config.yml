@@ -25,7 +25,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "botpoetry.lock" }}
+          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
           working_directory: bot
@@ -55,7 +55,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "botpoetry.lock" }}
+          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
           working_directory: bot
