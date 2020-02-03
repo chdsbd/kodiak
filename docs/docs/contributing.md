@@ -6,22 +6,7 @@ sidebar_label: Contributing
 
 ## Dev Scripts
 
-```shell
-# install dependencies
-poetry install
-
-# start dev server
-poetry run uvicorn kodiak.main:app --reload
-
-# type check and lint
-s/lint
-
-# format code
-s/fmt
-
-# test code
-s/test
-```
+See the [Kodiak GitHub App README](https://github.com/chdsbd/kodiak/blob/master/bot/README.md) for details on installing dependencies, running tests and starting the development server.
 
 ## Testing on a Live Repo
 
