@@ -73,7 +73,7 @@ jobs:
           working_directory: bot
           command: ./s/build
 
-  docs_site_typecheck:
+  docs_typecheck:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -98,7 +98,7 @@ jobs:
           command: |
             yarn typecheck
 
-  docs_site_fmt:
+  docs_fmt:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -121,7 +121,7 @@ jobs:
           working_directory: docs
           command: yarn fmt-ci
 
-  docs_site_build:
+  docs_build:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -229,11 +229,11 @@ workflows:
               only: master
             tags:
               only: /^v.*/
-  docs_site:
+  docs:
     jobs:
-      - docs_site_typecheck
-      - docs_site_fmt
-      - docs_site_build
+      - docs_typecheck
+      - docs_fmt
+      - docs_build
   web_api:
     jobs:
       - web_api_test
