@@ -9,9 +9,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+            - bot-v1-{{ .Branch }}-
+            - bot-v1-
       - run:
           name: install dependencies
           working_directory: bot
@@ -25,7 +25,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
           working_directory: bot
@@ -39,9 +39,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+            - bot-v1-{{ .Branch }}-
+            - bot-v1-
       - run:
           name: install dependencies
           working_directory: bot
@@ -55,7 +55,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
           working_directory: bot
@@ -152,9 +152,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+            - web_api-v1-{{ .Branch }}-
+            - web_api-v1-
       - run:
           name: install dependencies
           working_directory: web_api
@@ -168,7 +168,7 @@ jobs:
           paths:
             - ./web_api/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: run tests
           working_directory: web_api
@@ -182,9 +182,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+            - web_api-v1-{{ .Branch }}-
+            - web_api-v1-
       - run:
           name: install dependencies
           working_directory: web_api
@@ -198,7 +198,7 @@ jobs:
           paths:
             - ./web_api/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: run lints
           working_directory: web_api
