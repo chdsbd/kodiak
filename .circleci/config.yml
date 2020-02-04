@@ -208,6 +208,7 @@ jobs:
   web_api_build_container:
     docker:
       - image: docker:18.05.0-ce
+      - image: circleci/postgres:12-ram
     steps:
       - checkout
       - setup_remote_docker
