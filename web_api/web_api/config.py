@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask
@@ -31,6 +32,9 @@ def create_app(**config: str) -> Flask:
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
-    migrate.init_app(app, db)
+    # specify the absolute path to ensure we can call migrate from any directory.
+    migrations_directory = str(Path(__file__).parent / "migrations")
+
+    migrate.init_app(app, db, directory=migrations_directory)
     login_manager.init_app(app)
     return app

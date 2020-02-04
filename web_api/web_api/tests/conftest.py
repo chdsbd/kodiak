@@ -7,7 +7,6 @@ of Django.
 """
 
 import os
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -19,9 +18,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL as DatabaseURL
 
 from web_api.config import create_app
-
-# specify the absolute path to ensure we can run pytest from any directory.
-migrations_path = str(Path(__file__).parent.parent / "migrations")
 
 
 @pytest.fixture(scope="session")
@@ -65,7 +61,7 @@ def database(request: Any, app: Flask, database_url: DatabaseURL) -> None:
         # exception, probably because it's for a CLI.
         #
         # related: https://github.com/miguelgrinberg/Flask-Migrate/issues/69#issuecomment-138394391
-        config = current_app.extensions["migrate"].migrate.get_config(migrations_path)
+        config = current_app.extensions["migrate"].migrate.get_config()
         command.upgrade(config, "head")
 
     @request.addfinalizer
