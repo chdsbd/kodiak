@@ -31,7 +31,7 @@ def database_url(request: Any) -> DatabaseURL:
     we don't accidentally destroy an active database when testing and matches
     the behavior of Django.
     """
-    url = sqlalchemy.engine.url.make_url(os.environ.get("DATABASE_URL"))
+    url = sqlalchemy.engine.url.make_url(os.environ.get("DATABASE_URL", "postgres://postgres@127.0.0.1:5432/postgres"))
     url.database = f"test_{url.database}"
     return url
 
