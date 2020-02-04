@@ -58,7 +58,7 @@ def database(request: Any, app: Flask, database_url: DatabaseURL) -> None:
         is not None
     )
     if not database_exists:
-        engine.execute("CREATE DATABASE {database_url.database}")
+        engine.execute(f"CREATE DATABASE {database_url.database}")
     # run our alembic migrations on our database.
     with app.app_context():  # type: ignore
         # I tried calling `flask_migrate.upgrade`, but that triggers a SysExit
