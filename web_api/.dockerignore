@@ -1,0 +1,14 @@
+.git
+**/*.pyc
+**/__pycache__/
+.venv/
+Dockerfile
+*.pem
+*_cache/
+assets/
+.vscode/
+pip-wheel-metadata/
+*egg-info/
+docs/
+.github
+.circleci

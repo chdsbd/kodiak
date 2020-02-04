@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -ex
+
+# format code
+if [[ $CI ]]; then
+    poetry run black --check .
+    poetry run isort --check-only
+else
+    poetry run black .
+    poetry run isort -y
+fi
+
+# type check code
+poetry run mypy .
+
+# lint
+poetry run flake8 web_api
+poetry run pylint --rcfile='.pylintrc' web_api
