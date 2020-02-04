@@ -147,6 +147,7 @@ jobs:
   web_api_test:
     docker:
       - image: python:3.7
+      - image: circleci/postgres:12-ram
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -208,7 +209,6 @@ jobs:
   web_api_build_container:
     docker:
       - image: docker:18.05.0-ce
-      - image: circleci/postgres:12-ram
     steps:
       - checkout
       - setup_remote_docker
