@@ -16,6 +16,7 @@ yarl = "^1.4"
 python-dotenv = "^0.10.5"
 pytest-flask-sqlalchemy = "^1.0"
 psycopg2 = "^2.8"
+gunicorn = "^20.0"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
