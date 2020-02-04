@@ -219,7 +219,7 @@ jobs:
 
 workflows:
   version: 2
-  test:
+  bot:
     jobs:
       - bot_test
       - bot_lint
@@ -229,6 +229,13 @@ workflows:
               only: master
             tags:
               only: /^v.*/
+  docs_site:
+    jobs:
+      - docs_site_typecheck
+      - docs_site_fmt
+      - docs_site_build
+  web_api:
+    jobs:
       - web_api_test
       - web_api_lint
       - web_api_build_container:
@@ -237,6 +244,3 @@ workflows:
               only: master
             tags:
               only: /^v.*/
-      - docs_site_typecheck
-      - docs_site_fmt
-      - docs_site_build
