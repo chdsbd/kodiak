@@ -21,4 +21,4 @@ RUN rm -rf /var/app/pip-wheel-metadata/
 # install cli
 RUN poetry install
 
-CMD poetry run gunicorn --bind 0.0.0.0:$PORT web_api.app:app
+CMD poetry run gunicorn --bind 0.0.0.0:$PORT web_api.wsgi

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eux
 
-FLASK_APP=web_api.app FLASK_DEBUG=1 poetry run flask run $@
+poetry run ./manage.py runserver

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -eux
-
-# give CLI access with the variables set for flask
-FLASK_APP=web_api.app FLASK_DEBUG=1 poetry run flask $@
