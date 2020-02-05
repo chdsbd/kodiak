@@ -7,16 +7,12 @@ authors = ["Christopher Dignam <chris@dignam.xyz>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 pydantic = "^1.4"
-flask = "^1.1"
-flask_login = "^0.4.1"
-flask_migrate = "^2.5"
-flask_sqlalchemy = "^2.4"
 requests = "^2.22"
 yarl = "^1.4"
 python-dotenv = "^0.10.5"
-pytest-flask-sqlalchemy = "^1.0"
 psycopg2 = "^2.8"
 gunicorn = "^20.0"
+django = "^3.0"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
