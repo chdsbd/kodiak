@@ -1,10 +1,13 @@
-from typing import Optional
-from django.http import JsonResponse, HttpResponse, HttpRequest, HttpResponseRedirect
-from core.models import User, AnonymousUser
-from django.conf import settings
-from core.auth import login_required, login_user
-import requests
 from dataclasses import dataclass
+from typing import Optional
+from urllib.parse import parse_qs
+
+import requests
+from django.conf import settings
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
+
+from core import auth
+from core.models import AnonymousUser, User
 
 
 @dataclass(init=False)
@@ -21,30 +24,14 @@ class APIException(Exception):
             self.code = code
 
 
-@dataclass
 class BadRequest(APIException):
     message: str = "Your request is invalid."
     code: int = 400
 
 
-@login_required
+@auth.login_required
 def installations(request: HttpRequest) -> HttpResponse:
     return JsonResponse([{"id": 53121}], safe=False)
-
-
-def login(request: HttpRequest) -> HttpResponse:
-    u = User.objects.get(github_login=request.POST["github_login"])
-    request.session["user_id"] = str(u.id)
-    return JsonResponse(
-        {
-            "OK": True,
-            "id": u.id,
-            "github_id": u.github_id,
-            "github_login": u.github_login,
-            "created_at": u.created_at,
-            "modified_at": u.modified_at,
-        }
-    )
 
 
 def oauth_login(request: HttpRequest) -> HttpResponse:
@@ -56,15 +43,7 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 
     https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#1-request-a-users-github-identity
     """
-    github_oauth_url = str(
-        URL("https://github.com/login/oauth/authorize").with_query(
-            dict(
-                client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-                redirect_uri=settings.KODIAK_API_AUTH_REDIRECT_URL,
-            )
-        )
-    )
-    return HttpResponseRedirect(github_oauth_url)
+    return HttpResponseRedirect(auth.OAUTH_URL)
 
 
 # TODO: handle deauthorization webhook
@@ -114,12 +93,12 @@ def oauth_callback(request: HttpRequest) -> HttpResponse:
     else:
         User.objects.create(
             github_id=github_account_id,
-            github_login=login,
+            github_login=github_login,
             github_access_token=access_token,
         )
 
-    login_user(user)
-    return redirect(settings.KODIAK_WEB_AUTHED_LANDING_PATH)
+    auth.login(user, request)
+    return HttpResponseRedirect(settings.KODIAK_WEB_AUTHED_LANDING_PATH)
 
 
 def logout(request: HttpRequest) -> HttpResponse:

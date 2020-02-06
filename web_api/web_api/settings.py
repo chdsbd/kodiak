@@ -1,5 +1,6 @@
-from typing import List
 import os
+from typing import List
+
 import dj_database_url
 from dotenv import load_dotenv
 
