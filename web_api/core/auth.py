@@ -4,6 +4,7 @@ from typing import Callable, cast
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
+from django.urls import reverse
 from yarl import URL
 
 from core.models import AnonymousUser, User
@@ -22,14 +23,18 @@ def login_required(view_func: Callable) -> Callable:
 
 
 # URL to redirect users to for OAuth login.
-OAUTH_URL = str(
-    URL("https://github.com/login/oauth/authorize").with_query(
+def get_oauth_url() -> str:
+    OAUTH_REDIRECT_URL = URL(settings.KODIAK_API_ROOT_URL).with_path(
+        reverse("oauth_callback")
+    )
+    OAUTH_URL = URL("https://github.com/login/oauth/authorize").with_query(
         dict(
             client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-            redirect_uri=settings.KODIAK_API_AUTH_REDIRECT_URL,
+            redirect_uri=str(OAUTH_REDIRECT_URL),
         )
     )
-)
+    print(OAUTH_REDIRECT_URL, OAUTH_URL)
+    return OAUTH_URL
 
 
 def get_user(request: HttpRequest) -> User:

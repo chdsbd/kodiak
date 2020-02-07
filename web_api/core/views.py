@@ -28,6 +28,9 @@ class BadRequest(APIException):
     message: str = "Your request is invalid."
     code: int = 400
 
+@auth.login_required
+def ping(request: HttpRequest) -> HttpResponse:
+    return JsonResponse({"ok": True})
 
 @auth.login_required
 def installations(request: HttpRequest) -> HttpResponse:
@@ -43,7 +46,7 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 
     https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#1-request-a-users-github-identity
     """
-    return HttpResponseRedirect(auth.OAUTH_URL)
+    return HttpResponseRedirect(str(auth.get_oauth_url()))
 
 
 # TODO: handle deauthorization webhook
@@ -58,12 +61,12 @@ def oauth_callback(request: HttpRequest) -> HttpResponse:
     user uninstalls the app.
     https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#2-users-are-redirected-back-to-your-site-by-github
     """
-    code = request.query_params.get("code")
+    code = request.GET.get("code")
     if code is None:
         raise BadRequest("Missing code parameter")
     payload = dict(
-        client_id=settings.GITHUB_CLIENT_ID,
-        client_secret=settings.GITHUB_CLIENT_SECRET,
+        client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
+        client_secret=settings.KODIAK_API_GITHUB_CLIENT_SECRET,
         code=code,
     )
     access_res = requests.post("https://github.com/login/oauth/access_token", payload)

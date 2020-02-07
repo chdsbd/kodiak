@@ -19,7 +19,7 @@ SECRET_KEY = "gjzyca8n8$gg^d9u-ts6x5_+=)x*h!=ae&y$%m*ecsjly&*8j3"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS: List[str] = []
+ALLOWED_HOSTS: List[str] = ["*"]
 
 
 # Application definition
@@ -61,8 +61,10 @@ USE_L10N = True
 
 USE_TZ = True
 
+# ignore ssl issues
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Configuration for App
-KODIAK_API_GITHUB_CLIENT_ID = "12390123"
-KODIAK_API_GITHUB_CLIENT_SECRET = "12390123"
-KODIAK_API_AUTH_REDIRECT_URL = "https://kodiakhq.com"
+KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
+KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
+KODIAK_API_ROOT_URL = os.environ["KODIAK_API_ROOT_URL"]
