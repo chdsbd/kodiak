@@ -14,9 +14,6 @@ psycopg2 = "^2.8"
 gunicorn = "^20.0"
 django = "^3.0"
 dj-database-url = "^0.5.0"
-requests_oauthlib = "^1.3"
-pytest-env = "^0.6.2"
-pytest-mock = "^2.0"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
@@ -30,6 +27,8 @@ ipython = "^7.12"
 responses = "^0.10.9"
 mypy_extensions = "^0.4.3"
 typing_extensions = "^3.7"
+pytest-env = "^0.6.2"
+pytest-mock = "^2.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

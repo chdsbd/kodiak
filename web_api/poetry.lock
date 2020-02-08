@@ -41,7 +41,7 @@ python = "<3.8"
 version = ">=1.4.0,<1.5"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Atomic file writes."
 marker = "sys_platform == \"win32\""
 name = "atomicwrites"
@@ -50,7 +50,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.3.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Classes Without Boilerplate"
 name = "attrs"
 optional = false
@@ -107,7 +107,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "7.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Cross-platform colored terminal text."
 marker = "sys_platform == \"win32\""
 name = "colorama"
@@ -186,7 +186,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.8"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Read metadata from Python packages"
 marker = "python_version < \"3.8\""
 name = "importlib-metadata"
@@ -262,7 +262,7 @@ python-versions = "*"
 version = "0.6.1"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "More routines for operating on iterables, beyond itertools"
 name = "more-itertools"
 optional = false
@@ -299,15 +299,7 @@ python-versions = "*"
 version = "0.4.3"
 
 [[package]]
-category = "main"
-description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
-name = "oauthlib"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "3.1.0"
-
-[[package]]
-category = "main"
+category = "dev"
 description = "Core utilities for Python packages"
 name = "packaging"
 optional = false
@@ -355,7 +347,7 @@ python-versions = "*"
 version = "0.7.5"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "plugin and hook calling mechanisms for python"
 name = "pluggy"
 optional = false
@@ -396,7 +388,7 @@ python-versions = "*"
 version = "0.6.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
 name = "py"
 optional = false
@@ -450,7 +442,7 @@ isort = ">=4.2.5,<5"
 mccabe = ">=0.6,<0.7"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Python parsing module"
 name = "pyparsing"
 optional = false
@@ -458,7 +450,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "2.4.6"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "pytest: simple powerful testing with Python"
 name = "pytest"
 optional = false
@@ -491,7 +483,7 @@ version = "3.8.0"
 pytest = ">=3.6"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "py.test plugin that allows you to add environment variables."
 name = "pytest-env"
 optional = false
@@ -502,7 +494,7 @@ version = "0.6.2"
 pytest = ">=2.6.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Thin-wrapper around the mock package for easier use with py.test"
 name = "pytest-mock"
 optional = false
@@ -551,18 +543,6 @@ idna = ">=2.5,<2.9"
 urllib3 = ">=1.21.1,<1.25.0 || >1.25.0,<1.25.1 || >1.25.1,<1.26"
 
 [[package]]
-category = "main"
-description = "OAuthlib authentication support for Requests."
-name = "requests-oauthlib"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.3.0"
-
-[package.dependencies]
-oauthlib = ">=3.0.0"
-requests = ">=2.0.0"
-
-[[package]]
 category = "dev"
 description = "A utility library for mocking out the `requests` Python library."
 name = "responses"
@@ -575,7 +555,7 @@ requests = ">=2.0"
 six = "*"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
 optional = false
@@ -636,7 +616,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 version = "1.25.8"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Measures number of Terminal column cells of wide-character codes"
 name = "wcwidth"
 optional = false
@@ -664,7 +644,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [[package]]
-category = "main"
+category = "dev"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
 name = "zipp"
@@ -673,7 +653,7 @@ python-versions = ">=3.6"
 version = "2.1.0"
 
 [metadata]
-content-hash = "a9a7d4eb0e453548a9283325d2774cc604b99a6741480b188b469054bcbd68ee"
+content-hash = "86efbecc9a1b7b18a351f1b670c4c13a2fd948d799c6859cf27c589f9b7d2ec3"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -707,7 +687,6 @@ more-itertools = ["5dd8bcf33e5f9513ffa06d5ad33d78f31e1931ac9a18f33d37e77a180d393
 multidict = ["13f3ebdb5693944f52faa7b2065b751cb7e578b8dd0a5bb8e4ab05ad0188b85e", "26502cefa86d79b86752e96639352c7247846515c864d7c2eb85d036752b643c", "4fba5204d32d5c52439f88437d33ad14b5f228e25072a192453f658bddfe45a7", "527124ef435f39a37b279653ad0238ff606b58328ca7989a6df372fd75d7fe26", "5414f388ffd78c57e77bd253cf829373721f450613de53dc85a08e34d806e8eb", "5eee66f882ab35674944dfa0d28b57fa51e160b4dce0ce19e47f495fdae70703", "63810343ea07f5cd86ba66ab66706243a6f5af075eea50c01e39b4ad6bc3c57a", "6bd10adf9f0d6a98ccc792ab6f83d18674775986ba9bacd376b643fe35633357", "83c6ddf0add57c6b8a7de0bc7e2d656be3eefeff7c922af9a9aae7e49f225625", "93166e0f5379cf6cd29746989f8a594fa7204dcae2e9335ddba39c870a287e1c", "9a7b115ee0b9b92d10ebc246811d8f55d0c57e82dbb6a26b23c9a9a6ad40ce0c", "a38baa3046cce174a07a59952c9f876ae8875ef3559709639c17fdf21f7b30dd", "a6d219f49821f4b2c85c6d426346a5d84dab6daa6f85ca3da6c00ed05b54022d", "a8ed33e8f9b67e3b592c56567135bb42e7e0e97417a4b6a771e60898dfd5182b", "d7d428488c67b09b26928950a395e41cc72bb9c3d5abfe9f0521940ee4f796d4", "dcfed56aa085b89d644af17442cdc2debaa73388feba4b8026446d168ca8dad7", "f29b885e4903bd57a7789f09fe9d60b6475a6c1a4c0eca874d8558f00f9d4b51"]
 mypy = ["0a9a45157e532da06fe56adcfef8a74629566b607fa2c1ac0122d1ff995c748a", "2c35cae79ceb20d47facfad51f952df16c2ae9f45db6cb38405a3da1cf8fc0a7", "4b9365ade157794cef9685791032521233729cb00ce76b0ddc78749abea463d2", "53ea810ae3f83f9c9b452582261ea859828a9ed666f2e1ca840300b69322c474", "634aef60b4ff0f650d3e59d4374626ca6153fcaff96ec075b215b568e6ee3cb0", "7e396ce53cacd5596ff6d191b47ab0ea18f8e0ec04e15d69728d530e86d4c217", "7eadc91af8270455e0d73565b8964da1642fe226665dd5c9560067cd64d56749", "7f672d02fffcbace4db2b05369142e0506cdcde20cea0e07c7c2171c4fd11dd6", "85baab8d74ec601e86134afe2bcccd87820f79d2f8d5798c889507d1088287bf", "87c556fb85d709dacd4b4cb6167eecc5bbb4f0a9864b69136a0d4640fdc76a36", "a6bd44efee4dc8c3324c13785a9dc3519b3ee3a92cada42d2b57762b7053b49b", "c6d27bd20c3ba60d5b02f20bd28e20091d6286a699174dfad515636cb09b5a72", "e2bb577d10d09a2d8822a042a23b8d62bc3b269667c9eb8e60a6edfa000211b1", "f97a605d7c8bc2c6d1172c2f0d5a65b24142e11a58de689046e62c2d632ca8c1"]
 mypy-extensions = ["090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d", "2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"]
-oauthlib = ["bee41cc35fcca6e988463cacc3bcb8a96224f470ca547e697b604cc697b2f889", "df884cd6cbe20e32633f1db1072e9356f53638e4361bef4e8b03c9127c9328ea"]
 packaging = ["170748228214b70b672c581a3dd610ee51f733018650740e98c7df862a583f73", "e665345f9eef0c621aa0bf2f8d78cf6d21904eef16a93f020240b704a57f1334"]
 parso = ["56b2105a80e9c4df49de85e125feb6be69f49920e121406f15e7acde6c9dfc57", "951af01f61e6dccd04159042a0706a31ad437864ec6e25d0d7a96a9fbb9b0095"]
 pathspec = ["163b0632d4e31cef212976cf57b43d9fd6b0bac6e67c26015d611a647d5e7424", "562aa70af2e0d434367d9790ad37aed893de47f1693e4201fd1d3dca15d19b96"]
@@ -732,7 +711,6 @@ python-dotenv = ["440c7c23d53b7d352f9c94d6f70860242c2f071cf5c029dd661ccb22d64ae4
 pytz = ["1c557d7d0e871de1f5ccd5833f60fb2550652da6be2693c1e02300743d21500d", "b02c06db6cf09c12dd25137e563b31700d3b80fcc4ad23abb7a315f2789819be"]
 regex = ["07b39bf943d3d2fe63d46281d8504f8df0ff3fe4c57e13d1656737950e53e525", "0932941cdfb3afcbc26cc3bcf7c3f3d73d5a9b9c56955d432dbf8bbc147d4c5b", "0e182d2f097ea8549a249040922fa2b92ae28be4be4895933e369a525ba36576", "10671601ee06cf4dc1bc0b4805309040bb34c9af423c12c379c83d7895622bb5", "23e2c2c0ff50f44877f64780b815b8fd2e003cda9ce817a7fd00dea5600c84a0", "26ff99c980f53b3191d8931b199b29d6787c059f2e029b2b0c694343b1708c35", "27429b8d74ba683484a06b260b7bb00f312e7c757792628ea251afdbf1434003", "3e77409b678b21a056415da3a56abfd7c3ad03da71f3051bbcdb68cf44d3c34d", "4e8f02d3d72ca94efc8396f8036c0d3bcc812aefc28ec70f35bb888c74a25161", "4eae742636aec40cf7ab98171ab9400393360b97e8f9da67b1867a9ee0889b26", "6a6ae17bf8f2d82d1e8858a47757ce389b880083c4ff2498dba17c56e6c103b9", "6a6ba91b94427cd49cd27764679024b14a96874e0dc638ae6bdd4b1a3ce97be1", "7bcd322935377abcc79bfe5b63c44abd0b29387f267791d566bbb566edfdd146", "98b8ed7bb2155e2cbb8b76f627b2fd12cf4b22ab6e14873e8641f266e0fb6d8f", "bd25bb7980917e4e70ccccd7e3b5740614f1c408a642c245019cff9d7d1b6149", "d0f424328f9822b0323b3b6f2e4b9c90960b24743d220763c7f07071e0778351", "d58e4606da2a41659c84baeb3cfa2e4c87a74cec89a1e7c56bee4b956f9d7461", "e3cd21cc2840ca67de0bbe4071f79f031c81418deb544ceda93ad75ca1ee9f7b", "e6c02171d62ed6972ca8631f6f34fa3281d51db8b326ee397b9c83093a6b7242", "e7c7661f7276507bce416eaae22040fd91ca471b5b33c13f8ff21137ed6f248c", "ecc6de77df3ef68fee966bb8cb4e067e84d4d1f397d0ef6fce46913663540d77"]
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
-requests-oauthlib = ["7f71572defaecd16372f9006f33c2ec8c077c3cfa6f5911a9a90202beb513f3d", "b4261601a71fd721a8bd6d7aa1cc1d6a8a93b4a9f5e96626f8e4d91e8beeaa6a", "fa6c47b933f01060936d87ae9327fead68768b69c6c9ea2109c48be30f2d4dbc"]
 responses = ["515fd7c024097e5da76e9c4cf719083d181f1c3ddc09c2e0e49284ce863dd263", "8ce8cb4e7e1ad89336f8865af152e0563d2e7f0e0b86d2cf75f015f819409243"]
 six = ["236bdbdce46e6e6a3d61a337c0f8b763ca1e8717c03b369e87a7ec7ce1319c0a", "8f3cd2e254d8f793e7f3d6d9df77b92252b52637291d0f0da013c76ea2724b6c"]
 sqlparse = ["40afe6b8d4b1117e7dff5504d7a8ce07d9a1b15aeeade8a2d10f130a834f8177", "7c3dca29c022744e95b547e867cee89f4fce4373f3549ccd8797d8eb52cdb873"]
