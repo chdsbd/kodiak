@@ -139,6 +139,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     if existing_user:
         existing_user.github_login = github_login
         existing_user.github_access_token = access_token
+        existing_user.save()
         user = existing_user
     else:
         user = User.objects.create(

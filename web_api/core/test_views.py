@@ -94,29 +94,29 @@ def successful_responses(mocked_responses: Any) -> None:
         responses.GET,
         "https://api.github.com/user",
         json={
-            "login": "octocat",
-            "id": 13221,
+            "login": "ghost",
+            "id": 10137,
             "node_id": "MDQ6VXNlcjE=",
-            "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+            "avatar_url": "https://github.com/images/error/ghost_happy.gif",
             "gravatar_id": "",
-            "url": "https://api.github.com/users/octocat",
-            "html_url": "https://github.com/octocat",
-            "followers_url": "https://api.github.com/users/octocat/followers",
-            "following_url": "https://api.github.com/users/octocat/following{/other_user}",
-            "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
-            "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
-            "organizations_url": "https://api.github.com/users/octocat/orgs",
-            "repos_url": "https://api.github.com/users/octocat/repos",
-            "events_url": "https://api.github.com/users/octocat/events{/privacy}",
-            "received_events_url": "https://api.github.com/users/octocat/received_events",
+            "url": "https://api.github.com/users/ghost",
+            "html_url": "https://github.com/ghost",
+            "followers_url": "https://api.github.com/users/ghost/followers",
+            "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+            "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+            "organizations_url": "https://api.github.com/users/ghost/orgs",
+            "repos_url": "https://api.github.com/users/ghost/repos",
+            "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/ghost/received_events",
             "type": "User",
             "site_admin": False,
-            "name": "monalisa octocat",
+            "name": "monalisa ghost",
             "company": "GitHub",
             "blog": "https://github.com/blog",
             "location": "San Francisco",
-            "email": "octocat@github.com",
+            "email": "ghost@github.com",
             "hireable": False,
             "bio": "There once was...",
             "public_repos": 2,
@@ -157,14 +157,14 @@ def test_oauth_callback_success_new_account(
     assert login_result["ok"] is True
     assert User.objects.count() == 1
     user = User.objects.get()
-    assert user.github_id == 13221
-    assert user.github_login == "octocat"
+    assert user.github_id == 10137
+    assert user.github_login == "ghost"
     assert user.github_access_token == "D6B5A3B57D32498DB00845A99137D3E2"
 
 
 @pytest.mark.django_db
 def test_oauth_callback_success_existing_account(
-    client: Client, user: User, successful_responses: object
+    client: Client, user: User, successful_responses: object, state_token: str
 ) -> None:
     assert User.objects.count() == 1
 
@@ -179,7 +179,7 @@ def test_oauth_callback_success_existing_account(
     new_user = User.objects.get()
     assert new_user.github_id == user.github_id
     assert new_user.github_login == user.github_login
-    assert new_user.github_access_token == user.github_access_token
+    assert new_user.github_access_token == "D6B5A3B57D32498DB00845A99137D3E2"
 
 
 @pytest.mark.skip
