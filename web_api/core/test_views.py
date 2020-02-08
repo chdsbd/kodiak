@@ -163,7 +163,9 @@ def test_oauth_callback_success_new_account(
 
 
 @pytest.mark.django_db
-def test_oauth_callback_success_existing_account(client: Client, user: User) -> None:
+def test_oauth_callback_success_existing_account(
+    client: Client, user: User, successful_responses: object
+) -> None:
     assert User.objects.count() == 1
 
     res = client.get(
