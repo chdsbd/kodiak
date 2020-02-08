@@ -148,6 +148,8 @@ jobs:
     docker:
       - image: python:3.7
       - image: circleci/postgres:12-ram
+    environment:
+      DATABASE_URL: postgresql://localhost:5432/postgres
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
