@@ -1,14 +1,18 @@
-import base64
-import json
-import uuid
 from dataclasses import asdict, dataclass
 from typing import Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
-from django.urls import reverse
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+)
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from typing_extensions import Literal
 from yarl import URL
 
@@ -35,16 +39,16 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 
     https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#1-request-a-users-github-identity
     """
-    oauth_redirect_uri = request.build_absolute_uri(reverse("oauth_callback"))
-    state = str(uuid.uuid4())
+    state = request.GET.get("state")
+    if not state:
+        return HttpResponseBadRequest("Missing required state parameter")
     oauth_url = URL("https://github.com/login/oauth/authorize").with_query(
         dict(
             client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-            redirect_uri=str(oauth_redirect_uri),
+            redirect_uri=settings.KODIAK_WEB_AUTHED_LANDING_PATH,
             state=state,
         )
     )
-    request.session["oauth_login_state"] = state
     return HttpResponseRedirect(str(oauth_url))
 
 
@@ -65,8 +69,8 @@ class Success:
 
 
 def process_login_request(request: HttpRequest) -> Union[Success, Error]:
-    session_oauth_state = request.session.get("oauth_login_state")
-    request_oauth_state = request.GET.get("state", None)
+    session_oauth_state = request.POST.get("serverState", None)
+    request_oauth_state = request.POST.get("clientState", None)
     if (
         not session_oauth_state
         or not request_oauth_state
@@ -74,17 +78,17 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     ):
         return Error(
             error="OAuthStateMismatch",
-            error_description="Cookie session must match session in query parameters.",
+            error_description="State parameters must match.",
         )
 
     # handle errors
-    if request.GET.get("error"):
+    if request.POST.get("error"):
         return Error(
-            error=request.GET.get("error"),
-            error_description=request.GET.get("error_description"),
+            error=request.POST.get("error"),
+            error_description=request.POST.get("error_description"),
         )
 
-    code = request.GET.get("code")
+    code = request.POST.get("code")
     if not code:
         return Error(
             error="OAuthMissingCode",
@@ -104,10 +108,11 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             error="OAuthServerError", error_description="Failed to fetch access token."
         )
     access_res_data = dict(parse_qsl(access_res.text))
-    if access_res_data.get("error"):
+    access_token_error = access_res_data.get("error")
+    if access_token_error:
         return Error(
-            error=request.GET.get("error"),
-            error_description=request.GET.get("error_description"),
+            error=access_token_error,
+            error_description=access_res_data.get("error_description", ""),
         )
 
     access_token = access_res_data.get("access_token")
@@ -152,7 +157,9 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     return Success()
 
 
-def oauth_callback(request: HttpRequest) -> HttpResponse:
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def oauth_complete(request: HttpRequest) -> HttpResponse:
     """
     OAuth callback handler from GitHub.
     We get a code from GitHub that we can use with our client secret to get an
@@ -160,13 +167,10 @@ def oauth_callback(request: HttpRequest) -> HttpResponse:
     user uninstalls the app.
     https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#2-users-are-redirected-back-to-your-site-by-github
     """
-    login_result = process_login_request(request)
-    landing_url = URL(settings.KODIAK_WEB_AUTHED_LANDING_PATH).with_query(
-        login_result=base64.b32encode(
-            json.dumps(asdict(login_result)).encode()
-        ).decode()
-    )
-    return HttpResponseRedirect(str(landing_url))
+    if request.method == "POST":
+        login_result = process_login_request(request)
+        return JsonResponse(asdict(login_result))
+    return HttpResponse()
 
 
 def logout(request: HttpRequest) -> HttpResponse:

@@ -1,13 +1,8 @@
-import base64
-import json
 from typing import Any, cast
-from urllib.parse import parse_qsl, urlsplit
-from uuid import UUID
 
 import pytest
 import responses
 from django.conf import settings
-from django.http import HttpResponse
 
 from core.models import User
 from core.testutils import TestClient as Client
@@ -66,16 +61,12 @@ def test_installations(client: Client, user: User) -> None:
 
 
 @pytest.mark.django_db
-def test_oauth_login(client: Client, mocker: Any) -> None:
-    mocker.patch(
-        "core.views.uuid.uuid4",
-        return_value=UUID("8d34e38a-91a2-426e-9276-a98c06bd3c2f"),
-    )
-    res = client.get("/v1/oauth_login")
+def test_oauth_login(client: Client, state_token: str) -> None:
+    res = client.get("/v1/oauth_login", dict(state=state_token))
     assert res.status_code == 302
     assert (
         res["Location"]
-        == "https://github.com/login/oauth/authorize?client_id=Iv1.111FAKECLIENTID111&redirect_uri=http://testserver/v1/oauth_callback&state=8d34e38a-91a2-426e-9276-a98c06bd3c2f"
+        == f"https://github.com/login/oauth/authorize?client_id=Iv1.111FAKECLIENTID111&redirect_uri=http://testserver/v1/oauth_complete&state={state_token}"
     )
 
 
@@ -143,17 +134,22 @@ def successful_responses(mocked_responses: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_oauth_callback_success_new_account(
+def test_oauth_complete_success_new_account(
     client: Client, state_token: str, successful_responses: object
 ) -> None:
 
     assert User.objects.count() == 0
-    res = client.get(
-        f"/v1/oauth_callback?state={state_token}&code=D86BE2B3F3C74ACB91D3DF7B649F40BB"
+    res = client.post(
+        "/v1/oauth_complete",
+        dict(
+            serverState=state_token,
+            clientState=state_token,
+            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        ),
     )
-    assert res.status_code == 302
+    assert res.status_code == 200
 
-    login_result = get_result(res)
+    login_result = res.json()
     assert login_result["ok"] is True
     assert User.objects.count() == 1
     user = User.objects.get()
@@ -163,17 +159,22 @@ def test_oauth_callback_success_new_account(
 
 
 @pytest.mark.django_db
-def test_oauth_callback_success_existing_account(
+def test_oauth_complete_success_existing_account(
     client: Client, user: User, successful_responses: object, state_token: str
 ) -> None:
     assert User.objects.count() == 1
 
-    res = client.get(
-        f"/v1/oauth_callback?state={state_token}&code=D86BE2B3F3C74ACB91D3DF7B649F40BB"
+    res = client.post(
+        "/v1/oauth_complete",
+        dict(
+            serverState=state_token,
+            clientState=state_token,
+            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        ),
     )
-    assert res.status_code == 302
+    assert res.status_code == 200
 
-    login_result = get_result(res)
+    login_result = res.json()
     assert login_result["ok"] is True
     assert User.objects.count() == 1
     new_user = User.objects.get()
@@ -183,56 +184,43 @@ def test_oauth_callback_success_existing_account(
 
 
 @pytest.mark.skip
-def test_oauth_callback_cookie_session_mismatch(client: Client) -> None:
+def test_oauth_complete_cookie_session_mismatch(client: Client) -> None:
     assert False
 
 
 @pytest.mark.skip
-def test_oauth_callback_fail_to_fetch_access_token(client: Client) -> None:
+def test_oauth_complete_fail_to_fetch_access_token(client: Client) -> None:
     assert False
 
 
 @pytest.mark.skip
-def test_oauth_callback_fetch_access_token_qs_res_error(client: Client) -> None:
+def test_oauth_complete_fetch_access_token_qs_res_error(client: Client) -> None:
     assert False
 
 
 @pytest.mark.skip
-def test_oauth_callback_fetch_access_token_res_error(client: Client) -> None:
+def test_oauth_complete_fetch_access_token_res_error(client: Client) -> None:
     assert False
 
 
 @pytest.mark.skip
-def test_oauth_callback_fail_fetch_github_account_info(client: Client) -> None:
+def test_oauth_complete_fail_fetch_github_account_info(client: Client) -> None:
     assert False
-
-
-def get_result(res: HttpResponse) -> dict:
-    return cast(
-        dict,
-        json.loads(
-            base64.b32decode(
-                dict(parse_qsl(urlsplit(res["Location"]).query))["login_result"]
-            ).decode()
-        ),
-    )
 
 
 @pytest.fixture
 def state_token(client: Client) -> str:
-    state_token = "71DDCF95-84FC-4A5F-BCBF-BEB5FCCBDEA8"
-    session = client.session
-    session["oauth_login_state"] = state_token
-    session.save()
-    return state_token
+    return "71DDCF95-84FC-4A5F-BCBF-BEB5FCCBDEA8"
 
 
 @pytest.mark.django_db
-def test_oauth_callback_missing_code(client: Client, state_token: str) -> None:
-    res = client.get(f"/v1/oauth_callback?state={state_token}")
-    assert res.status_code == 302
+def test_oauth_complete_missing_code(client: Client, state_token: str) -> None:
+    res = client.post(
+        "/v1/oauth_complete", dict(serverState=state_token, clientState=state_token,),
+    )
+    assert res.status_code == 200
 
-    login_result = get_result(res)
+    login_result = res.json()
     assert login_result["ok"] is False
     assert login_result["error"] == "OAuthMissingCode"
     assert login_result["error_description"] == "Payload should have a code parameter."
