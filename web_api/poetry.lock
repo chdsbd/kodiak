@@ -41,7 +41,7 @@ python = "<3.8"
 version = ">=1.4.0,<1.5"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Atomic file writes."
 marker = "sys_platform == \"win32\""
 name = "atomicwrites"
@@ -50,7 +50,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.3.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Classes Without Boilerplate"
 name = "attrs"
 optional = false
@@ -107,7 +107,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "7.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Cross-platform colored terminal text."
 marker = "sys_platform == \"win32\""
 name = "colorama"
@@ -186,7 +186,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.8"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Read metadata from Python packages"
 marker = "python_version < \"3.8\""
 name = "importlib-metadata"
@@ -262,7 +262,7 @@ python-versions = "*"
 version = "0.6.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "More routines for operating on iterables, beyond itertools"
 name = "more-itertools"
 optional = false
@@ -307,7 +307,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "3.1.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Core utilities for Python packages"
 name = "packaging"
 optional = false
@@ -355,7 +355,7 @@ python-versions = "*"
 version = "0.7.5"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "plugin and hook calling mechanisms for python"
 name = "pluggy"
 optional = false
@@ -396,7 +396,7 @@ python-versions = "*"
 version = "0.6.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
 name = "py"
 optional = false
@@ -450,7 +450,7 @@ isort = ">=4.2.5,<5"
 mccabe = ">=0.6,<0.7"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python parsing module"
 name = "pyparsing"
 optional = false
@@ -458,7 +458,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "2.4.6"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "pytest: simple powerful testing with Python"
 name = "pytest"
 optional = false
@@ -489,6 +489,28 @@ version = "3.8.0"
 
 [package.dependencies]
 pytest = ">=3.6"
+
+[[package]]
+category = "main"
+description = "py.test plugin that allows you to add environment variables."
+name = "pytest-env"
+optional = false
+python-versions = "*"
+version = "0.6.2"
+
+[package.dependencies]
+pytest = ">=2.6.0"
+
+[[package]]
+category = "main"
+description = "Thin-wrapper around the mock package for easier use with py.test"
+name = "pytest-mock"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.0.0"
+
+[package.dependencies]
+pytest = ">=2.7"
 
 [[package]]
 category = "main"
@@ -553,7 +575,7 @@ requests = ">=2.0"
 six = "*"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
 optional = false
@@ -614,7 +636,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 version = "1.25.8"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Measures number of Terminal column cells of wide-character codes"
 name = "wcwidth"
 optional = false
@@ -642,7 +664,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
 name = "zipp"
@@ -651,7 +673,7 @@ python-versions = ">=3.6"
 version = "2.1.0"
 
 [metadata]
-content-hash = "5262cc62d1b59fed09edc70c1020bd31d3aae7657b90228a5a83a5c61f9161ca"
+content-hash = "a9a7d4eb0e453548a9283325d2774cc604b99a6741480b188b469054bcbd68ee"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -704,6 +726,8 @@ pylint = ["3db5468ad013380e987410a8d6956226963aed94ecb5f9d3a28acca6d9ac36cd", "8
 pyparsing = ["4c830582a84fb022400b85429791bc551f1f4871c33f23e44f353119e92f969f", "c342dccb5250c08d45fd6f8b4a559613ca603b57498511740e65cd11a2e7dcec"]
 pytest = ["0d5fe9189a148acc3c3eb2ac8e1ac0742cb7618c084f3d228baaec0c254b318d", "ff615c761e25eb25df19edddc0b970302d2a9091fbce0e7213298d85fb61fef6"]
 pytest-django = ["456fa6854d04ee625d6bbb8b38ca2259e7040a6f93333bfe8bc8159b7e987203", "489b904f695f9fb880ce591cf5a4979880afb467763b1f180c07574554bdfd26"]
+pytest-env = ["7e94956aef7f2764f3c147d216ce066bf6c42948bb9e293169b1b1c880a580c2"]
+pytest-mock = ["b35eb281e93aafed138db25c8772b95d3756108b601947f89af503f8c629413f", "cb67402d87d5f53c579263d37971a164743dc33c159dfb4fb4a86f37c5552307"]
 python-dotenv = ["440c7c23d53b7d352f9c94d6f70860242c2f071cf5c029dd661ccb22d64ae42b", "f254bfd0c970d64ccbb6c9ebef3667ab301a71473569c991253a481f1c98dddc"]
 pytz = ["1c557d7d0e871de1f5ccd5833f60fb2550652da6be2693c1e02300743d21500d", "b02c06db6cf09c12dd25137e563b31700d3b80fcc4ad23abb7a315f2789819be"]
 regex = ["07b39bf943d3d2fe63d46281d8504f8df0ff3fe4c57e13d1656737950e53e525", "0932941cdfb3afcbc26cc3bcf7c3f3d73d5a9b9c56955d432dbf8bbc147d4c5b", "0e182d2f097ea8549a249040922fa2b92ae28be4be4895933e369a525ba36576", "10671601ee06cf4dc1bc0b4805309040bb34c9af423c12c379c83d7895622bb5", "23e2c2c0ff50f44877f64780b815b8fd2e003cda9ce817a7fd00dea5600c84a0", "26ff99c980f53b3191d8931b199b29d6787c059f2e029b2b0c694343b1708c35", "27429b8d74ba683484a06b260b7bb00f312e7c757792628ea251afdbf1434003", "3e77409b678b21a056415da3a56abfd7c3ad03da71f3051bbcdb68cf44d3c34d", "4e8f02d3d72ca94efc8396f8036c0d3bcc812aefc28ec70f35bb888c74a25161", "4eae742636aec40cf7ab98171ab9400393360b97e8f9da67b1867a9ee0889b26", "6a6ae17bf8f2d82d1e8858a47757ce389b880083c4ff2498dba17c56e6c103b9", "6a6ba91b94427cd49cd27764679024b14a96874e0dc638ae6bdd4b1a3ce97be1", "7bcd322935377abcc79bfe5b63c44abd0b29387f267791d566bbb566edfdd146", "98b8ed7bb2155e2cbb8b76f627b2fd12cf4b22ab6e14873e8641f266e0fb6d8f", "bd25bb7980917e4e70ccccd7e3b5740614f1c408a642c245019cff9d7d1b6149", "d0f424328f9822b0323b3b6f2e4b9c90960b24743d220763c7f07071e0778351", "d58e4606da2a41659c84baeb3cfa2e4c87a74cec89a1e7c56bee4b956f9d7461", "e3cd21cc2840ca67de0bbe4071f79f031c81418deb544ceda93ad75ca1ee9f7b", "e6c02171d62ed6972ca8631f6f34fa3281d51db8b326ee397b9c83093a6b7242", "e7c7661f7276507bce416eaae22040fd91ca471b5b33c13f8ff21137ed6f248c", "ecc6de77df3ef68fee966bb8cb4e067e84d4d1f397d0ef6fce46913663540d77"]
