@@ -24,7 +24,6 @@ function jsonToFormData(data: Object) {
   return form
 }
 
-
 interface IOAuthCompleteResponseError {
   readonly ok: false
   readonly error: string
@@ -49,7 +48,7 @@ export const Current: World = {
       try {
         const res = await httpClient.post<IOAuthCompleteResponse>(
           "/v1/oauth_complete",
-          buildFormPayload(args),
+          jsonToFormData(args),
         )
         return res.data
       } catch (e) {
@@ -134,11 +133,6 @@ export const Current: World = {
     },
     getAccounts: async () => {
       await sleep(400)
-      return (await axios
-        .get("http://localhost.kodiakhq.com:8000/v1/installations", {
-          withCredentials: true,
-        })
-        .catch(err => console.error(err))) as any
       return [
         {
           name: "bernard",
