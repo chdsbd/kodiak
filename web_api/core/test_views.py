@@ -161,6 +161,7 @@ def test_oauth_callback_success_new_account(
     assert user.github_login == "octocat"
     assert user.github_access_token == "D6B5A3B57D32498DB00845A99137D3E2"
 
+
 @pytest.mark.django_db
 def test_oauth_callback_success_existing_account(client: Client, user: User) -> None:
     assert User.objects.count() == 1
