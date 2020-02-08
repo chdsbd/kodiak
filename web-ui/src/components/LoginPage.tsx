@@ -1,5 +1,6 @@
 import React from "react"
-import { docsUrl, helpUrl, installUrl, loginUrl } from "../settings"
+import { docsUrl, helpUrl, installUrl } from "../settings"
+import { startLogin } from "../auth"
 
 export function LoginPage() {
   return (
@@ -18,9 +19,9 @@ export function LoginPage() {
         </div>
 
         <div>
-          <a href={loginUrl} className="gh-install-btn">
+          <button onClick={startLogin} className="gh-install-btn">
             Login with GitHub
-          </a>
+          </button>
         </div>
 
         <p className="mb-0">

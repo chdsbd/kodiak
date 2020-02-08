@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
 import { Container } from "react-bootstrap"
 import { UsageBillingPage } from "./UsageBillingPage"
 import { LoginPage } from "./LoginPage"
+import { OAuthPage } from "./OAuthPage"
 import { AccountsPage } from "./AccountsPage"
 import { SettingsPage } from "./SettingsPage"
 import { ActivityPage } from "./ActivityPage"
@@ -30,6 +31,11 @@ export default function App() {
         <Route path="/login">
           <Container className="h-100">
             <LoginPage />
+          </Container>
+        </Route>
+        <Route path="/oauth">
+          <Container className="h-100">
+            <OAuthPage />
           </Container>
         </Route>
         <Route path="/accounts">

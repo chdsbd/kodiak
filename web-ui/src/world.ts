@@ -1,12 +1,66 @@
 import { sleep } from "./sleep"
 import { Api } from "./api"
+import { API_ROOT } from "./settings"
+import axios from "axios"
 
 interface World {
   api: Api
 }
 
+const httpClient = axios.create({
+  baseURL: API_ROOT,
+})
+
+/** Convert JSON to FormData
+
+Our Django app only accepts multi-part and url encoded form data. JSON is not
+supported.
+*/
+function jsonToFormData(data: Object) {
+  const form = new FormData()
+  Object.entries(data).forEach(([k, v]) => {
+    form.set(k, v)
+  })
+  return form
+}
+
+
+interface IOAuthCompleteResponseError {
+  readonly ok: false
+  readonly error: string
+  readonly error_description: string
+}
+interface IOAuthCompleteResponseSuccess {
+  readonly ok: true
+}
+type IOAuthCompleteResponse =
+  | IOAuthCompleteResponseSuccess
+  | IOAuthCompleteResponseError
+
+interface ILoginUserArgs {
+  code: string
+  serverState: string
+  clientState: string
+}
+
 export const Current: World = {
   api: {
+    loginUser: async (args: ILoginUserArgs) => {
+      try {
+        const res = await httpClient.post<IOAuthCompleteResponse>(
+          "/v1/oauth_complete",
+          buildFormPayload(args),
+        )
+        return res.data
+      } catch (e) {
+        //pass
+      }
+      return {
+        ok: false,
+        error: "Server Error",
+        error_description: "problem contacting backend services.",
+      }
+    },
     getUsageBilling: async () => {
       await sleep(400)
       return {
@@ -80,6 +134,11 @@ export const Current: World = {
     },
     getAccounts: async () => {
       await sleep(400)
+      return (await axios
+        .get("http://localhost.kodiakhq.com:8000/v1/installations", {
+          withCredentials: true,
+        })
+        .catch(err => console.error(err))) as any
       return [
         {
           name: "bernard",

@@ -1,3 +1,13 @@
+interface ILoginUserResponseError {
+  readonly ok: false
+  readonly error: string
+  readonly error_description: string
+}
+interface ILoginUserResponseSucess {
+  readonly ok: true
+}
+type ILoginUserResponse = ILoginUserResponseSucess | ILoginUserResponseError
+
 interface IUsageBillingPageApiResponse {
   readonly seats: {
     readonly current: number
@@ -57,7 +67,14 @@ interface ICurrentAccountApiResponse {
   }>
 }
 
+interface ILoginUserArgs {
+  code: string
+  serverState: string
+  clientState: string
+}
+
 export interface Api {
+  loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   getUsageBilling: () => Promise<IUsageBillingPageApiResponse>
   getSettings: () => Promise<ISettingsApiResponse>
   updateSettings: (_: ISettingsUpdate) => Promise<ISettingsApiResponse>
