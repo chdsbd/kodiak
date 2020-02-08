@@ -110,8 +110,8 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             error_description=request.GET.get("error_description"),
         )
 
-    access_token = access_res_data.get("access_res_data")
-    if not access_res_data:
+    access_token = access_res_data.get("access_token")
+    if not access_token:
         return Error(
             error="OAuthMissingAccessToken",
             error_description="OAuth missing access token.",
@@ -141,7 +141,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
         existing_user.github_access_token = access_token
         user = existing_user
     else:
-        User.objects.create(
+        user = User.objects.create(
             github_id=github_account_id,
             github_login=github_login,
             github_access_token=access_token,
