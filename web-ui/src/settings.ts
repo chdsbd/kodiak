@@ -1,5 +1,5 @@
 export const API_ROOT =
-  process.env.KODIAK_API_ROOT || "https://api.kodiakhq.com"
+  process.env.REACT_APP_KODIAK_API_ROOT || "https://api.kodiakhq.com"
 export const modifyPlanLink = "https://github.com/marketplace/kodiakhq"
 export const installUrl = "https://github.com/marketplace/kodiakhq"
 export const docsUrl = "https://kodiakhq.com/docs/quickstart"
