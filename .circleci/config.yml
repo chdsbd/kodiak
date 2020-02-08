@@ -1,7 +1,7 @@
 version: 2
 
 jobs:
-  test_api:
+  bot_test:
     docker:
       - image: python:3.7
     steps:
@@ -9,9 +9,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+            - bot-v1-{{ .Branch }}-
+            - bot-v1-
       - run:
           name: install dependencies
           working_directory: bot
@@ -25,13 +25,13 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
           working_directory: bot
           command: ./s/test
 
-  lint_api:
+  bot_lint:
     docker:
       - image: python:3.7
     steps:
@@ -39,9 +39,9 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+            - bot-v1-{{ .Branch }}-
+            - bot-v1-
       - run:
           name: install dependencies
           working_directory: bot
@@ -55,13 +55,25 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
           working_directory: bot
           command: ./s/lint
 
-  docs_site_typecheck:
+  # https://circleci.com/docs/2.0/building-docker-images/
+  bot_build_container:
+    docker:
+      - image: docker:18.05.0-ce
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build container
+          working_directory: bot
+          command: ./s/build
+
+  docs_typecheck:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -86,7 +98,7 @@ jobs:
           command: |
             yarn typecheck
 
-  docs_site_fmt:
+  docs_fmt:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -109,7 +121,7 @@ jobs:
           working_directory: docs
           command: yarn fmt-ci
 
-  docs_site_build:
+  docs_build:
     docker:
       - image: circleci/node:12.4.0
     steps:
@@ -132,8 +144,71 @@ jobs:
           working_directory: docs
           command: yarn build
 
+  web_api_test:
+    docker:
+      - image: python:3.7
+      - image: circleci/postgres:12-ram
+    environment:
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+            - web_api-v1-{{ .Branch }}-
+            - web_api-v1-
+      - run:
+          name: install dependencies
+          working_directory: web_api
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./web_api/.mypy_cache
+            - /root/.cache/
+          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: run tests
+          working_directory: web_api
+          command: ./s/test
+
+  web_api_lint:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+            - web_api-v1-{{ .Branch }}-
+            - web_api-v1-
+      - run:
+          name: install dependencies
+          working_directory: web_api
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./web_api/.mypy_cache
+            - /root/.cache/
+          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: run lints
+          working_directory: web_api
+          command: ./s/lint
+
   # https://circleci.com/docs/2.0/building-docker-images/
-  build_container:
+  web_api_build_container:
     docker:
       - image: docker:18.05.0-ce
     steps:
@@ -141,19 +216,31 @@ jobs:
       - setup_remote_docker
       - run:
           name: build container
-          working_directory: bot
+          working_directory: web_api
           command: ./s/build
 
 workflows:
   version: 2
-  test:
+  bot:
     jobs:
-      - test_api
-      - lint_api
-      - docs_site_typecheck
-      - docs_site_fmt
-      - docs_site_build
-      - build_container:
+      - bot_test
+      - bot_lint
+      - bot_build_container:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^v.*/
+  docs:
+    jobs:
+      - docs_typecheck
+      - docs_fmt
+      - docs_build
+  web_api:
+    jobs:
+      - web_api_test
+      - web_api_lint
+      - web_api_build_container:
           filters:
             branches:
               only: master
