@@ -3,6 +3,7 @@ from typing import List
 
 import dj_database_url
 from dotenv import load_dotenv
+from yarl import URL
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.AuthenticationMiddleware",
+    "core.middleware.CORSMiddleware",
 ]
 
 ROOT_URLCONF = "web_api.urls"
@@ -64,7 +66,12 @@ USE_TZ = True
 # we terminate SSL at the proxy server
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# improve security for sessions to prevent interception
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+
 # Configuration for App
 KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
 KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
-KODIAK_WEB_AUTHED_LANDING_PATH = os.environ["KODIAK_WEB_AUTHED_LANDING_PATH"]
+KODIAK_WEB_APP_URL = os.environ["KODIAK_WEB_APP_URL"]
+KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
