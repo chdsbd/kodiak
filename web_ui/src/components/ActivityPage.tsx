@@ -44,7 +44,7 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   if (data.status === "loading") {
     return (
       <ActivityPageContainer>
-        <Spinner></Spinner>
+        <Spinner />
       </ActivityPageContainer>
     )
   }

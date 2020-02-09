@@ -81,7 +81,7 @@ function SettingsPageInner({ data, updateSettings }: ISettingsPageInnerProps) {
               type="checkbox"
               onClick={handleSettingsChange}
               checked={data.data.notifyOnExceedBilledSeats}
-              className="mr-2"></input>
+              className="mr-2" />
             <p className="mb-0">notify me when I’ve exceeded my billed seats</p>
           </label>
         </div>

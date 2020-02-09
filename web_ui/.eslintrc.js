@@ -16,11 +16,15 @@ module.exports = {
   rules: {
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "error",
+    "react/self-closing-comp": ["error", {
+      "component": true,
+      "html": true
+    }],
     "import/no-duplicates": "error",
     'no-unneeded-ternary': ['error', { defaultAssignment: false }],
     '@typescript-eslint/no-non-null-assertion': 'error',
     'init-declarations': ['error', 'always'],
     'react/jsx-fragments': 'error',
-    'no-lonely-if': 'error',
+    'no-lonely-if': 'error'
   },
 }

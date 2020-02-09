@@ -29,7 +29,7 @@ function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
   // TODO(sbdchd): types are broken for this component. Probably better to just
   // write the component ourselves.
   const BootstrapDropdownToggle = Dropdown.Toggle as any
-  return <BootstrapDropdownToggle {...props}></BootstrapDropdownToggle>
+  return <BootstrapDropdownToggle {...props} />
 }
 
 interface IProfileImgProps {
@@ -50,7 +50,7 @@ function ProfileImg({
         url={profileImgUrl}
         alt="org profile"
         size={size}
-        className="mr-2"></Image>
+        className="mr-2" />
       <span className="h6 some-cls">{name}</span>
     </div>
   )
@@ -129,14 +129,14 @@ function SkeletonProfileImage() {
           width: 30,
           backgroundColor: "lightgray",
         }}
-        className="mr-2 rounded"></div>
+        className="mr-2 rounded" />
       <span
         className="h4 mb-0 rounded"
         style={{
           width: 75,
           height: 30,
           backgroundColor: "lightgray",
-        }}></span>
+        }} />
     </div>
   )
 }
@@ -196,7 +196,7 @@ function SideBarNavContainer({
               <span>Settings</span>
             </>
           </SideBarNavLink>
-          <hr></hr>
+          <hr />
 
           <SideBarNavLink
             to={docsUrl}
@@ -288,7 +288,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
             url={accounts.data.org.profileImgUrl}
             alt="kodiak avatar"
             size={30}
-            className="mr-2"></Image>
+            className="mr-2" />
           <span className="h4 mb-0">{accounts.data.org.name}</span>
         </div>
       }
@@ -301,7 +301,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
                   url={x.profileImgUrl}
                   alt={x.name}
                   size={30}
-                  className="mr-3"></Image>
+                  className="mr-3" />
                 {x.name}
               </>
             </Dropdown.Item>

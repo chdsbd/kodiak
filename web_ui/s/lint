@@ -9,6 +9,7 @@ main() {
     yarn eslint '**/*.{ts,tsx,js,jsx}' --fix
     yarn prettier --write '**/*.{js,jsx,ts,tsx,md,yml,json}'
   fi
+  yarn tslint --project .
   yarn tsc --noEmit
 }
 
