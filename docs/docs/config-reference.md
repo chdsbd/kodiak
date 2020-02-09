@@ -248,6 +248,20 @@ When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 
+### `approve.auto_approve_usernames`
+
+- **type:** `string[]`
+- **default:** `[]`
+- **options:** List of GitHub usernames
+
+If a PR is opened by a user with a username in the `approve.auto_approve_usernames` list, Kodiak will automatically add an approval to the PR.
+
+If Kodiak's review is dismissed, it will add a review again.
+
+This setting is useful when the "Required approving reviews" GitHub Branch Protection setting is configured and dependency upgrade bots like dependabot, greenkeeper, etc, run on the repository. When these bots open a PR, Kodiak can automatically add a review so dependency upgrade PRs can be automatically merged.
+
+See the "[Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot)" recipe for an example of this feature in action.
+
 ## full examples
 
 ### minimal

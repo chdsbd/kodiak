@@ -1,0 +1,32 @@
+# configuration with all settings changed from defaults
+version = 1 # required
+app_id = 12345 # default: None
+
+[merge]
+automerge_label = "mergeit!" # default: "automerge"
+require_automerge_label = false # default: true
+blacklist_title_regex = "" # default: "^WIP:.*"
+blacklist_labels = ["wip", "block-merge"] # default: []
+method = "squash" # default: "merge"
+delete_branch_on_merge = true # default: false
+block_on_reviews_requested = true # default: false
+notify_on_conflict = false # default: true
+optimistic_updates = false # default: true
+dont_wait_on_status_checks = ["ci/circleci: deploy"] # default: []
+update_branch_immediately = true
+prioritize_ready_to_merge = true
+do_not_merge = true
+
+[merge.message]
+title = "pull_request_title" # default: "github_default"
+body = "pull_request_body" # default: "github_default"
+include_pr_number = false # default: true
+body_type = "plain_text" # default: "markdown"
+strip_html_comments = true # default: false
+
+[update]
+always = true
+require_automerge_label = false
+
+[approve]
+auto_approve_usernames = ["dependabot"]

@@ -1,0 +1,31 @@
+# configuration with all defaults set
+version = 1 # required
+
+[merge]
+automerge_label = "automerge"
+require_automerge_label = true
+blacklist_title_regex = "^WIP:.*"
+blacklist_labels = []
+method = "merge"
+delete_branch_on_merge = false
+block_on_reviews_requested = false
+notify_on_conflict = true
+optimistic_updates = true
+dont_wait_on_status_checks = []
+update_branch_immediately = false
+prioritize_ready_to_merge = false
+do_not_merge = false
+
+[merge.message]
+title = "github_default"
+body = "github_default"
+include_pr_number = true
+body_type = "markdown"
+strip_html_comments = false
+
+[update]
+always = false
+require_automerge_label = true
+
+[approve]
+auto_approve_usernames = []

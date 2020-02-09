@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "kodiak"
+version = "0.1.0"
+description = ""
+authors = ["Christopher Dignam <chris@dignam.xyz>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+uvicorn = "^0.7.0"
+toml = "^0.10.0"
+requests-async = "^0.4.1"
+PyJWT = "^1.7"
+cryptography = "2.8"
+structlog = "^19.1"
+colorama = "^0.4.1"
+ujson = "^1.35"
+arrow = "^0.13.2"
+databases = "^0.2.2"
+asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git"}
+inflection = "^0.3.1"
+markdown-html-finder = "^0.2.0"
+markupsafe = "^1.1"
+fastapi = "^0.47.0"
+sentry-sdk = "^0.10.2"
+requests = "^2.22"
+rure = "^0.2.2"
+
+[tool.poetry.scripts]
+kodiak = 'kodiak.cli:cli'
+
+[tool.poetry.dev-dependencies]
+pytest = "^4.4"
+black = "^19.3b0"
+mypy = "^0.761.0"
+ipdb = "^0.12.0"
+pytest-asyncio = "^0.10.0"
+pytest-mock = "^1.10"
+typing_extensions = "^3.7"
+pylint = "^2.3"
+flake8 = "^3.7"
+flake8-pie = "^0.2.1"
+isort = "^4.3"
+
+[tool.poetry.plugins."pytest11"]
+"pytest_plugin" = "pytest_plugin.plugin"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

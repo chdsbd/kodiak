@@ -17,6 +17,20 @@ always = true # default: false
 require_automerge_label = false # default: true
 ```
 
+## Automated dependency updates with Dependabot
+
+While Dependabot can [automerge dependency updates](https://dependabot.com/docs/config-file/#automerged_updates), this functionality will not work when "Required approving reviews" is configured via GitHub Branch Protection because the PR needs an approving review.
+
+Kodiak can help us here by automatically adding an approval to all Dependabot PRs, which will allow Dependabot PRs to be automatically merged without human intervention.
+
+```
+# .kodiak.toml
+version = 1
+
+[approve]
+auto_approve_usernames = ["dependabot-preview[bot]"]
+```
+
 ## The Favourite
 
 This is the config use by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
