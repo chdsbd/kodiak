@@ -19,8 +19,18 @@ import { WebData } from "../webdata"
 import { useApi } from "../useApi"
 import { Current } from "../world"
 
-// TODO(sbdchd): before merge, the bootstrap types are incorrect D;
-const DropdownToggle = Dropdown.Toggle as any
+interface IDropdownToggleProps<T> {
+  readonly id: string
+  readonly children: React.ReactNode
+  readonly as: React.FunctionComponent<T>
+}
+
+function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
+  // TODO(sbdchd): types are broken for this component. Probably better to just
+  // write the component ourselves.
+  const BootstrapDropdownToggle = Dropdown.Toggle as any
+  return <BootstrapDropdownToggle {...props}></BootstrapDropdownToggle>
+}
 
 interface IProfileImgProps {
   readonly profileImgUrl: string
@@ -158,7 +168,7 @@ function SideBarNavContainer({
       <div>
         <div>
           <Dropdown as={ButtonGroup}>
-            <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
+            <DropdownToggle id="org-dropdown" as={CustomToggle}>
               {orgContent}
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
@@ -224,7 +234,7 @@ function SideBarNavContainer({
 
       <div>
         <Dropdown as={ButtonGroup}>
-          <DropdownToggle id="dropdown-custom-1" as={CustomToggle}>
+          <DropdownToggle id="user-dropdown" as={CustomToggle}>
             {userContent}
           </DropdownToggle>
           <Dropdown.Menu className="super-colors shadow-sm">
