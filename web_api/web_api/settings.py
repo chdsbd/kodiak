@@ -1,9 +1,9 @@
 import os
 from typing import List
-from urllib.parse import urljoin, urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
+from yarl import URL
 
 load_dotenv()
 
@@ -63,12 +63,15 @@ USE_L10N = True
 
 USE_TZ = True
 
+# we terminate SSL at the proxy server
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# improve security for sessions to prevent interception
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+
 # Configuration for App
 KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
 KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
 KODIAK_WEB_APP_URL = os.environ["KODIAK_WEB_APP_URL"]
-KODIAK_WEB_AUTHED_LANDING_PATH = urljoin(KODIAK_WEB_APP_URL, "/oauth")
-
-# we terminate SSL at the proxy server
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SESSION_COOKIE_DOMAIN = urlparse(KODIAK_WEB_AUTHED_LANDING_PATH).netloc
+KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
