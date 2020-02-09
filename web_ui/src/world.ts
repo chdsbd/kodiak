@@ -12,13 +12,14 @@ const httpClient = axios.create({
 })
 
 /** Convert JSON to FormData
-
-Our Django app only accepts multi-part and url encoded form data. JSON is not
-supported.
-*/
-function jsonToFormData(data: Object) {
+ *
+ * Our Django app only accepts multi-part and url encoded form data. JSON is not
+ * supported.
+ */
+function jsonToFormData(data: object) {
   const form = new FormData()
   Object.entries(data).forEach(([k, v]) => {
+    // tslint:disable-next-line no-unsafe-any
     form.set(k, v)
   })
   return form
@@ -52,7 +53,7 @@ export const Current: World = {
         )
         return res.data
       } catch (e) {
-        //pass
+        // pass
       }
       return {
         ok: false,

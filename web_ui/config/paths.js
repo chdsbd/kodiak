@@ -5,11 +5,20 @@ const url = require("url")
 // Make sure any symlinks in the project folder are resolved:
 // https://github.com/facebook/create-react-app/issues/637
 const appDirectory = fs.realpathSync(process.cwd())
+/** @param {string} relativePath */
 const resolveApp = relativePath => path.resolve(appDirectory, relativePath)
 
 const envPublicUrl = process.env.PUBLIC_URL
 
+/**
+ * @param {string | null} inputPath
+ * @param {boolean} needsSlash
+ * @returns {string}
+ */
 function ensureSlash(inputPath, needsSlash) {
+  if (inputPath == null) {
+    return ""
+  }
   const hasSlash = inputPath.endsWith("/")
   if (hasSlash && !needsSlash) {
     return inputPath.substr(0, inputPath.length - 1)
@@ -20,6 +29,7 @@ function ensureSlash(inputPath, needsSlash) {
   }
 }
 
+/** @param {string} appPackageJson */
 const getPublicUrl = appPackageJson =>
   envPublicUrl || require(appPackageJson).homepage
 
@@ -29,6 +39,9 @@ const getPublicUrl = appPackageJson =>
 // single-page apps that may serve index.html for nested URLs like /todos/42.
 // We can't use a relative path in HTML because we don't want to load something
 // like /todos/42/static/js/bundle.7289d.js. We have to know the root.
+/** @param {string} appPackageJson
+ *  @returns {string}
+ */
 function getServedPath(appPackageJson) {
   const publicUrl = getPublicUrl(appPackageJson)
   const servedUrl =
@@ -51,6 +64,10 @@ const moduleFileExtensions = [
 ]
 
 // Resolve file paths in the same order as webpack
+/**
+ * @param {(_: string) => string} resolveFn
+ * @param {string} filePath
+ */
 const resolveModule = (resolveFn, filePath) => {
   const extension = moduleFileExtensions.find(extension =>
     fs.existsSync(resolveFn(`${filePath}.${extension}`)),

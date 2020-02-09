@@ -222,7 +222,8 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                       url={u.profileImgUrl}
                       alt="user profile"
                       size={30}
-                      className="mr-3" />
+                      className="mr-3"
+                    />
                     {u.name}
                   </td>
                   <td>{u.interactions}</td>

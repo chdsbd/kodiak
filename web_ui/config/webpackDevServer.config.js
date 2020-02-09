@@ -8,6 +8,9 @@ const fs = require("fs")
 const protocol = process.env.HTTPS === "true" ? "https" : "http"
 const host = process.env.HOST || "0.0.0.0"
 
+/** @param {{}} proxy
+ *  @param {{}} allowedHost
+ */
 module.exports = function(proxy, allowedHost) {
   return {
     // WebpackDevServer 2.4.3 introduced a security fix that prevents remote
@@ -86,6 +89,9 @@ module.exports = function(proxy, allowedHost) {
     },
     public: allowedHost,
     proxy,
+    /** @param {any} app
+     *  @param {any} server
+     */
     before(app, server) {
       if (fs.existsSync(paths.proxySetup)) {
         // This registers user provided middleware for proxy reasons

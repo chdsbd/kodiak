@@ -28,7 +28,7 @@ function useSettingsData(): {
   }, [])
 
   function updateSettings(data: ISettingsData) {
-    setState({ status: "success", data: data })
+    setState({ status: "success", data })
     Current.api
       .updateSettings(data)
       .then(res => {
@@ -66,7 +66,7 @@ function SettingsPageInner({ data, updateSettings }: ISettingsPageInnerProps) {
     )
   }
 
-  const handleSettingsChange = (e: React.MouseEvent) => {
+  const handleSettingsChange = (_e: React.MouseEvent) => {
     updateSettings({
       notifyOnExceedBilledSeats: !data.data.notifyOnExceedBilledSeats,
     })
@@ -81,7 +81,8 @@ function SettingsPageInner({ data, updateSettings }: ISettingsPageInnerProps) {
               type="checkbox"
               onClick={handleSettingsChange}
               checked={data.data.notifyOnExceedBilledSeats}
-              className="mr-2" />
+              className="mr-2"
+            />
             <p className="mb-0">notify me when I’ve exceeded my billed seats</p>
           </label>
         </div>

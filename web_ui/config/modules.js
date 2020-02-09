@@ -1,13 +1,14 @@
 const fs = require("fs")
 const path = require("path")
 const paths = require("./paths")
+// @ts-ignore
 const chalk = require("react-dev-utils/chalk")
 const resolve = require("resolve")
 
 /**
  * Get additional module paths based on the baseUrl of a compilerOptions object.
  *
- * @param {Object} options
+ * @param {{baseUrl?: string | null }} options
  */
 function getAdditionalModulePaths(options = {}) {
   const baseUrl = options.baseUrl
@@ -57,7 +58,7 @@ function getAdditionalModulePaths(options = {}) {
 /**
  * Get webpack aliases based on the baseUrl of a compilerOptions object.
  *
- * @param {*} options
+ * @param {{baseUrl?: string | null}} options
  */
 function getWebpackAliases(options = {}) {
   const baseUrl = options.baseUrl
@@ -78,7 +79,7 @@ function getWebpackAliases(options = {}) {
 /**
  * Get jest aliases based on the baseUrl of a compilerOptions object.
  *
- * @param {*} options
+ * @param {{baseUrl?: string | null}} options
  */
 function getJestAliases(options = {}) {
   const baseUrl = options.baseUrl
@@ -107,7 +108,8 @@ function getModules() {
     )
   }
 
-  let config
+  /** @type {{compilerOptions?: object }} */
+  let config = {}
 
   // If there's a tsconfig.json we assume it's a
   // TypeScript project and set up the config
@@ -123,13 +125,12 @@ function getModules() {
     config = require(paths.appJsConfig)
   }
 
-  config = config || {}
   const options = config.compilerOptions || {}
 
   const additionalModulePaths = getAdditionalModulePaths(options)
 
   return {
-    additionalModulePaths: additionalModulePaths,
+    additionalModulePaths,
     webpackAliases: getWebpackAliases(options),
     jestAliases: getJestAliases(options),
     hasTsConfig,

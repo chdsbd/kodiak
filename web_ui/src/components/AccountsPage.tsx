@@ -39,7 +39,8 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
                   url={a.profileImgUrl}
                   alt="org profile"
                   size={30}
-                  className="mr-2" />
+                  className="mr-2"
+                />
                 <span>{a.name}</span>
               </a>
             </li>

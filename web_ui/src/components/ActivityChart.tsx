@@ -30,7 +30,7 @@ const chartOptions: ChartOptions = {
     footerFontFamily: fontFamily,
     cornerRadius: 4,
     callbacks: {
-      title: (tooltipItem, data) => {
+      title: tooltipItem => {
         const label = tooltipItem[0].label
         if (label == null) {
           return "unknown"
@@ -112,7 +112,7 @@ export function ActivityChart({
   data: { labels, datasets },
 }: IActivityChartProps) {
   const barChartData = {
-    labels: labels,
+    labels,
     datasets: [
       {
         label: "Approved",

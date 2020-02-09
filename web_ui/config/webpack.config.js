@@ -2,6 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const webpack = require("webpack")
 const resolve = require("resolve")
+// @ts-ignore
 const PnpWebpackPlugin = require("pnp-webpack-plugin")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const CaseSensitivePathsPlugin = require("case-sensitive-paths-webpack-plugin")
@@ -9,6 +10,7 @@ const InlineChunkHtmlPlugin = require("react-dev-utils/InlineChunkHtmlPlugin")
 const TerserPlugin = require("terser-webpack-plugin")
 const MiniCssExtractPlugin = require("mini-css-extract-plugin")
 const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin")
+// @ts-ignore
 const safePostCssParser = require("postcss-safe-parser")
 const ManifestPlugin = require("webpack-manifest-plugin")
 const InterpolateHtmlPlugin = require("react-dev-utils/InterpolateHtmlPlugin")
@@ -19,10 +21,14 @@ const getCSSModuleLocalIdent = require("react-dev-utils/getCSSModuleLocalIdent")
 const paths = require("./paths")
 const modules = require("./modules")
 const getClientEnvironment = require("./env")
+// @ts-ignore
 const ModuleNotFoundPlugin = require("react-dev-utils/ModuleNotFoundPlugin")
+// @ts-ignore
 const ForkTsCheckerWebpackPlugin = require("react-dev-utils/ForkTsCheckerWebpackPlugin")
+// @ts-ignore
 const typescriptFormatter = require("react-dev-utils/typescriptFormatter")
 
+// @ts-ignore
 const postcssNormalize = require("postcss-normalize")
 
 const appPackageJson = require(paths.appPackageJson)
@@ -35,6 +41,7 @@ const shouldInlineRuntimeChunk = process.env.INLINE_RUNTIME_CHUNK !== "false"
 
 const imageInlineSizeLimit = parseInt(
   process.env.IMAGE_INLINE_SIZE_LIMIT || "10000",
+  10,
 )
 
 // Check if TypeScript is setup
@@ -48,6 +55,7 @@ const sassModuleRegex = /\.module\.(scss|sass)$/
 
 // This is the production and development configuration.
 // It is focused on developer experience, fast rebuilds, and a minimal bundle.
+/** @param {string} webpackEnv */
 module.exports = function(webpackEnv) {
   const isEnvDevelopment = webpackEnv === "development"
   const isEnvProduction = webpackEnv === "production"
@@ -62,7 +70,9 @@ module.exports = function(webpackEnv) {
   // In development, we always serve from the root. This makes config easier.
   const publicPath = isEnvProduction
     ? paths.servedPath
-    : isEnvDevelopment && "/"
+    : isEnvDevelopment
+    ? "/"
+    : ""
   // Some apps do not use client-side routing with pushState.
   // For these, "homepage" can be set to "." to enable relative asset paths.
   const shouldUseRelativeAssetPaths = publicPath === "./"
@@ -70,14 +80,21 @@ module.exports = function(webpackEnv) {
   // `publicUrl` is just like `publicPath`, but we will provide it to our app
   // as %PUBLIC_URL% in `index.html` and `process.env.PUBLIC_URL` in JavaScript.
   // Omit trailing slash as %PUBLIC_URL%/xyz looks better than %PUBLIC_URL%xyz.
-  const publicUrl = isEnvProduction
-    ? publicPath.slice(0, -1)
-    : isEnvDevelopment && ""
+  const publicUrl = isEnvProduction ? publicPath.slice(0, -1) : ""
   // Get environment variables to inject into our app.
   const env = getClientEnvironment(publicUrl)
 
   // common function to get style loaders
+  /**
+   * @param {{
+   *    importLoaders: number,
+   *    sourceMap: boolean
+   *    modules?: { getLocalIdent: (context: any, localIdentName: string, localName: string, options: object) => string; };
+   * }} cssOptions
+   * @param {string=} preProcessor
+   **/
   const getStyleLoaders = (cssOptions, preProcessor) => {
+    /** @type {Array<{}>} */
     const loaders = [
       isEnvDevelopment && require.resolve("style-loader"),
       isEnvProduction && {
@@ -98,7 +115,9 @@ module.exports = function(webpackEnv) {
           // https://github.com/facebook/create-react-app/issues/2677
           ident: "postcss",
           plugins: () => [
+            // @ts-ignore
             require("postcss-flexbugs-fixes"),
+            // @ts-ignore
             require("postcss-preset-env")({
               autoprefixer: {
                 flexbox: "no-2009",
@@ -181,14 +200,15 @@ module.exports = function(webpackEnv) {
         : isEnvDevelopment && "static/js/[name].chunk.js",
       // We inferred the "public path" (such as / or /my-project) from homepage.
       // We use "/" in development.
-      publicPath: publicPath,
+      publicPath,
       // Point sourcemap entries to original disk location (format as URL on Windows)
       devtoolModuleFilenameTemplate: isEnvProduction
-        ? info =>
+        ? /** @param {{absoluteResourcePath: string}} info */ info =>
             path
               .relative(paths.appSrc, info.absoluteResourcePath)
               .replace(/\\/g, "/")
         : isEnvDevelopment &&
+          /** @type {(info: {absoluteResourcePath: string}) => string} */
           (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, "/")),
       // Prevents conflicts when multiple Webpack runtimes (from different apps)
       // are used on the same page.
@@ -269,6 +289,7 @@ module.exports = function(webpackEnv) {
       // https://twitter.com/wSokra/status/969679223278505985
       // https://github.com/facebook/create-react-app/issues/5358
       runtimeChunk: {
+        /** @param {{name: string}} entrypoint */
         name: entrypoint => `runtime-${entrypoint.name}`,
       },
     },
@@ -583,9 +604,10 @@ module.exports = function(webpackEnv) {
       //   can be used to reconstruct the HTML if necessary
       new ManifestPlugin({
         fileName: "asset-manifest.json",
-        publicPath: publicPath,
+        publicPath,
         generate: (seed, files, entrypoints) => {
           const manifestFiles = files.reduce((manifest, file) => {
+            // @ts-ignore
             manifest[file.name] = file.path
             return manifest
           }, seed)
@@ -632,9 +654,11 @@ module.exports = function(webpackEnv) {
           async: isEnvDevelopment,
           useTypescriptIncrementalApi: true,
           checkSyntacticErrors: true,
+          // @ts-ignore
           resolveModuleNameModule: process.versions.pnp
             ? `${__dirname}/pnpTs.js`
             : undefined,
+          // @ts-ignore
           resolveTypeReferenceDirectiveModule: process.versions.pnp
             ? `${__dirname}/pnpTs.js`
             : undefined,

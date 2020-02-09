@@ -28,7 +28,9 @@ interface IDropdownToggleProps<T> {
 function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
   // TODO(sbdchd): types are broken for this component. Probably better to just
   // write the component ourselves.
+  // tslint:disable-next-line no-any
   const BootstrapDropdownToggle = Dropdown.Toggle as any
+  // tslint:disable-next-line no-unsafe-any
   return <BootstrapDropdownToggle {...props} />
 }
 
@@ -50,7 +52,8 @@ function ProfileImg({
         url={profileImgUrl}
         alt="org profile"
         size={size}
-        className="mr-2" />
+        className="mr-2"
+      />
       <span className="h6 some-cls">{name}</span>
     </div>
   )
@@ -129,14 +132,16 @@ function SkeletonProfileImage() {
           width: 30,
           backgroundColor: "lightgray",
         }}
-        className="mr-2 rounded" />
+        className="mr-2 rounded"
+      />
       <span
         className="h4 mb-0 rounded"
         style={{
           width: 75,
           height: 30,
           backgroundColor: "lightgray",
-        }} />
+        }}
+      />
     </div>
   )
 }
@@ -288,7 +293,8 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
             url={accounts.data.org.profileImgUrl}
             alt="kodiak avatar"
             size={30}
-            className="mr-2" />
+            className="mr-2"
+          />
           <span className="h4 mb-0">{accounts.data.org.name}</span>
         </div>
       }
@@ -301,7 +307,8 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
                   url={x.profileImgUrl}
                   alt={x.name}
                   size={30}
-                  className="mr-3" />
+                  className="mr-3"
+                />
                 {x.name}
               </>
             </Dropdown.Item>

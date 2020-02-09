@@ -13,6 +13,7 @@ process.on("unhandledRejection", err => {
 require("../config/env")
 
 const path = require("path")
+// @ts-ignore
 const chalk = require("react-dev-utils/chalk")
 const fs = require("fs-extra")
 const webpack = require("webpack")
@@ -44,6 +45,7 @@ const config = configFactory("production")
 
 // We require that you explicitly set browsers and do not fall back to
 // browserslist defaults.
+// @ts-ignore
 const { checkBrowsers } = require("react-dev-utils/browsersHelper")
 checkBrowsers(paths.appPath, isInteractive)
   .then(() => {
@@ -51,6 +53,7 @@ checkBrowsers(paths.appPath, isInteractive)
     // This lets us display how much they changed later.
     return measureFileSizesBeforeBuild(paths.appBuild)
   })
+  // @ts-ignore
   .then(previousFileSizes => {
     // Remove all content but keep the directory so that
     // if you're in it, you don't end up in Trash
@@ -61,6 +64,7 @@ checkBrowsers(paths.appPath, isInteractive)
     return build(previousFileSizes)
   })
   .then(
+    // @ts-ignore
     ({ stats, previousFileSizes, warnings }) => {
       if (warnings.length) {
         console.log(chalk.yellow("Compiled with warnings.\n"))
@@ -101,6 +105,7 @@ checkBrowsers(paths.appPath, isInteractive)
         useYarn,
       )
     },
+    // @ts-ignore
     err => {
       const tscCompileOnError = process.env.TSC_COMPILE_ON_ERROR === "true"
       if (tscCompileOnError) {
@@ -117,6 +122,7 @@ checkBrowsers(paths.appPath, isInteractive)
       }
     },
   )
+  // @ts-ignore
   .catch(err => {
     if (err && err.message) {
       console.log(err.message)
@@ -125,6 +131,7 @@ checkBrowsers(paths.appPath, isInteractive)
   })
 
 // Create the production build and print the deployment instructions.
+// @ts-ignore
 function build(previousFileSizes) {
   // We used to support resolving modules according to `NODE_PATH`.
   // This now has been deprecated in favor of jsconfig/tsconfig.json
@@ -140,10 +147,12 @@ function build(previousFileSizes) {
 
   console.log("Creating an optimized production build...")
 
+  // @ts-ignore
   const compiler = webpack(config)
   return new Promise((resolve, reject) => {
+    // @ts-ignore
     compiler.run((err, stats) => {
-      let messages
+      let messages = undefined
       if (err) {
         if (!err.message) {
           return reject(err)
@@ -154,10 +163,10 @@ function build(previousFileSizes) {
         // Add additional information for postcss errors
         if (Object.prototype.hasOwnProperty.call(err, "postcssNode")) {
           errMessage +=
-            "\nCompileError: Begins at CSS selector " +
-            err["postcssNode"].selector
+            "\nCompileError: Begins at CSS selector " + err.postcssNode.selector
         }
 
+        // @ts-ignore
         messages = formatWebpackMessages({
           errors: [errMessage],
           warnings: [],

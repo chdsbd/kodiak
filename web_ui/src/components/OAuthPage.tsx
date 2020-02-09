@@ -36,7 +36,8 @@ export function OAuthPage() {
               alt="favicon"
               height={30}
               width={30}
-              className="mr-2" />
+              className="mr-2"
+            />
             <h1 className="h2 mb-0 font-weight-bold">Kodiak</h1>
           </div>
 

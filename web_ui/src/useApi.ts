@@ -11,7 +11,7 @@ export function useApi<T>(func: () => Promise<T>): WebData<T> {
       .then(res => {
         setState({ status: "success", data: res })
       })
-      .catch(e => {
+      .catch(() => {
         setState({ status: "failure" })
       })
   }, [func])
