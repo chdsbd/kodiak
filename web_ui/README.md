@@ -9,5 +9,7 @@ yarn start
 
 yarn test
 
+s/lint
+
 yarn build
 ```
