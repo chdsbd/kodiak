@@ -1,0 +1,60 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`LoginPage snap smoke test 1`] = `
+<div>
+  <div
+    class="h-100 d-flex justify-content-center align-items-center"
+  >
+    <div
+      class="w-100 text-center d-flex justify-content-around align-items-center flex-column"
+      style="min-height: 300px;"
+    >
+      <div
+        class="d-flex justify-content-center align-items-center"
+      >
+        <img
+          alt="favicon"
+          class="mr-2"
+          height="30"
+          src="/favicon.ico"
+          width="30"
+        />
+        <h1
+          class="h2 mb-0 font-weight-bold"
+        >
+          Kodiak
+        </h1>
+      </div>
+      <div>
+        <button
+          class="gh-install-btn"
+        >
+          Login with GitHub
+        </button>
+      </div>
+      <p
+        class="mb-0"
+      >
+        <a
+          href="https://github.com/marketplace/kodiakhq"
+        >
+          Install
+        </a>
+         | 
+        <a
+          href="https://kodiakhq.com/docs/quickstart"
+        >
+          Docs
+        </a>
+         |
+         
+        <a
+          href="https://kodiakhq.com/help"
+        >
+          Help
+        </a>
+      </p>
+    </div>
+  </div>
+</div>
+`;

@@ -219,6 +219,52 @@ jobs:
           working_directory: web_api
           command: ./s/build
 
+  web_ui_lint:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-ui-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+            - web-ui-v1-{{ .Branch }}-
+            - web-ui-v1-v1-
+      - run:
+          name: install dependencies
+          working_directory: web_ui
+          command: yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./web_ui/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: lint
+          working_directory: web_ui
+          command: ./s/lint
+
+  web_ui_test:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-ui-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+            - web-ui-v1-{{ .Branch }}-
+            - web-ui-v1-v1-
+      - run:
+          name: install dependencies
+          working_directory: web_ui
+          command: yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./web_ui/node_modules
+          key: docs-site-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: test
+          working_directory: web_ui
+          command: yarn test
+
 workflows:
   version: 2
   bot:
@@ -236,6 +282,12 @@ workflows:
       - docs_typecheck
       - docs_fmt
       - docs_build
+
+  web_ui:
+    jobs:
+      - web_ui_lint
+      - web_ui_test
+
   web_api:
     jobs:
       - web_api_test

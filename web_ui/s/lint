@@ -1,0 +1,16 @@
+#!/bin/sh
+set -ex
+
+main() {
+  if [[ $CI ]]; then
+    yarn eslint '**/*.{ts,tsx,js,jsx}'
+    yarn prettier --check '**/*.{js,jsx,ts,tsx,md,yml,json}'
+  else
+    yarn eslint '**/*.{ts,tsx,js,jsx}' --fix
+    yarn prettier --write '**/*.{js,jsx,ts,tsx,md,yml,json}'
+  fi
+  yarn tslint --project .
+  yarn tsc --noEmit
+}
+
+main "$@"

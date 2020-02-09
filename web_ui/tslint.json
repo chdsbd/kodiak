@@ -1,0 +1,66 @@
+{
+  "defaultSeverity": "error",
+  "extends": ["tslint:recommended", "tslint-config-prettier"],
+  "jsRules": {
+    "no-console": false,
+    "object-literal-sort-keys": false,
+    "no-shadowed-variable": false,
+    "member-ordering": false,
+    "jsdoc-format": false,
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "allow-pascal-case",
+      "check-format",
+      "allow-leading-underscore"
+    ]
+  },
+  "rules": {
+    "no-namespace": true,
+    "no-string-literal": false,
+    "ban-types": {
+      "options": [
+        [
+          "Function",
+          "Specify args and return type. This is essentially the any type."
+        ],
+        ["Object", "Avoid using the `Object` type. Did you mean `object`?"],
+        ["Boolean", "Avoid using the `Boolean` type. Did you mean `boolean`?"],
+        ["Number", "Avoid using the `Number` type. Did you mean `number`?"],
+        ["String", "Avoid using the `String` type. Did you mean `string`?"],
+        ["Symbol", "Avoid using the `Symbol` type. Did you mean `symbol`?"]
+      ]
+    },
+    "jsdoc-format": false,
+    "object-literal-shorthand": false,
+    "no-any": true,
+    "no-unsafe-any": true,
+    "prefer-object-spread": true,
+    "ordered-imports": false,
+    "member-access": false,
+    "no-console": true,
+    "no-duplicate-switch-case": true,
+    "no-function-expression": true,
+    "no-invalid-template-strings": true,
+    "no-sparse-arrays": true,
+    "no-unnecessary-class": true,
+    "object-literal-sort-keys": false,
+    "no-shadowed-variable": false,
+    "member-ordering": false,
+    "array-type": false,
+    "no-relative-imports": false,
+    "no-require-imports": true,
+    "no-duplicate-imports": true,
+    "no-unnecessary-local-variable": true,
+    "max-classes-per-file": [true, 5],
+    "no-unnecessary-initializer": false,
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "allow-pascal-case",
+      "check-format",
+      "allow-leading-underscore"
+    ]
+  },
+  "rulesDirectory": ["node_modules/tslint-microsoft-contrib"]
+}
