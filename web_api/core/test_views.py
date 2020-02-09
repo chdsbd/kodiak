@@ -66,7 +66,7 @@ def test_oauth_login(client: Client, state_token: str) -> None:
     assert res.status_code == 302
     assert (
         res["Location"]
-        == f"https://github.com/login/oauth/authorize?client_id=Iv1.111FAKECLIENTID111&redirect_uri=https://app.kodiakhq.com/v1/oauth_complete&state={state_token}"
+        == f"https://github.com/login/oauth/authorize?client_id=Iv1.111FAKECLIENTID111&redirect_uri=https://app.kodiakhq.com/oauth&state={state_token}"
     )
 
 
