@@ -1,4 +1,7 @@
-from django.http import HttpRequest
+from typing import Callable
+
+from django.conf import settings
+from django.http import HttpRequest, HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import SimpleLazyObject
 
@@ -16,3 +19,17 @@ class AuthenticationMiddleware(MiddlewareMixin):
 
     def process_request(self, request: HttpRequest) -> None:
         request.user = SimpleLazyObject(lambda: get_user(request))
+
+
+class CORSMiddleware:
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+
+        response["Access-Control-Allow-Origin"] = settings.KODIAK_WEB_APP_URL
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Allow-Headers"] = "content-type"
+
+        return response
