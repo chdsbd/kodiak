@@ -292,4 +292,9 @@ workflows:
     jobs:
       - web_api_test
       - web_api_lint
-      - web_api_build_container
+      - web_api_build_container:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^v.*/
