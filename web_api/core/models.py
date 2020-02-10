@@ -1,7 +1,7 @@
 import uuid
 
-from django.db import models
 from django.contrib.postgres import fields as pg_fields
+from django.db import models
 
 
 class BaseModel(models.Model):

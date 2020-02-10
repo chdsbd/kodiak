@@ -1,14 +1,22 @@
+#!/usr/bin/env python3
+import json
+import logging
+import os
+import sys
+import time
+from typing import NoReturn
+
+import django
 import redis
 import zstandard as zstd
-import json
-import time
-import django
-import logging
-import sys
 
-django.setup()
+# fmt: off
 # must setup django before importing models
-from core.models import GitHubEvent
+os.environ["DJANGO_SETTINGS_MODULE"] = "web_api.settings"
+django.setup()
+# pylint: disable=wrong-import-position
+from core.models import GitHubEvent # noqa:E402 isort:skip
+# fmt: on
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
@@ -17,7 +25,7 @@ logger = logging.getLogger(__name__)
 INTERESTING_EVENTS = {"pull_request", "pull_request_review", "pull_request_comment"}
 
 
-def main():
+def main() -> NoReturn:
     """
     Pull webhook events off the queue and insert them into Postgres to calculate
     usage statistics.
@@ -26,7 +34,11 @@ def main():
     while True:
         logger.info("block for event")
 
-        _, event_compressed = r.blpop("kodiak:webhook_event")
+        res = r.blpop("kodiak:webhook_event")
+        if res is None:
+            logger.info("no event found")
+            continue
+        _, event_compressed = res
 
         logger.info("process event")
         dctx = zstd.ZstdDecompressor()
