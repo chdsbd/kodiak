@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import List, Optional, Set, cast
 
+import asyncio_redis
 import structlog
+import zstandard as zstd
 
+from kodiak import app_config as conf
 from kodiak import queries
 from kodiak.events import (
     CheckRunEvent,
@@ -174,7 +178,40 @@ async def push(push_event: PushEvent) -> None:
             )
 
 
+_redis = None
+
+
+async def get_redis() -> asyncio_redis.Connection:
+    global _redis  # pylint: disable=global-statement
+    if _redis is None:
+        _redis = await asyncio_redis.Pool.create(
+            poolsize=conf.USAGE_REPORTING_POOL_SIZE,
+            encoder=asyncio_redis.encoders.BytesEncoder(),
+        )
+    return _redis
+
+
+def compress_payload(data: dict) -> bytes:
+    cctx = zstd.ZstdCompressor()
+    return cast(bytes, cctx.compress(json.dumps(data).encode()))
+
+
 async def handle_webhook_event(event_name: str, payload: dict) -> None:
+    log = logger.bind(event_name=event_name)
+
+    if conf.USAGE_REPORTING and event_name in conf.USAGE_REPORTING_EVENTS:
+        # store events in Redis for dequeue by web api job.
+        #
+        # We limit the queue length to ensure that if the dequeue job fails, we
+        # won't overload Redis.
+        redis = await get_redis()
+        await redis.rpush(
+            b"kodiak:webhook_event",
+            [compress_payload(dict(event_name=event_name, payload=payload))],
+        )
+        await redis.ltrim(b"kodiak:webhook_event", 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+        log = log.bind(usage_reported=True)
+
     if event_name == "check_run":
         await check_run(CheckRunEvent.parse_obj(payload))
     elif event_name == "pull_request":
@@ -186,4 +223,6 @@ async def handle_webhook_event(event_name: str, payload: dict) -> None:
     elif event_name == "status":
         await status_event(StatusEvent.parse_obj(payload))
     else:
-        logger.warning("no handler for event", event_name=event_name)
+        log = log.bind(event_parsed=False)
+
+    log.info("webhook_event_handled")

@@ -24,6 +24,7 @@ fastapi = "^0.47.0"
 sentry-sdk = "^0.10.2"
 requests = "^2.22"
 rure = "^0.2.2"
+zstandard = "^0.13.0"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
