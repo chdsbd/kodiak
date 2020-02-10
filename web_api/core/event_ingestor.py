@@ -30,7 +30,7 @@ def main() -> NoReturn:
     Pull webhook events off the queue and insert them into Postgres to calculate
     usage statistics.
     """
-    r = redis.Redis.from_url(os.environ['REDIS_URL'])
+    r = redis.Redis.from_url(os.environ["REDIS_URL"])
     while True:
         logger.info("block for event")
 
