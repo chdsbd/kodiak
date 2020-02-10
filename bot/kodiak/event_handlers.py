@@ -185,6 +185,9 @@ async def get_redis() -> asyncio_redis.Connection:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
+            host=conf.REDIS_URL.hostname,
+            port=conf.REDIS_URL.port,
+            password=conf.REDIS_URL.password,
             poolsize=conf.USAGE_REPORTING_POOL_SIZE,
             encoder=asyncio_redis.encoders.BytesEncoder(),
         )
