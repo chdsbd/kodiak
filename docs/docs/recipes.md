@@ -23,12 +23,16 @@ While Dependabot can [automerge dependency updates](https://dependabot.com/docs/
 
 Kodiak can help us here by automatically adding an approval to all Dependabot PRs, which will allow Dependabot PRs to be automatically merged without human intervention.
 
+> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot-preview[bot]"` use `"dependabot-preview"`.
+
 ```
 # .kodiak.toml
 version = 1
 
 [approve]
-auto_approve_usernames = ["dependabot-preview[bot]"]
+# note: remove the "[bot]" suffix from GitHub Bot usernames.
+# Instead of "dependabot-preview[bot]" use "dependabot-preview".
+auto_approve_usernames = ["dependabot-preview"]
 ```
 
 ## The Favourite
