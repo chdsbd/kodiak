@@ -28,7 +28,7 @@ Kodiak can help us here by automatically adding an approval to all Dependabot PR
 version = 1
 
 [approve]
-auto_approve_usernames = ["dependabot-preview[bot]"]
+auto_approve_usernames = ["dependabot-preview"]
 ```
 
 ## The Favourite
