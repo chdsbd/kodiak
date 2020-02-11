@@ -69,7 +69,7 @@ const CustomToggle = React.forwardRef(
     ref: React.Ref<HTMLButtonElement>,
   ) => (
     <button
-      className="btn border-hover rounded mb-2"
+      className="btn border-hover rounded mb-2 pl-0 pr-0"
       ref={ref}
       onClick={e => {
         e.preventDefault()
@@ -125,7 +125,7 @@ export function SideBarNav() {
 
 function SkeletonProfileImage() {
   return (
-    <div className="d-flex align-items-center">
+    <div className="d-flex align-items-center mr-auto">
       <div
         style={{
           height: 30,
@@ -172,12 +172,12 @@ function SideBarNavContainer({
       style={{ width: 230 }}>
       <div>
         <div>
-          <Dropdown as={ButtonGroup}>
+          <Dropdown as={ButtonGroup} className="w-100">
             <DropdownToggle id="org-dropdown" as={CustomToggle}>
               {orgContent}
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
-              <Dropdown.Header>switch account</Dropdown.Header>
+              <Dropdown.Header className="text-center">switch account</Dropdown.Header>
               {switchAccountContent}
             </Dropdown.Menu>
           </Dropdown>
@@ -238,7 +238,7 @@ function SideBarNavContainer({
       </div>
 
       <div>
-        <Dropdown as={ButtonGroup}>
+        <Dropdown as={ButtonGroup} className="w-100">
           <DropdownToggle id="user-dropdown" as={CustomToggle}>
             {userContent}
           </DropdownToggle>
@@ -257,14 +257,17 @@ function SideBarNavContainer({
 interface ISideBarNavInnerProps {
   readonly accounts: WebData<{
     readonly accounts: ReadonlyArray<{
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }>
     readonly org: {
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }
     readonly user: {
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }
@@ -282,26 +285,27 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
     <SideBarNavContainer
       userContent={
         <ProfileImg
+        className="mr-auto"
           profileImgUrl={accounts.data.user.profileImgUrl}
           name={accounts.data.user.name}
           size={30}
         />
       }
       orgContent={
-        <div className="d-flex align-items-center">
+        <div className="d-flex align-items-center mr-auto">
           <Image
             url={accounts.data.org.profileImgUrl}
             alt="kodiak avatar"
             size={30}
             className="mr-2"
           />
-          <span className="h4 mb-0">{accounts.data.org.name}</span>
+          <span className="h5 mb-0 sidebar-overflow-ellipsis">{accounts.data.org.name}</span>
         </div>
       }
       switchAccountContent={
         <>
           {sortBy(accounts.data.accounts, "name").map(x => (
-            <Dropdown.Item as="button">
+            <Dropdown.Item as="button" key={x.id}>
               <>
                 <Image
                   url={x.profileImgUrl}

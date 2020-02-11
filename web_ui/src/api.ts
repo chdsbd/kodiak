@@ -52,14 +52,17 @@ interface IAccountsApiResponse
 
 interface ICurrentAccountApiResponse {
   readonly org: {
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
   }
   readonly user: {
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
   }
   readonly accounts: ReadonlyArray<{
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
   }>

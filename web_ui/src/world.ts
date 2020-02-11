@@ -102,6 +102,7 @@ export const Current: World = {
       ]
     },
     getCurrentAccount: async () => {
+      return (await httpClient.get('/v1/current_account')).data
       await sleep(400)
       const user = {
         name: "sbdchd",

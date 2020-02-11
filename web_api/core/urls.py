@@ -9,5 +9,6 @@ urlpatterns = [
     path("installations", views.installations),
     path("usage_billing", views.usage_billing),
     path("activity", views.activity),
+    path("current_account", views.current_account),
     path("ping", views.ping),
 ]

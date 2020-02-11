@@ -17,7 +17,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from datetime import date,timedelta
+from datetime import date, timedelta
 from random import randint
 from core.models import AnonymousUser, User
 
@@ -41,7 +41,7 @@ def usage_billing(request: HttpRequest) -> HttpResponse:
             billingPeriod=dict(start="Jan 17", end="Feb 16"),
             activeUsers=[
                 dict(
-                     id=1929960,
+                    id=1929960,
                     name="chdsbd",
                     profileImgUrl="https://avatars0.githubusercontent.com/u/1929960?s=460&v=4",
                     interactions=4,
@@ -52,6 +52,7 @@ def usage_billing(request: HttpRequest) -> HttpResponse:
             perMonthUSD=75,
         )
     )
+
 
 def events_to_chart(events):
     labels = []
@@ -64,9 +65,9 @@ def events_to_chart(events):
         merged.append(event.merged)
         updated.append(event.updated)
     return dict(
-            labels=labels,
-            datasets=dict(approved=approved,merged=merged,updated=updated)
-        )
+        labels=labels, datasets=dict(approved=approved, merged=merged, updated=updated)
+    )
+
 
 @auth.login_required
 def activity(request: HttpRequest) -> HttpResponse:
@@ -78,17 +79,88 @@ def activity(request: HttpRequest) -> HttpResponse:
         updated: int = 0
 
     today = date.today()
-    dates = [ActivityDay(date=today,approved=2,merged=3,updated=2)]
+    dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
     for x in range(60):
-        dates.append(ActivityDay(date=today - timedelta(days=(x + 1)),approved=randint(0,10),merged=randint(0,10),updated=randint(0,10)))
+        dates.append(
+            ActivityDay(
+                date=today - timedelta(days=(x + 1)),
+                approved=randint(0, 10),
+                merged=randint(0, 10),
+                updated=randint(0, 10),
+            )
+        )
 
     pull_request_chart = events_to_chart(reversed(dates))
     kodiak_chart = events_to_chart(reversed(dates))
     return JsonResponse(
-        dict(kodiakActivity=kodiak_chart,
-        pullRequestActivity=kodiak_chart)
+        dict(kodiakActivity=kodiak_chart, pullRequestActivity=kodiak_chart)
     )
 
+
+@auth.login_required
+def current_account(request: HttpRequest) -> HttpResponse:
+    @dataclass
+    class ActivityDay:
+        date: date
+        approved: int = 0
+        merged: int = 0
+        updated: int = 0
+
+    today = date.today()
+    dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
+    for x in range(60):
+        dates.append(
+            ActivityDay(
+                date=today - timedelta(days=(x + 1)),
+                approved=randint(0, 10),
+                merged=randint(0, 10),
+                updated=randint(0, 10),
+            )
+        )
+
+    pull_request_chart = events_to_chart(reversed(dates))
+    kodiak_chart = events_to_chart(reversed(dates))
+    return JsonResponse(
+        dict(
+            user=dict(
+                id=7340772,
+                name="sbdchd",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+            ),
+            org=dict(
+                id=29196,
+                name="kodiakhq[bot]",
+                profileImgUrl="https://avatars1.githubusercontent.com/in/29196?v=4",
+            ),
+            accounts=[
+                dict(
+                    id=7340772,
+                    name="sbdchd",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+                ),
+                dict(
+                    id=32210060,
+                    name="recipeyak",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
+                ),
+                dict(
+                    id=7806836,
+                    name="AdmitHub",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
+                ),
+                dict(
+                    id=33015070,
+                    name="getdoug",
+                    profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
+                ),
+                dict(
+                    id=8897583,
+                    name="pytest-dev",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
+                ),
+            ],
+        )
+    )
 
 
 def oauth_login(request: HttpRequest) -> HttpResponse:
