@@ -1,0 +1,1 @@
+exec node scripts/build.js
