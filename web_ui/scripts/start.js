@@ -79,7 +79,6 @@ checkBrowsers(paths.appPath, isInteractive)
     const config = configFactory("development")
     const protocol = process.env.HTTPS === "true" ? "https" : "http"
     const appName = require(paths.appPackageJson).name
-    const useTypeScript = fs.existsSync(paths.appTsConfig)
     const tscCompileOnError = process.env.TSC_COMPILE_ON_ERROR === "true"
     const urls = prepareUrls(protocol, HOST, port)
     const devSocket = {
@@ -98,7 +97,11 @@ checkBrowsers(paths.appPath, isInteractive)
       devSocket,
       urls,
       useYarn,
-      useTypeScript,
+      // Note(sbdchd): we're using typescript but this createCompiler function
+      // that expects us to be using the TSForkWebpack plugin so it will hang
+      // with a message waiting for type checking. We disable these messages by
+      // passing `useTypescript: false`
+      useTypeScript: false,
       tscCompileOnError,
       webpack,
     })
