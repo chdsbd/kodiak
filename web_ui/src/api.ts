@@ -9,10 +9,7 @@ interface ILoginUserResponseSucess {
 type ILoginUserResponse = ILoginUserResponseSucess | ILoginUserResponseError
 
 interface IUsageBillingPageApiResponse {
-  readonly seats: {
-    readonly current: number
-    readonly total: number
-  }
+  readonly activeUserCount: number
   readonly perUserUSD: number
   readonly perMonthUSD: number
   readonly nextBillingDate: string
@@ -21,14 +18,11 @@ interface IUsageBillingPageApiResponse {
     readonly end: string
   }
   readonly activeUsers: ReadonlyArray<{
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
     readonly interactions: number
     readonly lastActiveDate: string
-  }>
-  readonly repos: ReadonlyArray<{
-    readonly name: string
-    readonly id: number
   }>
 }
 
@@ -37,13 +31,17 @@ interface ISettingsApiResponse {
 }
 type ISettingsUpdate = ISettingsApiResponse
 
-interface IActivityApiResponse {
+interface IChart {
   readonly labels: Array<string>
   readonly datasets: {
     readonly approved: Array<number>
     readonly merged: Array<number>
     readonly updated: Array<number>
   }
+}
+interface IActivityApiResponse {
+  readonly pullRequestActivity: IChart
+  readonly kodiakActivity: IChart
 }
 
 interface IAccountsApiResponse

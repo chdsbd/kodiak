@@ -5,13 +5,17 @@ import { Spinner } from "./Spinner"
 import { ActivityChart } from "./ActivityChart"
 import { Current } from "../world"
 
-interface IActivityData {
+interface IChartData {
   readonly labels: Array<string>
   readonly datasets: {
     readonly approved: Array<number>
     readonly merged: Array<number>
     readonly updated: Array<number>
   }
+}
+interface IActivityData {
+  readonly kodiakActivity: IChartData
+  readonly pullRequestActivity: IChartData
 }
 
 export function ActivityPage() {
@@ -59,9 +63,9 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   return (
     <ActivityPageContainer>
       <h3 className="h5">Pull Request Activity</h3>
-      <ActivityChart data={data.data} />
+      <ActivityChart data={data.data.pullRequestActivity} />
       <h3 className="h5">Kodiak Activity</h3>
-      <ActivityChart data={data.data} />
+      <ActivityChart data={data.data.kodiakActivity} />
     </ActivityPageContainer>
   )
 }

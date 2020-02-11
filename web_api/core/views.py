@@ -17,6 +17,8 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
+from datetime import date,timedelta
+from random import randint
 from core.models import AnonymousUser, User
 
 
@@ -28,6 +30,65 @@ def ping(request: HttpRequest) -> HttpResponse:
 @auth.login_required
 def installations(request: HttpRequest) -> HttpResponse:
     return JsonResponse([{"id": 53121}], safe=False)
+
+
+@auth.login_required
+def usage_billing(request: HttpRequest) -> HttpResponse:
+    return JsonResponse(
+        dict(
+            activeUserCount=8,
+            nextBillingDate="February 17th, 2019",
+            billingPeriod=dict(start="Jan 17", end="Feb 16"),
+            activeUsers=[
+                dict(
+                     id=1929960,
+                    name="chdsbd",
+                    profileImgUrl="https://avatars0.githubusercontent.com/u/1929960?s=460&v=4",
+                    interactions=4,
+                    lastActiveDate="Feb 10",
+                )
+            ],
+            perUserUSD=5,
+            perMonthUSD=75,
+        )
+    )
+
+def events_to_chart(events):
+    labels = []
+    approved = []
+    merged = []
+    updated = []
+    for event in events:
+        labels.append(event.date)
+        approved.append(event.approved)
+        merged.append(event.merged)
+        updated.append(event.updated)
+    return dict(
+            labels=labels,
+            datasets=dict(approved=approved,merged=merged,updated=updated)
+        )
+
+@auth.login_required
+def activity(request: HttpRequest) -> HttpResponse:
+    @dataclass
+    class ActivityDay:
+        date: date
+        approved: int = 0
+        merged: int = 0
+        updated: int = 0
+
+    today = date.today()
+    dates = [ActivityDay(date=today,approved=2,merged=3,updated=2)]
+    for x in range(60):
+        dates.append(ActivityDay(date=today - timedelta(days=(x + 1)),approved=randint(0,10),merged=randint(0,10),updated=randint(0,10)))
+
+    pull_request_chart = events_to_chart(reversed(dates))
+    kodiak_chart = events_to_chart(reversed(dates))
+    return JsonResponse(
+        dict(kodiakActivity=kodiak_chart,
+        pullRequestActivity=kodiak_chart)
+    )
+
 
 
 def oauth_login(request: HttpRequest) -> HttpResponse:

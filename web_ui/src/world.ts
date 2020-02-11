@@ -9,6 +9,7 @@ interface World {
 
 const httpClient = axios.create({
   baseURL: API_ROOT,
+  withCredentials: true,
 })
 
 /** Convert JSON to FormData
@@ -62,48 +63,7 @@ export const Current: World = {
       }
     },
     getUsageBilling: async () => {
-      await sleep(400)
-      return {
-        seats: { current: 8, total: 15 },
-        nextBillingDate: "February 21st, 2019",
-        billingPeriod: { start: "Jan 17", end: "Feb 16" },
-        activeUsers: [
-          {
-            name: "bernard",
-            profileImgUrl:
-              "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            interactions: 15,
-            lastActiveDate: "Jan 22",
-          },
-          {
-            name: "william",
-            profileImgUrl:
-              "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            interactions: 15,
-            lastActiveDate: "Jan 22",
-          },
-          {
-            name: "deloris",
-            profileImgUrl:
-              "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            interactions: 15,
-            lastActiveDate: "Jan 15",
-          },
-          {
-            name: "maeve",
-            profileImgUrl:
-              "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            interactions: 15,
-            lastActiveDate: "Jan 3",
-          },
-        ],
-        repos: [
-          { name: "backend", id: 50234 },
-          { name: "api-frontend", id: 23485 },
-        ],
-        perUserUSD: 5,
-        perMonthUSD: 75,
-      }
+      return (await httpClient.get("/v1/usage_billing")).data
     },
     getSettings: async () => {
       await sleep(400)
@@ -114,23 +74,7 @@ export const Current: World = {
       return { notifyOnExceedBilledSeats: false }
     },
     getActivity: async () => {
-      await sleep(400)
-      return {
-        labels: Array(30)
-          .fill(0)
-          .map((_, i) => `01/${i + 1}/2011 GMT`),
-        datasets: {
-          approved: Array(30)
-            .fill(0)
-            .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
-          merged: Array(30)
-            .fill(0)
-            .map((_, i) => [13, 23, 20, 8, 13, 27, 4, 4, 5, 6][i % 10]),
-          updated: Array(30)
-            .fill(0)
-            .map((_, i) => [44, 55, 41, 67, 22, 43, 2, 7, 9, 8][i % 10]),
-        },
-      }
+      return (await httpClient.get("/v1/activity")).data
     },
     getAccounts: async () => {
       await sleep(400)
