@@ -1,5 +1,5 @@
 import React from "react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useParams } from "react-router-dom"
 import { Dropdown, ButtonGroup } from "react-bootstrap"
 import {
   GoGraph,
@@ -18,6 +18,7 @@ import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
 import { WebData } from "../webdata"
 import { useApi } from "../useApi"
 import { Current } from "../world"
+import { TeamLink} from '../routing'
 
 interface IDropdownToggleProps<T> {
   readonly id: string
@@ -89,6 +90,7 @@ const CustomToggle = React.forwardRef(
 
 interface ISideBarNavLinkProps {
   readonly to: string
+  readonly team?: boolean
   readonly children: React.ReactChild
   readonly external?: boolean
   readonly className?: string
@@ -96,13 +98,17 @@ interface ISideBarNavLinkProps {
 function SideBarNavLink({
   to,
   children,
+  team,
   external = false,
   className,
 }: ISideBarNavLinkProps) {
+  const params = useParams();
+  const teamId = params.team_id;
+  const path =  team ? `/t/${teamId}/${to}` : to
   return (
     <li>
       {external ? (
-        <a href={to} className={"text-decoration-none " + className}>
+        <a href={path} className={"text-decoration-none " + className}>
           {children}
         </a>
       ) : (
@@ -110,7 +116,7 @@ function SideBarNavLink({
           exact
           activeClassName="font-weight-bold"
           className={"text-decoration-none " + className}
-          to={to}>
+          to={path}>
           {children}
         </NavLink>
       )}
@@ -183,19 +189,19 @@ function SideBarNavContainer({
           </Dropdown>
         </div>
         <ul className="list-unstyled">
-          <SideBarNavLink to="/" className="d-flex align-items-center">
+          <SideBarNavLink team to="" className="d-flex align-items-center">
             <>
               <GoGraph className="mr-1" size="1.25rem" />
               <span>Activity</span>
             </>
           </SideBarNavLink>
-          <SideBarNavLink to="/usage">
+          <SideBarNavLink team to="usage">
             <>
               <GoCreditCard className="mr-1" size="1.25rem" />
               <span>Usage & Billing</span>
             </>
           </SideBarNavLink>
-          <SideBarNavLink to="/settings">
+          <SideBarNavLink team to="settings">
             <>
               <GoSettings className="mr-1" size="1.25rem" />
               <span>Settings</span>
@@ -274,6 +280,8 @@ interface ISideBarNavInnerProps {
   }>
 }
 function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
+  const params = useParams()
+  const teamId = params.team_id
   if (accounts.status === "loading") {
     return <Loading />
   }
@@ -305,8 +313,8 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
       switchAccountContent={
         <>
           {sortBy(accounts.data.accounts, "name").map(x => (
-            <Dropdown.Item as="button" key={x.id}>
-              <>
+            <Dropdown.Item key={x.id} href={`/t/${x.id}/`}>
+              {/*<NavLink to={`/t/${x.id}/`}>*/}
                 <Image
                   url={x.profileImgUrl}
                   alt={x.name}
@@ -314,7 +322,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
                   className="mr-3"
                 />
                 {x.name}
-              </>
+              {/*</NavLink>*/}
             </Dropdown.Item>
           ))}
         </>

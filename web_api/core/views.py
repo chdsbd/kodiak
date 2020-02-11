@@ -33,7 +33,7 @@ def installations(request: HttpRequest) -> HttpResponse:
 
 
 @auth.login_required
-def usage_billing(request: HttpRequest) -> HttpResponse:
+def usage_billing(request: HttpRequest,team_id: str) -> HttpResponse:
     return JsonResponse(
         dict(
             activeUserCount=8,
@@ -70,7 +70,7 @@ def events_to_chart(events):
 
 
 @auth.login_required
-def activity(request: HttpRequest) -> HttpResponse:
+def activity(request: HttpRequest, team_id: str) -> HttpResponse:
     @dataclass
     class ActivityDay:
         date: date
@@ -99,27 +99,6 @@ def activity(request: HttpRequest) -> HttpResponse:
 
 @auth.login_required
 def current_account(request: HttpRequest) -> HttpResponse:
-    @dataclass
-    class ActivityDay:
-        date: date
-        approved: int = 0
-        merged: int = 0
-        updated: int = 0
-
-    today = date.today()
-    dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
-    for x in range(60):
-        dates.append(
-            ActivityDay(
-                date=today - timedelta(days=(x + 1)),
-                approved=randint(0, 10),
-                merged=randint(0, 10),
-                updated=randint(0, 10),
-            )
-        )
-
-    pull_request_chart = events_to_chart(reversed(dates))
-    kodiak_chart = events_to_chart(reversed(dates))
     return JsonResponse(
         dict(
             user=dict(

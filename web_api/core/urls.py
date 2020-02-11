@@ -7,8 +7,8 @@ urlpatterns = [
     path("oauth_complete", views.oauth_complete),
     path("logout", views.logout),
     path("installations", views.installations),
-    path("usage_billing", views.usage_billing),
-    path("activity", views.activity),
+    path("t/<int:team_id>/usage_billing", views.usage_billing),
+    path("t/<int:team_id>/activity", views.activity),
     path("current_account", views.current_account),
     path("ping", views.ping),
 ]

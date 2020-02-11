@@ -44,6 +44,13 @@ interface ILoginUserArgs {
   clientState: string
 }
 
+interface IGetUsageBillingArgs {
+  readonly teamId: number
+}
+interface IGetActivityArgs {
+  readonly teamId: number
+}
+
 export const Current: World = {
   api: {
     loginUser: async (args: ILoginUserArgs) => {
@@ -62,8 +69,8 @@ export const Current: World = {
         error_description: "problem contacting backend services.",
       }
     },
-    getUsageBilling: async () => {
-      return (await httpClient.get("/v1/usage_billing")).data
+    getUsageBilling: async (args: IGetUsageBillingArgs) => {
+      return (await httpClient.get(`/v1/t/${args.teamId}/usage_billing`)).data
     },
     getSettings: async () => {
       await sleep(400)
@@ -73,28 +80,32 @@ export const Current: World = {
       await sleep(400)
       return { notifyOnExceedBilledSeats: false }
     },
-    getActivity: async () => {
-      return (await httpClient.get("/v1/activity")).data
+    getActivity: async (args: IGetActivityArgs) => {
+      return (await httpClient.get(`/v1/t/${args.teamId}/activity`)).data
     },
     getAccounts: async () => {
       await sleep(400)
       return [
         {
+          id: 7340772,
           name: "bernard",
           profileImgUrl:
             "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
         },
         {
+          id: 7340772,
           name: "william",
           profileImgUrl:
             "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
         },
         {
+          id: 7340772,
           name: "deloris",
           profileImgUrl:
             "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
         },
         {
+          id: 7340772,
           name: "maeve",
           profileImgUrl:
             "https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",

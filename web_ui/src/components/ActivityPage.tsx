@@ -4,6 +4,7 @@ import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { ActivityChart } from "./ActivityChart"
 import { Current } from "../world"
+import { useTeamApi} from "../useApi"
 
 interface IChartData {
   readonly labels: Array<string>
@@ -19,26 +20,8 @@ interface IActivityData {
 }
 
 export function ActivityPage() {
-  const data = useActivityData()
+  const data = useTeamApi(Current.api.getActivity)
   return <ActivityPageInner data={data} />
-}
-
-function useActivityData(): WebData<IActivityData> {
-  const [state, setState] = React.useState<WebData<IActivityData>>({
-    status: "loading",
-  })
-
-  React.useEffect(() => {
-    Current.api
-      .getActivity()
-      .then(res => {
-        setState({ status: "success", data: res })
-      })
-      .catch(() => {
-        setState({ status: "failure" })
-      })
-  }, [])
-  return state
 }
 
 interface IActivityPageInnerProps {

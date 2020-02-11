@@ -5,7 +5,7 @@ import { modifyPlanLink } from "../settings"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
-import { useApi } from "../useApi"
+import { useApi ,useTeamApi} from "../useApi"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -25,7 +25,7 @@ function Question({ content }: IQuestionProps) {
 }
 
 export function UsageBillingPage() {
-  const data = useApi(Current.api.getUsageBilling)
+  const data = useTeamApi(Current.api.getUsageBilling)
   return <UsageBillingPageInner data={data} />
 }
 

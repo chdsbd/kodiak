@@ -46,6 +46,7 @@ interface IActivityApiResponse {
 
 interface IAccountsApiResponse
   extends ReadonlyArray<{
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
   }> {}
@@ -74,9 +75,13 @@ interface ILoginUserArgs {
   clientState: string
 }
 
+interface IGetUsageBillingArgs {
+  teamId: number
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
-  getUsageBilling: () => Promise<IUsageBillingPageApiResponse>
+  getUsageBilling: (args: IGetUsageBillingArgs) => Promise<IUsageBillingPageApiResponse>
   getSettings: () => Promise<ISettingsApiResponse>
   updateSettings: (_: ISettingsUpdate) => Promise<ISettingsApiResponse>
   getActivity: () => Promise<IActivityApiResponse>

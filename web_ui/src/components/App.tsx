@@ -1,5 +1,5 @@
 import React from "react"
-import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
+import { BrowserRouter as Router, Switch, Route, Redirect } from "react-router-dom"
 import { Container } from "react-bootstrap"
 import { UsageBillingPage } from "./UsageBillingPage"
 import { LoginPage } from "./LoginPage"
@@ -13,17 +13,17 @@ export default function App() {
   return (
     <Router>
       <Switch>
-        <Route exact path="/">
+        <Route exact path="/t/:team_id/">
           <Page>
             <ActivityPage />
           </Page>
         </Route>
-        <Route path="/usage">
+        <Route path="/t/:team_id/usage">
           <Page>
             <UsageBillingPage />
           </Page>
         </Route>
-        <Route path="/settings">
+        <Route path="/t/:team_id/settings">
           <Page>
             <SettingsPage />
           </Page>
@@ -43,6 +43,8 @@ export default function App() {
             <AccountsPage />
           </Container>
         </Route>
+        <Redirect from="/" to="/accounts"/>
+        <Redirect from="/t/" to="/accounts"/>
       </Switch>
     </Router>
   )
