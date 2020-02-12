@@ -92,9 +92,7 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
         )
 
     chart = events_to_chart(reversed(dates))
-    return JsonResponse(
-        dict(kodiakActivity=chart, pullRequestActivity=chart)
-    )
+    return JsonResponse(dict(kodiakActivity=chart, pullRequestActivity=chart))
 
 
 @auth.login_required
