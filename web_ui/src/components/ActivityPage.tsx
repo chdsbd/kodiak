@@ -4,8 +4,9 @@ import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { ActivityChart } from "./ActivityChart"
 import { Current } from "../world"
+import { useTeamApi } from "../useApi"
 
-interface IActivityData {
+interface IChartData {
   readonly labels: Array<string>
   readonly datasets: {
     readonly approved: Array<number>
@@ -13,28 +14,14 @@ interface IActivityData {
     readonly updated: Array<number>
   }
 }
-
-export function ActivityPage() {
-  const data = useActivityData()
-  return <ActivityPageInner data={data} />
+interface IActivityData {
+  readonly kodiakActivity: IChartData
+  readonly pullRequestActivity: IChartData
 }
 
-function useActivityData(): WebData<IActivityData> {
-  const [state, setState] = React.useState<WebData<IActivityData>>({
-    status: "loading",
-  })
-
-  React.useEffect(() => {
-    Current.api
-      .getActivity()
-      .then(res => {
-        setState({ status: "success", data: res })
-      })
-      .catch(() => {
-        setState({ status: "failure" })
-      })
-  }, [])
-  return state
+export function ActivityPage() {
+  const data = useTeamApi(Current.api.getActivity)
+  return <ActivityPageInner data={data} />
 }
 
 interface IActivityPageInnerProps {
@@ -59,9 +46,9 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   return (
     <ActivityPageContainer>
       <h3 className="h5">Pull Request Activity</h3>
-      <ActivityChart data={data.data} />
+      <ActivityChart data={data.data.pullRequestActivity} />
       <h3 className="h5">Kodiak Activity</h3>
-      <ActivityChart data={data.data} />
+      <ActivityChart data={data.data.kodiakActivity} />
     </ActivityPageContainer>
   )
 }

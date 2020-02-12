@@ -1,15 +1,13 @@
 import React from "react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useParams, useHistory } from "react-router-dom"
 import { Dropdown, ButtonGroup } from "react-bootstrap"
 import {
   GoGraph,
   GoCreditCard,
-  GoSettings,
   GoGift,
   GoBook,
   GoChevronDown,
   GoLinkExternal,
-  GoSignOut,
   GoQuestion,
 } from "react-icons/go"
 import sortBy from "lodash/sortBy"
@@ -69,7 +67,7 @@ const CustomToggle = React.forwardRef(
     ref: React.Ref<HTMLButtonElement>,
   ) => (
     <button
-      className="btn border-hover rounded mb-2"
+      className="btn border-hover rounded mb-2 pl-0 pr-0"
       ref={ref}
       onClick={e => {
         e.preventDefault()
@@ -89,6 +87,7 @@ const CustomToggle = React.forwardRef(
 
 interface ISideBarNavLinkProps {
   readonly to: string
+  readonly team?: boolean
   readonly children: React.ReactChild
   readonly external?: boolean
   readonly className?: string
@@ -96,13 +95,17 @@ interface ISideBarNavLinkProps {
 function SideBarNavLink({
   to,
   children,
+  team,
   external = false,
   className,
 }: ISideBarNavLinkProps) {
+  const params = useParams<{ team_id: string }>()
+  const teamId = params.team_id
+  const path = team ? `/t/${teamId}/${to}` : to
   return (
     <li>
       {external ? (
-        <a href={to} className={"text-decoration-none " + className}>
+        <a href={path} className={"text-decoration-none " + className}>
           {children}
         </a>
       ) : (
@@ -110,7 +113,7 @@ function SideBarNavLink({
           exact
           activeClassName="font-weight-bold"
           className={"text-decoration-none " + className}
-          to={to}>
+          to={path}>
           {children}
         </NavLink>
       )}
@@ -125,7 +128,7 @@ export function SideBarNav() {
 
 function SkeletonProfileImage() {
   return (
-    <div className="d-flex align-items-center">
+    <div className="d-flex align-items-center mr-auto">
       <div
         style={{
           height: 30,
@@ -166,39 +169,44 @@ function SideBarNavContainer({
   userContent,
   switchAccountContent,
 }: ISideBarNavContainerProps) {
+  const history = useHistory()
+  function logoutUser() {
+    Current.api.logoutUser().then(res => {
+      if (res.ok) {
+        history.push("/login")
+        return
+      }
+    })
+  }
   return (
     <div
       className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
       style={{ width: 230 }}>
       <div>
         <div>
-          <Dropdown as={ButtonGroup}>
+          <Dropdown as={ButtonGroup} className="w-100">
             <DropdownToggle id="org-dropdown" as={CustomToggle}>
               {orgContent}
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
-              <Dropdown.Header>switch account</Dropdown.Header>
+              <Dropdown.Header className="text-center">
+                switch account
+              </Dropdown.Header>
               {switchAccountContent}
             </Dropdown.Menu>
           </Dropdown>
         </div>
         <ul className="list-unstyled">
-          <SideBarNavLink to="/" className="d-flex align-items-center">
+          <SideBarNavLink team to="" className="d-flex align-items-center">
             <>
               <GoGraph className="mr-1" size="1.25rem" />
               <span>Activity</span>
             </>
           </SideBarNavLink>
-          <SideBarNavLink to="/usage">
+          <SideBarNavLink team to="usage">
             <>
               <GoCreditCard className="mr-1" size="1.25rem" />
               <span>Usage & Billing</span>
-            </>
-          </SideBarNavLink>
-          <SideBarNavLink to="/settings">
-            <>
-              <GoSettings className="mr-1" size="1.25rem" />
-              <span>Settings</span>
             </>
           </SideBarNavLink>
           <hr />
@@ -238,14 +246,13 @@ function SideBarNavContainer({
       </div>
 
       <div>
-        <Dropdown as={ButtonGroup}>
+        <Dropdown as={ButtonGroup} className="w-100">
           <DropdownToggle id="user-dropdown" as={CustomToggle}>
             {userContent}
           </DropdownToggle>
           <Dropdown.Menu className="super-colors shadow-sm">
-            <Dropdown.Item as="button">
+            <Dropdown.Item as="button" onClick={logoutUser}>
               <span className="mr-1">Logout</span>
-              <GoSignOut />
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
@@ -257,14 +264,17 @@ function SideBarNavContainer({
 interface ISideBarNavInnerProps {
   readonly accounts: WebData<{
     readonly accounts: ReadonlyArray<{
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }>
     readonly org: {
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }
     readonly user: {
+      readonly id: number
       readonly name: string
       readonly profileImgUrl: string
     }
@@ -282,35 +292,36 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
     <SideBarNavContainer
       userContent={
         <ProfileImg
+          className="mr-auto"
           profileImgUrl={accounts.data.user.profileImgUrl}
           name={accounts.data.user.name}
           size={30}
         />
       }
       orgContent={
-        <div className="d-flex align-items-center">
+        <div className="d-flex align-items-center mr-auto">
           <Image
             url={accounts.data.org.profileImgUrl}
             alt="kodiak avatar"
             size={30}
             className="mr-2"
           />
-          <span className="h4 mb-0">{accounts.data.org.name}</span>
+          <span className="h5 mb-0 sidebar-overflow-ellipsis">
+            {accounts.data.org.name}
+          </span>
         </div>
       }
       switchAccountContent={
         <>
           {sortBy(accounts.data.accounts, "name").map(x => (
-            <Dropdown.Item as="button">
-              <>
-                <Image
-                  url={x.profileImgUrl}
-                  alt={x.name}
-                  size={30}
-                  className="mr-3"
-                />
-                {x.name}
-              </>
+            <Dropdown.Item key={x.id} href={`/t/${x.id}/`}>
+              <Image
+                url={x.profileImgUrl}
+                alt={x.name}
+                size={30}
+                className="mr-3"
+              />
+              {x.name}
             </Dropdown.Item>
           ))}
         </>

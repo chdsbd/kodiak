@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
-from typing import Optional, Union
+from datetime import date, timedelta
+from random import randint
+from typing import Iterable, Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
@@ -28,6 +30,148 @@ def ping(request: HttpRequest) -> HttpResponse:
 @auth.login_required
 def installations(request: HttpRequest) -> HttpResponse:
     return JsonResponse([{"id": 53121}], safe=False)
+
+
+@auth.login_required
+def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
+    return JsonResponse(
+        dict(
+            activeUserCount=8,
+            nextBillingDate="February 17th, 2019",
+            billingPeriod=dict(start="Jan 17", end="Feb 16"),
+            activeUsers=[
+                dict(
+                    id=1929960,
+                    name="chdsbd",
+                    profileImgUrl="https://avatars0.githubusercontent.com/u/1929960?s=460&v=4",
+                    interactions=4,
+                    lastActiveDate="Feb 10",
+                )
+            ],
+            perUserUSD=5,
+            perMonthUSD=75,
+        )
+    )
+
+
+@dataclass
+class ActivityDay:
+    date: date
+    approved: int = 0
+    merged: int = 0
+    updated: int = 0
+
+
+def events_to_chart(events: Iterable[ActivityDay]) -> dict:
+    labels = []
+    approved = []
+    merged = []
+    updated = []
+    for event in events:
+        labels.append(event.date)
+        approved.append(event.approved)
+        merged.append(event.merged)
+        updated.append(event.updated)
+    return dict(
+        labels=labels, datasets=dict(approved=approved, merged=merged, updated=updated)
+    )
+
+
+@auth.login_required
+def activity(request: HttpRequest, team_id: str) -> HttpResponse:
+    today = date.today()
+    dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
+    for x in range(60):
+        dates.append(
+            ActivityDay(
+                date=today - timedelta(days=(x + 1)),
+                approved=randint(0, 10),
+                merged=randint(0, 10),
+                updated=randint(0, 10),
+            )
+        )
+
+    chart = events_to_chart(reversed(dates))
+    return JsonResponse(dict(kodiakActivity=chart, pullRequestActivity=chart))
+
+
+@auth.login_required
+def current_account(request: HttpRequest) -> HttpResponse:
+    return JsonResponse(
+        dict(
+            user=dict(
+                id=7340772,
+                name="sbdchd",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+            ),
+            org=dict(
+                id=29196,
+                name="kodiakhq[bot]",
+                profileImgUrl="https://avatars1.githubusercontent.com/in/29196?v=4",
+            ),
+            accounts=[
+                dict(
+                    id=7340772,
+                    name="sbdchd",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+                ),
+                dict(
+                    id=32210060,
+                    name="recipeyak",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
+                ),
+                dict(
+                    id=7806836,
+                    name="AdmitHub",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
+                ),
+                dict(
+                    id=33015070,
+                    name="getdoug",
+                    profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
+                ),
+                dict(
+                    id=8897583,
+                    name="pytest-dev",
+                    profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
+                ),
+            ],
+        )
+    )
+
+
+@auth.login_required
+def accounts(request: HttpRequest) -> HttpResponse:
+    return JsonResponse(
+        [
+            dict(
+                id=7340772,
+                name="sbdchd",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+            ),
+            dict(
+                id=32210060,
+                name="recipeyak",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
+            ),
+            dict(
+                id=7806836,
+                name="AdmitHub",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
+            ),
+            dict(
+                id=33015070,
+                name="getdoug",
+                profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
+            ),
+            dict(
+                id=8897583,
+                name="pytest-dev",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
+            ),
+        ],
+        safe=False,
+    )
 
 
 def oauth_login(request: HttpRequest) -> HttpResponse:
@@ -173,6 +317,7 @@ def oauth_complete(request: HttpRequest) -> HttpResponse:
     return HttpResponse()
 
 
+@csrf_exempt
 def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     request.user = AnonymousUser()

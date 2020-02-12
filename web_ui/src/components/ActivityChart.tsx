@@ -44,6 +44,9 @@ const chartOptions: ChartOptions = {
     xAxes: [
       {
         type: "time",
+        time: {
+          unit: "day",
+        },
         offset: true,
         stacked: true,
         scaleLabel: {

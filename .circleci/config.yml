@@ -263,7 +263,7 @@ jobs:
       - run:
           name: test
           working_directory: web_ui
-          command: yarn test
+          command: ./s/test
 
 workflows:
   version: 2

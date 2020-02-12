@@ -1,11 +1,11 @@
 import React from "react"
 import { Table, Row, Col, Popover, OverlayTrigger } from "react-bootstrap"
 import { Image } from "./Image"
-import { modifyPlanLink, activeUserUrl } from "../settings"
+import { modifyPlanLink } from "../settings"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
-import { useApi } from "../useApi"
+import { useTeamApi } from "../useApi"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -25,15 +25,12 @@ function Question({ content }: IQuestionProps) {
 }
 
 export function UsageBillingPage() {
-  const data = useApi(Current.api.getUsageBilling)
+  const data = useTeamApi(Current.api.getUsageBilling)
   return <UsageBillingPageInner data={data} />
 }
 
 interface IUsageBillingData {
-  readonly seats: {
-    readonly current: number
-    readonly total: number
-  }
+  readonly activeUserCount: number
   readonly perUserUSD: number
   readonly perMonthUSD: number
   readonly nextBillingDate: string
@@ -42,14 +39,11 @@ interface IUsageBillingData {
     readonly end: string
   }
   readonly activeUsers: ReadonlyArray<{
+    readonly id: number
     readonly name: string
     readonly profileImgUrl: string
     readonly interactions: number
     readonly lastActiveDate: string
-  }>
-  readonly repos: ReadonlyArray<{
-    readonly name: string
-    readonly id: number
   }>
 }
 
@@ -105,13 +99,16 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
       name: "Usage",
       rows: [
         {
-          name: "Seats",
-          content: (
+          name: "Active Users",
+          content: <>{data.activeUserCount}</>,
+          description: (
             <>
-              {data.seats.current} of {data.seats.total} available
+              Active users are only counted for private repositories. Public
+              repositories are free.
             </>
           ),
         },
+
         {
           name: "Next Billing Date",
           content: data.nextBillingDate,
@@ -122,30 +119,16 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
             <>
               ${data.perMonthUSD}/month{" "}
               <Question
-                content={`$${data.perUserUSD}/user * ${data.seats.total} users = $${data.perMonthUSD}`}
+                content={`$${data.perUserUSD}/user * ${data.activeUserCount} users = $${data.perMonthUSD}`}
               />{" "}
-              <a href={modifyPlanLink}>change plan</a>
-            </>
-          ),
-        },
-      ],
-    },
-    {
-      name: "Plan",
-      rows: [
-        { name: "Plan Type", content: "Private" },
-        {
-          name: "Seats",
-          content: (
-            <>
-              {data.seats.total} <a href={modifyPlanLink}>add/remove seats</a>
+              <a href={modifyPlanLink}>modify plan</a>
             </>
           ),
           description: (
             <>
-              A seat license is required for each{" "}
-              <a href={activeUserUrl}>active user</a> on a private repository.{" "}
-              <i>Public repositories</i> are free.{" "}
+              At the end of each billing period the subscription charge is
+              calculated from the active user count of that period. There is a
+              minimum subscription charge of one active user per period.
             </>
           ),
         },
@@ -156,7 +139,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   return (
     <UsageAndBillingContainer>
       <p>
-        Current activity for billing period{" "}
+        Billing period{" "}
         <b>
           {data.billingPeriod.start} – {data.billingPeriod.end}
         </b>
@@ -188,15 +171,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
       ))}
 
       <div className="mb-4">
-        <div className="d-flex justify-content-between">
-          <h3 className="h5">Active Users ({data.activeUsers.length})</h3>
-          <select>
-            <option>All Repositories</option>
-            {data.repos.map(r => (
-              <option value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
+        <h3 className="h5">Active Users ({data.activeUsers.length})</h3>
 
         <div>
           <Table size="sm">
@@ -216,7 +191,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
             </thead>
             <tbody>
               {data.activeUsers.map(u => (
-                <tr>
+                <tr key={u.id}>
                   <td>
                     <Image
                       url={u.profileImgUrl}

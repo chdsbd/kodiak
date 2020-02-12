@@ -1,0 +1,2 @@
+#!/bin/sh
+REACT_APP_KODIAK_API_ROOT=http://api-localhost.kodiakhq.com:8000 exec node scripts/start.js

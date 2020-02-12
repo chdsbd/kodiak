@@ -93,11 +93,6 @@
     "webpack": "4.41.2",
     "webpack-dev-server": "3.9.0"
   },
-  "scripts": {
-    "start": "node scripts/start.js",
-    "build": "node scripts/build.js",
-    "test": "node scripts/test.js"
-  },
   "eslintConfig": {
     "extends": "react-app"
   },

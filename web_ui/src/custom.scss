@@ -76,3 +76,9 @@ a:hover {
     // width: 1000px;
     height:350px;
 }
+
+.sidebar-overflow-ellipsis {
+  overflow: hidden;
+  max-width: 120px;
+  text-overflow: ellipsis;
+}

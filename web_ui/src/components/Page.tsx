@@ -1,6 +1,7 @@
 import React from "react"
 import { SideBarNav } from "./SideBarNav"
 import { Container, Alert } from "react-bootstrap"
+import { ErrorBoundary } from "./ErrorBoundary"
 
 interface IPageProps {
   readonly children: React.ReactNode
@@ -15,17 +16,19 @@ export function Page({ children }: IPageProps) {
         <div className="h-100 flex-shrink-0">
           <SideBarNav />
         </div>
-        <Container className="p-4 w-100 overflow-auto">
-          {accountIsOver ? (
-            <Alert variant="warning">
-              <b>ATTENTION:</b> You’ve used {seats.current}/{seats.total} seats
-              for your current billing period. Please add more seats to your
-              plan by your next billing period ({nextBillingPeriod}) to ensure
-              continued service.
-            </Alert>
-          ) : null}
-          {children}
-        </Container>
+        <ErrorBoundary>
+          <Container className="p-4 w-100 overflow-auto">
+            {accountIsOver ? (
+              <Alert variant="warning">
+                <b>ATTENTION:</b> You’ve used {seats.current}/{seats.total}{" "}
+                seats for your current billing period. Please add more seats to
+                your plan by your next billing period ({nextBillingPeriod}) to
+                ensure continued service.
+              </Alert>
+            ) : null}
+            {children}
+          </Container>
+        </ErrorBoundary>
       </div>
     </div>
   )

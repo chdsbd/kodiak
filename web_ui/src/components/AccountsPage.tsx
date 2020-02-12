@@ -3,6 +3,7 @@ import { Image } from "./Image"
 import { useApi } from "../useApi"
 import { Current } from "../world"
 import { WebData } from "../webdata"
+import { NavLink } from "react-router-dom"
 
 export function AccountsPage() {
   const accounts = useApi(Current.api.getAccounts)
@@ -10,6 +11,7 @@ export function AccountsPage() {
 }
 
 interface IAccount {
+  readonly id: number
   readonly name: string
   readonly profileImgUrl: string
 }
@@ -34,7 +36,7 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
         <ul className="list-unstyled">
           {accounts.data.map(a => (
             <li className="d-flex align-items-center">
-              <a href="https://github.com/" className="pb-3">
+              <NavLink to={`/t/${a.id}/`} className="pb-3">
                 <Image
                   url={a.profileImgUrl}
                   alt="org profile"
@@ -42,7 +44,7 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
                   className="mr-2"
                 />
                 <span>{a.name}</span>
-              </a>
+              </NavLink>
             </li>
           ))}
         </ul>
