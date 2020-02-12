@@ -1,1 +1,2 @@
+#!/bin/sh
 exec node scripts/build.js

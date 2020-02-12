@@ -5,11 +5,11 @@ The dashboard UI for kodiak.
 ## dev
 
 ```console
-yarn start
+s/dev
 
-yarn test
+s/test
 
 s/lint
 
-yarn build
+s/build
 ```
