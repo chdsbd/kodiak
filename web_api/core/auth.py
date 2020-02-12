@@ -1,9 +1,9 @@
 from functools import wraps
 from typing import Callable, cast
 
-from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 
+from core.exceptions import AuthenticationRequired
 from core.models import AnonymousUser, User
 
 
@@ -14,7 +14,7 @@ def login_required(view_func: Callable) -> Callable:
     ) -> HttpResponse:
         if request.user.is_authenticated:
             return view_func(request, *args, **kwargs)
-        raise PermissionDenied("authentication required")
+        raise AuthenticationRequired
 
     return wrapped_view
 

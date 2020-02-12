@@ -6,10 +6,26 @@ interface World {
   api: api.Api
 }
 
-const httpClient = axios.create({
+const openRoute = axios.create({
   baseURL: API_ROOT,
   withCredentials: true,
 })
+
+const authRoute = axios.create({
+  baseURL: API_ROOT,
+  withCredentials: true,
+})
+
+authRoute.interceptors.response.use(
+  res => res,
+  err => {
+    // tslint:disable-next-line no-unsafe-any
+    if (err?.response?.status === 401) {
+      location.pathname = "/login"
+    }
+    return Promise.reject(err)
+  },
+)
 
 /** Convert JSON to FormData
  *
@@ -29,7 +45,7 @@ export const Current: World = {
   api: {
     loginUser: async (args: api.ILoginUserArgs) => {
       try {
-        const res = await httpClient.post<api.ILoginUserResponse>(
+        const res = await openRoute.post<api.ILoginUserResponse>(
           "/v1/oauth_complete",
           jsonToFormData(args),
         )
@@ -45,7 +61,7 @@ export const Current: World = {
     },
     logoutUser: async () => {
       try {
-        await httpClient.post("/v1/logout")
+        await openRoute.post("/v1/logout")
         return { ok: true }
       } catch (e) {
         // pass
@@ -54,25 +70,25 @@ export const Current: World = {
     },
     getUsageBilling: async (args: api.IUsageBillingPageArgs) => {
       return (
-        await httpClient.get<api.IUsageBillingPageApiResponse>(
+        await authRoute.get<api.IUsageBillingPageApiResponse>(
           `/v1/t/${args.teamId}/usage_billing`,
         )
       ).data
     },
     getActivity: async (args: api.IActivityArgs) => {
       return (
-        await httpClient.get<api.IActivityApiResponse>(
+        await authRoute.get<api.IActivityApiResponse>(
           `/v1/t/${args.teamId}/activity`,
         )
       ).data
     },
     getAccounts: async () => {
-      return (await httpClient.get<api.IAccountsApiResponse>("/v1/accounts"))
+      return (await authRoute.get<api.IAccountsApiResponse>("/v1/accounts"))
         .data
     },
     getCurrentAccount: async () => {
       return (
-        await httpClient.get<api.ICurrentAccountApiResponse>(
+        await authRoute.get<api.ICurrentAccountApiResponse>(
           "/v1/current_account",
         )
       ).data

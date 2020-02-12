@@ -1,11 +1,12 @@
-from typing import Callable
+from typing import Callable, Optional
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import SimpleLazyObject
 
 from core.auth import get_user
+from core.exceptions import ApiException
 
 
 class AuthenticationMiddleware(MiddlewareMixin):
@@ -33,3 +34,12 @@ class CORSMiddleware:
         response["Access-Control-Allow-Headers"] = "content-type"
 
         return response
+
+
+class ExceptionMiddleware(MiddlewareMixin):
+    def process_exception(
+        self, request: HttpRequest, exception: Exception
+    ) -> Optional[HttpResponse]:
+        if isinstance(exception, ApiException):
+            return JsonResponse(dict(message=exception.message), status=exception.code)
+        return None
