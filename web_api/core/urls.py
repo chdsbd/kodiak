@@ -10,5 +10,6 @@ urlpatterns = [
     path("t/<int:team_id>/usage_billing", views.usage_billing),
     path("t/<int:team_id>/activity", views.activity),
     path("current_account", views.current_account),
+    path("accounts", views.accounts),
     path("ping", views.ping),
 ]

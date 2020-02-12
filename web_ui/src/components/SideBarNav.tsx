@@ -1,15 +1,13 @@
 import React from "react"
-import { NavLink, useParams } from "react-router-dom"
+import { NavLink, useParams, useHistory } from "react-router-dom"
 import { Dropdown, ButtonGroup } from "react-bootstrap"
 import {
   GoGraph,
   GoCreditCard,
-  GoSettings,
   GoGift,
   GoBook,
   GoChevronDown,
   GoLinkExternal,
-  GoSignOut,
   GoQuestion,
 } from "react-icons/go"
 import sortBy from "lodash/sortBy"
@@ -18,7 +16,6 @@ import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
 import { WebData } from "../webdata"
 import { useApi } from "../useApi"
 import { Current } from "../world"
-import { TeamLink} from '../routing'
 
 interface IDropdownToggleProps<T> {
   readonly id: string
@@ -102,9 +99,9 @@ function SideBarNavLink({
   external = false,
   className,
 }: ISideBarNavLinkProps) {
-  const params = useParams();
-  const teamId = params.team_id;
-  const path =  team ? `/t/${teamId}/${to}` : to
+  const params = useParams<{ team_id: string }>()
+  const teamId = params.team_id
+  const path = team ? `/t/${teamId}/${to}` : to
   return (
     <li>
       {external ? (
@@ -172,6 +169,15 @@ function SideBarNavContainer({
   userContent,
   switchAccountContent,
 }: ISideBarNavContainerProps) {
+  const history = useHistory()
+  function logoutUser() {
+    Current.api.logoutUser().then(res => {
+      if (res.ok) {
+        history.push("/login")
+        return
+      }
+    })
+  }
   return (
     <div
       className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
@@ -183,7 +189,9 @@ function SideBarNavContainer({
               {orgContent}
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
-              <Dropdown.Header className="text-center">switch account</Dropdown.Header>
+              <Dropdown.Header className="text-center">
+                switch account
+              </Dropdown.Header>
               {switchAccountContent}
             </Dropdown.Menu>
           </Dropdown>
@@ -199,12 +207,6 @@ function SideBarNavContainer({
             <>
               <GoCreditCard className="mr-1" size="1.25rem" />
               <span>Usage & Billing</span>
-            </>
-          </SideBarNavLink>
-          <SideBarNavLink team to="settings">
-            <>
-              <GoSettings className="mr-1" size="1.25rem" />
-              <span>Settings</span>
             </>
           </SideBarNavLink>
           <hr />
@@ -249,9 +251,8 @@ function SideBarNavContainer({
             {userContent}
           </DropdownToggle>
           <Dropdown.Menu className="super-colors shadow-sm">
-            <Dropdown.Item as="button">
+            <Dropdown.Item as="button" onClick={logoutUser}>
               <span className="mr-1">Logout</span>
-              <GoSignOut />
             </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
@@ -280,8 +281,6 @@ interface ISideBarNavInnerProps {
   }>
 }
 function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
-  const params = useParams()
-  const teamId = params.team_id
   if (accounts.status === "loading") {
     return <Loading />
   }
@@ -293,7 +292,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
     <SideBarNavContainer
       userContent={
         <ProfileImg
-        className="mr-auto"
+          className="mr-auto"
           profileImgUrl={accounts.data.user.profileImgUrl}
           name={accounts.data.user.name}
           size={30}
@@ -307,22 +306,22 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
             size={30}
             className="mr-2"
           />
-          <span className="h5 mb-0 sidebar-overflow-ellipsis">{accounts.data.org.name}</span>
+          <span className="h5 mb-0 sidebar-overflow-ellipsis">
+            {accounts.data.org.name}
+          </span>
         </div>
       }
       switchAccountContent={
         <>
           {sortBy(accounts.data.accounts, "name").map(x => (
             <Dropdown.Item key={x.id} href={`/t/${x.id}/`}>
-              {/*<NavLink to={`/t/${x.id}/`}>*/}
-                <Image
-                  url={x.profileImgUrl}
-                  alt={x.name}
-                  size={30}
-                  className="mr-3"
-                />
-                {x.name}
-              {/*</NavLink>*/}
+              <Image
+                url={x.profileImgUrl}
+                alt={x.name}
+                size={30}
+                className="mr-3"
+              />
+              {x.name}
             </Dropdown.Item>
           ))}
         </>

@@ -4,7 +4,7 @@ import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { ActivityChart } from "./ActivityChart"
 import { Current } from "../world"
-import { useTeamApi} from "../useApi"
+import { useTeamApi } from "../useApi"
 
 interface IChartData {
   readonly labels: Array<string>

@@ -5,7 +5,7 @@ import { modifyPlanLink } from "../settings"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
-import { useApi ,useTeamApi} from "../useApi"
+import { useTeamApi } from "../useApi"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode

@@ -5,7 +5,6 @@ import { Current } from "../world"
 import { WebData } from "../webdata"
 import { NavLink } from "react-router-dom"
 
-
 export function AccountsPage() {
   const accounts = useApi(Current.api.getAccounts)
   return <AccountsPageInner accounts={accounts} />

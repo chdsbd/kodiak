@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
-from typing import Optional, Union
+from datetime import date, timedelta
+from random import randint
+from typing import Iterable, Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
@@ -17,8 +19,6 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from datetime import date, timedelta
-from random import randint
 from core.models import AnonymousUser, User
 
 
@@ -33,7 +33,7 @@ def installations(request: HttpRequest) -> HttpResponse:
 
 
 @auth.login_required
-def usage_billing(request: HttpRequest,team_id: str) -> HttpResponse:
+def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     return JsonResponse(
         dict(
             activeUserCount=8,
@@ -54,7 +54,15 @@ def usage_billing(request: HttpRequest,team_id: str) -> HttpResponse:
     )
 
 
-def events_to_chart(events):
+@dataclass
+class ActivityDay:
+    date: date
+    approved: int = 0
+    merged: int = 0
+    updated: int = 0
+
+
+def events_to_chart(events: Iterable[ActivityDay]) -> dict:
     labels = []
     approved = []
     merged = []
@@ -71,13 +79,6 @@ def events_to_chart(events):
 
 @auth.login_required
 def activity(request: HttpRequest, team_id: str) -> HttpResponse:
-    @dataclass
-    class ActivityDay:
-        date: date
-        approved: int = 0
-        merged: int = 0
-        updated: int = 0
-
     today = date.today()
     dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
     for x in range(60):
@@ -90,10 +91,9 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
             )
         )
 
-    pull_request_chart = events_to_chart(reversed(dates))
-    kodiak_chart = events_to_chart(reversed(dates))
+    chart = events_to_chart(reversed(dates))
     return JsonResponse(
-        dict(kodiakActivity=kodiak_chart, pullRequestActivity=kodiak_chart)
+        dict(kodiakActivity=chart, pullRequestActivity=chart)
     )
 
 
@@ -139,6 +139,40 @@ def current_account(request: HttpRequest) -> HttpResponse:
                 ),
             ],
         )
+    )
+
+
+@auth.login_required
+def accounts(request: HttpRequest) -> HttpResponse:
+    return JsonResponse(
+        [
+            dict(
+                id=7340772,
+                name="sbdchd",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+            ),
+            dict(
+                id=32210060,
+                name="recipeyak",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
+            ),
+            dict(
+                id=7806836,
+                name="AdmitHub",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
+            ),
+            dict(
+                id=33015070,
+                name="getdoug",
+                profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
+            ),
+            dict(
+                id=8897583,
+                name="pytest-dev",
+                profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
+            ),
+        ],
+        safe=False,
     )
 
 
@@ -285,6 +319,7 @@ def oauth_complete(request: HttpRequest) -> HttpResponse:
     return HttpResponse()
 
 
+@csrf_exempt
 def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     request.user = AnonymousUser()
