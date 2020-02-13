@@ -28,6 +28,7 @@ ALLOWED_HOSTS: List[str] = ["*"]
 INSTALLED_APPS = ["django.contrib.sessions", "core"]
 
 MIDDLEWARE = [
+    "core.middleware.ExceptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
