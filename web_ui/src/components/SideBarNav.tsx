@@ -1,6 +1,6 @@
 import React from "react"
 import { NavLink, useParams, useHistory } from "react-router-dom"
-import { Dropdown, ButtonGroup, Popover } from "react-bootstrap"
+import { Dropdown, ButtonGroup } from "react-bootstrap"
 import {
   GoGraph,
   GoCreditCard,
