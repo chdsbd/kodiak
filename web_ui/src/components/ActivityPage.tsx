@@ -30,7 +30,7 @@ interface IActivityPageInnerProps {
 function ActivityPageInner({ data }: IActivityPageInnerProps) {
   if (data.status === "loading") {
     return (
-      <ActivityPageContainer>
+      <ActivityPageContainer className="h-100">
         <Spinner />
       </ActivityPageContainer>
     )
@@ -38,7 +38,7 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   if (data.status === "failure") {
     return (
       <ActivityPageContainer>
-        <p>Failure loading data D:</p>
+        <p className="text-center text-muted">failed to load activity data</p>
       </ActivityPageContainer>
     )
   }
@@ -55,10 +55,14 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
 
 interface IActivityPageContainer {
   readonly children: React.ReactNode
+  readonly className?: string
 }
-function ActivityPageContainer({ children }: IActivityPageContainer) {
+function ActivityPageContainer({
+  children,
+  className,
+}: IActivityPageContainer) {
   return (
-    <Container>
+    <Container className={className}>
       <h2>Activity</h2>
       {children}
     </Container>

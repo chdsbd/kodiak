@@ -1,6 +1,6 @@
 import React from "react"
 import { NavLink, useParams, useHistory } from "react-router-dom"
-import { Dropdown, ButtonGroup } from "react-bootstrap"
+import { Dropdown, ButtonGroup, Popover } from "react-bootstrap"
 import {
   GoGraph,
   GoCreditCard,
@@ -10,6 +10,8 @@ import {
   GoLinkExternal,
   GoQuestion,
 } from "react-icons/go"
+import ToolTip from "@tippy.js/react"
+import "tippy.js/dist/tippy.css"
 import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
 import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
@@ -149,6 +151,16 @@ function SkeletonProfileImage() {
   )
 }
 
+function SideBarContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
+      style={{ width: 230 }}>
+      {children}
+    </div>
+  )
+}
+
 function Loading() {
   return (
     <SideBarNavContainer
@@ -156,6 +168,14 @@ function Loading() {
       orgContent={<SkeletonProfileImage />}
       switchAccountContent={<></>}
     />
+  )
+}
+
+function Failure() {
+  return (
+    <SideBarContainer>
+      <p className="text-muted m-auto">failed to load sidebar</p>
+    </SideBarContainer>
   )
 }
 
@@ -170,18 +190,22 @@ function SideBarNavContainer({
   switchAccountContent,
 }: ISideBarNavContainerProps) {
   const history = useHistory()
+  const [logoutOkay, setLogout] = React.useState<boolean>(true)
+  const target = React.useRef(null)
   function logoutUser() {
+    setLogout(true)
     Current.api.logoutUser().then(res => {
       if (res.ok) {
+        setLogout(true)
         history.push("/login")
         return
       }
+      setLogout(false)
     })
   }
+
   return (
-    <div
-      className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
-      style={{ width: 230 }}>
+    <SideBarContainer>
       <div>
         <div>
           <Dropdown as={ButtonGroup} className="w-100">
@@ -245,19 +269,24 @@ function SideBarNavContainer({
         </ul>
       </div>
 
-      <div>
-        <Dropdown as={ButtonGroup} className="w-100">
-          <DropdownToggle id="user-dropdown" as={CustomToggle}>
-            {userContent}
-          </DropdownToggle>
-          <Dropdown.Menu className="super-colors shadow-sm">
-            <Dropdown.Item as="button" onClick={logoutUser}>
-              <span className="mr-1">Logout</span>
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+      <div ref={target}>
+        <ToolTip
+          content="Logout request failed"
+          visible={!logoutOkay}
+          placement="right">
+          <Dropdown as={ButtonGroup} className="w-100">
+            <DropdownToggle id="user-dropdown" as={CustomToggle}>
+              {userContent}
+            </DropdownToggle>
+            <Dropdown.Menu className="super-colors shadow-sm">
+              <Dropdown.Item as="button" onClick={logoutUser}>
+                <span className="mr-1">Logout</span>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </ToolTip>
       </div>
-    </div>
+    </SideBarContainer>
   )
 }
 
@@ -285,7 +314,7 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
     return <Loading />
   }
   if (accounts.status === "failure") {
-    return <p>failure</p>
+    return <Failure />
   }
 
   return (

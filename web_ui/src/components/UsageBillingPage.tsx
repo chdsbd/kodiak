@@ -53,7 +53,7 @@ interface IUsageBillingPageInnerProps {
 
 function Loading() {
   return (
-    <UsageAndBillingContainer>
+    <UsageAndBillingContainer className="h-100">
       <Spinner />
     </UsageAndBillingContainer>
   )
@@ -62,14 +62,20 @@ function Loading() {
 function Failure() {
   return (
     <UsageAndBillingContainer>
-      <p className="text-center">failed to fetch data</p>
+      <p className="text-center text-muted">failed to load usage data</p>
     </UsageAndBillingContainer>
   )
 }
 
-function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
+function UsageAndBillingContainer({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div>
+    <div className={className}>
       <h2>Usage & Billing</h2>
       {children}
     </div>
