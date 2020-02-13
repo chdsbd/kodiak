@@ -11,6 +11,7 @@ import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
+from structlog.contextvars import bind_contextvars
 
 import kodiak.app_config as conf
 from kodiak.pull_request import evaluate_pr
@@ -231,13 +232,13 @@ class RedisWebhookQueue:
             queue_name, {event.json(): time.time()}, only_if_not_exists=True
         )
         await transaction.exec()
-        log = logger.bind(
+        bind_contextvars(
             owner=event.repo_owner,
             repo=event.repo_name,
             number=event.pull_request_number,
             install=event.installation_id,
+            webhook_event_enqueued=True,
         )
-        log.info("enqueue webhook event")
         self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(self, *, event: WebhookEvent) -> Optional[int]:
@@ -258,14 +259,13 @@ class RedisWebhookQueue:
         )
         future_results = await transaction.zrange(queue_name, 0, 1000)
         await transaction.exec()
-        log = logger.bind(
+        bind_contextvars(
             owner=event.repo_owner,
             repo=event.repo_name,
             number=event.pull_request_number,
             install=event.installation_id,
+            repo_event_enqueued=True,
         )
-
-        log.info("enqueue repo event")
         self.start_repo_worker(queue_name)
         results = await future_results
         dictionary = await results.asdict()

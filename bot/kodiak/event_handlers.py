@@ -7,6 +7,7 @@ from typing import List, Optional, Set, cast
 import asyncio_redis
 import structlog
 import zstandard as zstd
+from structlog.contextvars import bind_contextvars
 
 from kodiak import app_config as conf
 from kodiak import queries
@@ -77,7 +78,7 @@ async def status_event(status_event: StatusEvent) -> None:
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
-    log = logger.bind(owner=owner, repo=repo, install=installation_id)
+    bind_contextvars(owner=owner, repo=repo, install=installation_id)
 
     refs = find_branch_names_latest(
         sha=status_event.sha, branches=status_event.branches
@@ -95,7 +96,7 @@ async def status_event(status_event: StatusEvent) -> None:
             # I worry that we might miss some events where `branches` is empty,
             # but not because of a fork.
             pr_results = [await api_client.get_open_pull_requests()]
-            log.warning("could not find refs for status_event")
+            logger.warning("could not find refs for status_event")
         else:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
@@ -152,6 +153,8 @@ async def push(push_event: PushEvent) -> None:
     owner = push_event.repository.owner.login
     repo = push_event.repository.name
     installation_id = str(push_event.installation.id)
+    bind_contextvars(owner=owner, repo=repo, install=installation_id)
+
     branch_name = get_branch_name(push_event.ref)
     log = logger.bind(ref=push_event.ref, branch_name=branch_name)
     if branch_name is None:
@@ -201,7 +204,6 @@ def compress_payload(data: dict) -> bytes:
 
 async def handle_webhook_event(event_name: str, payload: dict) -> None:
     log = logger.bind(event_name=event_name)
-
     if conf.USAGE_REPORTING and event_name in conf.USAGE_REPORTING_EVENTS:
         # store events in Redis for dequeue by web api job.
         #

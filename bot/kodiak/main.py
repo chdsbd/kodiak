@@ -13,6 +13,7 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
+from structlog.contextvars import bind_contextvars, clear_contextvars, merge_contextvars
 
 from kodiak import app_config as conf
 from kodiak.event_handlers import handle_webhook_event
@@ -34,15 +35,22 @@ sentry_sdk.init(
     integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
 )
 
+
 structlog.configure(
     processors=[
+        merge_contextvars,
         structlog.stdlib.filter_by_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
         add_request_info_processor,
-        SentryProcessor(level=logging.WARNING),
+        SentryProcessor(
+            level=logging.WARNING,
+            # these tags in the logs get indexed by Sentry. Any log statement
+            # should have most/all of these tags if possible.
+            tag_keys=["install", "owner", "repo", "number"],
+        ),
         structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
     ],
     context_class=dict,
@@ -71,6 +79,7 @@ async def webhook_event(
     """
     Verify and accept GitHub Webhook payloads.
     """
+    clear_contextvars()
     # FastAPI allows x_github_event to be nullable and we cannot type it as
     # Optional in the function definition
     # https://github.com/tiangolo/fastapi/issues/179
@@ -95,6 +104,7 @@ async def webhook_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature: X-Hub-Signature",
         )
+    bind_contextvars(event_name=github_event)
 
     await handle_webhook_event(event_name=github_event, payload=event)
 
