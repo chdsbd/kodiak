@@ -11,6 +11,7 @@ import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
+from sentry_sdk.hub import Hub
 from structlog.contextvars import bind_contextvars
 
 import kodiak.app_config as conf
@@ -54,6 +55,7 @@ async def process_webhook_event(
     queue_name: str,
     log: structlog.BoundLogger,
 ) -> None:
+    bind_contextvars(queue_name=queue_name)
     log.info("block for new webhook event")
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
     log.info("parsing webhook event")
@@ -70,6 +72,15 @@ async def process_webhook_event(
 
     async def queue_for_merge() -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event)
+
+    with Hub(Hub.current) as hub:
+        with hub.configure_scope() as scope:
+            scope.set_tag(
+                install=webhook_event.installation_id,
+                owner=webhook_event.repo_owner,
+                repo=webhook_event.repo_name,
+                number=webhook_event.pull_request_number,
+            )
 
     log.info("evaluate pr for webhook event")
     await evaluate_pr(
@@ -95,6 +106,9 @@ async def webhook_event_consumer(
     """
     log = logger.bind(queue=queue_name)
     log.info("start webhook event consumer")
+    with Hub(Hub.current) as hub:
+        with hub.configure_scope() as scope:
+            scope.set_tag(queue=queue_name)
 
     while True:
         await process_webhook_event(connection, webhook_queue, queue_name, log)
