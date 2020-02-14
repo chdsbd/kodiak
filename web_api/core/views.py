@@ -99,46 +99,28 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def current_account(request: HttpRequest) -> HttpResponse:
+def current_account(request: HttpRequest, team_id: int) -> HttpResponse:
+    installation = Installation.objects.get(github_account_id=team_id)
     return JsonResponse(
         dict(
             user=dict(
-                id=7340772,
-                name="sbdchd",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+                id=request.user.github_id,
+                name=request.user.github_login,
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{request.user.github_id}?s=400&v=4",
             ),
             org=dict(
-                id=29196,
-                name="kodiakhq[bot]",
-                profileImgUrl="https://avatars1.githubusercontent.com/in/29196?v=4",
+                id=installation.github_id,
+                name=installation.github_account_login,
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{installation.github_account_id}?v=4",
             ),
             accounts=[
-                dict(
-                    id=7340772,
-                    name="sbdchd",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-                ),
-                dict(
-                    id=32210060,
-                    name="recipeyak",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
-                ),
-                dict(
-                    id=7806836,
-                    name="AdmitHub",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
-                ),
-                dict(
-                    id=33015070,
-                    name="getdoug",
-                    profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
-                ),
-                dict(
-                    id=8897583,
-                    name="pytest-dev",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
-                ),
-            ],
+            dict(
+                id=x.github_account_id,
+                name=x.github_account_login,
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
+            )
+            for x in Installation.objects.filter(memberships__user=request.user)
+        ],
         )
     )
 

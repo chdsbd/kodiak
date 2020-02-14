@@ -14,7 +14,7 @@ import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
 import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
 import { WebData } from "../webdata"
-import { useApi } from "../useApi"
+import { useTeamApi } from "../useApi"
 import { Current } from "../world"
 
 interface IDropdownToggleProps<T> {
@@ -122,7 +122,7 @@ function SideBarNavLink({
 }
 
 export function SideBarNav() {
-  const data = useApi(Current.api.getCurrentAccount)
+  const data = useTeamApi(Current.api.getCurrentAccount)
   return <SideBarNavInner accounts={data} />
 }
 

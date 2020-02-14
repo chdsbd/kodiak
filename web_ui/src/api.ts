@@ -47,6 +47,9 @@ export interface IUsageBillingPageApiResponse {
 export interface IActivityArgs {
   readonly teamId: string
 }
+export interface ICurrentAccountArgs {
+  readonly teamId: string
+}
 interface IChart {
   readonly labels: Array<string>
   readonly datasets: {
@@ -93,5 +96,5 @@ export interface Api {
   ) => Promise<IUsageBillingPageApiResponse>
   getActivity: (args: IActivityArgs) => Promise<IActivityApiResponse>
   getAccounts: () => Promise<IAccountsApiResponse>
-  getCurrentAccount: () => Promise<ICurrentAccountApiResponse>
+  getCurrentAccount: (args: ICurrentAccountArgs) => Promise<ICurrentAccountApiResponse>
 }
