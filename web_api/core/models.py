@@ -38,3 +38,28 @@ class GitHubEvent(BaseModel):
 
     class Meta:
         db_table = "github_event"
+
+
+class Installation(BaseModel):
+    class AccountType(models.TextChoices):
+        user = "User"
+        organization = "Organization"
+
+    github_id = models.IntegerField(unique=True)
+    github_account_id = models.IntegerField(unique=True)
+    github_account_login = models.CharField(unique=True, max_length=255)
+    github_account_type = models.CharField(max_length=255, choices=AccountType.choices)
+    payload = pg_fields.JSONField(default=dict)
+
+    class Meta:
+        db_table = "installation"
+
+
+class InstallationMembership(BaseModel):
+    installation = models.ForeignKey(
+        Installation, on_delete=models.CASCADE, related_name="memberships"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+
+    class Meta:
+        db_table = "installation_membership"

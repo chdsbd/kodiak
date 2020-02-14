@@ -1,7 +1,8 @@
+import logging
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from random import randint
-from typing import Iterable, Optional, Union
+from typing import Iterable, List, Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
@@ -19,7 +20,9 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import AnonymousUser, User
+from core.models import AnonymousUser, Installation, InstallationMembership, User
+
+logger = logging.getLogger(__name__)
 
 
 @auth.login_required
@@ -145,30 +148,11 @@ def accounts(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         [
             dict(
-                id=7340772,
-                name="sbdchd",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            ),
-            dict(
-                id=32210060,
-                name="recipeyak",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
-            ),
-            dict(
-                id=7806836,
-                name="AdmitHub",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
-            ),
-            dict(
-                id=33015070,
-                name="getdoug",
-                profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
-            ),
-            dict(
-                id=8897583,
-                name="pytest-dev",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
-            ),
+                id=x.github_account_id,
+                name=x.github_account_login,
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
+            )
+            for x in Installation.objects.filter(memberships__user=request.user)
         ],
         safe=False,
     )
@@ -198,6 +182,77 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 
 # TODO: handle deauthorization webhook
 # https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#handling-a-revoked-github-app-authorization
+
+# TODO: Handle installation event webhooks
+
+
+class SyncError(Exception):
+    pass
+
+
+def sync_installations(user: User) -> None:
+    """
+
+    - create any missing installations
+    - add memberships of user for installations
+    - remove memberships of installations that aren't included
+    """
+    user_installations_res = requests.get(
+        "https://api.github.com/user/installations",
+        headers=dict(
+            authorization=f"Bearer {user.github_access_token}",
+            Accept="application/vnd.github.machine-man-preview+json",
+        ),
+    )
+    try:
+        user_installations_res.raise_for_status()
+    except requests.HTTPError:
+        logging.warning("sync_installation failed", exc_info=True)
+        raise SyncError
+
+    installations_data = user_installations_res.json()
+    installation_count = installations_data["total_count"]
+    installations = installations_data["installations"]
+
+    installs: List[Installation] = []
+
+    for installation in installations:
+        installation_id = installation["id"]
+        installation_account_id = installation["account"]["id"]
+        installation_account_login = installation["account"]["login"]
+        installation_account_type = installation["account"]["type"]
+
+        existing_install: Optional[Installation] = Installation.objects.filter(
+            github_account_id=installation_account_id
+        ).first()
+        if existing_install is None:
+            install = Installation.objects.create(
+                github_id=installation_id,
+                github_account_id=installation_account_id,
+                github_account_login=installation_account_login,
+                github_account_type=installation_account_type,
+                payload=installation,
+            )
+        else:
+            install = existing_install
+            install.github_id = installation_id
+            install.github_account_id = installation_account_id
+            install.github_account_login = installation_account_login
+            install.github_account_type = installation_account_type
+            install.payload = installation
+            install.save()
+
+        try:
+            InstallationMembership.objects.get(installation=install, user=user)
+        except InstallationMembership.DoesNotExist:
+            InstallationMembership.objects.create(installation=install, user=user)
+
+        installs.append(install)
+
+    # remove installations to which the user no longer has access.
+    InstallationMembership.objects.exclude(installation__in=installs).filter(
+        user=user
+    ).delete()
 
 
 @dataclass
@@ -296,6 +351,11 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             github_login=github_login,
             github_access_token=access_token,
         )
+    try:
+        sync_installations(user=user)
+    except SyncError:
+        if not existing_user:
+            raise
 
     auth.login(user, request)
     return Success()
