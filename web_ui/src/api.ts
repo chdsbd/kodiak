@@ -23,7 +23,7 @@ interface ILogoutResponseError {
 }
 export type ILogoutResponse = ILogoutResponseSuccess | ILogoutResponseError
 
-export type ISyncInstallationsResponse =
+export type ISyncAccountsResponse =
   | {
       ok: true
     }
@@ -97,7 +97,7 @@ export interface ICurrentAccountApiResponse {
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
-  syncInstallations: () => Promise<ISyncInstallationsResponse>
+  syncAccounts: () => Promise<ISyncAccountsResponse>
   getUsageBilling: (
     args: IUsageBillingPageArgs,
   ) => Promise<IUsageBillingPageApiResponse>

@@ -36,7 +36,7 @@ class User(BaseModel):
     def is_authenticated(self) -> bool:
         return True
 
-    def sync_installations(self) -> None:
+    def sync_accounts(self) -> None:
         """
 
         - create any missing installations

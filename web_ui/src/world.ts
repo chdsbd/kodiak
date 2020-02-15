@@ -68,10 +68,10 @@ export const Current: World = {
       }
       return { ok: false }
     },
-    syncInstallations: async () => {
+    syncAccounts: async () => {
       try {
-        const res = await authRoute.post<api.ISyncInstallationsResponse>(
-          "/v1/sync_installations",
+        const res = await authRoute.post<api.ISyncAccountsResponse>(
+          "/v1/sync_accounts",
         )
         return res.data
       } catch (e) {

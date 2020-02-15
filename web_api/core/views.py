@@ -267,9 +267,9 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # TODO(chdsbd): Run this in as a background job if the user is an existing
     # user.
     try:
-        user.sync_installations()
+        user.sync_accounts()
     except SyncInstallationsError:
-        logger.warning("sync_installations failed", exc_info=True)
+        logger.warning("sync_accounts failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
             raise
@@ -304,6 +304,6 @@ def logout(request: HttpRequest) -> HttpResponse:
 @csrf_exempt
 @auth.login_required
 @require_http_methods(["POST"])
-def sync_installations(request: HttpRequest) -> HttpResponse:
-    request.user.sync_installations()
+def sync_accounts(request: HttpRequest) -> HttpResponse:
+    request.user.sync_accounts()
     return JsonResponse(dict(ok=True))

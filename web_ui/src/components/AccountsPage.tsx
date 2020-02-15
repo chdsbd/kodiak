@@ -23,7 +23,7 @@ interface IAccountsPageInnerProps {
   readonly accounts: WebData<ReadonlyArray<IAccount>>
 }
 function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
-  const [syncInstallationStatus, setSyncInstallationStatus] = React.useState<
+  const [syncAccountStatus, setSyncAccountStatus] = React.useState<
     "initial" | "loading" | "failure" | "success"
   >("initial")
   if (accounts.status === "loading") {
@@ -37,28 +37,29 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
     )
   }
 
-  const syncInstallations = () => {
-    setSyncInstallationStatus("loading")
-    Current.api.syncInstallations().then(res => {
+  const syncAccounts = () => {
+    setSyncAccountStatus("loading")
+    Current.api.syncAccounts().then(res => {
       if (res.ok) {
-        setSyncInstallationStatus("success")
+        setSyncAccountStatus("success")
       } else {
-        setSyncInstallationStatus("failure")
+        setSyncAccountStatus("failure")
       }
     })
   }
 
-  const isSyncLoading = syncInstallationStatus === "loading"
-  const isSyncSuccess = syncInstallationStatus === "success"
-  const isSyncFailure = syncInstallationStatus === "failure"
+  const isSyncLoading = syncAccountStatus === "loading"
+  const isSyncSuccess = syncAccountStatus === "success"
+  const isSyncFailure = syncAccountStatus === "failure"
 
   return (
     <div className="h-100 d-flex justify-content-center align-items-center flex-column">
       <div
         className="w-100 text-center d-flex align-items-center flex-column"
         style={{ minHeight: 300 }}>
-        <h1 className="h4 mb-4">Select an Account</h1>
+        <h1 className="h4 mb-4">Select an Acccount</h1>
         <ul className="list-unstyled">
+          {accounts.data === 0 && <p className="text-muted">0 Acccounts Available.</p>}
           {accounts.data.map(a => (
             <li className="d-flex align-items-center">
               <NavLink to={`/t/${a.id}/`} className="pb-3">
@@ -73,9 +74,9 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
             </li>
           ))}
         </ul>
-        <p className="text-muted">
+        <p className="border-top pt-2 text-muted">
           Not seeing an account?
-          <br /> Install Kodiak on the account and sync your installations.
+          <br /> Install Kodiak and sync your accounts.
         </p>
         <ToolTip
           content={
@@ -90,9 +91,9 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
           <Button
             size="sm"
             className="mb-4"
-            onClick={syncInstallations}
+            onClick={syncAccounts}
             disabled={isSyncLoading}>
-            {isSyncLoading ? "Syncing installations..." : "Sync Installations"}
+            {isSyncLoading ? "Syncing accounts..." : "Sync Accounts"}
           </Button>
         </ToolTip>
       </div>
