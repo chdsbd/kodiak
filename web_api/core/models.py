@@ -18,13 +18,11 @@ class BaseModel(models.Model):
         abstract = True
 
 
-class SyncAccountssError(Exception):
+class SyncAccountsError(Exception):
     pass
 
 
 class User(BaseModel):
-    github_id = models.IntegerField()
-    github_login = models.CharField(max_length=255)
     github_id = models.IntegerField(unique=True)
     github_login = models.CharField(unique=True, max_length=255)
     github_access_token = models.CharField(max_length=255)
@@ -54,7 +52,7 @@ class User(BaseModel):
             user_installations_res.raise_for_status()
         except requests.HTTPError:
             logging.warning("sync_installation failed", exc_info=True)
-            raise SyncAccountssError
+            raise SyncAccountsError
 
         # TODO(chdsbd): Handle multiple pages of installations
         try:

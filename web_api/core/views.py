@@ -20,7 +20,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import Account, AnonymousUser, SyncAccountssError, User
+from core.models import Account, AnonymousUser, SyncAccountsError, User
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # user.
     try:
         user.sync_accounts()
-    except SyncAccountssError:
+    except SyncAccountsError:
         logger.warning("sync_accounts failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
@@ -303,5 +303,8 @@ def logout(request: HttpRequest) -> HttpResponse:
 @auth.login_required
 @require_http_methods(["POST"])
 def sync_accounts(request: HttpRequest) -> HttpResponse:
-    request.user.sync_accounts()
+    try:
+        request.user.sync_accounts()
+    except SyncAccountsError:
+        return JsonResponse(dict(ok=False))
     return JsonResponse(dict(ok=True))

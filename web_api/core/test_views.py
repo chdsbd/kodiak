@@ -4,7 +4,7 @@ import pytest
 import responses
 from django.conf import settings
 
-from core.models import Account, User
+from core.models import Account, AccountMembership, User
 from core.testutils import TestClient as Client
 
 
@@ -29,6 +29,63 @@ def mocked_responses() -> Any:
 def test_environment() -> None:
     assert settings.KODIAK_API_GITHUB_CLIENT_ID == "Iv1.111FAKECLIENTID111"
     assert settings.KODIAK_API_GITHUB_CLIENT_SECRET == "888INVALIDSECRET8888"
+
+
+@pytest.fixture
+def authed_client(client: Client, user: User) -> Client:
+    client.login(user)
+    return client
+
+
+@pytest.mark.django_db
+def test_sync_accounts_success(
+    authed_client: Client, successful_sync_accounts_response: object
+) -> None:
+    assert Account.objects.count() == 0
+    res = authed_client.post("/v1/sync_accounts")
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+    assert Account.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_sync_accounts_failure(
+    authed_client: Client, failing_sync_accounts_response: object
+) -> None:
+    assert Account.objects.count() == 0
+    res = authed_client.post("/v1/sync_accounts")
+    assert res.status_code == 200
+    assert res.json()["ok"] is False
+    assert Account.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_accounts(authed_client: Client, user: User) -> None:
+    user_account = Account.objects.create(
+        github_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user)
+    org_account = Account.objects.create(
+        github_id=83676,
+        github_account_id=779874,
+        github_account_login="recipeyak",
+        github_account_type="Organization",
+    )
+    AccountMembership.objects.create(account=org_account, user=user)
+
+    res = authed_client.get("/v1/accounts")
+    assert res.status_code == 200
+    assert len(res.json()) == 2
+    accounts = sorted(res.json(), key=lambda x: x["name"])
+    assert accounts[0]["id"] == str(user_account.id)
+    assert accounts[0]["name"] == user_account.github_account_login
+    assert (
+        accounts[0]["profileImgUrl"]
+        == f"https://avatars1.githubusercontent.com/u/{user_account.github_account_id}?s=400&v=4"
+    )
 
 
 @pytest.mark.django_db
@@ -191,7 +248,7 @@ def test_oauth_complete_success_new_account(
     successful_responses: object,
     successful_sync_accounts_response: object,
 ) -> None:
-
+    assert Account.objects.count() == 0
     assert User.objects.count() == 0
     res = client.post(
         "/v1/oauth_complete",
@@ -206,6 +263,7 @@ def test_oauth_complete_success_new_account(
     login_result = res.json()
     assert login_result["ok"] is True
     assert User.objects.count() == 1
+    assert Account.objects.count() == 1
     user = User.objects.get()
     assert user.github_id == 10137
     assert user.github_login == "ghost"
