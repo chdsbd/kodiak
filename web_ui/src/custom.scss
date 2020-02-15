@@ -62,13 +62,6 @@ a:hover {
   overflow: auto !important;
 }
 
-.some-cls:hover {
-  color: #212529;
-}
-.some-cls {
-  color: #47325f;
-}
-
 .border-hover:hover {
   @extend .border;
 }
