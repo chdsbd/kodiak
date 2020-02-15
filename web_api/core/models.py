@@ -162,6 +162,12 @@ class Account(BaseModel):
 
 
 class AccountMembership(BaseModel):
+    """
+    Associates a User with an Account.
+
+    A GitHub user can be associated with multiple installations of Kodiak. This
+    model defines that membership.
+    """
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="memberships"
     )
