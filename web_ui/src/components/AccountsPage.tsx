@@ -7,6 +7,7 @@ import { NavLink } from "react-router-dom"
 import { Button, Container } from "react-bootstrap"
 import { Spinner } from "./Spinner"
 import { ToolTip } from "./ToolTip"
+import { installUrl } from "../settings"
 
 export function AccountsPage() {
   const accounts = useApi(Current.api.getAccounts)
@@ -76,7 +77,7 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
         </ul>
         <p className="border-top pt-2 text-muted">
           Not seeing an account?
-          <br /> Install Kodiak and sync your accounts.
+          <br /> <a href={installUrl}>Install Kodiak</a> and sync your accounts.
         </p>
         <ToolTip
           content={
