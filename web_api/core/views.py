@@ -333,9 +333,13 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             github_login=github_login,
             github_access_token=access_token,
         )
+    # TODO(chdsbd): Run this in as a background job if the user is an existing
+    # user.
     try:
         sync_installations(user=user)
     except SyncError:
+        logger.warning("sync_installations failed", exc_info=True)
+        # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
             raise
 
