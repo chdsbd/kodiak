@@ -99,23 +99,23 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def current_account(request: HttpRequest, team_id: int) -> HttpResponse:
-    installation = Installation.objects.get(github_account_id=team_id)
+def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
+    installation = Installation.objects.get(id=team_id)
     return JsonResponse(
         dict(
             user=dict(
-                id=request.user.github_id,
+                id=request.user.id,
                 name=request.user.github_login,
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{request.user.github_id}?s=400&v=4",
             ),
             org=dict(
-                id=installation.github_id,
+                id=installation.id,
                 name=installation.github_account_login,
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{installation.github_account_id}?v=4",
             ),
             accounts=[
             dict(
-                id=x.github_account_id,
+                id=x.id,
                 name=x.github_account_login,
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
             )
@@ -130,7 +130,7 @@ def accounts(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         [
             dict(
-                id=x.github_account_id,
+                id=x.id,
                 name=x.github_account_login,
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
             )
