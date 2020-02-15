@@ -77,7 +77,7 @@ class User(BaseModel):
             ).first()
             if existing_account is None:
                 account = Account.objects.create(
-                    github_id=installation_id,
+                    github_installation_id=installation_id,
                     github_account_id=installation_account_id,
                     github_account_login=installation_account_login,
                     github_account_type=installation_account_type,
@@ -85,7 +85,7 @@ class User(BaseModel):
                 )
             else:
                 account = existing_account
-                account.github_id = installation_id
+                account.github_installation_id = installation_id
                 account.github_account_id = installation_account_id
                 account.github_account_login = installation_account_login
                 account.github_account_type = installation_account_type
@@ -124,7 +124,7 @@ class Account(BaseModel):
         user = "User"
         organization = "Organization"
 
-    github_id = models.IntegerField(unique=True)
+    github_installation_id = models.IntegerField(unique=True)
     github_account_id = models.IntegerField(unique=True)
     github_account_login = models.CharField(unique=True, max_length=255)
     github_account_type = models.CharField(max_length=255, choices=AccountType.choices)

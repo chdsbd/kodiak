@@ -167,7 +167,7 @@ def test_sync_accounts_new_and_existing_accounts(
     user: User, successful_installation_response: object
 ) -> None:
     user_account = Account.objects.create(
-        github_id=1066615,
+        github_installation_id=1066615,
         github_account_login=user.github_login,
         github_account_id=1929960,
         github_account_type="User",
@@ -178,7 +178,7 @@ def test_sync_accounts_new_and_existing_accounts(
     # that our membership removal of installations a user no longer has access
     # to works.
     acme_corp_account = Account.objects.create(
-        github_id=79233,
+        github_installation_id=79233,
         github_account_login="acme-corp",
         github_account_id=33803,
         github_account_type="Organization",

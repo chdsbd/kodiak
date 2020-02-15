@@ -62,14 +62,14 @@ def test_sync_accounts_failure(
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
     user_account = Account.objects.create(
-        github_id=377930,
+        github_installation_id=377930,
         github_account_id=900966,
         github_account_login=user.github_login,
         github_account_type="User",
     )
     AccountMembership.objects.create(account=user_account, user=user)
     org_account = Account.objects.create(
-        github_id=83676,
+        github_installation_id=83676,
         github_account_id=779874,
         github_account_login="recipeyak",
         github_account_type="Organization",
@@ -104,14 +104,14 @@ def test_current_account(authed_client: Client, user: User) -> None:
 @pytest.mark.django_db
 def test_accounts(authed_client: Client, user: User) -> None:
     user_account = Account.objects.create(
-        github_id=377930,
+        github_installation_id=377930,
         github_account_id=900966,
         github_account_login=user.github_login,
         github_account_type="User",
     )
     AccountMembership.objects.create(account=user_account, user=user)
     org_account = Account.objects.create(
-        github_id=83676,
+        github_installation_id=83676,
         github_account_id=779874,
         github_account_login="recipeyak",
         github_account_type="Organization",
