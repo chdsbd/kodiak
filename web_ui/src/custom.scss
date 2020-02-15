@@ -82,3 +82,12 @@ a:hover {
   max-width: 120px;
   text-overflow: ellipsis;
 }
+
+
+.account-chooser-image:hover {
+  border-color: $dark !important;
+}
+.account-chooser-image {
+  border-width: 2px !important;
+  border-color: lighten($dark, 25%) !important;
+}

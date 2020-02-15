@@ -70,40 +70,44 @@ function AccountsPageInner({
           )}
           {accounts.data.map(a => (
             <li className="d-flex align-items-center">
-              <NavLink to={`/t/${a.id}/`} className="pb-3">
+              <NavLink
+                to={`/t/${a.id}/`}
+                className="d-flex align-items-center px-4 py-2 border border-dark rounded text-decoration-none account-chooser-image">
                 <Image
                   url={a.profileImgUrl}
                   alt="org profile"
-                  size={30}
+                  size={48}
                   className="mr-2"
                 />
-                <span>{a.name}</span>
+                <h2 className="h4 m-0">{a.name}</h2>
               </NavLink>
             </li>
           ))}
         </ul>
-        <p className="border-top pt-2 text-muted">
-          Not seeing an account?
-          <br /> <a href={installUrl}>Install Kodiak</a> and sync your accounts.
-        </p>
-        <ToolTip
-          content={
-            isSyncSuccess
-              ? "sync successful!"
-              : isSyncFailure
-              ? "sync failed!"
-              : ""
-          }
-          visible={isSyncSuccess || isSyncFailure}
-          placement="right">
-          <Button
-            size="sm"
-            className="mb-4"
-            onClick={syncAccounts}
-            disabled={isSyncLoading}>
-            {isSyncLoading ? "Syncing accounts..." : "Sync Accounts"}
-          </Button>
-        </ToolTip>
+        <details>
+          <summary className="mb-2">Not seeing an account?</summary>
+          <a href={installUrl}>Install Kodiak</a> and sync your accounts.
+          <br />
+          <ToolTip
+            content={
+              isSyncSuccess
+                ? "sync successful!"
+                : isSyncFailure
+                ? "sync failed!"
+                : ""
+            }
+            visible={isSyncSuccess || isSyncFailure}
+            placement="right">
+            <Button
+              size="sm"
+              className="mb-4"
+              variant="light"
+              onClick={syncAccounts}
+              disabled={isSyncLoading}>
+              {isSyncLoading ? "Syncing accounts..." : "Sync Accounts"}
+            </Button>
+          </ToolTip>
+        </details>
       </div>
     </div>
   )
