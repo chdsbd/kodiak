@@ -6,6 +6,7 @@ import { WebData } from "../webdata"
 import { NavLink } from "react-router-dom"
 import { Button, Container } from "react-bootstrap"
 import { Spinner } from "./Spinner"
+import { ToolTip } from "./ToolTip"
 
 export function AccountsPage() {
   const accounts = useApi(Current.api.getAccounts)
@@ -47,7 +48,9 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
     })
   }
 
-  const isSyncing = syncInstallationStatus === "loading"
+  const isSyncLoading = syncInstallationStatus === "loading"
+  const isSyncSuccess = syncInstallationStatus === "success"
+  const isSyncFailure = syncInstallationStatus === "failure"
 
   return (
     <div className="h-100 d-flex justify-content-center align-items-center flex-column">
@@ -74,13 +77,24 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
           Not seeing an account?
           <br /> Install Kodiak on the account and sync your installations.
         </p>
-        <Button
-          size="sm"
-          className="mb-4"
-          onClick={syncInstallations}
-          disabled={isSyncing}>
-          {isSyncing ? "Syncing installations..." : "Sync Installations"}
-        </Button>
+        <ToolTip
+          content={
+            isSyncSuccess
+              ? "sync successful!"
+              : isSyncFailure
+              ? "sync failed!"
+              : ""
+          }
+          visible={isSyncSuccess || isSyncFailure}
+          placement="right">
+          <Button
+            size="sm"
+            className="mb-4"
+            onClick={syncInstallations}
+            disabled={isSyncLoading}>
+            {isSyncLoading ? "Syncing installations..." : "Sync Installations"}
+          </Button>
+        </ToolTip>
       </div>
     </div>
   )

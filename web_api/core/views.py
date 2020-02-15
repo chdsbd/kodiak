@@ -2,7 +2,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from random import randint
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
@@ -20,7 +20,8 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import AnonymousUser, Installation, InstallationMembership, User
+from core.models import AnonymousUser, Installation, User
+from core import users
 
 logger = logging.getLogger(__name__)
 
@@ -168,82 +169,6 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 # TODO: Handle installation event webhooks
 
 
-class SyncError(Exception):
-    pass
-
-
-def sync_installations(user: User) -> None:
-    """
-
-    - create any missing installations
-    - add memberships of user for installations
-    - remove memberships of installations that aren't included
-    """
-    user_installations_res = requests.get(
-        "https://api.github.com/user/installations",
-        headers=dict(
-            authorization=f"Bearer {user.github_access_token}",
-            Accept="application/vnd.github.machine-man-preview+json",
-        ),
-    )
-    try:
-        user_installations_res.raise_for_status()
-    except requests.HTTPError:
-        logging.warning("sync_installation failed", exc_info=True)
-        raise SyncError
-
-    # TODO(chdsbd): Handle multiple pages of installations
-    try:
-        if user_installations_res.links['next']:
-            logging.warning("user has multiple pages")
-    except KeyError:
-        pass
-
-    installations_data = user_installations_res.json()
-    installation_count = installations_data["total_count"]
-    installations = installations_data["installations"]
-
-    installs: List[Installation] = []
-
-    for installation in installations:
-        installation_id = installation["id"]
-        installation_account_id = installation["account"]["id"]
-        installation_account_login = installation["account"]["login"]
-        installation_account_type = installation["account"]["type"]
-
-        existing_install: Optional[Installation] = Installation.objects.filter(
-            github_account_id=installation_account_id
-        ).first()
-        if existing_install is None:
-            install = Installation.objects.create(
-                github_id=installation_id,
-                github_account_id=installation_account_id,
-                github_account_login=installation_account_login,
-                github_account_type=installation_account_type,
-                payload=installation,
-            )
-        else:
-            install = existing_install
-            install.github_id = installation_id
-            install.github_account_id = installation_account_id
-            install.github_account_login = installation_account_login
-            install.github_account_type = installation_account_type
-            install.payload = installation
-            install.save()
-
-        try:
-            InstallationMembership.objects.get(installation=install, user=user)
-        except InstallationMembership.DoesNotExist:
-            InstallationMembership.objects.create(installation=install, user=user)
-
-        installs.append(install)
-
-    # remove installations to which the user no longer has access.
-    InstallationMembership.objects.exclude(installation__in=installs).filter(
-        user=user
-    ).delete()
-
-
 @dataclass
 class Error:
     error: str
@@ -343,8 +268,8 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # TODO(chdsbd): Run this in as a background job if the user is an existing
     # user.
     try:
-        sync_installations(user=user)
-    except SyncError:
+        users.sync_installations(user=user)
+    except users.SyncError:
         logger.warning("sync_installations failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
@@ -375,3 +300,10 @@ def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     request.user = AnonymousUser()
     return HttpResponse(status=201)
+
+@csrf_exempt
+@auth.login_required
+@require_http_methods(["POST"])
+def sync_installations(request: HttpRequest) -> HttpResponse:
+    users.sync_installations(request.user)
+    return JsonResponse(dict(ok=True))

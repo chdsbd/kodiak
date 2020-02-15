@@ -10,8 +10,7 @@ import {
   GoLinkExternal,
   GoQuestion,
 } from "react-icons/go"
-import ToolTip from "@tippy.js/react"
-import "tippy.js/dist/tippy.css"
+import { ToolTip } from "./ToolTip"
 import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
 import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
