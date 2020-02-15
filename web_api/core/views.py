@@ -114,13 +114,13 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{installation.github_account_id}?v=4",
             ),
             accounts=[
-            dict(
-                id=x.id,
-                name=x.github_account_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
-            )
-            for x in Installation.objects.filter(memberships__user=request.user)
-        ],
+                dict(
+                    id=x.id,
+                    name=x.github_account_login,
+                    profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
+                )
+                for x in Installation.objects.filter(memberships__user=request.user)
+            ],
         )
     )
 

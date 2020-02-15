@@ -16,6 +16,8 @@ class BaseModel(models.Model):
 class User(BaseModel):
     github_id = models.IntegerField()
     github_login = models.CharField(max_length=255)
+    github_id = models.IntegerField(unique=True)
+    github_login = models.CharField(unique=True, max_length=255)
     github_access_token = models.CharField(max_length=255)
 
     class Meta:
