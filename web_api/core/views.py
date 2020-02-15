@@ -20,8 +20,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import AnonymousUser, Installation, User
-from core import users
+from core.models import AnonymousUser, Installation, SyncInstallationsError, User
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +267,8 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # TODO(chdsbd): Run this in as a background job if the user is an existing
     # user.
     try:
-        users.sync_installations(user=user)
-    except users.SyncError:
+        user.sync_installations()
+    except SyncInstallationsError:
         logger.warning("sync_installations failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
@@ -301,9 +300,10 @@ def logout(request: HttpRequest) -> HttpResponse:
     request.user = AnonymousUser()
     return HttpResponse(status=201)
 
+
 @csrf_exempt
 @auth.login_required
 @require_http_methods(["POST"])
 def sync_installations(request: HttpRequest) -> HttpResponse:
-    users.sync_installations(request.user)
+    request.user.sync_installations()
     return JsonResponse(dict(ok=True))
