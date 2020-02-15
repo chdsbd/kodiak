@@ -101,18 +101,18 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
             user=dict(
                 id=request.user.id,
                 name=request.user.github_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{request.user.github_id}?s=400&v=4",
+                profileImgUrl=request.user.profile_image(),
             ),
             org=dict(
                 id=account.id,
                 name=account.github_account_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{account.github_account_id}?s=400&v=4",
+                profileImgUrl=account.profile_image(),
             ),
             accounts=[
                 dict(
                     id=x.id,
                     name=x.github_account_login,
-                    profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
+                    profileImgUrl=x.profile_image(),
                 )
                 for x in Account.objects.filter(memberships__user=request.user)
             ],
@@ -124,11 +124,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
 def accounts(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         [
-            dict(
-                id=x.id,
-                name=x.github_account_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
-            )
+            dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image(),)
             for x in Account.objects.filter(memberships__user=request.user)
         ],
         safe=False,

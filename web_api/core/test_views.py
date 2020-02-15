@@ -82,13 +82,13 @@ def test_current_account(authed_client: Client, user: User) -> None:
     assert res.json()["user"]["name"] == user.github_login
     assert (
         res.json()["user"]["profileImgUrl"]
-        == f"https://avatars1.githubusercontent.com/u/{user.github_id}?s=400&v=4"
+        == f"https://avatars.githubusercontent.com/u/{user.github_id}"
     )
     assert res.json()["org"]["id"] == str(org_account.id)
     assert res.json()["org"]["name"] == org_account.github_account_login
     assert (
         res.json()["org"]["profileImgUrl"]
-        == f"https://avatars1.githubusercontent.com/u/{org_account.github_account_id}?s=400&v=4"
+        == f"https://avatars.githubusercontent.com/u/{org_account.github_account_id}"
     )
 
     assert len(res.json()["accounts"]) == 2
@@ -97,7 +97,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
     assert accounts[0]["name"] == user_account.github_account_login
     assert (
         accounts[0]["profileImgUrl"]
-        == f"https://avatars1.githubusercontent.com/u/{user_account.github_account_id}?s=400&v=4"
+        == f"https://avatars.githubusercontent.com/u/{user_account.github_account_id}"
     )
 
 
@@ -126,7 +126,7 @@ def test_accounts(authed_client: Client, user: User) -> None:
     assert accounts[0]["name"] == user_account.github_account_login
     assert (
         accounts[0]["profileImgUrl"]
-        == f"https://avatars1.githubusercontent.com/u/{user_account.github_account_id}?s=400&v=4"
+        == f"https://avatars.githubusercontent.com/u/{user_account.github_account_id}"
     )
 
 

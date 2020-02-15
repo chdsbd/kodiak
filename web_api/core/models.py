@@ -46,6 +46,9 @@ class User(BaseModel):
     def is_authenticated(self) -> bool:
         return True
 
+    def profile_image(self) -> str:
+        return f"https://avatars.githubusercontent.com/u/{self.github_id}"
+
     def sync_accounts(self) -> None:
         """
 
@@ -160,6 +163,9 @@ class Account(BaseModel):
     class Meta:
         db_table = "account"
 
+    def profile_image(self) -> str:
+        return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
+
 
 class AccountMembership(BaseModel):
     """
@@ -168,6 +174,7 @@ class AccountMembership(BaseModel):
     A GitHub user can be associated with multiple installations of Kodiak. This
     model defines that membership.
     """
+
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="memberships"
     )
