@@ -4,6 +4,8 @@ import { useApi } from "../useApi"
 import { Current } from "../world"
 import { WebData } from "../webdata"
 import { NavLink } from "react-router-dom"
+import { Container } from "react-bootstrap"
+import { Spinner } from "./Spinner"
 
 export function AccountsPage() {
   const accounts = useApi(Current.api.getAccounts)
@@ -21,10 +23,14 @@ interface IAccountsPageInnerProps {
 }
 function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
   if (accounts.status === "loading") {
-    return <p>loading...</p>
+    return <Spinner />
   }
   if (accounts.status === "failure") {
-    return <p>failure...</p>
+    return (
+      <Container className="d-flex h-100">
+        <p className="m-auto text-muted">failed to load accounts data</p>
+      </Container>
+    )
   }
 
   return (
