@@ -106,7 +106,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
             org=dict(
                 id=account.id,
                 name=account.github_account_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{account.github_account_id}?v=4",
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{account.github_account_id}?s=400&v=4",
             ),
             accounts=[
                 dict(
