@@ -18,7 +18,7 @@ class BaseModel(models.Model):
         abstract = True
 
 
-class SyncInstallationsError(Exception):
+class SyncAccountssError(Exception):
     pass
 
 
@@ -54,7 +54,7 @@ class User(BaseModel):
             user_installations_res.raise_for_status()
         except requests.HTTPError:
             logging.warning("sync_installation failed", exc_info=True)
-            raise SyncInstallationsError
+            raise SyncAccountssError
 
         # TODO(chdsbd): Handle multiple pages of installations
         try:
@@ -66,7 +66,7 @@ class User(BaseModel):
         installations_data = user_installations_res.json()
         installations = installations_data["installations"]
 
-        installs: List[Installation] = []
+        accounts: List[Account] = []
 
         for installation in installations:
             installation_id = installation["id"]
@@ -74,11 +74,11 @@ class User(BaseModel):
             installation_account_login = installation["account"]["login"]
             installation_account_type = installation["account"]["type"]
 
-            existing_install: Optional[Installation] = Installation.objects.filter(
+            existing_account: Optional[Account] = Account.objects.filter(
                 github_account_id=installation_account_id
             ).first()
-            if existing_install is None:
-                install = Installation.objects.create(
+            if existing_account is None:
+                account = Account.objects.create(
                     github_id=installation_id,
                     github_account_id=installation_account_id,
                     github_account_login=installation_account_login,
@@ -86,23 +86,23 @@ class User(BaseModel):
                     payload=installation,
                 )
             else:
-                install = existing_install
-                install.github_id = installation_id
-                install.github_account_id = installation_account_id
-                install.github_account_login = installation_account_login
-                install.github_account_type = installation_account_type
-                install.payload = installation
-                install.save()
+                account = existing_account
+                account.github_id = installation_id
+                account.github_account_id = installation_account_id
+                account.github_account_login = installation_account_login
+                account.github_account_type = installation_account_type
+                account.payload = installation
+                account.save()
 
             try:
-                InstallationMembership.objects.get(installation=install, user=self)
-            except InstallationMembership.DoesNotExist:
-                InstallationMembership.objects.create(installation=install, user=self)
+                AccountMembership.objects.get(account=account, user=self)
+            except AccountMembership.DoesNotExist:
+                AccountMembership.objects.create(account=account, user=self)
 
-            installs.append(install)
+            accounts.append(account)
 
         # remove installations to which the user no longer has access.
-        InstallationMembership.objects.exclude(installation__in=installs).filter(
+        AccountMembership.objects.exclude(account__in=accounts).filter(
             user=self
         ).delete()
 
@@ -121,7 +121,7 @@ class GitHubEvent(BaseModel):
         db_table = "github_event"
 
 
-class Installation(BaseModel):
+class Account(BaseModel):
     class AccountType(models.TextChoices):
         user = "User"
         organization = "Organization"
@@ -133,14 +133,14 @@ class Installation(BaseModel):
     payload = pg_fields.JSONField(default=dict)
 
     class Meta:
-        db_table = "installation"
+        db_table = "account"
 
 
-class InstallationMembership(BaseModel):
-    installation = models.ForeignKey(
-        Installation, on_delete=models.CASCADE, related_name="memberships"
+class AccountMembership(BaseModel):
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="memberships"
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
 
     class Meta:
-        db_table = "installation_membership"
+        db_table = "account_membership"

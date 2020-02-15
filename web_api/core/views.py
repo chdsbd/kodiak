@@ -20,7 +20,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import AnonymousUser, Installation, SyncInstallationsError, User
+from core.models import Account, AnonymousUser, SyncAccountssError, User
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +28,6 @@ logger = logging.getLogger(__name__)
 @auth.login_required
 def ping(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
-
-
-@auth.login_required
-def installations(request: HttpRequest) -> HttpResponse:
-    return JsonResponse([{"id": 53121}], safe=False)
 
 
 @auth.login_required
@@ -100,7 +95,7 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
-    installation = Installation.objects.get(id=team_id)
+    account = Account.objects.get(id=team_id)
     return JsonResponse(
         dict(
             user=dict(
@@ -109,9 +104,9 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{request.user.github_id}?s=400&v=4",
             ),
             org=dict(
-                id=installation.id,
-                name=installation.github_account_login,
-                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{installation.github_account_id}?v=4",
+                id=account.id,
+                name=account.github_account_login,
+                profileImgUrl=f"https://avatars1.githubusercontent.com/u/{account.github_account_id}?v=4",
             ),
             accounts=[
                 dict(
@@ -119,7 +114,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
                     name=x.github_account_login,
                     profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
                 )
-                for x in Installation.objects.filter(memberships__user=request.user)
+                for x in Account.objects.filter(memberships__user=request.user)
             ],
         )
     )
@@ -134,7 +129,7 @@ def accounts(request: HttpRequest) -> HttpResponse:
                 name=x.github_account_login,
                 profileImgUrl=f"https://avatars1.githubusercontent.com/u/{x.github_account_id}?s=400&v=4",
             )
-            for x in Installation.objects.filter(memberships__user=request.user)
+            for x in Account.objects.filter(memberships__user=request.user)
         ],
         safe=False,
     )
@@ -268,7 +263,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # user.
     try:
         user.sync_accounts()
-    except SyncInstallationsError:
+    except SyncAccountssError:
         logger.warning("sync_accounts failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
