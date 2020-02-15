@@ -23,9 +23,21 @@ class SyncAccountsError(Exception):
 
 
 class User(BaseModel):
-    github_id = models.IntegerField(unique=True)
-    github_login = models.CharField(unique=True, max_length=255)
-    github_access_token = models.CharField(max_length=255)
+    """
+    A GitHub user that can login to Kodiak.
+
+    A User can be a member of multiple Accounts if they have access.
+    """
+
+    github_id = models.IntegerField(
+        unique=True, help_text="GitHub ID of the GitHub user account."
+    )
+    github_login = models.CharField(
+        unique=True, max_length=255, help_text="GitHub username of the GitHub account."
+    )
+    github_access_token = models.CharField(
+        max_length=255, help_text="OAuth token for the GitHub user."
+    )
 
     class Meta:
         db_table = "user"
@@ -47,10 +59,11 @@ class User(BaseModel):
                 authorization=f"Bearer {self.github_access_token}",
                 Accept="application/vnd.github.machine-man-preview+json",
             ),
+            timeout=5,
         )
         try:
             user_installations_res.raise_for_status()
-        except requests.HTTPError:
+        except (requests.HTTPError, requests.exceptions.Timeout):
             logging.warning("sync_installation failed", exc_info=True)
             raise SyncAccountsError
 
@@ -120,13 +133,27 @@ class GitHubEvent(BaseModel):
 
 
 class Account(BaseModel):
+    """
+    An GitHub Kodiak App installation for a GitHub organization or user.
+
+    Users are associated with Accounts via AccountMembership.
+    """
+
     class AccountType(models.TextChoices):
         user = "User"
         organization = "Organization"
 
-    github_installation_id = models.IntegerField(unique=True)
-    github_account_id = models.IntegerField(unique=True)
-    github_account_login = models.CharField(unique=True, max_length=255)
+    github_installation_id = models.IntegerField(
+        unique=True, help_text="GitHub App Installation ID."
+    )
+    github_account_id = models.IntegerField(
+        unique=True, help_text="GitHub ID for account with installation."
+    )
+    github_account_login = models.CharField(
+        unique=True,
+        max_length=255,
+        help_text="GitHub username for account with installation.",
+    )
     github_account_type = models.CharField(max_length=255, choices=AccountType.choices)
     payload = pg_fields.JSONField(default=dict)
 

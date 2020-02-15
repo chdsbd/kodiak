@@ -207,10 +207,12 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
         client_secret=settings.KODIAK_API_GITHUB_CLIENT_SECRET,
         code=code,
     )
-    access_res = requests.post("https://github.com/login/oauth/access_token", payload)
+    access_res = requests.post(
+        "https://github.com/login/oauth/access_token", payload, timeout=5
+    )
     try:
         access_res.raise_for_status()
-    except requests.HTTPError:
+    except (requests.HTTPError, requests.exceptions.Timeout):
         return Error(
             error="OAuthServerError", error_description="Failed to fetch access token."
         )
@@ -233,10 +235,11 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     user_data_res = requests.get(
         "https://api.github.com/user",
         headers=dict(authorization=f"Bearer {access_token}"),
+        timeout=5,
     )
     try:
         user_data_res.raise_for_status()
-    except requests.HTTPError:
+    except (requests.HTTPError, requests.exceptions.Timeout):
         return Error(
             error="OAuthServerError",
             error_description="Failed to fetch account information from GitHub.",
