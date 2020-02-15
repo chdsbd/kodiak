@@ -1,14 +1,16 @@
-import React from "react"
+import React, { useCallback } from "react"
 import { useParams } from "react-router-dom"
 import { WebData } from "./webdata"
 
-export function useApi<T>(func: () => Promise<T>): WebData<T> {
+export function useApi<T>(
+  func: () => Promise<T>,
+): [WebData<T>, { refetch: () => Promise<unknown> }] {
   const [state, setState] = React.useState<WebData<T>>({
     status: "loading",
   })
 
-  React.useEffect(() => {
-    func()
+  const fetch = useCallback(() => {
+    return func()
       .then(res => {
         setState({ status: "success", data: res })
       })
@@ -17,7 +19,11 @@ export function useApi<T>(func: () => Promise<T>): WebData<T> {
       })
   }, [func])
 
-  return state
+  React.useEffect(() => {
+    fetch()
+  }, [fetch, func])
+
+  return [state, { refetch: fetch }]
 }
 
 interface ITeamArgs {

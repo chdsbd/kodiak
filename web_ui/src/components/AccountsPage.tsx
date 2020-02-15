@@ -10,8 +10,8 @@ import { ToolTip } from "./ToolTip"
 import { installUrl } from "../settings"
 
 export function AccountsPage() {
-  const accounts = useApi(Current.api.getAccounts)
-  return <AccountsPageInner accounts={accounts} />
+  const [accounts, { refetch }] = useApi(Current.api.getAccounts)
+  return <AccountsPageInner accounts={accounts} refetchAccounts={refetch} />
 }
 
 interface IAccount {
@@ -22,8 +22,12 @@ interface IAccount {
 
 interface IAccountsPageInnerProps {
   readonly accounts: WebData<ReadonlyArray<IAccount>>
+  readonly refetchAccounts: () => Promise<unknown>
 }
-function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
+function AccountsPageInner({
+  accounts,
+  refetchAccounts,
+}: IAccountsPageInnerProps) {
   const [syncAccountStatus, setSyncAccountStatus] = React.useState<
     "initial" | "loading" | "failure" | "success"
   >("initial")
@@ -43,6 +47,7 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
     Current.api.syncAccounts().then(res => {
       if (res.ok) {
         setSyncAccountStatus("success")
+        refetchAccounts()
       } else {
         setSyncAccountStatus("failure")
       }
@@ -60,7 +65,9 @@ function AccountsPageInner({ accounts }: IAccountsPageInnerProps) {
         style={{ minHeight: 300 }}>
         <h1 className="h4 mb-4">Select an Acccount</h1>
         <ul className="list-unstyled">
-          {accounts.data === 0 && <p className="text-muted">0 Acccounts Available.</p>}
+          {accounts.data.length === 0 && (
+            <p className="text-muted">0 Acccounts Available.</p>
+          )}
           {accounts.data.map(a => (
             <li className="d-flex align-items-center">
               <NavLink to={`/t/${a.id}/`} className="pb-3">
