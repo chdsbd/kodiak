@@ -4,7 +4,7 @@ import pytest
 import responses
 from django.conf import settings
 
-from core.models import User
+from core.models import Account, User
 from core.testutils import TestClient as Client
 
 
@@ -43,21 +43,7 @@ def test_logout(client: Client, user: User) -> None:
     res = client.get("/v1/logout")
     assert res.status_code == 201
     res = client.get("/v1/ping")
-    assert res.status_code in (401, 403)
-
-
-@pytest.mark.django_db
-def test_installations(client: Client, user: User) -> None:
-    """
-    Authentication should be restricted to logged in users.
-    """
-    res = client.get("/v1/installations")
-    assert res.status_code in (401, 403)
-
-    client.login(user)
-    res = client.get("/v1/installations")
-
-    assert res.status_code == 200
+    assert res.status_code == 401
 
 
 @pytest.mark.django_db
@@ -67,6 +53,71 @@ def test_oauth_login(client: Client, state_token: str) -> None:
     assert (
         res["Location"]
         == f"https://github.com/login/oauth/authorize?client_id=Iv1.111FAKECLIENTID111&redirect_uri=https://app.kodiakhq.com/oauth&state={state_token}"
+    )
+
+
+@pytest.fixture
+def successful_sync_accounts_response(mocked_responses: Any) -> None:
+    mocked_responses.add(
+        responses.GET,
+        "https://api.github.com/user/installations",
+        json={
+            "total_count": 1,
+            "installations": [
+                {
+                    "id": 1066615,
+                    "account": {
+                        "login": "chdsbd",
+                        "id": 1929960,
+                        "node_id": "MDQ6VXNlcjE5Mjk5NjA=",
+                        "avatar_url": "https://avatars2.githubusercontent.com/u/1929960?v=4",
+                        "gravatar_id": "",
+                        "url": "https://api.github.com/users/chdsbd",
+                        "html_url": "https://github.com/chdsbd",
+                        "followers_url": "https://api.github.com/users/chdsbd/followers",
+                        "following_url": "https://api.github.com/users/chdsbd/following{/other_user}",
+                        "gists_url": "https://api.github.com/users/chdsbd/gists{/gist_id}",
+                        "starred_url": "https://api.github.com/users/chdsbd/starred{/owner}{/repo}",
+                        "subscriptions_url": "https://api.github.com/users/chdsbd/subscriptions",
+                        "organizations_url": "https://api.github.com/users/chdsbd/orgs",
+                        "repos_url": "https://api.github.com/users/chdsbd/repos",
+                        "events_url": "https://api.github.com/users/chdsbd/events{/privacy}",
+                        "received_events_url": "https://api.github.com/users/chdsbd/received_events",
+                        "type": "User",
+                        "site_admin": False,
+                    },
+                    "repository_selection": "selected",
+                    "access_tokens_url": "https://api.github.com/app/installations/1066615/access_tokens",
+                    "repositories_url": "https://api.github.com/installation/repositories",
+                    "html_url": "https://github.com/settings/installations/1066615",
+                    "app_id": 31500,
+                    "app_slug": "kodiak-local-dev",
+                    "target_id": 1929960,
+                    "target_type": "User",
+                    "permissions": {
+                        "administration": "read",
+                        "checks": "write",
+                        "contents": "write",
+                        "issues": "read",
+                        "metadata": "read",
+                        "pull_requests": "write",
+                        "statuses": "read",
+                    },
+                    "events": [
+                        "check_run",
+                        "issue_comment",
+                        "pull_request",
+                        "pull_request_review",
+                        "pull_request_review_comment",
+                        "push",
+                        "status",
+                    ],
+                    "created_at": "2019-05-26T23:47:57.000-04:00",
+                    "updated_at": "2020-02-09T18:39:43.000-05:00",
+                    "single_file_name": None,
+                }
+            ],
+        },
     )
 
 
@@ -135,7 +186,10 @@ def successful_responses(mocked_responses: Any) -> None:
 
 @pytest.mark.django_db
 def test_oauth_complete_success_new_account(
-    client: Client, state_token: str, successful_responses: object
+    client: Client,
+    state_token: str,
+    successful_responses: object,
+    successful_sync_accounts_response: object,
 ) -> None:
 
     assert User.objects.count() == 0
@@ -160,7 +214,11 @@ def test_oauth_complete_success_new_account(
 
 @pytest.mark.django_db
 def test_oauth_complete_success_existing_account(
-    client: Client, user: User, successful_responses: object, state_token: str
+    client: Client,
+    user: User,
+    successful_responses: object,
+    successful_sync_accounts_response: object,
+    state_token: str,
 ) -> None:
     assert User.objects.count() == 1
 
@@ -181,6 +239,53 @@ def test_oauth_complete_success_existing_account(
     assert new_user.github_id == user.github_id
     assert new_user.github_login == user.github_login
     assert new_user.github_access_token == "D6B5A3B57D32498DB00845A99137D3E2"
+
+
+@pytest.fixture
+def failing_sync_accounts_response(mocked_responses: Any) -> None:
+    mocked_responses.add(
+        responses.GET,
+        "https://api.github.com/user/installations",
+        json={
+            "message": "Bad credentials",
+            "documentation_url": "https://developer.github.com/v3",
+        },
+        status=401,
+    )
+
+
+@pytest.mark.django_db
+def test_oauth_complete_sync_installation_failure(
+    client: Client,
+    successful_responses: object,
+    failing_sync_accounts_response: object,
+    state_token: str,
+) -> None:
+
+    assert User.objects.count() == 0
+    assert Account.objects.count() == 0
+    res = client.post(
+        "/v1/oauth_complete",
+        dict(
+            serverState=state_token,
+            clientState=state_token,
+            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        ),
+    )
+    assert res.status_code == 200
+
+    login_result = res.json()
+    assert login_result["ok"] is False
+    assert login_result["error"] == "AccountSyncFailure"
+    assert (
+        login_result["error_description"] == "Failed to sync GitHub accounts for user."
+    )
+    assert User.objects.count() == 1
+    user = User.objects.get()
+    assert user.github_id == 10137
+    assert user.github_login == "ghost"
+    assert user.github_access_token == "D6B5A3B57D32498DB00845A99137D3E2"
+    assert Account.objects.count() == 0
 
 
 @pytest.mark.skip

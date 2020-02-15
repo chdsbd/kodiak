@@ -267,7 +267,10 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
         logger.warning("sync_accounts failed", exc_info=True)
         # ignore the errors if we were an existing user as we can use old data.
         if not existing_user:
-            raise
+            return Error(
+                error="AccountSyncFailure",
+                error_description="Failed to sync GitHub accounts for user.",
+            )
 
     auth.login(user, request)
     return Success()
