@@ -147,9 +147,11 @@ jobs:
   web_api_test:
     docker:
       - image: python:3.7
+        environment:
+          DATABASE_URL: postgresql://postgres@localhost:5432/postgres
       - image: circleci/postgres:12-ram
-    environment:
-      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
+        environment:
+            POSTGRES_DB: postgres
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
