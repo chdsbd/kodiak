@@ -68,6 +68,19 @@ export const Current: World = {
       }
       return { ok: false }
     },
+    syncInstallations: async () => {
+      try {
+        const res = await authRoute.post<api.ISyncInstallationsResponse>(
+          "/v1/sync_installations",
+        )
+        return res.data
+      } catch (e) {
+        // pass
+      }
+      return {
+        ok: false,
+      }
+    },
     getUsageBilling: async (args: api.IUsageBillingPageArgs) => {
       return (
         await authRoute.get<api.IUsageBillingPageApiResponse>(

@@ -23,6 +23,12 @@ interface ILogoutResponseError {
 }
 export type ILogoutResponse = ILogoutResponseSuccess | ILogoutResponseError
 
+export type ISyncInstallationsResponse =
+  | {
+      ok: true
+    }
+  | { ok: false }
+
 export interface IUsageBillingPageArgs {
   readonly teamId: string
 }
@@ -91,10 +97,13 @@ export interface ICurrentAccountApiResponse {
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
+  syncInstallations: () => Promise<ISyncInstallationsResponse>
   getUsageBilling: (
     args: IUsageBillingPageArgs,
   ) => Promise<IUsageBillingPageApiResponse>
   getActivity: (args: IActivityArgs) => Promise<IActivityApiResponse>
   getAccounts: () => Promise<IAccountsApiResponse>
-  getCurrentAccount: (args: ICurrentAccountArgs) => Promise<ICurrentAccountApiResponse>
+  getCurrentAccount: (
+    args: ICurrentAccountArgs,
+  ) => Promise<ICurrentAccountApiResponse>
 }

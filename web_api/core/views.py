@@ -192,6 +192,13 @@ def sync_installations(user: User) -> None:
         logging.warning("sync_installation failed", exc_info=True)
         raise SyncError
 
+    # TODO(chdsbd): Handle multiple pages of installations
+    try:
+        if user_installations_res.links['next']:
+            logging.warning("user has multiple pages")
+    except KeyError:
+        pass
+
     installations_data = user_installations_res.json()
     installation_count = installations_data["total_count"]
     installations = installations_data["installations"]
