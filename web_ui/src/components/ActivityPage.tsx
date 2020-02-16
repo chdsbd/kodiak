@@ -2,11 +2,11 @@ import React from "react"
 import { Container } from "react-bootstrap"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
-import { ActivityChart } from "./ActivityChart"
+import { PullRequestActivityChart, KodiakActivityChart } from "./ActivityChart"
 import { Current } from "../world"
 import { useTeamApi } from "../useApi"
 
-interface IChartData {
+interface IKodiakChartData {
   readonly labels: Array<string>
   readonly datasets: {
     readonly approved: Array<number>
@@ -14,9 +14,17 @@ interface IChartData {
     readonly updated: Array<number>
   }
 }
+interface ITotalChart {
+  readonly labels: Array<string>
+  readonly datasets: {
+    readonly opened: Array<number>
+    readonly merged: Array<number>
+    readonly closed: Array<number>
+  }
+}
 interface IActivityData {
-  readonly kodiakActivity: IChartData
-  readonly pullRequestActivity: IChartData
+  readonly kodiakActivity: IKodiakChartData
+  readonly pullRequestActivity: ITotalChart
 }
 
 export function ActivityPage() {
@@ -46,9 +54,9 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
   return (
     <ActivityPageContainer>
       <h3 className="h5">Pull Request Activity</h3>
-      <ActivityChart data={data.data.pullRequestActivity} />
+      <PullRequestActivityChart data={data.data.pullRequestActivity} />
       <h3 className="h5">Kodiak Activity</h3>
-      <ActivityChart data={data.data.kodiakActivity} />
+      <KodiakActivityChart data={data.data.kodiakActivity} />
     </ActivityPageContainer>
   )
 }

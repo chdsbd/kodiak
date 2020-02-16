@@ -179,3 +179,41 @@ class AccountMembership(BaseModel):
 
     class Meta:
         db_table = "account_membership"
+
+
+class PullRequestActivity(BaseModel):
+    """
+    Store a per-day aggregate of pull request activity.
+
+    This information is calculated in the background from GitHubEvent payloads.
+
+    We should run regular updates for daily events but once a day has passed we
+    should never need to update it.
+    """
+
+    date = models.DateField()
+
+    total_opened = models.IntegerField()
+    total_merged = models.IntegerField()
+    total_closed = models.IntegerField()
+
+    kodiak_approved = models.IntegerField()
+    kodiak_merged = models.IntegerField()
+    kodiak_updated = models.IntegerField()
+
+    account = models.ForeignKey(
+        Account,
+        to_field="github_installation_id",
+        db_column="github_installation_id",
+        db_constraint=False,
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        db_table = "pull_request_activity"
+        # we should only have one set of totals per account, per day.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["date", "account"], name="unique_pull_request_activity"
+            )
+        ]

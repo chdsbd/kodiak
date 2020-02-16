@@ -20,7 +20,13 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import Account, AnonymousUser, SyncAccountsError, User
+from core.models import (
+    Account,
+    AnonymousUser,
+    SyncAccountsError,
+    User,
+    PullRequestActivity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,50 +58,53 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     )
 
 
-@dataclass
-class ActivityDay:
-    date: date
-    approved: int = 0
-    merged: int = 0
-    updated: int = 0
+@auth.login_required
+def activity(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = Account.objects.filter(memberships__user=request.user).get(id=team_id)
+    kodiak_activity_labels = []
+    kodiak_activity_approved = []
+    kodiak_activity_merged = []
+    kodiak_activity_updated = []
 
+    total_labels = []
+    total_opened = []
+    total_merged = []
+    total_closed = []
+    for day_activity in PullRequestActivity.objects.filter(account=account).order_by(
+        "date"
+    ):
+        kodiak_activity_labels.append(day_activity.date)
+        kodiak_activity_approved.append(day_activity.kodiak_approved)
+        kodiak_activity_merged.append(day_activity.kodiak_merged)
+        kodiak_activity_updated.append(day_activity.kodiak_updated)
+        total_labels.append(day_activity.date)
+        total_opened.append(day_activity.total_opened)
+        total_merged.append(day_activity.total_merged)
+        total_closed.append(day_activity.total_closed)
 
-def events_to_chart(events: Iterable[ActivityDay]) -> dict:
-    labels = []
-    approved = []
-    merged = []
-    updated = []
-    for event in events:
-        labels.append(event.date)
-        approved.append(event.approved)
-        merged.append(event.merged)
-        updated.append(event.updated)
-    return dict(
-        labels=labels, datasets=dict(approved=approved, merged=merged, updated=updated)
+    return JsonResponse(
+        dict(
+            kodiakActivity=dict(
+                labels=kodiak_activity_labels,
+                datasets=dict(
+                    approved=kodiak_activity_approved,
+                    merged=kodiak_activity_merged,
+                    updated=kodiak_activity_updated,
+                ),
+            ),
+            pullRequestActivity=dict(
+                labels=total_labels,
+                datasets=dict(
+                    opened=total_opened, merged=total_merged, closed=total_closed
+                ),
+            ),
+        )
     )
 
 
 @auth.login_required
-def activity(request: HttpRequest, team_id: str) -> HttpResponse:
-    today = date.today()
-    dates = [ActivityDay(date=today, approved=2, merged=3, updated=2)]
-    for x in range(60):
-        dates.append(
-            ActivityDay(
-                date=today - timedelta(days=(x + 1)),
-                approved=randint(0, 10),
-                merged=randint(0, 10),
-                updated=randint(0, 10),
-            )
-        )
-
-    chart = events_to_chart(reversed(dates))
-    return JsonResponse(dict(kodiakActivity=chart, pullRequestActivity=chart))
-
-
-@auth.login_required
 def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = Account.objects.get(id=team_id)
+    account = Account.objects.filter(memberships__user=request.user).get(id=team_id)
     return JsonResponse(
         dict(
             user=dict(
