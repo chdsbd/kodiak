@@ -97,7 +97,6 @@ class User(BaseModel):
                     github_account_id=installation_account_id,
                     github_account_login=installation_account_login,
                     github_account_type=installation_account_type,
-                    payload=installation,
                 )
             else:
                 account = existing_account
@@ -105,7 +104,6 @@ class User(BaseModel):
                 account.github_account_id = installation_account_id
                 account.github_account_login = installation_account_login
                 account.github_account_type = installation_account_type
-                account.payload = installation
                 account.save()
 
             try:
@@ -158,7 +156,6 @@ class Account(BaseModel):
         help_text="GitHub username for account with installation.",
     )
     github_account_type = models.CharField(max_length=255, choices=AccountType.choices)
-    payload = pg_fields.JSONField(default=dict)
 
     class Meta:
         db_table = "account"
