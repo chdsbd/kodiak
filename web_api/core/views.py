@@ -1,3 +1,4 @@
+import logging
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from random import randint
@@ -19,17 +20,14 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.models import AnonymousUser, User
+from core.models import Account, AnonymousUser, SyncAccountsError, User
+
+logger = logging.getLogger(__name__)
 
 
 @auth.login_required
 def ping(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
-
-
-@auth.login_required
-def installations(request: HttpRequest) -> HttpResponse:
-    return JsonResponse([{"id": 53121}], safe=False)
 
 
 @auth.login_required
@@ -96,45 +94,27 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def current_account(request: HttpRequest) -> HttpResponse:
+def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = Account.objects.get(id=team_id)
     return JsonResponse(
         dict(
             user=dict(
-                id=7340772,
-                name="sbdchd",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
+                id=request.user.id,
+                name=request.user.github_login,
+                profileImgUrl=request.user.profile_image(),
             ),
             org=dict(
-                id=29196,
-                name="kodiakhq[bot]",
-                profileImgUrl="https://avatars1.githubusercontent.com/in/29196?v=4",
+                id=account.id,
+                name=account.github_account_login,
+                profileImgUrl=account.profile_image(),
             ),
             accounts=[
                 dict(
-                    id=7340772,
-                    name="sbdchd",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-                ),
-                dict(
-                    id=32210060,
-                    name="recipeyak",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
-                ),
-                dict(
-                    id=7806836,
-                    name="AdmitHub",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
-                ),
-                dict(
-                    id=33015070,
-                    name="getdoug",
-                    profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
-                ),
-                dict(
-                    id=8897583,
-                    name="pytest-dev",
-                    profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
-                ),
+                    id=x.id,
+                    name=x.github_account_login,
+                    profileImgUrl=x.profile_image(),
+                )
+                for x in Account.objects.filter(memberships__user=request.user)
             ],
         )
     )
@@ -144,31 +124,8 @@ def current_account(request: HttpRequest) -> HttpResponse:
 def accounts(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         [
-            dict(
-                id=7340772,
-                name="sbdchd",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7340772?s=400&v=4",
-            ),
-            dict(
-                id=32210060,
-                name="recipeyak",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/32210060?s=400&v=4",
-            ),
-            dict(
-                id=7806836,
-                name="AdmitHub",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/7806836?s=400&v=4",
-            ),
-            dict(
-                id=33015070,
-                name="getdoug",
-                profileImgUrl="https://avatars0.githubusercontent.com/u/33015070?s=200&v=4",
-            ),
-            dict(
-                id=8897583,
-                name="pytest-dev",
-                profileImgUrl="https://avatars1.githubusercontent.com/u/8897583?s=200&v=4",
-            ),
+            dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image(),)
+            for x in Account.objects.filter(memberships__user=request.user)
         ],
         safe=False,
     )
@@ -198,6 +155,8 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
 
 # TODO: handle deauthorization webhook
 # https://developer.github.com/apps/building-github-apps/identifying-and-authorizing-users-for-github-apps/#handling-a-revoked-github-app-authorization
+
+# TODO: Handle installation event webhooks
 
 
 @dataclass
@@ -244,10 +203,12 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
         client_secret=settings.KODIAK_API_GITHUB_CLIENT_SECRET,
         code=code,
     )
-    access_res = requests.post("https://github.com/login/oauth/access_token", payload)
+    access_res = requests.post(
+        "https://github.com/login/oauth/access_token", payload, timeout=5
+    )
     try:
         access_res.raise_for_status()
-    except requests.HTTPError:
+    except (requests.HTTPError, requests.exceptions.Timeout):
         return Error(
             error="OAuthServerError", error_description="Failed to fetch access token."
         )
@@ -270,10 +231,11 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     user_data_res = requests.get(
         "https://api.github.com/user",
         headers=dict(authorization=f"Bearer {access_token}"),
+        timeout=5,
     )
     try:
         user_data_res.raise_for_status()
-    except requests.HTTPError:
+    except (requests.HTTPError, requests.exceptions.Timeout):
         return Error(
             error="OAuthServerError",
             error_description="Failed to fetch account information from GitHub.",
@@ -296,6 +258,18 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             github_login=github_login,
             github_access_token=access_token,
         )
+    # TODO(chdsbd): Run this in as a background job if the user is an existing
+    # user.
+    try:
+        user.sync_accounts()
+    except SyncAccountsError:
+        logger.warning("sync_accounts failed", exc_info=True)
+        # ignore the errors if we were an existing user as we can use old data.
+        if not existing_user:
+            return Error(
+                error="AccountSyncFailure",
+                error_description="Failed to sync GitHub accounts for user.",
+            )
 
     auth.login(user, request)
     return Success()
@@ -322,3 +296,14 @@ def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     request.user = AnonymousUser()
     return HttpResponse(status=201)
+
+
+@csrf_exempt
+@auth.login_required
+@require_http_methods(["POST"])
+def sync_accounts(request: HttpRequest) -> HttpResponse:
+    try:
+        request.user.sync_accounts()
+    except SyncAccountsError:
+        return JsonResponse(dict(ok=False))
+    return JsonResponse(dict(ok=True))

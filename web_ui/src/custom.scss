@@ -62,13 +62,6 @@ a:hover {
   overflow: auto !important;
 }
 
-.some-cls:hover {
-  color: #212529;
-}
-.some-cls {
-  color: #47325f;
-}
-
 .border-hover:hover {
   @extend .border;
 }
@@ -81,4 +74,13 @@ a:hover {
   overflow: hidden;
   max-width: 120px;
   text-overflow: ellipsis;
+}
+
+
+.account-chooser-image:hover {
+  border-color: $dark !important;
+}
+.account-chooser-image {
+  border-width: 2px !important;
+  border-color: lighten($dark, 25%) !important;
 }

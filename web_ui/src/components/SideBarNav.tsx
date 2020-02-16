@@ -8,15 +8,15 @@ import {
   GoBook,
   GoChevronDown,
   GoLinkExternal,
+  GoGear,
   GoQuestion,
 } from "react-icons/go"
-import ToolTip from "@tippy.js/react"
-import "tippy.js/dist/tippy.css"
+import { ToolTip } from "./ToolTip"
 import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
 import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
 import { WebData } from "../webdata"
-import { useApi } from "../useApi"
+import { useTeamApi } from "../useApi"
 import { Current } from "../world"
 
 interface IDropdownToggleProps<T> {
@@ -32,31 +32,6 @@ function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
   const BootstrapDropdownToggle = Dropdown.Toggle as any
   // tslint:disable-next-line no-unsafe-any
   return <BootstrapDropdownToggle {...props} />
-}
-
-interface IProfileImgProps {
-  readonly profileImgUrl: string
-  readonly name: string
-  readonly className?: string
-  readonly size: number
-}
-function ProfileImg({
-  profileImgUrl,
-  name,
-  className = "",
-  size,
-}: IProfileImgProps) {
-  return (
-    <div className={className}>
-      <Image
-        url={profileImgUrl}
-        alt="org profile"
-        size={size}
-        className="mr-2"
-      />
-      <span className="h6 some-cls">{name}</span>
-    </div>
-  )
 }
 
 interface ICustomToggleProps {
@@ -77,7 +52,7 @@ const CustomToggle = React.forwardRef(
           onClick(e)
         }
       }}>
-      <div className="d-flex align-items-center some-cls">
+      <div className="d-flex align-items-center">
         {children}
         <span className="ml-2">
           <GoChevronDown size="1.5rem" />
@@ -124,7 +99,7 @@ function SideBarNavLink({
 }
 
 export function SideBarNav() {
-  const data = useApi(Current.api.getCurrentAccount)
+  const data = useTeamApi(Current.api.getCurrentAccount)
   return <SideBarNavInner accounts={data} />
 }
 
@@ -164,7 +139,6 @@ function SideBarContainer({ children }: { children: React.ReactNode }) {
 function Loading() {
   return (
     <SideBarNavContainer
-      userContent={<SkeletonProfileImage />}
       orgContent={<SkeletonProfileImage />}
       switchAccountContent={<></>}
     />
@@ -181,12 +155,10 @@ function Failure() {
 
 interface ISideBarNavContainerProps {
   readonly orgContent: React.ReactNode
-  readonly userContent: React.ReactNode
   readonly switchAccountContent: React.ReactNode
 }
 function SideBarNavContainer({
   orgContent,
-  userContent,
   switchAccountContent,
 }: ISideBarNavContainerProps) {
   const history = useHistory()
@@ -276,7 +248,10 @@ function SideBarNavContainer({
           placement="right">
           <Dropdown as={ButtonGroup} className="w-100">
             <DropdownToggle id="user-dropdown" as={CustomToggle}>
-              {userContent}
+              <div className="d-flex mr-auto align-items-center">
+                <GoGear className="mr-1" size="1.25rem" />
+                <span>User Settings</span>
+              </div>
             </DropdownToggle>
             <Dropdown.Menu className="super-colors shadow-sm">
               <Dropdown.Item as="button" onClick={logoutUser}>
@@ -319,14 +294,6 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
 
   return (
     <SideBarNavContainer
-      userContent={
-        <ProfileImg
-          className="mr-auto"
-          profileImgUrl={accounts.data.user.profileImgUrl}
-          name={accounts.data.user.name}
-          size={30}
-        />
-      }
       orgContent={
         <div className="d-flex align-items-center mr-auto">
           <Image

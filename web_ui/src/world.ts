@@ -68,6 +68,19 @@ export const Current: World = {
       }
       return { ok: false }
     },
+    syncAccounts: async () => {
+      try {
+        const res = await authRoute.post<api.ISyncAccountsResponse>(
+          "/v1/sync_accounts",
+        )
+        return res.data
+      } catch (e) {
+        // pass
+      }
+      return {
+        ok: false,
+      }
+    },
     getUsageBilling: async (args: api.IUsageBillingPageArgs) => {
       return (
         await authRoute.get<api.IUsageBillingPageApiResponse>(
@@ -86,10 +99,10 @@ export const Current: World = {
       return (await authRoute.get<api.IAccountsApiResponse>("/v1/accounts"))
         .data
     },
-    getCurrentAccount: async () => {
+    getCurrentAccount: async (args: api.ICurrentAccountArgs) => {
       return (
         await authRoute.get<api.ICurrentAccountApiResponse>(
-          "/v1/current_account",
+          `/v1/t/${args.teamId}/current_account`,
         )
       ).data
     },
