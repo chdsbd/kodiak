@@ -1,10 +1,11 @@
+import datetime
 from typing import Any, cast
 
 import pytest
 import responses
 from django.conf import settings
 
-from core.models import Account, AccountMembership, User
+from core.models import Account, AccountMembership, PullRequestActivity, User
 from core.testutils import TestClient as Client
 
 
@@ -35,6 +36,41 @@ def test_environment() -> None:
 def authed_client(client: Client, user: User) -> Client:
     client.login(user)
     return client
+
+
+@pytest.mark.django_db
+def test_activity(authed_client: Client, user: User,) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user)
+    pull_request_activity = PullRequestActivity.objects.create(
+        date=datetime.date(2020, 2, 3),
+        total_opened=15,
+        total_merged=13,
+        total_closed=2,
+        kodiak_approved=3,
+        kodiak_merged=12,
+        kodiak_updated=2,
+        github_installation_id=user_account.github_installation_id,
+    )
+    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
+    assert res.status_code == 200
+    assert res.json()["kodiakActivity"]["labels"] == ["2020-02-03"]
+    assert res.json()["kodiakActivity"]["datasets"] == {
+        "approved": [3],
+        "merged": [12],
+        "updated": [2],
+    }
+    assert res.json()["pullRequestActivity"]["labels"] == ["2020-02-03"]
+    assert res.json()["pullRequestActivity"]["datasets"] == {
+        "opened": [15],
+        "merged": [13],
+        "closed": [2],
+    }
 
 
 @pytest.mark.django_db

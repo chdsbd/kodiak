@@ -68,9 +68,9 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
     total_opened = []
     total_merged = []
     total_closed = []
-    for day_activity in PullRequestActivity.objects.filter(account=account).order_by(
-        "date"
-    ):
+    for day_activity in PullRequestActivity.objects.filter(
+        github_installation_id=account.github_installation_id
+    ).order_by("date"):
         kodiak_activity_labels.append(day_activity.date)
         kodiak_activity_approved.append(day_activity.kodiak_approved)
         kodiak_activity_merged.append(day_activity.kodiak_merged)
