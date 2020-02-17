@@ -101,7 +101,7 @@ def test_generate_activity_data(
         # NOTE(chdsbd): I don't like how this field is called "account_id" when the
         # foreign key is on github_installation_id of an account.
         assert (
-            pull_request_activity.account_id == 848733
+            pull_request_activity.github_installation_id == 848733
         ), "the ID of the installation from the json files"
 
     check_response()

@@ -238,20 +238,15 @@ class PullRequestActivity(BaseModel):
     kodiak_merged = models.IntegerField()
     kodiak_updated = models.IntegerField()
 
-    account = models.ForeignKey(
-        Account,
-        to_field="github_installation_id",
-        db_column="github_installation_id",
-        db_constraint=False,
-        on_delete=models.CASCADE,
-    )
+    github_installation_id = models.IntegerField(db_index=True)
 
     class Meta:
         db_table = "pull_request_activity"
         # we should only have one set of totals per account, per day.
         constraints = [
             models.UniqueConstraint(
-                fields=["date", "account"], name="unique_pull_request_activity"
+                fields=["date", "github_installation_id"],
+                name="unique_pull_request_activity",
             )
         ]
 
@@ -263,7 +258,7 @@ class PullRequestActivity(BaseModel):
         "kodiak_approved",
         "kodiak_merged",
         "kodiak_updated",
-        "account_id",
+        "github_installation_id",
     )
 
     @staticmethod
