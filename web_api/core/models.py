@@ -1,10 +1,11 @@
+import datetime
 import logging
 import uuid
 from typing import List, Optional
 
 import requests
 from django.contrib.postgres import fields as pg_fields
-from django.db import models
+from django.db import connection, models
 
 logger = logging.getLogger(__name__)
 
@@ -217,3 +218,109 @@ class PullRequestActivity(BaseModel):
                 fields=["date", "account"], name="unique_pull_request_activity"
             )
         ]
+
+    @staticmethod
+    def generate_activity_data(
+        min_date: Optional[datetime.date] = None, account: Optional[Account] = None
+    ) -> None:
+        """
+        Generate/update PullRequestActivity using data from the GitHubEvent table.
+        """
+        where_clause = []
+        if min_date is not None:
+            where_clause.append(f"created_at > '{min_date.isoformat()}'::date")
+        if account is not None:
+            where_clause.append(
+                f"(payload -> 'installation' ->> 'id')::integer = {account.github_installation_id}"
+            )
+        if where_clause:
+            where = " WHERE " + " AND ".join(where_clause)
+        else:
+            where = ""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+INSERT INTO pull_request_activity (
+    "id",
+    "created_at",
+    "modified_at",
+    "date",
+    "github_installation_id",
+    kodiak_updated,
+    kodiak_merged,
+    kodiak_approved,
+    "total_opened",
+    "total_merged",
+    total_closed)
+SELECT
+    uuid_generate_v4 () "id",
+    NOW() created_at,
+    NOW() modified_at,
+    created_at::date "date",
+    (payload -> 'installation' ->> 'id')::integer github_installation_id,
+sum(
+    CASE WHEN (event_name = 'pull_request'
+        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
+        AND payload -> 'action' = to_jsonb ('synchronize'::text)) THEN
+        1
+    ELSE
+        0
+    END) kodiak_updated,
+sum(
+    CASE WHEN (event_name = 'pull_request'
+        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
+        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload -> 'pull_request' -> 'merged' = to_jsonb (TRUE)) THEN
+        1
+    ELSE
+        0
+    END) kodiak_merged,
+sum(
+    CASE WHEN (event_name = 'pull_request_review'
+        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]') THEN
+        1
+    ELSE
+        0
+    END) kodiak_approved,
+sum(
+    CASE WHEN (event_name = 'pull_request'
+        AND payload -> 'action' = to_jsonb ('opened'::text)) THEN
+        1
+    ELSE
+        0
+    END) total_opened,
+sum(
+    CASE WHEN (event_name = 'pull_request'
+        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload -> 'pull_request' -> 'merged' = to_jsonb (TRUE)) THEN
+        1
+    ELSE
+        0
+    END) total_merged,
+sum(
+    CASE WHEN (event_name = 'pull_request'
+        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload -> 'pull_request' -> 'merged' = to_jsonb (FALSE)) THEN
+        1
+    ELSE
+        0
+    END) total_closed
+FROM
+    github_event
+
+{where}
+
+GROUP BY
+    payload -> 'installation' ->> 'id',
+    created_at::date
+ON CONFLICT ON CONSTRAINT unique_pull_request_activity
+DO UPDATE
+    SET
+        kodiak_updated = excluded.kodiak_updated,
+        kodiak_merged = excluded.kodiak_merged,
+        kodiak_approved = excluded.kodiak_approved,
+        total_opened = excluded.total_opened,
+        total_merged = excluded.total_merged,
+        total_closed = excluded.total_closed;
+"""
+            )

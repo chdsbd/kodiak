@@ -23,9 +23,9 @@ from core import auth
 from core.models import (
     Account,
     AnonymousUser,
+    PullRequestActivity,
     SyncAccountsError,
     User,
-    PullRequestActivity,
 )
 
 logger = logging.getLogger(__name__)
