@@ -228,7 +228,7 @@ class PullRequestActivity(BaseModel):
     should never need to update it.
     """
 
-    date = models.DateField()
+    date = models.DateField(db_index=True)
 
     total_opened = models.IntegerField()
     total_merged = models.IntegerField()
