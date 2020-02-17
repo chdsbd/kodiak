@@ -1,8 +1,6 @@
 import logging
 from dataclasses import asdict, dataclass
-from datetime import date, timedelta
-from random import randint
-from typing import Iterable, Optional, Union
+from typing import Optional, Union
 from urllib.parse import parse_qsl
 
 import requests

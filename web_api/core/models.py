@@ -1,13 +1,37 @@
 import datetime
 import logging
 import uuid
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import requests
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 
 logger = logging.getLogger(__name__)
+
+
+def sane_repr(*attrs: str) -> Callable:
+    """
+    Copyright (c) 2019 Sentry (https://sentry.io) and individual contributors.
+    All rights reserved.
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+        1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+        2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+        3. Neither the name Sentry nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    https://github.com/getsentry/sentry/blob/95767d455b8004ec4b4c5026d84b64b6348e6d37/src/sentry/db/models/base.py
+    """
+    if "id" not in attrs and "pk" not in attrs:
+        attrs = ("id",) + attrs
+
+    def _repr(self: object) -> str:
+        cls = type(self).__name__
+
+        pairs = ", ".join((f"{a}={repr(getattr(self, a, None))}" for a in attrs))
+
+        return f"<{cls} at 0x{id(self):x}: {pairs}>"  # flake8: noqa PIE782
+
+    return _repr
 
 
 class BaseModel(models.Model):
@@ -17,6 +41,8 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+
+    __repr__ = sane_repr("id")
 
 
 class SyncAccountsError(Exception):
@@ -42,6 +68,8 @@ class User(BaseModel):
 
     class Meta:
         db_table = "user"
+
+    __repr__ = sane_repr("github_id", "github_login")
 
     @property
     def is_authenticated(self) -> bool:
@@ -133,6 +161,8 @@ class GitHubEvent(BaseModel):
     class Meta:
         db_table = "github_event"
 
+    __repr__ = sane_repr("event_name")
+
 
 class Account(BaseModel):
     """
@@ -161,6 +191,10 @@ class Account(BaseModel):
     class Meta:
         db_table = "account"
 
+    __repr__ = sane_repr(
+        "github_installation_id", "github_account_id", "github_account_login"
+    )
+
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
@@ -180,6 +214,8 @@ class AccountMembership(BaseModel):
 
     class Meta:
         db_table = "account_membership"
+
+    __repr__ = sane_repr("account_id", "user_id")
 
 
 class PullRequestActivity(BaseModel):
@@ -218,6 +254,17 @@ class PullRequestActivity(BaseModel):
                 fields=["date", "account"], name="unique_pull_request_activity"
             )
         ]
+
+    __repr__ = sane_repr(
+        "date",
+        "total_opened",
+        "total_merged",
+        "total_closed",
+        "kodiak_approved",
+        "kodiak_merged",
+        "kodiak_updated",
+        "account_id",
+    )
 
     @staticmethod
     def generate_activity_data(

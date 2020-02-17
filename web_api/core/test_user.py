@@ -203,19 +203,3 @@ def test_sync_accounts_new_and_existing_accounts(
     assert (
         Account.objects.filter(id=acme_corp_account.id).exists() is True
     ), "account that we are no longer a member of should not be deleted."
-
-
-def test_generate_activity_data():
-    assert False
-
-
-def test_generate_activity_data_min_date():
-    assert False
-
-
-def test_generate_activity_data_account():
-    assert False
-
-
-def test_generate_activity_data_min_date_account():
-    assert False
