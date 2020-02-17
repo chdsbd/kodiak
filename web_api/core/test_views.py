@@ -61,15 +61,15 @@ def test_activity(authed_client: Client, user: User,) -> None:
     assert res.status_code == 200
     assert res.json()["kodiakActivity"]["labels"] == ["2020-02-03"]
     assert res.json()["kodiakActivity"]["datasets"] == {
-        "approved": [3],
-        "merged": [12],
-        "updated": [2],
+        "approved": [pull_request_activity.kodiak_approved],
+        "merged": [pull_request_activity.kodiak_merged],
+        "updated": [pull_request_activity.kodiak_approved.kodiak_updated],
     }
     assert res.json()["pullRequestActivity"]["labels"] == ["2020-02-03"]
     assert res.json()["pullRequestActivity"]["datasets"] == {
-        "opened": [15],
-        "merged": [13],
-        "closed": [2],
+        "opened": [pull_request_activity.kodiak_approved.total_opened],
+        "merged": [pull_request_activity.kodiak_approved.total_merged],
+        "closed": [pull_request_activity.kodiak_approved.total_closed],
     }
 
 
