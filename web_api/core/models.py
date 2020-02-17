@@ -303,7 +303,7 @@ SELECT
 sum(
     CASE WHEN (event_name = 'pull_request'
         AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
-        AND payload -> 'action' = to_jsonb ('synchronize'::text)) THEN
+        AND payload ->> 'action' = 'synchronize') THEN
         1
     ELSE
         0
@@ -311,7 +311,7 @@ sum(
 sum(
     CASE WHEN (event_name = 'pull_request'
         AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
-        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload ->> 'action' = 'closed'
         AND payload -> 'pull_request' -> 'merged' = to_jsonb (TRUE)) THEN
         1
     ELSE
@@ -326,14 +326,14 @@ sum(
     END) kodiak_approved,
 sum(
     CASE WHEN (event_name = 'pull_request'
-        AND payload -> 'action' = to_jsonb ('opened'::text)) THEN
+        AND payload ->> 'action' = 'opened') THEN
         1
     ELSE
         0
     END) total_opened,
 sum(
     CASE WHEN (event_name = 'pull_request'
-        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload ->> 'action' = 'closed'
         AND payload -> 'pull_request' -> 'merged' = to_jsonb (TRUE)) THEN
         1
     ELSE
@@ -341,7 +341,7 @@ sum(
     END) total_merged,
 sum(
     CASE WHEN (event_name = 'pull_request'
-        AND payload -> 'action' = to_jsonb ('closed'::text)
+        AND payload ->> 'action' = 'closed'
         AND payload -> 'pull_request' -> 'merged' = to_jsonb (FALSE)) THEN
         1
     ELSE
@@ -353,7 +353,7 @@ FROM
 {where}
 
 GROUP BY
-    payload -> 'installation' ->> 'id',
+    (payload -> 'installation' ->> 'id')::integer,
     created_at::date
 ON CONFLICT ON CONSTRAINT unique_pull_request_activity
 DO UPDATE
