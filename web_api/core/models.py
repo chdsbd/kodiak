@@ -366,3 +366,20 @@ DO UPDATE
         total_closed = excluded.total_closed;
 """
             )
+
+
+class PullRequestActivityProgress(BaseModel):
+    """
+    Store information about PullRequestActivity generation.
+
+    We only want to generate PullRequestActivity for new/incomplete days. If a
+    day has already passed, recalculating analytics for it would not be useful
+    work. By tracking our progress we can avoid work.
+    """
+
+    min_date = models.DateField(
+        help_text="Date we should use as our minimum date for future aggregation jobs. Anything before this date is 'locked'."
+    )
+
+    class Meta:
+        db_table = "pull_request_activity_progress"
