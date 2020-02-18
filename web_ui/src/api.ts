@@ -56,7 +56,8 @@ export interface IActivityArgs {
 export interface ICurrentAccountArgs {
   readonly teamId: string
 }
-interface IChart {
+
+interface IKodiakChart {
   readonly labels: Array<string>
   readonly datasets: {
     readonly approved: Array<number>
@@ -64,9 +65,17 @@ interface IChart {
     readonly updated: Array<number>
   }
 }
+interface ITotalChart {
+  readonly labels: Array<string>
+  readonly datasets: {
+    readonly opened: Array<number>
+    readonly merged: Array<number>
+    readonly closed: Array<number>
+  }
+}
 export interface IActivityApiResponse {
-  readonly pullRequestActivity: IChart
-  readonly kodiakActivity: IChart
+  readonly kodiakActivity: IKodiakChart
+  readonly pullRequestActivity: ITotalChart
 }
 
 export interface IAccountsApiResponse

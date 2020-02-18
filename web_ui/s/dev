@@ -1,2 +1,4 @@
 #!/bin/sh
-REACT_APP_KODIAK_API_ROOT=http://api-localhost.kodiakhq.com:8000 exec node scripts/start.js
+# configure react-scripts to open correct domain on start. Also configure API routing for JS bundle.
+# https://github.com/facebook/create-react-app/blob/8b0dd54c7a7488d46a43ff6d1c67a6b41c31feb1/packages/react-scripts/scripts/start.js#L61
+HOST=app-localhost.kodiakhq.com REACT_APP_KODIAK_API_ROOT=http://api-localhost.kodiakhq.com:8000 exec node scripts/start.js
