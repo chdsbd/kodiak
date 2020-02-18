@@ -63,13 +63,13 @@ def test_activity(authed_client: Client, user: User,) -> None:
     assert res.json()["kodiakActivity"]["datasets"] == {
         "approved": [pull_request_activity.kodiak_approved],
         "merged": [pull_request_activity.kodiak_merged],
-        "updated": [pull_request_activity.kodiak_approved.kodiak_updated],
+        "updated": [pull_request_activity.kodiak_updated],
     }
     assert res.json()["pullRequestActivity"]["labels"] == ["2020-02-03"]
     assert res.json()["pullRequestActivity"]["datasets"] == {
-        "opened": [pull_request_activity.kodiak_approved.total_opened],
-        "merged": [pull_request_activity.kodiak_approved.total_merged],
-        "closed": [pull_request_activity.kodiak_approved.total_closed],
+        "opened": [pull_request_activity.total_opened],
+        "merged": [pull_request_activity.total_merged],
+        "closed": [pull_request_activity.total_closed],
     }
 
 
