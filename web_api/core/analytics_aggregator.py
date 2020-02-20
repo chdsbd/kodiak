@@ -25,7 +25,7 @@ def main() -> None:
     start_time = time.time()
     pr_progress: Optional[
         PullRequestActivityProgress
-    ] = PullRequestActivityProgress.objects.order_by("min_date").first()
+    ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
     if pr_progress:
         min_date = make_aware(
             datetime.datetime(

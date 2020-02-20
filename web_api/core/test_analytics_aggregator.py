@@ -43,6 +43,7 @@ def test_analytics_aggregator(pull_request_kodiak_updated: object) -> None:
 
 @pytest.mark.django_db
 def test_analytics_aggregator_min_date(pull_request_kodiak_updated: object) -> None:
+    PullRequestActivityProgress.objects.create(min_date=datetime.date(2020,2,10))
     PullRequestActivityProgress.objects.create(min_date=datetime.date.today())
     assert PullRequestActivity.objects.count() == 0
     main()
