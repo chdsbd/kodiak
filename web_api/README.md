@@ -1,12 +1,12 @@
-# web_ui
+# web_api
 
-The dashboard UI for kodiak.
+The web API for the Kodiak dashboard.
 
 ## dev
 
 ```console
 # install dependencies
-yarn install
+poetry install
 
 # copy & modify example .env file
 cp example.env .env
