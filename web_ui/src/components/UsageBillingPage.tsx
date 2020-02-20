@@ -1,11 +1,12 @@
 import React from "react"
 import { Table, Row, Col, Popover, OverlayTrigger } from "react-bootstrap"
 import { Image } from "./Image"
-import { modifyPlanLink } from "../settings"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
 import { useTeamApi } from "../useApi"
+import sub from "date-fns/sub"
+import format from "date-fns/format"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -30,14 +31,6 @@ export function UsageBillingPage() {
 }
 
 interface IUsageBillingData {
-  readonly activeUserCount: number
-  readonly perUserUSD: number
-  readonly perMonthUSD: number
-  readonly nextBillingDate: string
-  readonly billingPeriod: {
-    readonly start: string
-    readonly end: string
-  }
   readonly activeUsers: ReadonlyArray<{
     readonly id: number
     readonly name: string
@@ -106,35 +99,12 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
       rows: [
         {
           name: "Active Users",
-          content: <>{data.activeUserCount}</>,
+          content: <>{data.activeUsers.length}</>,
           description: (
             <>
-              Active users are only counted for private repositories. Public
-              repositories are free.
-            </>
-          ),
-        },
-
-        {
-          name: "Next Billing Date",
-          content: data.nextBillingDate,
-        },
-        {
-          name: "Cost",
-          content: (
-            <>
-              ${data.perMonthUSD}/month{" "}
-              <Question
-                content={`$${data.perUserUSD}/user * ${data.activeUserCount} users = $${data.perMonthUSD}`}
-              />{" "}
-              <a href={modifyPlanLink}>modify plan</a>
-            </>
-          ),
-          description: (
-            <>
-              At the end of each billing period the subscription charge is
-              calculated from the active user count of that period. There is a
-              minimum subscription charge of one active user per period.
+              Active users are only counted for private repositories. Kodiak
+              does not have a billing system yet, so it is free, however
+              donations through GitHub sponsors are very welcome.
             </>
           ),
         },
@@ -142,13 +112,17 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
     },
   ]
 
+  const dateToday = new Date()
+  const today = format(dateToday, "MMM do")
+  const dateOneMonthAgo = sub(dateToday, { months: 1 })
+  const oneMonthAgo = format(dateOneMonthAgo, "MMM do")
+
   return (
     <UsageAndBillingContainer>
       <p>
-        Billing period{" "}
-        <b>
-          {data.billingPeriod.start} – {data.billingPeriod.end}
-        </b>
+        <b> Period</b>
+        <br />
+        {oneMonthAgo} – {today}
       </p>
 
       {sections.map(s => (
@@ -185,7 +159,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
               <tr>
                 <th>User</th>
                 <th>
-                  Interactions{" "}
+                  Days Active{" "}
                   <Question
                     content={
                       "This user opened, reviewed or edited a pull request that Kodiak updated, approved, or merged."
