@@ -2,6 +2,7 @@ import datetime
 import logging
 import uuid
 from typing import Callable, List, Optional
+from dataclasses import dataclass
 
 import requests
 from django.contrib.postgres import fields as pg_fields
@@ -383,3 +384,84 @@ class PullRequestActivityProgress(BaseModel):
 
     class Meta:
         db_table = "pull_request_activity_progress"
+
+
+@dataclass
+class ActiveUser:
+    github_login: str
+    github_id: int
+    days_active: int
+    last_active_at: datetime.date
+
+    def profile_image(self) -> str:
+        return f"https://avatars.githubusercontent.com/u/{self.github_id}"
+
+
+class UserPullRequestActivity(BaseModel):
+    """
+    Stores a record of GitHub user activity on a pull request on a day.
+    """
+
+    github_installation_id = models.IntegerField(db_index=True)
+    github_repository_name = models.CharField(max_length=255, db_index=True)
+    github_pull_request_number = models.IntegerField(db_index=True)
+    github_user_login = models.CharField(max_length=255, db_index=True)
+    github_user_id = models.IntegerField(db_index=True)
+    is_private_repository = models.BooleanField(db_index=True)
+    activity_date = models.DateField(db_index=True)
+
+    class Meta:
+        db_table = "user_pull_request_activity"
+        # we should have one event per user, per pull request, per repository,
+        # per installation, per day.
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "github_installation_id",
+                    "github_repository_name",
+                    "github_pull_request_number",
+                    "github_user_id",
+                    "activity_date",
+                ],
+                name="unique_user_pull_request_activity",
+            )
+        ]
+
+    @staticmethod
+    def get_active_users_in_last_30_days(account: Account):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+            SELECT
+                max(a.github_user_login) github_user_login,
+                a.github_user_id,
+                count(distinct a.activity_date) days_active,
+                max(a.activity_date) last_active_at
+            FROM
+                user_pull_request_activity a
+                JOIN user_pull_request_activity b ON a.github_installation_id = b.github_installation_id
+                    AND a.github_repository_name = b.github_repository_name
+                    AND a.github_pull_request_number = b.github_pull_request_number
+            WHERE
+                b.github_user_login LIKE 'kodiak%%[bot]'
+                AND a.github_user_login NOT LIKE '%%[bot]'
+                AND a.activity_date > now() - '30 days'::interval
+                AND b.activity_date > now() - '30 days'::interval
+                AND a.is_private_repository = TRUE
+                AND b.is_private_repository = TRUE
+                AND a.github_installation_id = %s
+            GROUP BY
+                a.github_user_id;
+            """,
+                [account.github_installation_id],
+            )
+            results = cursor.fetchall()
+        return [
+            ActiveUser(
+                github_login=github_login,
+                github_id=github_id,
+                days_active=days_active,
+                last_active_at=last_active_at,
+            )
+            for github_login, github_id, days_active, last_active_at in results
+        ]
