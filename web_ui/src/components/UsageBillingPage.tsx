@@ -7,6 +7,7 @@ import { Current } from "../world"
 import { useTeamApi } from "../useApi"
 import sub from "date-fns/sub"
 import format from "date-fns/format"
+import sortBy from "lodash/sortBy"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -170,7 +171,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
               </tr>
             </thead>
             <tbody>
-              {data.activeUsers.map(u => (
+              {sortBy(data.activeUsers, 'name').map(u => (
                 <tr key={u.id}>
                   <td>
                     <Image
