@@ -1,14 +1,16 @@
+import datetime
+import json
+from pathlib import Path
+
 import pytest
+from django.utils.timezone import make_aware
+
 from core.models import (
     GitHubEvent,
     UserPullRequestActivity,
     UserPullRequestActivityProgress,
 )
-import datetime
-import json
-from pathlib import Path
-from django.utils.timezone import make_aware
-
+from core.user_activity_aggregator import main as generate_user_activity
 
 FIXTURES = Path(__file__).parent / "tests" / "fixtures"
 
@@ -66,7 +68,7 @@ def test_generate(
 ):
     assert UserPullRequestActivityProgress.objects.count() == 0
 
-    UserPullRequestActivity.generate()
+    generate_user_activity()
 
     assert UserPullRequestActivity.objects.count() == 4
     assert (
@@ -90,6 +92,6 @@ def test_generate_min_progress(
     UserPullRequestActivityProgress.objects.create(
         min_date=make_aware(datetime.datetime(2050, 4, 23))
     )
-    UserPullRequestActivity.generate()
+    generate_user_activity()
     assert UserPullRequestActivityProgress.objects.count() == 2
     assert UserPullRequestActivity.objects.count() == 0

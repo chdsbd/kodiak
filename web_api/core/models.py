@@ -1,8 +1,8 @@
 import datetime
 import logging
 import uuid
-from typing import Callable, List, Optional
 from dataclasses import dataclass
+from typing import Callable, List, Optional
 
 import requests
 from django.contrib.postgres import fields as pg_fields

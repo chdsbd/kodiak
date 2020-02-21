@@ -12,11 +12,11 @@ from django.http import (
     HttpResponseRedirect,
     JsonResponse,
 )
+from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from typing_extensions import Literal
 from yarl import URL
-from django.shortcuts import get_object_or_404
 
 from core import auth
 from core.models import (
