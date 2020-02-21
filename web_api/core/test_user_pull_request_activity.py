@@ -65,7 +65,7 @@ def test_generate(
     pull_request_kodiak_updated: object,
     pull_request_kodiak_updated_different_institution: object,
     pull_request_total_opened_different_institution: object,
-):
+) -> None:
     assert UserPullRequestActivityProgress.objects.count() == 0
 
     generate_user_activity()
@@ -88,7 +88,7 @@ def test_generate_min_progress(
     pull_request_kodiak_updated: object,
     pull_request_kodiak_updated_different_institution: object,
     pull_request_total_opened_different_institution: object,
-):
+) -> None:
     UserPullRequestActivityProgress.objects.create(
         min_date=make_aware(datetime.datetime(2050, 4, 23))
     )

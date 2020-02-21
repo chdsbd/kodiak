@@ -429,7 +429,7 @@ class UserPullRequestActivity(BaseModel):
         ]
 
     @staticmethod
-    def get_active_users_in_last_30_days(account: Account):
+    def get_active_users_in_last_30_days(account: Account) -> List[ActiveUser]:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
