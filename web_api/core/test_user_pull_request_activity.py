@@ -1,2 +1,95 @@
-def test_generate():
-    assert False
+import pytest
+from core.models import (
+    GitHubEvent,
+    UserPullRequestActivity,
+    UserPullRequestActivityProgress,
+)
+import datetime
+import json
+from pathlib import Path
+from django.utils.timezone import make_aware
+
+
+FIXTURES = Path(__file__).parent / "tests" / "fixtures"
+
+
+@pytest.fixture
+def pull_request_kodiak_updated() -> None:
+    event = GitHubEvent.objects.create(
+        event_name="pull_request",
+        payload=json.load((FIXTURES / "pull_request_kodiak_updated.json").open()),
+    )
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.save()
+
+
+@pytest.fixture
+def pull_request_total_opened() -> None:
+    event = GitHubEvent.objects.create(
+        event_name="pull_request",
+        payload=json.load((FIXTURES / "pull_request_total_opened.json").open()),
+    )
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.save()
+
+
+@pytest.fixture
+def pull_request_kodiak_updated_different_institution() -> None:
+    event = GitHubEvent.objects.create(
+        event_name="pull_request",
+        payload=json.load(
+            (FIXTURES / "pull_request_kodiak_updated_different_institution.json").open()
+        ),
+    )
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.save()
+
+
+@pytest.fixture
+def pull_request_total_opened_different_institution() -> None:
+    event = GitHubEvent.objects.create(
+        event_name="pull_request",
+        payload=json.load(
+            (FIXTURES / "pull_request_total_opened_different_institution.json").open()
+        ),
+    )
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.save()
+
+
+@pytest.mark.django_db
+def test_generate(
+    pull_request_total_opened: object,
+    pull_request_kodiak_updated: object,
+    pull_request_kodiak_updated_different_institution: object,
+    pull_request_total_opened_different_institution: object,
+):
+    assert UserPullRequestActivityProgress.objects.count() == 0
+
+    UserPullRequestActivity.generate()
+
+    assert UserPullRequestActivity.objects.count() == 4
+    assert (
+        UserPullRequestActivity.objects.filter(github_installation_id=848733).count()
+        == 2
+    )
+    assert (
+        UserPullRequestActivity.objects.filter(github_installation_id=548321).count()
+        == 2
+    )
+    assert UserPullRequestActivityProgress.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_generate_min_progress(
+    pull_request_total_opened: object,
+    pull_request_kodiak_updated: object,
+    pull_request_kodiak_updated_different_institution: object,
+    pull_request_total_opened_different_institution: object,
+):
+    UserPullRequestActivityProgress.objects.create(
+        min_date=make_aware(datetime.datetime(2050, 4, 23))
+    )
+    UserPullRequestActivity.generate()
+    assert UserPullRequestActivityProgress.objects.count() == 2
+    assert UserPullRequestActivity.objects.count() == 0

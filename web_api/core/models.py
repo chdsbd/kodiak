@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import requests
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -465,3 +466,72 @@ class UserPullRequestActivity(BaseModel):
             )
             for github_login, github_id, days_active, last_active_at in results
         ]
+
+    @staticmethod
+    def generate() -> None:
+        """
+        Find all pull requests acted on by Kodiak.
+        """
+        user_pull_request_activity_progress: Optional[
+            UserPullRequestActivityProgress
+        ] = UserPullRequestActivityProgress.objects.order_by("-min_date").first()
+        where_clause = []
+        if user_pull_request_activity_progress is not None:
+            where_clause.append(
+                f"created_at > '{user_pull_request_activity_progress.min_date.isoformat()}'::timestamp"
+            )
+
+        if where_clause:
+            where = " AND " + " AND ".join(where_clause)
+        else:
+            where = ""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+INSERT INTO user_pull_request_activity (
+    "id",
+    "created_at",
+    "modified_at",
+    "github_installation_id",
+    "github_repository_name",
+    "github_pull_request_number",
+    "github_user_login",
+    "github_user_id",
+    "is_private_repository",
+    "activity_date")
+SELECT
+    uuid_generate_v4 () "id",
+    NOW() created_at,
+    NOW() modified_at,
+    (payload -> 'installation' ->> 'id')::int github_installation_id,
+    (payload -> 'repository' ->> 'name') github_repository_name,
+    (payload -> 'pull_request' ->> 'number')::int github_pull_request_number,
+    max(payload -> 'sender' ->> 'login') github_user_login,
+    (payload -> 'sender' ->> 'id')::integer github_user_id,
+    (payload -> 'repository' ->> 'private')::boolean is_private_repository,
+    created_at::date activity_date
+FROM
+    github_event
+WHERE
+    event_name in ('pull_request', 'pull_request_review')
+    {where}
+GROUP BY
+    github_installation_id,
+    github_repository_name,
+    github_pull_request_number,
+    github_user_id,
+    is_private_repository,
+    activity_date;
+"""
+            )
+        UserPullRequestActivityProgress.objects.create(min_date=timezone.now())
+
+
+class UserPullRequestActivityProgress(BaseModel):
+    min_date = models.DateTimeField(
+        help_text="Date we should use as our minimum date for future aggregation jobs. Anything before this date is 'locked'.",
+        db_index=True,
+    )
+
+    class Meta:
+        db_table = "user_pull_request_activity_progress"
