@@ -171,7 +171,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
               </tr>
             </thead>
             <tbody>
-              {sortBy(data.activeUsers, "name").map(u => (
+              {sortBy(data.activeUsers, x => x.name.toLowerCase()).map(u => (
                 <tr key={u.id}>
                   <td>
                     <Image
