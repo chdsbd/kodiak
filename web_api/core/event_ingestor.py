@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""
+Remove GitHub webhook events from Redis and store them in Postgres for analysis.
+
+This script should run constantly.
+
+The web api uses webhook events to calculate and  display metrics about kodiak
+activity and determine usage. The Kodiak GitHub Bot accepts GitHub webhooks and
+forwards a selection of event types that we care about. The Redis queue is
+bounded at 10000 items, so if we have time to recover from downtime/restarts.
+"""
+
 import json
 import logging
 import os

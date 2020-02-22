@@ -5,7 +5,13 @@ import pytest
 import responses
 from django.conf import settings
 
-from core.models import Account, AccountMembership, PullRequestActivity, User
+from core.models import (
+    Account,
+    AccountMembership,
+    PullRequestActivity,
+    User,
+    UserPullRequestActivity,
+)
 from core.testutils import TestClient as Client
 
 
@@ -17,6 +23,18 @@ def user() -> User:
             github_id=10137,
             github_login="ghost",
             github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
+        ),
+    )
+
+
+@pytest.fixture
+def other_user() -> User:
+    return cast(
+        User,
+        User.objects.create(
+            github_id=67647,
+            github_login="bear",
+            github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
         ),
     )
 
@@ -36,6 +54,61 @@ def test_environment() -> None:
 def authed_client(client: Client, user: User) -> Client:
     client.login(user)
     return client
+
+
+@pytest.mark.django_db
+def test_usage_billing(authed_client: Client, user: User, other_user: User) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user)
+
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=642,
+        github_user_login=user.github_login,
+        github_user_id=user.github_id,
+        is_private_repository=True,
+        activity_date=datetime.date(2020, 12, 5),
+    )
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=642,
+        github_user_login="kodiakhq[bot]",
+        github_user_id=11479,
+        is_private_repository=True,
+        activity_date=datetime.date(2020, 12, 5),
+    )
+
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["activeUsers"] == [
+        dict(
+            id=user.github_id,
+            name=user.github_login,
+            profileImgUrl=user.profile_image(),
+            interactions=1,
+            lastActiveDate="2020-12-05",
+        )
+    ]
+
+
+@pytest.mark.django_db
+def test_usage_billing_authentication(authed_client: Client, other_user: User) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=other_user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=other_user)
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 404
 
 
 @pytest.mark.django_db
@@ -71,6 +144,19 @@ def test_activity(authed_client: Client, user: User,) -> None:
         "merged": [pull_request_activity.total_merged],
         "closed": [pull_request_activity.total_closed],
     }
+
+
+@pytest.mark.django_db
+def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=other_user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=other_user)
+    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
+    assert res.status_code == 404
 
 
 @pytest.mark.django_db
@@ -135,6 +221,21 @@ def test_current_account(authed_client: Client, user: User) -> None:
         accounts[0]["profileImgUrl"]
         == f"https://avatars.githubusercontent.com/u/{user_account.github_account_id}"
     )
+
+
+@pytest.mark.django_db
+def test_current_account_authentication(
+    authed_client: Client, other_user: User,
+) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=other_user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=other_user)
+    res = authed_client.get(f"/v1/t/{user_account.id}/current_account")
+    assert res.status_code == 404
 
 
 @pytest.mark.django_db

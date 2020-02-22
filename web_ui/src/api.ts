@@ -33,14 +33,6 @@ export interface IUsageBillingPageArgs {
   readonly teamId: string
 }
 export interface IUsageBillingPageApiResponse {
-  readonly activeUserCount: number
-  readonly perUserUSD: number
-  readonly perMonthUSD: number
-  readonly nextBillingDate: string
-  readonly billingPeriod: {
-    readonly start: string
-    readonly end: string
-  }
   readonly activeUsers: ReadonlyArray<{
     readonly id: number
     readonly name: string

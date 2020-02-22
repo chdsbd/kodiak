@@ -12,6 +12,7 @@ from django.http import (
     HttpResponseRedirect,
     JsonResponse,
 )
+from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from typing_extensions import Literal
@@ -24,6 +25,7 @@ from core.models import (
     PullRequestActivity,
     SyncAccountsError,
     User,
+    UserPullRequestActivity,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,29 +38,31 @@ def ping(request: HttpRequest) -> HttpResponse:
 
 @auth.login_required
 def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
     return JsonResponse(
         dict(
-            activeUserCount=8,
-            nextBillingDate="February 17th, 2019",
-            billingPeriod=dict(start="Jan 17", end="Feb 16"),
             activeUsers=[
                 dict(
-                    id=1929960,
-                    name="chdsbd",
-                    profileImgUrl="https://avatars0.githubusercontent.com/u/1929960?s=460&v=4",
-                    interactions=4,
-                    lastActiveDate="Feb 10",
+                    id=active_user.github_id,
+                    name=active_user.github_login,
+                    profileImgUrl=active_user.profile_image(),
+                    interactions=active_user.days_active,
+                    lastActiveDate=active_user.last_active_at.isoformat(),
                 )
+                for active_user in active_users
             ],
-            perUserUSD=5,
-            perMonthUSD=75,
         )
     )
 
 
 @auth.login_required
 def activity(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = Account.objects.filter(memberships__user=request.user).get(id=team_id)
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
     kodiak_activity_labels = []
     kodiak_activity_approved = []
     kodiak_activity_merged = []
@@ -102,7 +106,9 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = Account.objects.filter(memberships__user=request.user).get(id=team_id)
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
     return JsonResponse(
         dict(
             user=dict(

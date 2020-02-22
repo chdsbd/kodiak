@@ -4,7 +4,6 @@ import { Dropdown, ButtonGroup } from "react-bootstrap"
 import {
   GoGraph,
   GoCreditCard,
-  GoGift,
   GoBook,
   GoChevronDown,
   GoLinkExternal,
@@ -14,7 +13,7 @@ import {
 import { ToolTip } from "./ToolTip"
 import sortBy from "lodash/sortBy"
 import { Image } from "./Image"
-import { docsUrl, modifyPlanLink, helpUrl } from "../settings"
+import { docsUrl, helpUrl } from "../settings"
 import { WebData } from "../webdata"
 import { useTeamApi } from "../useApi"
 import { Current } from "../world"
@@ -224,17 +223,6 @@ function SideBarNavContainer({
             <>
               <GoQuestion className="mr-1" size="1.25rem" />
               <span>Help</span>
-              <GoLinkExternal className="ml-auto" />
-            </>
-          </SideBarNavLink>
-
-          <SideBarNavLink
-            to={modifyPlanLink}
-            external
-            className="d-flex align-items-center">
-            <>
-              <GoGift className="mr-1" size="1.25rem" />
-              <span>Upgrade</span>
               <GoLinkExternal className="ml-auto" />
             </>
           </SideBarNavLink>
