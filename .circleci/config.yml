@@ -268,6 +268,18 @@ jobs:
           working_directory: web_ui
           command: ./s/test
 
+  # https://circleci.com/docs/2.0/building-docker-images/
+  web_ui_build_container:
+    docker:
+      - image: docker:18.05.0-ce
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build container
+          working_directory: web_ui
+          command: ./s/build
+
 workflows:
   version: 2
   bot:
@@ -290,6 +302,12 @@ workflows:
     jobs:
       - web_ui_lint
       - web_ui_test
+      - web_ui_build_container:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^v.*/
 
   web_api:
     jobs:
