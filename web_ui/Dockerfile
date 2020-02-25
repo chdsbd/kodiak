@@ -4,7 +4,7 @@ RUN mkdir -p /var/app
 
 WORKDIR /var/app
 
-COPY package.json package-lock.json /var/app/
+COPY package.json yarn.lock /var/app/
 
 RUN yarn install
 
