@@ -15,7 +15,7 @@ RUN node /var/app/scripts/build.js
 
 FROM node:12.4.0
 RUN mkdir -p /var/app/build
-RUN yarn add --no-lockfile serve
+RUN yarn global add --no-lockfile serve
 COPY --from=builder /var/app/build /var/app/build
 WORKDIR /var/app
 
