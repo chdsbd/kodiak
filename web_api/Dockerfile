@@ -15,10 +15,4 @@ RUN poetry install
 
 COPY . /var/app
 
-# workaround for: https://github.com/sdispater/poetry/issues/1123
-RUN rm -rf /var/app/pip-wheel-metadata/
-
-# install cli
-RUN poetry install
-
-CMD poetry run gunicorn --bind 0.0.0.0:$PORT web_api.wsgi
+CMD /var/app/.venv/bin/gunicorn --bind 0.0.0.0:5000 web_api.wsgi

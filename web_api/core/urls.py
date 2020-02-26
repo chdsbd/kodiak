@@ -12,4 +12,5 @@ urlpatterns = [
     path("t/<uuid:team_id>/current_account", views.current_account),
     path("accounts", views.accounts),
     path("ping", views.ping),
+    path("debug_sentry", views.debug_sentry),
 ]

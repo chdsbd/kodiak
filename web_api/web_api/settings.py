@@ -2,10 +2,15 @@ import os
 from typing import List
 
 import dj_database_url
+import sentry_sdk
 from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
 from yarl import URL
 
 load_dotenv()
+
+
+sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
