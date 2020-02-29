@@ -69,6 +69,27 @@ USE_L10N = True
 
 USE_TZ = True
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": 'level=%(levelname)s msg="%(message)s" name=%(name)s '
+            'pathname="%(pathname)s" lineno=%(lineno)s funcname=%(funcName)s '
+            "process=%(process)d thread=%(thread)d "
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    # you can also shortcut 'loggers' and just configure logging for EVERYTHING at once
+    "root": {"handlers": ["console",], "level": "INFO"},
+}
+
 # we terminate SSL at the proxy server
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 

@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Callable, List, Optional
@@ -262,6 +263,40 @@ class PullRequestActivity(BaseModel):
         "kodiak_updated",
         "github_installation_id",
     )
+
+    @staticmethod
+    def aggregate_events() -> None:
+        """
+        Create PullRequestActivity objects from GitHubEvent information.
+        """
+        start_time = time.time()
+        pr_progress: Optional[
+            PullRequestActivityProgress
+        ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
+        if pr_progress:
+            min_date = timezone.make_aware(
+                datetime.datetime(
+                    pr_progress.min_date.year,
+                    pr_progress.min_date.month,
+                    pr_progress.min_date.day,
+                )
+            )
+            events_aggregated = GitHubEvent.objects.filter(
+                created_at__gte=min_date
+            ).count()
+        else:
+            min_date = None
+            events_aggregated = GitHubEvent.objects.count()
+        new_min_date = datetime.date.today()
+        PullRequestActivity.generate_activity_data(min_date=min_date)
+        PullRequestActivityProgress.objects.create(min_date=new_min_date)
+        logger.info(
+            "generate_activity_data events_aggregated=%s min_date=%s new_min_date=%s duration_seconds=%s",
+            events_aggregated,
+            min_date,
+            new_min_date,
+            time.time() - start_time,
+        )
 
     @staticmethod
     def generate_activity_data(
