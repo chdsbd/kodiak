@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 
 import pytest
+from django.core.management import call_command
 from django.utils.timezone import make_aware
 
-from core.analytics_aggregator import main
 from core.models import GitHubEvent, PullRequestActivity, PullRequestActivityProgress
 
 FIXTURES = Path(__file__).parent / "tests" / "fixtures"
@@ -25,7 +25,7 @@ def pull_request_kodiak_updated() -> None:
 def test_analytics_aggregator(pull_request_kodiak_updated: object) -> None:
     assert PullRequestActivityProgress.objects.count() == 0
     assert PullRequestActivity.objects.count() == 0
-    main()
+    call_command("aggregate_pull_request_activity")
     assert PullRequestActivityProgress.objects.count() == 1
     assert PullRequestActivity.objects.count() == 1
     pull_request_activity = PullRequestActivity.objects.get()
@@ -46,5 +46,5 @@ def test_analytics_aggregator_min_date(pull_request_kodiak_updated: object) -> N
     PullRequestActivityProgress.objects.create(min_date=datetime.date(2020, 2, 10))
     PullRequestActivityProgress.objects.create(min_date=datetime.date.today())
     assert PullRequestActivity.objects.count() == 0
-    main()
+    call_command("aggregate_pull_request_activity")
     assert PullRequestActivity.objects.count() == 0

@@ -24,11 +24,11 @@ s/build
 .venv/bin/gunicorn --bind 0.0.0.0:$PORT web_api.wsgi
 
 # ingest events for analysis (run continuously)
-.venv/bin/python core/event_ingestor.py
+./manage.py ingest_events
 
 # aggregate events into chartable data (run on cron)
-.venv/bin/python  core/analytics_aggregator.py
+./manage.py aggregate_pull_request_activity
 
 # aggregate user activity (run on cron)
-.venv/bin/python core/user_activity_aggregator.py
+./manage.py aggregate_user_pull_request_activity
 ```

@@ -12,14 +12,13 @@ bounded at 10000 items, so if we have time to recover from downtime/restarts.
 import json
 import logging
 import os
-import sys
 import time
-from typing import NoReturn
 
 import redis
 import zstandard as zstd
 
 from core.models import GitHubEvent
+from core.utils import GracefulTermination
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +26,22 @@ logger = logging.getLogger(__name__)
 INTERESTING_EVENTS = {"pull_request", "pull_request_review", "pull_request_comment"}
 
 
-def ingest_events() -> NoReturn:
+def ingest_events() -> None:
     """
     Pull webhook events off the queue and insert them into Postgres to calculate
     usage statistics.
     """
     r = redis.Redis.from_url(os.environ["REDIS_URL"])
-    try:
-        while True:
+    while True:
+        time.sleep(0)
+        # we don't want to lose events when we terminate the process, so we
+        # handle SIGINT and SIGTERM gracefully. We use a short timeout of Redis
+        # BLPOP so we don't have to wait too long.
+        with GracefulTermination():
             logger.info("block for event")
-
-            res = r.blpop("kodiak:webhook_event")
+            res = r.blpop("kodiak:webhook_event", timeout=5)
             if res is None:
-                logger.info("no event found")
+                # if res is None we likely hit the timeout.
                 continue
             _, event_compressed = res
 
@@ -52,7 +54,3 @@ def ingest_events() -> NoReturn:
             if event_name in INTERESTING_EVENTS:
                 payload = event["payload"]
                 GitHubEvent.objects.create(event_name=event_name, payload=payload)
-
-            time.sleep(0)
-    except KeyboardInterrupt:
-        pass
