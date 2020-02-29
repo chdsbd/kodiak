@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 class GracefulTermination:
     """
     Wait for inner scope to complete before exiting after receiving SIGINT or SIGTERM.
+
+    source: https://stackoverflow.com/a/50174144
     """
 
     killed = False
