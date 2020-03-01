@@ -2,6 +2,15 @@
 process.env.BABEL_ENV = "production"
 process.env.NODE_ENV = "production"
 
+// Disable inline script to allow for strict content security policy.
+//
+// https://create-react-app.dev/docs/advanced-configuration/
+// > By default, Create React App will embed the runtime script into index.html
+// > during the production build. When set to false, the script will not be
+// > embedded and will be imported as usual. This is normally required when
+// > dealing with CSP.
+process.env.INLINE_RUNTIME_CHUNK = "false"
+
 // Makes the script crash on unhandled rejections instead of silently
 // ignoring them. In the future, promise rejections that are not handled will
 // terminate the Node.js process with a non-zero exit code.
