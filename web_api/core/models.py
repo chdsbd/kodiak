@@ -556,7 +556,9 @@ GROUP BY
     github_pull_request_number,
     github_user_id,
     is_private_repository,
-    activity_date;
+    activity_date
+ON CONFLICT ON CONSTRAINT unique_user_pull_request_activity
+    DO NOTHING;
 """
             )
         UserPullRequestActivityProgress.objects.create(min_date=timezone.now())

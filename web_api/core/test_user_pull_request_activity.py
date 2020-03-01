@@ -83,6 +83,31 @@ def test_generate(
 
 
 @pytest.mark.django_db
+def test_generate_with_conflict(
+    pull_request_total_opened: object,
+    pull_request_kodiak_updated: object,
+    pull_request_kodiak_updated_different_institution: object,
+    pull_request_total_opened_different_institution: object,
+) -> None:
+    assert UserPullRequestActivityProgress.objects.count() == 0
+
+    generate_user_activity()
+
+    assert UserPullRequestActivity.objects.count() == 4
+    assert (
+        UserPullRequestActivity.objects.filter(github_installation_id=848733).count()
+        == 2
+    )
+    assert (
+        UserPullRequestActivity.objects.filter(github_installation_id=548321).count()
+        == 2
+    )
+    assert UserPullRequestActivityProgress.objects.count() == 1
+    UserPullRequestActivityProgress.objects.all().delete()
+    generate_user_activity()
+
+
+@pytest.mark.django_db
 def test_generate_min_progress(
     pull_request_total_opened: object,
     pull_request_kodiak_updated: object,
