@@ -13,10 +13,9 @@ COPY . /var/app
 RUN node /var/app/scripts/build.js
 
 
-FROM node:12.4.0
+FROM nginx:1.13.8-alpine@sha256:c8ff0187cc75e1f5002c7ca9841cb191d33c4080f38140b9d6f07902ababbe66
 RUN mkdir -p /var/app/build
-RUN yarn global add --no-lockfile serve
 COPY --from=builder /var/app/build /var/app/build
+COPY nginx.conf /etc/nginx/conf.d/
+RUN rm /etc/nginx/conf.d/default.conf
 WORKDIR /var/app
-
-CMD serve --single --no-clipboard --listen tcp://0.0.0.0:4444 /var/app/build
