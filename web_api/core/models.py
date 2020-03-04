@@ -557,6 +557,13 @@ GROUP BY
     github_user_id,
     is_private_repository,
     activity_date
+HAVING
+    (payload -> 'installation' ->> 'id')::int IS NOT NULL
+    AND (payload -> 'repository' ->> 'name') IS NOT NULL
+    AND (payload -> 'pull_request' ->> 'number')::int IS NOT NULL
+    AND max(payload -> 'sender' ->> 'login') IS NOT NULL
+    AND (payload -> 'sender' ->> 'id')::integer IS NOT NULL
+    AND (payload -> 'repository' ->> 'private')::boolean IS NOT NULL
 ON CONFLICT ON CONSTRAINT unique_user_pull_request_activity
     DO NOTHING;
 """
