@@ -398,6 +398,7 @@ title = "github_default" # default: "github_default", options: "github_default",
 # content of the PR to generate the body content while `"empty"` sets an empty
 # body.
 body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
+include_pull_request_author = false # default: false
 
 # Add the PR number to the merge commit title. This setting replicates GitHub's
 # behavior of automatically adding the PR number to the title of merges created

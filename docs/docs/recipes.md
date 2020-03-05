@@ -52,6 +52,7 @@ delete_branch_on_merge = true # default: false
 [merge.message]
 title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"
+include_pull_request_author = true # default: false
 ```
 
 ## Efficiency and Speed
