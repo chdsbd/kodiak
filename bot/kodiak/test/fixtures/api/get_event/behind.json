@@ -36,7 +36,7 @@
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
         "author": {
-            "login": "arnold"
+            "login": "arnold", "databaseId": 49118, "type": "Bot"
         },
         "reviewRequests": {
           "nodes": [

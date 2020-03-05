@@ -27,7 +27,8 @@
           "body": "github_default",
           "include_pr_number": true,
           "body_type": "markdown",
-          "strip_html_comments": false
+          "strip_html_comments": false,
+          "include_pull_request_author": false
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
@@ -108,6 +109,11 @@
           "title": "Strip Html Comments",
           "default": false,
           "type": "boolean"
+        },
+        "include_pull_request_author": {
+          "title": "Include Pull Request Author",
+          "default": false,
+          "type": "boolean"
         }
       }
     },
@@ -175,7 +181,8 @@
             "body": "github_default",
             "include_pr_number": true,
             "body_type": "markdown",
-            "strip_html_comments": false
+            "strip_html_comments": false,
+            "include_pull_request_author": false
           },
           "allOf": [
             {
