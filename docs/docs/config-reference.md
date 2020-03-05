@@ -222,6 +222,17 @@ This setting is useful for stripping HTML comments created by PR templates.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
+### `merge.message.include_pull_request_author`
+
+- **type:** `boolean`
+- **default:** `false`
+
+Add the pull request author as a coauthor of the merge commit using `Co-authored-by: jdoe <828352+jdoe@users.noreply.github.com>` syntax.
+
+This setting will override `merge.message.body = "github_default"` and `merge.message.body = "empty"`. In both cases, the commit message will only contain coauthor information.
+
+This setting is useful when GitHub strips authorship information for squashes.
+
 ### `update.always`
 
 - **type:** `boolean`

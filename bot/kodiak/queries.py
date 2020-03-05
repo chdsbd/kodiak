@@ -81,6 +81,14 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       id
       author {
         login
+        type: __typename
+        ... on User {
+          databaseId
+          name
+        }
+        ... on Bot {
+          databaseId
+        }
       }
       mergeStateStatus
       state
@@ -212,6 +220,9 @@ class PullRequestState(Enum):
 
 class PullRequestAuthor(BaseModel):
     login: str
+    databaseId: int
+    type: str
+    name: Optional[str] = None
 
 
 class PullRequest(BaseModel):

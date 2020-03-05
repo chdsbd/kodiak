@@ -40,6 +40,7 @@ class MergeMessage(BaseModel):
     include_pr_number: bool = True
     body_type: BodyText = BodyText.markdown
     strip_html_comments: bool = False
+    include_pull_request_author: bool = False
 
 
 class Merge(BaseModel):
