@@ -90,6 +90,9 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
         if pull_request.author.name:
             author_name = pull_request.author.name
 
+        # GitHub does not allow our GitHub App to view the email addresses of
+        # pull request authors, so we generate a noreply GitHub email address
+        # instead which works the same for the GitHub UI.
         author_email = (
             f"{pull_request.author.databaseId}+{author_login}@users.noreply.github.com"
         )
