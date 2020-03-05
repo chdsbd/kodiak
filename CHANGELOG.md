@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.18.0 - 2020-03-04
+
+### Added
+- add web dashboard accessible at https://app.kodiakhq.com. This website enables viewing Kodiak activity.
+- add `merge.message.include_pull_request_author` configuration option to append pull request author information as a coauthor in the merge commit. (#301)
+
 ## 0.17.0 - 2020-01-26
 
 ### Added
-- add `approve.auto_approve_usernames` to enable Kodiak to auto approve PRs. This option enables bots like Dependabot to automatically merge PRs when the GitHub Branch Protection "Required approving reviews" is configured. See https://kodiakhq.com/docs/recipes#automated-dependency-updates-with-dependabot for an example.
+- add `approve.auto_approve_usernames` to enable Kodiak to auto approve PRs. This option enables bots like Dependabot to automatically merge PRs when the GitHub Branch Protection "Required approving reviews" is configured. See https://kodiakhq.com/docs/recipes#automated-dependency-updates-with-dependabot for an example. (#260)
 
 ## 0.16.0 - 2020-01-25
 
