@@ -18,6 +18,7 @@ export function getOauthState() {
 
 export function getRedirectPath(x: string): string | undefined {
   try {
+    // tslint:disable-next-line: no-unsafe-any
     const redirect = JSON.parse(x)["redirect"]
     if (typeof redirect === "string") {
       return redirect
