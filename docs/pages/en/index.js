@@ -93,7 +93,7 @@ function HomeSplash(props) {
         <PromoSection>
           <Button href="#quickstart">Quick Start</Button>
           <Button href="#why">Why?</Button>
-          <Button href={siteConfig.changeLogUrl}>Changelog</Button>
+          <Button href={siteConfig.dashboardUrl}>Dashboard</Button>
         </PromoSection>
       </div>
     </SplashContainer>
