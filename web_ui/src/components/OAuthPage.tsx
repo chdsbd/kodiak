@@ -1,20 +1,8 @@
 import React, { useEffect, useState } from "react"
-import { startLogin, getOauthState } from "../auth"
+import { startLogin, getOauthState, getRedirectPath } from "../auth"
 import { useLocation, useHistory } from "react-router-dom"
 import { Current } from "../world"
 import { Button } from "react-bootstrap"
-
-function getRedirectPath(x: string): string | undefined {
-  try {
-    const redirect = JSON.parse(x)["redirect"]
-    if (typeof redirect === "string") {
-      return redirect
-    }
-  } catch (_) {
-    // pass
-  }
-  return undefined
-}
 
 export function OAuthPage() {
   const location = useLocation()

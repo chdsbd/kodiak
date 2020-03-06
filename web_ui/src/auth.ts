@@ -15,3 +15,15 @@ export function startLogin() {
 export function getOauthState() {
   return localStorage.getItem("oauth_state") || ""
 }
+
+export function getRedirectPath(x: string): string | undefined {
+  try {
+    const redirect = JSON.parse(x)["redirect"]
+    if (typeof redirect === "string") {
+      return redirect
+    }
+  } catch (_) {
+    // pass
+  }
+  return undefined
+}
