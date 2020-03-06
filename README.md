@@ -23,7 +23,7 @@ Kodiak is available through the GitHub Marketplace.
 
 _If you'd rather run Kodiak yourself, check out the [self hosting page](https://kodiakhq.com/docs/self-hosting) in our docs._
 
-View activity via dashboard at <https://app.kodiakhq.com>.
+View activity via the dashboard at <https://app.kodiakhq.com>.
 
 ## [Documentation](https://kodiakhq.com)
 
