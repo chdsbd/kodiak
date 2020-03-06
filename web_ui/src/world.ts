@@ -21,7 +21,8 @@ authRoute.interceptors.response.use(
   err => {
     // tslint:disable-next-line no-unsafe-any
     if (err?.response?.status === 401) {
-      location.pathname = "/login"
+      const redirectPath = location.pathname
+      location.href = `/login?redirect=${redirectPath}`
     }
     return Promise.reject(err)
   },

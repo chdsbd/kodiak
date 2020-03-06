@@ -3,7 +3,9 @@ import uuid from "uuid/v4"
 
 export function startLogin() {
   const url = new URL(loginUrl)
-  const state = uuid()
+  const queryParams = new URLSearchParams(location.search)
+  const redirectUri = queryParams.get("redirect")
+  const state = JSON.stringify({ nonce: uuid(), redirect: redirectUri })
   url.searchParams.set("state", state)
   localStorage.setItem("oauth_state", state)
   // eslint-disable-next-line no-restricted-globals

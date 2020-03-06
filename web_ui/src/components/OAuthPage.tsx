@@ -4,6 +4,18 @@ import { useLocation, useHistory } from "react-router-dom"
 import { Current } from "../world"
 import { Button } from "react-bootstrap"
 
+function getRedirectPath(x: string): string | undefined {
+  try {
+    const redirect = JSON.parse(x)["redirect"]
+    if (typeof redirect === "string") {
+      return redirect
+    }
+  } catch (_) {
+    // pass
+  }
+  return undefined
+}
+
 export function OAuthPage() {
   const location = useLocation()
   const history = useHistory()
@@ -16,8 +28,9 @@ export function OAuthPage() {
   useEffect(() => {
     Current.api.loginUser({ code, serverState, clientState }).then(res => {
       if (res.ok) {
-        // navigate to activity page on success.
-        history.push("/")
+        // navigate to redirect path if available, otherwise redirect to root page.
+        const redirectPath = getRedirectPath(clientState) || "/"
+        history.push(redirectPath)
         return
       } else {
         setError(`${res.error} – ${res.error_description}`)
