@@ -1,5 +1,4 @@
 import React from "react"
-import { Container } from "react-bootstrap"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { PullRequestActivityChart, KodiakActivityChart } from "./ActivityChart"
