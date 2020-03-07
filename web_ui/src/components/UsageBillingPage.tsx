@@ -47,7 +47,7 @@ interface IUsageBillingPageInnerProps {
 
 function Loading() {
   return (
-    <UsageAndBillingContainer className="h-100">
+    <UsageAndBillingContainer>
       <Spinner />
     </UsageAndBillingContainer>
   )
@@ -61,15 +61,9 @@ function Failure() {
   )
 }
 
-function UsageAndBillingContainer({
-  children,
-  className,
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
+function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div className={className}>
+    <div className="d-flex flex-column flex-grow-1">
       <h2>Usage & Billing</h2>
       {children}
     </div>
