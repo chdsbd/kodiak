@@ -14,7 +14,9 @@ export function Page({ children }: IPageProps) {
           <SideBarNav />
         </div>
         <ErrorBoundary>
-          <Container className="p-4 w-100 overflow-auto">{children}</Container>
+          <Container className="p-4 w-100 overflow-auto d-flex">
+            {children}
+          </Container>
         </ErrorBoundary>
       </div>
     </div>
