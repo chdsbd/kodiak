@@ -3,6 +3,7 @@ import { Bar } from "react-chartjs-2"
 import { ChartOptions } from "chart.js"
 import format from "date-fns/format"
 import sub from "date-fns/sub"
+import parseISO from 'date-fns/parseISO'
 
 const TODAY = new Date()
 const ONE_MONTH_AGO = sub(new Date(), { months: 1 })
@@ -41,7 +42,7 @@ const chartOptions: ChartOptions = {
         if (label == null) {
           return "unknown"
         }
-        const date = new Date(label)
+        const date = parseISO(label)
         return format(date, "MMM do")
       },
     },
@@ -169,7 +170,7 @@ const chartOptionsTotal: ChartOptions = {
         if (label == null) {
           return "unknown"
         }
-        const date = new Date(label)
+        const date = parseISO(label)
         return format(date, "MMM do")
       },
     },
