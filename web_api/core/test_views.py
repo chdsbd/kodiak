@@ -64,7 +64,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_account_login=user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=user)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     UserPullRequestActivity.objects.create(
         github_installation_id=user_account.github_installation_id,
@@ -106,7 +106,9 @@ def test_usage_billing_authentication(authed_client: Client, other_user: User) -
         github_account_login=other_user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=other_user)
+    AccountMembership.objects.create(
+        account=user_account, user=other_user, role="member"
+    )
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 404
 
@@ -119,7 +121,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
         github_account_login=user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=user)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
         date=datetime.date(2020, 2, 3),
         total_opened=15,
@@ -154,7 +156,9 @@ def test_activity_authentication(authed_client: Client, other_user: User,) -> No
         github_account_login=other_user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=other_user)
+    AccountMembership.objects.create(
+        account=user_account, user=other_user, role="member"
+    )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 404
 
@@ -189,14 +193,14 @@ def test_current_account(authed_client: Client, user: User) -> None:
         github_account_login=user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=user)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = Account.objects.create(
         github_installation_id=83676,
         github_account_id=779874,
         github_account_login="recipeyak",
         github_account_type="Organization",
     )
-    AccountMembership.objects.create(account=org_account, user=user)
+    AccountMembership.objects.create(account=org_account, user=user, role="member")
 
     res = authed_client.get(f"/v1/t/{org_account.id}/current_account")
     assert res.status_code == 200
@@ -233,7 +237,9 @@ def test_current_account_authentication(
         github_account_login=other_user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=other_user)
+    AccountMembership.objects.create(
+        account=user_account, user=other_user, role="member"
+    )
     res = authed_client.get(f"/v1/t/{user_account.id}/current_account")
     assert res.status_code == 404
 
@@ -246,14 +252,14 @@ def test_accounts(authed_client: Client, user: User) -> None:
         github_account_login=user.github_login,
         github_account_type="User",
     )
-    AccountMembership.objects.create(account=user_account, user=user)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = Account.objects.create(
         github_installation_id=83676,
         github_account_id=779874,
         github_account_login="recipeyak",
         github_account_type="Organization",
     )
-    AccountMembership.objects.create(account=org_account, user=user)
+    AccountMembership.objects.create(account=org_account, user=user, role="member")
 
     res = authed_client.get("/v1/accounts")
     assert res.status_code == 200
