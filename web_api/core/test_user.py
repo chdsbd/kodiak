@@ -152,6 +152,50 @@ def successful_installation_response(mocked_responses: Any) -> None:
             ],
         },
     )
+    mocked_responses.add(
+        responses.GET,
+        "https://api.github.com/orgs/recipeyak/memberships/ghost",
+        json={
+            "organization": {
+                "avatar_url": "https://avatars2.githubusercontent.com/u/57954?v=4",
+                "description": None,
+                "events_url": "https://api.github.com/orgs/recipeyak/events",
+                "hooks_url": "https://api.github.com/orgs/recipeyak/hooks",
+                "id": 57954,
+                "issues_url": "https://api.github.com/orgs/recipeyak/issues",
+                "login": "recipeyak",
+                "members_url": "https://api.github.com/orgs/recipeyak/members{/member}",
+                "node_id": "MDQ6T3JnYW5pemF0aW9uNTc5NTQ=",
+                "public_members_url": "https://api.github.com/orgs/recipeyak/public_members{/member}",
+                "repos_url": "https://api.github.com/orgs/recipeyak/repos",
+                "url": "https://api.github.com/orgs/recipeyak",
+            },
+            "organization_url": "https://api.github.com/orgs/recipeyak",
+            "role": "admin",
+            "state": "active",
+            "url": "https://api.github.com/orgs/recipeyak/memberships/ghost",
+            "user": {
+                "avatar_url": "https://avatars2.githubusercontent.com/u/1929960?v=4",
+                "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+                "followers_url": "https://api.github.com/users/ghost/followers",
+                "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+                "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+                "gravatar_id": "",
+                "html_url": "https://github.com/ghost",
+                "id": 10137,
+                "login": "ghost",
+                "node_id": "MDQ6VXNlcjEwMTM3Cg=",
+                "organizations_url": "https://api.github.com/users/ghost/orgs",
+                "received_events_url": "https://api.github.com/users/ghost/received_events",
+                "repos_url": "https://api.github.com/users/ghost/repos",
+                "site_admin": False,
+                "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+                "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+                "type": "User",
+                "url": "https://api.github.com/users/ghost",
+            },
+        },
+    )
 
 
 @pytest.mark.django_db
@@ -195,6 +239,18 @@ def test_sync_accounts_new_and_existing_accounts(
     assert (
         AccountMembership.objects.filter(user=user).count() == 2
     ), "we should be added to recipeyak, but removed from acme-corp."
+    assert (
+        AccountMembership.objects.filter(
+            user=user, role="member", account__github_account_login="chdsbd"
+        ).count()
+        == 1
+    )
+    assert (
+        AccountMembership.objects.filter(
+            user=user, role="admin", account__github_account_login="recipeyak"
+        ).count()
+        == 1
+    )
 
     assert (
         AccountMembership.objects.filter(user=user, account=acme_corp_account).exists()
