@@ -185,16 +185,17 @@ class GitHubEvent(BaseModel):
     __repr__ = sane_repr("event_name")
 
 
+class AccountType(models.TextChoices):
+    user = "User"
+    organization = "Organization"
+
+
 class Account(BaseModel):
     """
     An GitHub Kodiak App installation for a GitHub organization or user.
 
     Users are associated with Accounts via AccountMembership.
     """
-
-    class AccountType(models.TextChoices):
-        user = "User"
-        organization = "Organization"
 
     github_installation_id = models.IntegerField(
         unique=True, help_text="GitHub App Installation ID."
@@ -211,6 +212,12 @@ class Account(BaseModel):
 
     class Meta:
         db_table = "account"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(github_account_type__in=AccountType.values),
+                name="github_account_type_valid",
+            )
+        ]
 
     __repr__ = sane_repr(
         "github_installation_id", "github_account_id", "github_account_login"
