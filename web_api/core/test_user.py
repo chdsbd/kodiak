@@ -48,6 +48,58 @@ def successful_installation_response(mocked_responses: Any) -> None:
                 {
                     "id": 1066615,
                     "account": {
+                        "login": "ghost",
+                        "id": 10137,
+                        "node_id": "MDQ6VXNlcjE5Mjk5NjA=",
+                        "avatar_url": "https://avatars2.githubusercontent.com/u/10137?v=4",
+                        "gravatar_id": "",
+                        "url": "https://api.github.com/users/ghost",
+                        "html_url": "https://github.com/ghost",
+                        "followers_url": "https://api.github.com/users/ghost/followers",
+                        "following_url": "https://api.github.com/users/ghost/following{/other_user}",
+                        "gists_url": "https://api.github.com/users/ghost/gists{/gist_id}",
+                        "starred_url": "https://api.github.com/users/ghost/starred{/owner}{/repo}",
+                        "subscriptions_url": "https://api.github.com/users/ghost/subscriptions",
+                        "organizations_url": "https://api.github.com/users/ghost/orgs",
+                        "repos_url": "https://api.github.com/users/ghost/repos",
+                        "events_url": "https://api.github.com/users/ghost/events{/privacy}",
+                        "received_events_url": "https://api.github.com/users/ghost/received_events",
+                        "type": "User",
+                        "site_admin": False,
+                    },
+                    "repository_selection": "selected",
+                    "access_tokens_url": "https://api.github.com/app/installations/136746/access_tokens",
+                    "repositories_url": "https://api.github.com/installation/repositories",
+                    "html_url": "https://github.com/settings/installations/136746",
+                    "app_id": 31500,
+                    "app_slug": "kodiak-local-dev",
+                    "target_id": 10137,
+                    "target_type": "User",
+                    "permissions": {
+                        "administration": "read",
+                        "checks": "write",
+                        "contents": "write",
+                        "issues": "read",
+                        "metadata": "read",
+                        "pull_requests": "write",
+                        "statuses": "read",
+                    },
+                    "events": [
+                        "check_run",
+                        "issue_comment",
+                        "pull_request",
+                        "pull_request_review",
+                        "pull_request_review_comment",
+                        "push",
+                        "status",
+                    ],
+                    "created_at": "2019-05-26T23:47:57.000-04:00",
+                    "updated_at": "2020-02-09T18:39:43.000-05:00",
+                    "single_file_name": None,
+                },
+                {
+                    "id": 136746,
+                    "account": {
                         "login": "chdsbd",
                         "id": 1929960,
                         "node_id": "MDQ6VXNlcjE5Mjk5NjA=",
@@ -213,7 +265,7 @@ def test_sync_accounts_new_and_existing_accounts(
     user_account = Account.objects.create(
         github_installation_id=1066615,
         github_account_login=user.github_login,
-        github_account_id=1929960,
+        github_account_id=user.github_id,
         github_account_type="User",
     )
     AccountMembership.objects.create(user=user, account=user_account)
@@ -233,12 +285,18 @@ def test_sync_accounts_new_and_existing_accounts(
     assert AccountMembership.objects.filter(user=user).count() == 2
     user.sync_accounts()
 
+    assert Account.objects.filter(
+        github_account_login__in=["recipeyak", "chdsbd", "ghost", "acme-corp"]
+    )
     assert (
-        Account.objects.count() == 3
-    ), "we should have a new account for recipeyak, brining the total to three."
+        Account.objects.count() == 4
+    ), "we should have a new account for recipeyak and chdsbd."
     assert (
-        AccountMembership.objects.filter(user=user).count() == 2
-    ), "we should be added to recipeyak, but removed from acme-corp."
+        AccountMembership.objects.filter(user=user)
+        .exclude(account__github_account_login__in=["recipeyak", "chdsbd", "ghost"])
+        .count()
+        == 0
+    ), "we should have removed acme-corp."
     assert (
         AccountMembership.objects.filter(
             user=user, role="member", account__github_account_login="chdsbd"
