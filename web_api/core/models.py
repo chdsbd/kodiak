@@ -118,6 +118,21 @@ class User(BaseModel):
             installation_account_id = installation["account"]["id"]
             installation_account_login = installation["account"]["login"]
             installation_account_type = installation["account"]["type"]
+            if installation_account_type == "Organization":
+                account_membership_res = requests.get(
+                    f"https://api.github.com/orgs/{installation_account_login}/memberships/{self.github_login}",
+                    headers=dict(authorization=f"Bearer {self.github_access_token}"),
+                    timeout=5,
+                )
+                account_membership_res.raise_for_status()
+                role = account_membership_res.json()["role"]
+            elif (
+                installation_account_type == "User"
+                and installation_account_login == self.github_login
+            ):
+                role = "admin"
+            else:
+                role = "member"
 
             existing_account: Optional[Account] = Account.objects.filter(
                 github_account_id=installation_account_id
@@ -138,9 +153,13 @@ class User(BaseModel):
                 account.save()
 
             try:
-                AccountMembership.objects.get(account=account, user=self)
+                account_membership = AccountMembership.objects.get(
+                    account=account, user=self
+                )
+                account_membership.role = role
+                account_membership.save()
             except AccountMembership.DoesNotExist:
-                AccountMembership.objects.create(account=account, user=self)
+                AccountMembership.objects.create(account=account, user=self, role=role)
 
             accounts.append(account)
 
@@ -209,15 +228,24 @@ class AccountMembership(BaseModel):
     model defines that membership.
     """
 
+    class AccountRole(models.TextChoices):
+        admin = "admin"
+        member = "member"
+
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="memberships"
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    role = models.CharField(
+        max_length=255,
+        choices=AccountRole.choices,
+        help_text="User's GitHub-defined role for the associated account.",
+    )
 
     class Meta:
         db_table = "account_membership"
 
-    __repr__ = sane_repr("account_id", "user_id")
+    __repr__ = sane_repr("account_id", "user_id", "role")
 
 
 class PullRequestActivity(BaseModel):
