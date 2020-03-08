@@ -268,7 +268,7 @@ def test_sync_accounts_new_and_existing_accounts(
         github_account_id=user.github_id,
         github_account_type="User",
     )
-    AccountMembership.objects.create(user=user, account=user_account)
+    AccountMembership.objects.create(user=user, account=user_account, role="member")
 
     # the user should get removed from this account when we sync. This tests
     # that our membership removal of installations a user no longer has access
@@ -279,7 +279,9 @@ def test_sync_accounts_new_and_existing_accounts(
         github_account_id=33803,
         github_account_type="Organization",
     )
-    AccountMembership.objects.create(user=user, account=acme_corp_account)
+    AccountMembership.objects.create(
+        user=user, account=acme_corp_account, role="member"
+    )
 
     assert Account.objects.count() == 2
     assert AccountMembership.objects.filter(user=user).count() == 2

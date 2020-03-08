@@ -220,6 +220,11 @@ class Account(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
 
+class AccountRole(models.TextChoices):
+    admin = "admin"
+    member = "member"
+
+
 class AccountMembership(BaseModel):
     """
     Associates a User with an Account.
@@ -227,10 +232,6 @@ class AccountMembership(BaseModel):
     A GitHub user can be associated with multiple installations of Kodiak. This
     model defines that membership.
     """
-
-    class AccountRole(models.TextChoices):
-        admin = "admin"
-        member = "member"
 
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="memberships"
@@ -244,6 +245,11 @@ class AccountMembership(BaseModel):
 
     class Meta:
         db_table = "account_membership"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(role__in=AccountRole.values), name="role_valid",
+            )
+        ]
 
     __repr__ = sane_repr("account_id", "user_id", "role")
 
