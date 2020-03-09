@@ -232,8 +232,8 @@ Add the pull request author as a coauthor of the merge commit using `Co-authored
 This setting will override `merge.message.body = "github_default"` and `merge.message.body = "empty"`. In both cases, the commit message will only contain coauthor information.
 
 This setting was added to mitigate the fallout of GitHub's change to the
-squash method on March 4th, 2020. This change was reverted around March 6th,
-2020, making this option no longer necessary.
+squash method on March 4th, 2020. GitHub reverted their change around
+March 6th, 2020, making this option no longer necessary.
 
 ### `update.always`
 
@@ -402,8 +402,8 @@ title = "github_default" # default: "github_default", options: "github_default",
 body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
 
 # Option to mitigate the fallout of GitHub's change to the
-# squash method on March 4th, 2020. This change was reverted around March 6th,
-# 2020, making this option no longer necessary.
+# squash method on March 4th, 2020. GitHub reverted their change around
+# March 6th, 2020, making this option no longer necessary.
 include_pull_request_author = false # default: false
 
 # Add the PR number to the merge commit title. This setting replicates GitHub's
