@@ -28,7 +28,8 @@
           "include_pr_number": true,
           "body_type": "markdown",
           "strip_html_comments": false,
-          "include_pull_request_author": false
+          "include_pull_request_author": false,
+          "include_pull_request_url": false
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
@@ -114,6 +115,11 @@
           "title": "Include Pull Request Author",
           "default": false,
           "type": "boolean"
+        },
+        "include_pull_request_url": {
+          "title": "Include Pull Request Url",
+          "default": false,
+          "type": "boolean"
         }
       }
     },
@@ -182,7 +188,8 @@
             "include_pr_number": true,
             "body_type": "markdown",
             "strip_html_comments": false,
-            "include_pull_request_author": false
+            "include_pull_request_author": false,
+            "include_pull_request_url": false
           },
           "allOf": [
             {

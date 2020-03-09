@@ -78,6 +78,11 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
         merge_body.commit_title = pull_request.title
     if config.merge.message.include_pr_number and merge_body.commit_title is not None:
         merge_body.commit_title += f" (#{pull_request.number})"
+    if config.merge.message.include_pull_request_url:
+        if merge_body.commit_message is None:
+            merge_body.commit_message = pull_request.url
+        else:
+            merge_body.commit_message += "\n\n" + pull_request.url
     if config.merge.message.include_pull_request_author:
         commit_message = (
             merge_body.commit_message if merge_body.commit_message is not None else ""
