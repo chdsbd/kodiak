@@ -98,7 +98,7 @@ def block_event() -> EventInfoResponse:
         body="",
         bodyText="",
         bodyHTML="",
-        url="",
+        url="https://github.com/delos-corp/hive-mind/pull/324",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
