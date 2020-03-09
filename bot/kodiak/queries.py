@@ -114,6 +114,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       body
       bodyText
       bodyHTML
+      url
       reviews(first: 100) {
         nodes {
           createdAt
@@ -242,6 +243,7 @@ class PullRequest(BaseModel):
     latest_sha: str
     baseRefName: str
     headRefName: str
+    url: str
 
 
 @dataclass

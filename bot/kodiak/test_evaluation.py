@@ -246,6 +246,7 @@ def pull_request() -> PullRequest:
         body="# some description",
         bodyText="some description",
         bodyHTML="<h1>some description</h1>",
+        url="https://github.com/example_org/example_repo/pull/65",
     )
 
 
@@ -3463,6 +3464,30 @@ def test_get_merge_body_empty(pull_request: PullRequest) -> None:
         pull_request,
     )
     expected = MergeBody(merge_method="squash", commit_message="")
+    assert actual == expected
+
+
+def test_get_merge_body_includes_pull_request_url(pull_request: PullRequest) -> None:
+    """
+    Ensure that when the appropriate config option is set, we include the
+    pull request url in the commit message.
+    """
+    actual = get_merge_body(
+        V1(
+            version=1,
+            merge=Merge(
+                method=MergeMethod.squash,
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body, include_pr_url=True
+                ),
+            ),
+        ),
+        pull_request,
+    )
+    expected = MergeBody(
+        merge_method="squash",
+        commit_message="# some description\nhttps://github.com/example_org/example_repo/pull/65",
+    )
     assert actual == expected
 
 
