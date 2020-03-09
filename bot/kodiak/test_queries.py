@@ -98,6 +98,7 @@ def block_event() -> EventInfoResponse:
         body="",
         bodyText="",
         bodyHTML="",
+        url="",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,

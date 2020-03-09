@@ -29,7 +29,7 @@
           "body_type": "markdown",
           "strip_html_comments": false,
           "include_pull_request_author": false,
-          "include_pr_url": false
+          "include_pull_request_url": false
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
@@ -116,8 +116,8 @@
           "default": false,
           "type": "boolean"
         },
-        "include_pr_url": {
-          "title": "Include Pr Url",
+        "include_pull_request_url": {
+          "title": "Include Pull Request Url",
           "default": false,
           "type": "boolean"
         }
@@ -189,7 +189,7 @@
             "body_type": "markdown",
             "strip_html_comments": false,
             "include_pull_request_author": false,
-            "include_pr_url": false
+            "include_pull_request_url": false
           },
           "allOf": [
             {

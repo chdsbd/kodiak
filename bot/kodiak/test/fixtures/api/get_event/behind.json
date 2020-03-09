@@ -64,6 +64,7 @@
         "body": "",
         "bodyText": "",
         "bodyHTML": "",
+        "url": "",
         "reviews": {
           "nodes": [
             {

@@ -41,7 +41,7 @@ class MergeMessage(BaseModel):
     body_type: BodyText = BodyText.markdown
     strip_html_comments: bool = False
     include_pull_request_author: bool = False
-    include_pr_url: bool = False
+    include_pull_request_url: bool = False
 
 
 class Merge(BaseModel):
