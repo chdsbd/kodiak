@@ -8,6 +8,3 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         UserPullRequestActivity.generate()
-
-
-# TODO: Move all teh crons to management commands to pathing works prorperly!
