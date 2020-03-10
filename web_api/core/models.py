@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Callable, List, Optional
@@ -305,6 +306,40 @@ class PullRequestActivity(BaseModel):
     )
 
     @staticmethod
+    def aggregate_events() -> None:
+        """
+        Create PullRequestActivity objects from GitHubEvent information.
+        """
+        start_time = time.time()
+        pr_progress: Optional[
+            PullRequestActivityProgress
+        ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
+        if pr_progress:
+            min_date = timezone.make_aware(
+                datetime.datetime(
+                    pr_progress.min_date.year,
+                    pr_progress.min_date.month,
+                    pr_progress.min_date.day,
+                )
+            )
+            events_aggregated = GitHubEvent.objects.filter(
+                created_at__gte=min_date
+            ).count()
+        else:
+            min_date = None
+            events_aggregated = GitHubEvent.objects.count()
+        new_min_date = datetime.date.today()
+        PullRequestActivity.generate_activity_data(min_date=min_date)
+        PullRequestActivityProgress.objects.create(min_date=new_min_date)
+        logger.info(
+            "generate_activity_data events_aggregated=%s min_date=%s new_min_date=%s duration_seconds=%s",
+            events_aggregated,
+            min_date,
+            new_min_date,
+            time.time() - start_time,
+        )
+
+    @staticmethod
     def generate_activity_data(
         min_date: Optional[datetime.date] = None, account: Optional[Account] = None
     ) -> None:
@@ -562,7 +597,16 @@ GROUP BY
     github_pull_request_number,
     github_user_id,
     is_private_repository,
-    activity_date;
+    activity_date
+HAVING
+    (payload -> 'installation' ->> 'id')::int IS NOT NULL
+    AND (payload -> 'repository' ->> 'name') IS NOT NULL
+    AND (payload -> 'pull_request' ->> 'number')::int IS NOT NULL
+    AND max(payload -> 'sender' ->> 'login') IS NOT NULL
+    AND (payload -> 'sender' ->> 'id')::integer IS NOT NULL
+    AND (payload -> 'repository' ->> 'private')::boolean IS NOT NULL
+ON CONFLICT ON CONSTRAINT unique_user_pull_request_activity
+    DO NOTHING;
 """
             )
         UserPullRequestActivityProgress.objects.create(min_date=timezone.now())

@@ -320,3 +320,7 @@ def sync_accounts(request: HttpRequest) -> HttpResponse:
     except SyncAccountsError:
         return JsonResponse(dict(ok=False))
     return JsonResponse(dict(ok=True))
+
+
+def debug_sentry(request: HttpRequest) -> HttpResponse:
+    return HttpResponse(1 / 0)

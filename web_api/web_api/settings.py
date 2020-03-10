@@ -2,10 +2,15 @@ import os
 from typing import List
 
 import dj_database_url
+import sentry_sdk
 from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
 from yarl import URL
 
 load_dotenv()
+
+
+sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +68,27 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": 'level=%(levelname)s msg="%(message)s" name=%(name)s '
+            'pathname="%(pathname)s" lineno=%(lineno)s funcname=%(funcName)s '
+            "process=%(process)d thread=%(thread)d "
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    # you can also shortcut 'loggers' and just configure logging for EVERYTHING at once
+    "root": {"handlers": ["console",], "level": "INFO"},
+}
 
 # we terminate SSL at the proxy server
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

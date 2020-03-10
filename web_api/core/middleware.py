@@ -1,6 +1,6 @@
 from typing import Callable, Optional
+from urllib.parse import urlparse
 
-from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import SimpleLazyObject
@@ -22,6 +22,19 @@ class AuthenticationMiddleware(MiddlewareMixin):
         request.user = SimpleLazyObject(lambda: get_user(request))
 
 
+def get_allow_origin(request: HttpRequest) -> str:
+    try:
+        origin: str = request.headers["Origin"]
+    except KeyError:
+        return ""
+    hostname = urlparse(origin).hostname
+    if not hostname:
+        return ""
+    if hostname.endswith(".kodiakhq.com"):
+        return origin
+    return ""
+
+
 class CORSMiddleware:
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -29,7 +42,7 @@ class CORSMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         response = self.get_response(request)
 
-        response["Access-Control-Allow-Origin"] = settings.KODIAK_WEB_APP_URL
+        response["Access-Control-Allow-Origin"] = get_allow_origin(request)
         response["Access-Control-Allow-Credentials"] = "true"
         response["Access-Control-Allow-Headers"] = "content-type"
 
