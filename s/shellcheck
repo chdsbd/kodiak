@@ -1,16 +1,25 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -o pipefail
-set -o errexit
 set -o nounset
 
 
-for f in $(git ls-files); do
-  if [ -f "$f" ]; then
-    # matches shebang as well as shell file endings
-    if grep -Eq '^#!(.*/|.*env +)(sh|bash|ksh)' "$f" || [[ "$f" =~ \.(sh|bash|ksh)$ ]]; then
-      echo "$f"
-      shellcheck "$f"
+main() {
+  exit_code=0
+  for f in $(git ls-files); do
+    if [ -f "$f" ]; then
+      # matches shebang as well as shell file endings
+      if grep -Eq '^#!(.*/|.*env +)(sh|bash|ksh)' "$f" || [[ "$f" =~ \.(sh|bash|ksh)$ ]]; then
+        echo "$f"
+        shellcheck "$f"
+        ret_code="$?"
+        if [ $ret_code != 0 ]; then
+          exit_code="$ret_code"
+        fi
+      fi
     fi
-  fi
-done
+  done
+
+  exit "$exit_code"
+}
+
+main "$@"

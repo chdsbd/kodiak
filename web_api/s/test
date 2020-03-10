@@ -2,4 +2,4 @@
 set -eux
 
 # test code
-poetry run pytest $@
+poetry run pytest "$@"

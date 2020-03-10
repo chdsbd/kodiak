@@ -2,7 +2,7 @@
 set -ex
 
 main() {
-  if [[ $CI ]]; then
+  if [ "$CI" ]; then
     yarn eslint '**/*.{ts,tsx,js,jsx}'
     yarn prettier --check '**/*.{js,jsx,ts,tsx,md,yml,json}'
   else
