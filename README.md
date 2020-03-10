@@ -36,6 +36,10 @@ Helpful Links:
 - [Help](https://kodiakhq.com/help)
 - [Prior Art / Alternatives](https://kodiakhq.com/docs/prior-art-and-alternatives)
 
+## Sponsors
+
+<a href="https://www.complex-it.de/jobs/offene-stellen?utm_source=oss-referal&utm_medium=logo&utm_campaign=growwithus">![complex-grow-with-us](https://user-images.githubusercontent.com/47448731/76313751-d3408b00-62d5-11ea-8f0f-a99e78b55a42.png)</a>
+
 ## :money_with_wings: Sponsoring
 
 Using Kodiak for your commercial project?
