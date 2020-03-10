@@ -235,6 +235,15 @@ This setting was added to mitigate the fallout of GitHub's change to the
 squash method on March 4th, 2020. GitHub reverted their change around
 March 6th, 2020, making this option no longer necessary.
 
+### `merge.message.include_pull_request_url`
+
+- **type:** `boolean`
+- **default:** `false`
+
+Append the pull request's URL to the commit message body.
+
+This can make accessing the relevant PR for a given commit easier.
+
 ### `update.always`
 
 - **type:** `boolean`
@@ -405,6 +414,10 @@ body = "github_default" # default: "github_default", options: "github_default", 
 # squash method on March 4th, 2020. GitHub reverted their change around
 # March 6th, 2020, making this option no longer necessary.
 include_pull_request_author = false # default: false
+
+# Append the Pull Request URL to the merge message. Makes navigating to the PR
+# from the commit easier.
+include_pull_request_url = false # default: false
 
 # Add the PR number to the merge commit title. This setting replicates GitHub's
 # behavior of automatically adding the PR number to the title of merges created
