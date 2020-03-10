@@ -127,9 +127,7 @@ function SkeletonProfileImage() {
 
 function SideBarContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="bg-light p-3 h-100 d-flex flex-column justify-content-between"
-      style={{ width: 230 }}>
+    <div className="bg-light p-3 h-100 d-flex flex-column justify-content-between w-lg-230">
       {children}
     </div>
   )
