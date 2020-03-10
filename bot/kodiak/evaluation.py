@@ -78,6 +78,32 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
         merge_body.commit_title = pull_request.title
     if config.merge.message.include_pr_number and merge_body.commit_title is not None:
         merge_body.commit_title += f" (#{pull_request.number})"
+    if config.merge.message.include_pull_request_url:
+        if merge_body.commit_message is None:
+            merge_body.commit_message = pull_request.url
+        else:
+            merge_body.commit_message += "\n\n" + pull_request.url
+    if config.merge.message.include_pull_request_author:
+        commit_message = (
+            merge_body.commit_message if merge_body.commit_message is not None else ""
+        )
+        author_name = pull_request.author.login
+        author_login = pull_request.author.login
+        if pull_request.author.type == "Bot":
+            author_name += "[bot]"
+            author_login += "[bot]"
+        if pull_request.author.name:
+            author_name = pull_request.author.name
+
+        # GitHub does not allow our GitHub App to view the email addresses of
+        # pull request authors, so we generate a noreply GitHub email address
+        # instead which works the same for the GitHub UI.
+        author_email = (
+            f"{pull_request.author.databaseId}+{author_login}@users.noreply.github.com"
+        )
+        merge_body.commit_message = (
+            commit_message + f"\n\nCo-authored-by: {author_name} <{author_email}>"
+        )
     return merge_body
 
 

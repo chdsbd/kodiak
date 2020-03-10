@@ -81,6 +81,14 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       id
       author {
         login
+        type: __typename
+        ... on User {
+          databaseId
+          name
+        }
+        ... on Bot {
+          databaseId
+        }
       }
       mergeStateStatus
       state
@@ -106,6 +114,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       body
       bodyText
       bodyHTML
+      url
       reviews(first: 100) {
         nodes {
           createdAt
@@ -212,6 +221,9 @@ class PullRequestState(Enum):
 
 class PullRequestAuthor(BaseModel):
     login: str
+    databaseId: int
+    type: str
+    name: Optional[str] = None
 
 
 class PullRequest(BaseModel):
@@ -231,6 +243,7 @@ class PullRequest(BaseModel):
     latest_sha: str
     baseRefName: str
     headRefName: str
+    url: str
 
 
 @dataclass

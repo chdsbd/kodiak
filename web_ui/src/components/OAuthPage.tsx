@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { startLogin, getOauthState } from "../auth"
+import { startLogin, getOauthState, getRedirectPath } from "../auth"
 import { useLocation, useHistory } from "react-router-dom"
 import { Current } from "../world"
 import { Button } from "react-bootstrap"
@@ -16,8 +16,9 @@ export function OAuthPage() {
   useEffect(() => {
     Current.api.loginUser({ code, serverState, clientState }).then(res => {
       if (res.ok) {
-        // navigate to activity page on success.
-        history.push("/")
+        // navigate to redirect path if available, otherwise redirect to root page.
+        const redirectPath = getRedirectPath(clientState) || "/"
+        history.push(redirectPath)
         return
       } else {
         setError(`${res.error} – ${res.error_description}`)

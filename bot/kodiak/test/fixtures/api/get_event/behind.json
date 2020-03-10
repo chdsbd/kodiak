@@ -36,7 +36,7 @@
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
         "author": {
-            "login": "arnold"
+            "login": "arnold", "databaseId": 49118, "type": "Bot"
         },
         "reviewRequests": {
           "nodes": [
@@ -64,6 +64,7 @@
         "body": "",
         "bodyText": "",
         "bodyHTML": "",
+        "url": "https://github.com/delos-corp/hive-mind/pull/324",
         "reviews": {
           "nodes": [
             {

@@ -1,5 +1,4 @@
 import React from "react"
-import { Container } from "react-bootstrap"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { PullRequestActivityChart, KodiakActivityChart } from "./ActivityChart"
@@ -38,7 +37,7 @@ interface IActivityPageInnerProps {
 function ActivityPageInner({ data }: IActivityPageInnerProps) {
   if (data.status === "loading") {
     return (
-      <ActivityPageContainer className="h-100">
+      <ActivityPageContainer>
         <Spinner />
       </ActivityPageContainer>
     )
@@ -63,16 +62,12 @@ function ActivityPageInner({ data }: IActivityPageInnerProps) {
 
 interface IActivityPageContainer {
   readonly children: React.ReactNode
-  readonly className?: string
 }
-function ActivityPageContainer({
-  children,
-  className,
-}: IActivityPageContainer) {
+function ActivityPageContainer({ children }: IActivityPageContainer) {
   return (
-    <Container className={className}>
+    <div className="flex-grow-1 d-flex flex-column">
       <h2>Activity</h2>
       {children}
-    </Container>
+    </div>
   )
 }

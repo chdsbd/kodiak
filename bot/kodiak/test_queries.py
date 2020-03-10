@@ -85,7 +85,7 @@ def block_event() -> EventInfoResponse:
     pr = PullRequest(
         id="e14ff7599399478fb9dbc2dacb87da72",
         number=100,
-        author=PullRequestAuthor(login="arnold"),
+        author=PullRequestAuthor(login="arnold", databaseId=49118, type="Bot"),
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
         mergeable=MergeableState.MERGEABLE,
@@ -98,6 +98,7 @@ def block_event() -> EventInfoResponse:
         body="",
         bodyText="",
         bodyHTML="",
+        url="https://github.com/delos-corp/hive-mind/pull/324",
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
