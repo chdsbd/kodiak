@@ -9,12 +9,12 @@ interface IPageProps {
 export function Page({ children }: IPageProps) {
   return (
     <div className="h-100">
-      <div className="h-100 d-flex">
-        <div className="h-100 flex-shrink-0">
+      <div className="h-100 d-flex flex-column flex-sm-row">
+        <div className="flex-shrink-0">
           <SideBarNav />
         </div>
         <ErrorBoundary>
-          <Container className="p-4 w-100 overflow-auto d-flex">
+          <Container className="p-4 w-100 overflow-sm-auto d-flex">
             {children}
           </Container>
         </ErrorBoundary>
