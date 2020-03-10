@@ -65,7 +65,7 @@ interface IActivityPageContainer {
 }
 function ActivityPageContainer({ children }: IActivityPageContainer) {
   return (
-    <div className="flex-grow-1 d-flex flex-column">
+    <div className="flex-grow-1 d-flex w-100 flex-column">
       <h2>Activity</h2>
       {children}
     </div>
