@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eux
 
-poetry run uvicorn kodiak.main:app $@
+poetry run uvicorn kodiak.main:app "$@"
