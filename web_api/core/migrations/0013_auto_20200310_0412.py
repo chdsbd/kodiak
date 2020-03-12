@@ -6,18 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0012_auto_20200308_2254'),
+        ("core", "0012_auto_20200308_2254"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userpullrequestactivity',
-            name='opened_pull_request',
+            model_name="userpullrequestactivity",
+            name="opened_pull_request",
             field=models.BooleanField(db_index=True, default=False),
             preserve_default=False,
         ),
         migrations.AddConstraint(
-            model_name='account',
-            constraint=models.CheckConstraint(check=models.Q(github_account_type__in=['User', 'Organization']), name='github_account_type_valid'),
+            model_name="account",
+            constraint=models.CheckConstraint(
+                check=models.Q(github_account_type__in=["User", "Organization"]),
+                name="github_account_type_valid",
+            ),
         ),
     ]
