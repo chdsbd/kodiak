@@ -485,6 +485,7 @@ class UserPullRequestActivity(BaseModel):
     github_user_login = models.CharField(max_length=255, db_index=True)
     github_user_id = models.IntegerField(db_index=True)
     is_private_repository = models.BooleanField(db_index=True)
+    opened_pull_request = models.BooleanField(db_index=True)
     activity_date = models.DateField(db_index=True)
 
     class Meta:
@@ -522,6 +523,10 @@ class UserPullRequestActivity(BaseModel):
             WHERE
                 b.github_user_login LIKE 'kodiak%%[bot]'
                 AND a.github_user_login NOT LIKE '%%[bot]'
+                -- We only consider users that open pull requests.
+                -- For table b we look at all pull request events for Kodiak to
+                -- find all the PRs Kodiak has touched.
+                AND a.opened_pull_request = TRUE
                 AND a.activity_date > now() - '30 days'::interval
                 AND b.activity_date > now() - '30 days'::interval
                 AND a.is_private_repository = TRUE
@@ -574,7 +579,8 @@ INSERT INTO user_pull_request_activity (
     "github_user_login",
     "github_user_id",
     "is_private_repository",
-    "activity_date")
+    "activity_date",
+    "opened_pull_request")
 SELECT
     uuid_generate_v4 () "id",
     NOW() created_at,
@@ -584,8 +590,9 @@ SELECT
     (payload -> 'pull_request' ->> 'number')::int github_pull_request_number,
     max(payload -> 'sender' ->> 'login') github_user_login,
     (payload -> 'sender' ->> 'id')::integer github_user_id,
-    (payload -> 'repository' ->> 'private')::boolean is_private_repository,
-    created_at::date activity_date
+    bool_or((payload -> 'repository' ->> 'private')::boolean) is_private_repository,
+    created_at::date activity_date,
+    bool_or(payload ->> 'action' = 'opened') opened_pull_request
 FROM
     github_event
 WHERE
@@ -596,17 +603,16 @@ GROUP BY
     github_repository_name,
     github_pull_request_number,
     github_user_id,
-    is_private_repository,
     activity_date
-HAVING
-    (payload -> 'installation' ->> 'id')::int IS NOT NULL
+HAVING (payload -> 'installation' ->> 'id')::int IS NOT NULL
     AND (payload -> 'repository' ->> 'name') IS NOT NULL
     AND (payload -> 'pull_request' ->> 'number')::int IS NOT NULL
     AND max(payload -> 'sender' ->> 'login') IS NOT NULL
     AND (payload -> 'sender' ->> 'id')::integer IS NOT NULL
-    AND (payload -> 'repository' ->> 'private')::boolean IS NOT NULL
 ON CONFLICT ON CONSTRAINT unique_user_pull_request_activity
-    DO NOTHING;
+    DO UPDATE
+        SET opened_pull_request = (excluded.opened_pull_request OR user_pull_request_activity.opened_pull_request),
+        is_private_repository = (excluded.is_private_repository OR user_pull_request_activity.is_private_repository);
 """
             )
         UserPullRequestActivityProgress.objects.create(min_date=timezone.now())

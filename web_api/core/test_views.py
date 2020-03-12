@@ -74,6 +74,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_id=user.github_id,
         is_private_repository=True,
         activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=True
     )
     UserPullRequestActivity.objects.create(
         github_installation_id=user_account.github_installation_id,
@@ -83,6 +84,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_id=11479,
         is_private_repository=True,
         activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=True
     )
 
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
