@@ -66,6 +66,8 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
+    # this user opened a PR on a private repository that Kodiak also acted on,
+    # so we should count it.
     UserPullRequestActivity.objects.create(
         github_installation_id=user_account.github_installation_id,
         github_repository_name="acme-web",
@@ -74,6 +76,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_id=user.github_id,
         is_private_repository=True,
         activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=True,
     )
     UserPullRequestActivity.objects.create(
         github_installation_id=user_account.github_installation_id,
@@ -83,6 +86,63 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_id=11479,
         is_private_repository=True,
         activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=False,
+    )
+
+    # this user did not open a pull request, so we shouldn't count it.
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=864,
+        github_user_login="jdoe",
+        github_user_id=6039209,
+        is_private_repository=True,
+        activity_date=datetime.date(2020, 12, 7),
+        opened_pull_request=False,
+    )
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=864,
+        github_user_login="kodiakhq[bot]",
+        github_user_id=11479,
+        is_private_repository=True,
+        activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=False,
+    )
+
+    # this event is on a public repository, so we shouldn't count it.
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=755,
+        github_user_login="sgoodman",
+        github_user_id=4323112,
+        is_private_repository=False,
+        activity_date=datetime.date(2020, 12, 7),
+        opened_pull_request=True,
+    )
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=755,
+        github_user_login="kodiakhq[bot]",
+        github_user_id=11479,
+        is_private_repository=False,
+        activity_date=datetime.date(2020, 12, 5),
+        opened_pull_request=False,
+    )
+
+    # this event should not be counted because the PR was not acted on by Kodiak.
+    UserPullRequestActivity.objects.create(
+        github_installation_id=user_account.github_installation_id,
+        github_repository_name="acme-web",
+        github_pull_request_number=8545,
+        github_user_login="jpiccirillo",
+        github_user_id=643453,
+        is_private_repository=True,
+        activity_date=datetime.date(2020, 12, 7),
+        opened_pull_request=True,
     )
 
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
