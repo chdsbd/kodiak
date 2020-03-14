@@ -140,10 +140,10 @@ function StartTrialModal() {
   )
 }
 
-interface ISubscriptionPromptProps {
+interface ISubscriptionUpsellPromptProps {
   readonly trailAvailable: boolean
 }
-function SubscriptionPrompt({ trailAvailable }: ISubscriptionPromptProps) {
+function SubscriptionUpsellPrompt({ trailAvailable }: ISubscriptionUpsellPromptProps) {
   if (trailAvailable) {
     return (
       <>
@@ -179,13 +179,13 @@ function SubscriptionPrompt({ trailAvailable }: ISubscriptionPromptProps) {
   )
 }
 
-function SubscriptionActiveTrialPrompt() {
+function ActiveTrialPrompt() {
   return (
     <>
       <div>
-        <p className="mb-0">
+        <h4 className="h6">
           Subscribe to continue using Kodiak on your private repositories!
-        </p>
+        </h4>
         <b className="mr-4">Trial expiration</b>
         <span>2020-03-23 (12 days from now)</span>
       </div>
@@ -290,10 +290,10 @@ function Subscription({
         <Row>
           <Col>
             {state === "trialAvailable" ? (
-              <SubscriptionActiveTrialPrompt />
-            ) : state === "trailActive" ? (
-              <SubscriptionPrompt trialAvailable />
-            ) : state === "subscriptionActive" ? (
+              <SubscriptionUpsellPrompt trialAvailable />
+            ): state === "trailActive" ? (
+              <ActiveTrialPrompt />
+            )   : state === "subscriptionActive" ? (
               <ActiveSubscription
                 cost={{ perSeatCents: 499, totalCents: 4999 }}
                 seats={10}
@@ -302,7 +302,7 @@ function Subscription({
               />
             ) : (
               // subscriptionAvailable case.
-              <SubscriptionPrompt trialAvailable={false} />
+              <SubscriptionUpsellPrompt trialAvailable={false} />
             )}
           </Col>
         </Row>
