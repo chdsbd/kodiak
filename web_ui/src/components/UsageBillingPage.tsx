@@ -87,140 +87,126 @@ function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
   )
 }
 
-function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
-  if (props.data.status === "loading") {
-    return <Loading />
-  }
 
-  if (props.data.status === "failure") {
-    return <Failure />
-  }
+function formatCents(cents: number): string {
+  return `\$${cents / 100}`
+}
 
-  const data = props.data.data
-
-  const dateToday = new Date()
-  const today = format(dateToday, "MMM do")
-  const dateOneMonthAgo = sub(dateToday, { months: 1 })
-  const oneMonthAgo = format(dateOneMonthAgo, "MMM do")
-
+function InstallCompleteModal() {
   return (
-    <UsageAndBillingContainer>
-      <p>
-        <b> Period</b>
-        <br />
-        {oneMonthAgo} – {today}
-      </p>
-      <div className="mb-4">
-        <Modal
-          size="lg"
-          show={false}
-          >
-          <Modal.Header closeButton>
-            <Modal.Title>
-              🎉 Your Kodiak install is ready!
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <p>
-              <a href="https://kodiakhq.com/docs/quickstart">Visit our docs</a>{" "}
-              to learn more about installation or{" "}
-              <a href="https://kodiakhq.com/help">contact us</a> for support
-              setting up Kodiak.
-            </p>
-            <Button size="sm">Close</Button>
-          </Modal.Body>
-        </Modal>
-        <Modal
-          size="lg"
-          show={true}
-          >
-          <Modal.Header closeButton>
-            <Modal.Title>
-              Start Trial
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
+    <Modal size="lg" show={false}>
+      <Modal.Header closeButton>
+        <Modal.Title>🎉 Your Kodiak install is ready!</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <p>
+          <a href="https://kodiakhq.com/docs/quickstart">Visit our docs</a> to
+          learn more about installation or{" "}
+          <a href="https://kodiakhq.com/help">contact us</a> for support setting
+          up Kodiak.
+        </p>
+        <Button size="sm">Close</Button>
+      </Modal.Body>
+    </Modal>
+  )
+}
 
-            <Form>
-              <Form.Group controlId="formBasicEmail">
-                <Form.Label>Billing Email</Form.Label>
-                <Form.Control type="email" placeholder="Enter email" />
-                <Form.Text className="text-muted">
-                  We’ll send you billing reminders at this email address.
-                </Form.Text>
-              </Form.Group>
-              <div className="mb-4">
-                <b className="mr-4">Trial expiration</b>
-                <span>2020-02-23 (14 days from now)</span>
-              </div>
+function StartTrialModal() {
+  return (
+    <Modal size="lg" show={false}>
+      <Modal.Header closeButton>
+        <Modal.Title>Start Trial</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form>
+          <Form.Group controlId="formBasicEmail">
+            <Form.Label>Billing Email</Form.Label>
+            <Form.Control type="email" placeholder="Enter email" />
+            <Form.Text className="text-muted">
+              We’ll send you billing reminders at this email address.
+            </Form.Text>
+          </Form.Group>
+          <div className="mb-4">
+            <b className="mr-4">Trial expiration</b>
+            <span>2020-02-23 (14 days from now)</span>
+          </div>
 
-              <Button variant="primary" type="submit">
-                Begin Trial
+          <Button variant="primary" type="submit">
+            Begin Trial
+          </Button>
+        </Form>
+      </Modal.Body>
+    </Modal>
+  )
+}
+
+interface ISubscriptionProps {
+  readonly activeSubscription: boolean
+}
+function Subscription({activeSubscription}:ISubscriptionProps) {
+  return (
+    <>
+      <h3 className="h5">Subscription</h3>
+      <div className="border border-primary rounded p-2 mb-4">
+        <Row>
+          <Col>
+            <h4 className="h6">
+              Subscribe and use Kodiak on your private repositories!
+            </h4>
+            <div className="d-flex align-items-center">
+              {" "}
+              <Button variant="success" size="large">
+                Start Trial
               </Button>
-            </Form>
-          </Modal.Body>
-        </Modal>
-        <h3 className="h5">Subscription</h3>
-        <div className="border border-primary rounded p-2 mb-4">
-          <Row>
-            <Col>
-              <h4 className="h6">
-                Subscribe and use Kodiak on your private repositories!
-              </h4>
-              <div className="d-flex align-items-center">
-                {" "}
-                <Button variant="success" size="large">
-                  Start Trial
-                </Button>
-                <span className="mx-2">or</span>{" "}
-                <a className="mr-2" href="#" variant="link">
-                  subscribe
-                </a>{" "}
-                <span>($4.99 per active user per month)</span>
-              </div>
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <hr />
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <b>Subscription benefits</b>
-              <ul>
-                <li>
-                  private repositories – use kodiak on your private repositories
-                </li>
-                <li>priority support – get priority help configuring Kodiak</li>
-                <li>
-                  sustain Kodiak – help us cover server costs and support Kodiak
-                </li>
-              </ul>
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <b>Trial</b>
-              <p>
-                The 14-day trial is free and allows for using Kodiak on private
-                repos with an unlimited number of users. After 14-days you can
-                subscribe to continue using Kodiak on private repositories.
-              </p>
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <b>Pricing</b>
-              <p>
-                Kodiak is $4.99 per active user per month. An active user is
-                anyone that opens a GitHub pull request that Kodiak updates,
-                approves, or merges.
-              </p>
-            </Col>
-          </Row>
+              <span className="mx-2">or</span>{" "}
+              <a className="mr-2" href="#" variant="link">
+                subscribe
+              </a>{" "}
+              <span>($4.99 per active user per month)</span>
+            </div>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <hr />
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <b>Subscription benefits</b>
+            <ul>
+              <li>
+                private repositories – use kodiak on your private repositories
+              </li>
+              <li>priority support – get priority help configuring Kodiak</li>
+              <li>
+                sustain Kodiak – help us cover server costs and support Kodiak
+              </li>
+            </ul>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <b>Trial</b>
+            <p>
+              The 14-day trial is free and allows for using Kodiak on private
+              repos with an unlimited number of users. After 14-days you can
+              subscribe to continue using Kodiak on private repositories.
+            </p>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <b>Pricing</b>
+            <p>
+              Kodiak is $4.99 per active user per month. An active user is
+              anyone that opens a GitHub pull request that Kodiak updates,
+              approves, or merges.
+            </p>
+          </Col>
+        </Row>
 
-          {/* {data.subscription != null ? (
+        {/* {data.subscription != null ? (
             <>
               <Row>
                 <Col md={3}>
@@ -315,7 +301,39 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
               </Row>
             </>
           )}*/}
-        </div>
+      </div>
+    </>
+  )
+}
+
+function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
+  if (props.data.status === "loading") {
+    return <Loading />
+  }
+
+  if (props.data.status === "failure") {
+    return <Failure />
+  }
+
+  const data = props.data.data
+
+  const dateToday = new Date()
+  const today = format(dateToday, "MMM do")
+  const dateOneMonthAgo = sub(dateToday, { months: 1 })
+  const oneMonthAgo = format(dateOneMonthAgo, "MMM do")
+
+  return (
+    <UsageAndBillingContainer>
+      <p>
+        <b> Period</b>
+        <br />
+        {oneMonthAgo} – {today}
+      </p>
+      <div className="mb-4">
+        <InstallCompleteModal />
+        <StartTrialModal />
+        <Subscription />
+
         <h3 className="h5">Usage</h3>
         <div className="border border-primary rounded p-2">
           <Row>
