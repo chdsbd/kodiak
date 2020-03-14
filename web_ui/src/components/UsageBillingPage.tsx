@@ -140,30 +140,170 @@ function StartTrialModal() {
   )
 }
 
+interface ISubscriptionPromptProps {
+  readonly trailAvailable: boolean
+}
+function SubscriptionPrompt({ trailAvailable }: ISubscriptionPromptProps) {
+  if (trailAvailable) {
+    return (
+      <>
+        <h4 className="h6">
+          Subscribe and use Kodiak on your private repositories!
+        </h4>
+        <div className="d-flex align-items-center">
+          <Button variant="success" size="large">
+            Start Trial
+          </Button>
+          <span className="mx-2">or</span>{" "}
+          <a className="mr-2" href="#" variant="link">
+            subscribe
+          </a>{" "}
+          <span>($4.99 per active user per month)</span>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <h4 className="h6">
+        Subscribe and use Kodiak on your private repositories!
+      </h4>
+      <div className="d-flex align-items-center">
+        <Button variant="success" size="large" className="mr-2">
+          Subscribe
+        </Button>
+        <span>($4.99 per active user per month)</span>
+      </div>
+    </>
+  )
+}
+
+function SubscriptionActiveTrialPrompt() {
+  return (
+    <>
+      <div>
+        <p className="mb-0">
+          Subscribe to continue using Kodiak on your private repositories!
+        </p>
+        <b className="mr-4">Trial expiration</b>
+        <span>2020-03-23 (12 days from now)</span>
+      </div>
+      <div className="d-flex align-items-center">
+        <Button variant="success" size="large" className="mr-2">
+          Subscribe
+        </Button>
+        <span>($4.99 per active user per month)</span>
+      </div>
+    </>
+  )
+}
+
+interface IActiveSubscriptionProps {
+  readonly seats: number
+  readonly nextBillingDate: string
+  readonly billingEmail: string
+  readonly cost: {
+    readonly totalCents: number
+    readonly perSeatCents: number
+  }
+}
+function ActiveSubscription({
+  seats,
+  cost,
+  billingEmail,
+  nextBillingDate,
+}: IActiveSubscriptionProps) {
+  return (
+    <>
+      <Row>
+        <Col md={3}>
+          <b>Seats</b>
+        </Col>
+        <Col>{seats}</Col>
+
+        <Col sm={12}>
+          <p className="small mb-0">
+            An active user consumes one per billing period seat. If your usage
+            exceeds your purchased seats you will need to add more seats to your
+            subscription.
+          </p>
+        </Col>
+      </Row>
+      <Row>
+        <Col md={3}>
+          <b>Next Billing Date</b>
+        </Col>
+        <Col>{nextBillingDate}</Col>
+      </Row>
+      <Row>
+        <Col md={3}>
+          <b>Cost</b>
+        </Col>
+        <Col>
+          <span className="mr-4">{formatCents(cost.totalCents)} / month</span>
+          <span>
+            ({formatCents(cost.perSeatCents)} / seat * {seats})
+          </span>
+        </Col>
+      </Row>
+      <Row>
+        <Col md={3}>
+          <b>Billing Email</b>
+        </Col>
+        <Col>{billingEmail}</Col>
+      </Row>
+      <Row className="mt-3">
+        <Col>
+          <Button variant="dark" size="sm">
+            Modify Subscription
+          </Button>
+        </Col>
+        <Col sm={12}>
+          <p className="small mb-0 mt-2">
+            Send us an email at{" "}
+            <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
+            you need any assistance.
+          </p>
+        </Col>
+      </Row>
+    </>
+  )
+}
+
 interface ISubscriptionProps {
   readonly activeSubscription: boolean
+  readonly state:
+    | "trialAvailable"
+    | "trialActive"
+    | "subscriptionAvailable"
+    | "subscriptionActive"
 }
-function Subscription({activeSubscription}:ISubscriptionProps) {
+function Subscription({
+  activeSubscription,
+  state = "subscriptionAvailable",
+}: ISubscriptionProps) {
   return (
     <>
       <h3 className="h5">Subscription</h3>
       <div className="border border-primary rounded p-2 mb-4">
         <Row>
           <Col>
-            <h4 className="h6">
-              Subscribe and use Kodiak on your private repositories!
-            </h4>
-            <div className="d-flex align-items-center">
-              {" "}
-              <Button variant="success" size="large">
-                Start Trial
-              </Button>
-              <span className="mx-2">or</span>{" "}
-              <a className="mr-2" href="#" variant="link">
-                subscribe
-              </a>{" "}
-              <span>($4.99 per active user per month)</span>
-            </div>
+            {state === "trialAvailable" ? (
+              <SubscriptionActiveTrialPrompt />
+            ) : state === "trailActive" ? (
+              <SubscriptionPrompt trialAvailable />
+            ) : state === "subscriptionActive" ? (
+              <ActiveSubscription
+                cost={{ perSeatCents: 499, totalCents: 4999 }}
+                seats={10}
+                nextBillingDate="2020-04-15"
+                billingEmail="dev@acme-corp.com"
+              />
+            ) : (
+              // subscriptionAvailable case.
+              <SubscriptionPrompt trialAvailable={false} />
+            )}
           </Col>
         </Row>
         <Row>
@@ -205,102 +345,6 @@ function Subscription({activeSubscription}:ISubscriptionProps) {
             </p>
           </Col>
         </Row>
-
-        {/* {data.subscription != null ? (
-            <>
-              <Row>
-                <Col md={3}>
-                  <b>Seats</b>
-                </Col>
-                <Col>{data.subscription.seats}</Col>
-
-                <Col sm={12}>
-                  <p className="small mb-0">
-                    An active user consumes one per billing period seat. If your
-                    usage exceeds your purchased seats you will need to add more
-                    seats to your subscription.
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={3}>
-                  <b>Next Billing Date</b>
-                </Col>
-                <Col>{data.subscription.nextBillingDate}</Col>
-              </Row>
-              <Row>
-                <Col md={3}>
-                  <b>Cost</b>
-                </Col>
-                <Col>
-                  {formatCents(data.subscription.cost.totalCents)} / month
-                  (formatCents(data.subscription.cost.perSeatCents)/seat *{" "}
-                  {data.subscription.seats})
-                </Col>
-              </Row>
-              <Row>
-                <Col md={3}>
-                  <b>Billing Email</b>
-                </Col>
-                <Col>{data.subscription.billingContact.email}</Col>
-              </Row>
-              <Row>
-                <Col md={3}>
-                  <b>Billing Contact</b>
-                </Col>
-                <Col>{data.subscription.billingContact.name}</Col>
-              </Row>
-              <Row className="mt-3">
-                <Col>
-                  <Button variant="dark" size="sm">
-                    Modify Subscription
-                  </Button>
-                </Col>
-                <Col sm={12}>
-                  <p className="small mb-0">
-                    You must be a GitHub organization admin to modify your
-                    subscription. Send us an email at{" "}
-                    <a href="mailto:support@kodiakhq.com">
-                      support@kodiakhq.com
-                    </a>{" "}
-                    if you need any assistance.
-                  </p>
-                </Col>
-              </Row>
-            </>
-          ) : (
-            <>
-              <Row>
-                <Col md={3}>
-                  <b>Seats</b>
-                </Col>
-                <Col>0</Col>
-
-                <Col sm={12}>
-                  <p className="small mb-0">
-                    An active user consumes one per billing period seat. If your
-                    usage exceeds your purchased seats you will need to add more
-                    seats to your subscription.
-                  </p>
-                </Col>
-              </Row>
-              <Row className="mt-3">
-                <Col>
-                  <p>
-                    Subscribe to use Kodiak on private repositories. Kodiak is
-                    priced per active user.
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col className="">
-                  <Button variant="primary" className="">
-                    Subscribe
-                  </Button>
-                </Col>
-              </Row>
-            </>
-          )}*/}
       </div>
     </>
   )
