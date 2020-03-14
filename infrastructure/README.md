@@ -48,6 +48,8 @@ repo. Make sure your local changes are in order!
 
 ```shell
 # /kodiak
-# note: when deploying to prod, don't forget to change the target
+# note:
+# - when deploying to prod, don't forget to change the target
+# - use the `--check` flag to see what changes will occur before making them
 ansible-playbook -e 'target=kodiak_staging_ingestor' infrastructure/playbooks/dashboard-deploy.yml
 ```
