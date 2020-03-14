@@ -44,6 +44,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
     return JsonResponse(
         dict(
+            subscription=None,
             activeUsers=[
                 dict(
                     id=active_user.github_id,

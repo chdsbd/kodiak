@@ -79,6 +79,10 @@ a:hover {
   border-color: lighten($dark, 25%) !important;
 }
 
+.table-sm th {
+  border-top: 0;
+}
+
 .w-lg-230 {
   width: unset;
 }
