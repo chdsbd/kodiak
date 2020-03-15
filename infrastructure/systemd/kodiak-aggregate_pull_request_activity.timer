@@ -1,0 +1,8 @@
+[Unit]
+Description=Run aggregate_pull_request_activity on cron
+[Timer]
+Unit=kodiak-aggregate_pull_request_activity.service
+OnBootSec=5min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

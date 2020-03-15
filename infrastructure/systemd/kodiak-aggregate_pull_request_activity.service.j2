@@ -1,0 +1,6 @@
+[Unit]
+Description=Aggregate pull request activity from GitHub events
+[Service]
+ExecStart=docker run --rm --env-file=/etc/kodiak/.env cdignam/kodiak-web-api:{{ release_sha }} .venv/bin/python ./manage.py aggregate_pull_request_activity
+[Install]
+WantedBy=multi-user.target
