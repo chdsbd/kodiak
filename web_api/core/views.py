@@ -42,9 +42,37 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         Account.objects.filter(memberships__user=request.user), id=team_id
     )
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
+    subscription = None
+    trial = None
+    if account.trial_start and account.trial_expiration and account.trial_started_by:
+        trial = dict(
+            startDate=account.trial_start,
+            endDate=account.trial_expiration,
+            expired=True,
+            startedBy=dict(
+                id=account.trial_started_by.id,
+                name=account.trial_started_by.github_login,
+                profileImgUrl=account.trial_started_by.profile_image(),
+            ),
+        )
+    state = "subscriptionAvailable"
+    if subscription is None and account.trial_available():
+        state = "trialAvailable"
+    if account.trial_active():
+        state = "trialActive"
+    if subscription is not None:
+        state = "subscriptionActive"
     return JsonResponse(
         dict(
-            subscription=None,
+            # subscription=dict(
+            #     seats=5,
+            #     nextBillingDate="February 21st, 2019",
+            #     costCents=499,
+            #     billingContact=dict(email="billing@acme-corp.com", name="Acme Corp."),
+            # ),
+            state=state,
+            subscription=subscription,
+            trial=trial,
             activeUsers=[
                 dict(
                     id=active_user.github_id,
@@ -132,6 +160,31 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
             ],
         )
     )
+
+
+@csrf_exempt
+@auth.login_required
+def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    billing_email = request.POST["billingEmail"]
+    account.start_trial(request.user, billing_email=billing_email)
+    return HttpResponse(status=204)
+    # return JsonResponse(
+    #     dict(
+    #         id=account.id,
+    #         name=account.github_account_login,
+    #         profileImgUrl=account.profile_image(),
+    #         trial_expiration=account.trial_expiration,
+    #         trial_start=account.trial_start,
+    #         trial_started_by=dict(
+    #             id=account.trial_started_by.id,
+    #             name=account.trial_started_by.github_login,
+    #             profileImgUrl=account.trial_started_by.profile_image(),
+    #         ),
+    #     )
+    # )
 
 
 @auth.login_required

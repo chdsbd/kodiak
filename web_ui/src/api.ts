@@ -36,12 +36,23 @@ export interface IUsageBillingPageApiResponse {
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
+    readonly active: boolean
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
     }
     readonly billingContact: {
       readonly email: string
+    }
+  } | null
+  readonly trial: {
+    readonly startDate: string
+    readonly endDate: string
+    readonly expired: boolean
+    readonly startedBy: {
+      readonly id: number
+      readonly name: string
+      readonly profileImgUrl: string
     }
   } | null
   readonly activeUsers: ReadonlyArray<{

@@ -17,6 +17,9 @@ import { useTeamApi, teamApi, useTeamId } from "../useApi"
 import sub from "date-fns/sub"
 import format from "date-fns/format"
 import sortBy from "lodash/sortBy"
+import parseISO from "date-fns/parseISO"
+import formatDistanceToNow from "date-fns/formatDistanceToNow"
+import formatDate from "date-fns/format"
 import { useLocation, useHistory } from "react-router-dom"
 
 interface IQuestionProps {
@@ -44,10 +47,21 @@ export function UsageBillingPage() {
 interface IUsageBillingData {
   readonly subscription: {
     readonly seats: number
+    readonly active: boolean
     readonly nextBillingDate: string
     readonly costCents: number
     readonly billingContact: {
       readonly email: string
+    }
+  } | null
+  readonly trial: {
+    readonly startDate: string
+    readonly endDate: string
+    readonly active: boolean
+    readonly startedBy: {
+      readonly id: number
+      readonly name: string
+      readonly profileImgUrl: string
     }
   } | null
   readonly activeUsers: ReadonlyArray<{
@@ -93,7 +107,10 @@ function formatCents(cents: number): string {
   return `\$${cents / 100}`
 }
 
-function InstallCompleteModal() {
+function formatFromNow(dateString: string): string {
+  return formatDistanceToNow(parseISO(dateString))
+}
+
 interface IInstallCompleteModalProps {
   readonly show: boolean
   readonly onClose: () => void
@@ -132,10 +149,10 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
     setLoading(true)
     setError("")
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
-      setLoading(false)
       if (res.ok) {
         location.href = `/t/${teamId}/usage`
       } else {
+        setLoading(false)
         setError("Failed to start trial")
       }
     })
@@ -254,26 +271,51 @@ function SubscriptionManagementModal({
   )
 }
 
+interface IStartDateProps {
+  readonly date: string
+}
+function StartDate({ date }: IStartDateProps) {
+  return <span>{formatDate(parseISO(date), "y-MM-d k:m") + " UTC"}</span>
+}
+interface IExpirationDateProps {
+  readonly date: string
+  readonly expired: boolean
+}
+function ExpirationDate({ date, expired }: IExpirationDateProps) {
+  return (
+    <span>
+      {formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"} (
+      {formatFromNow(date) + (expired ? " expired" : "")})
+    </span>
+  )
+}
+
 interface ISubscriptionUpsellPromptProps {
-  readonly showTrial?: boolean
-  readonly trialExpirationDate?: string
+  readonly trial: {
+    readonly startDate: string
+    readonly endDate: string
+    readonly expired: boolean
+    readonly startedBy: {
+      readonly id: number
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+  } | null
   readonly startSubscription: () => void
   readonly startTrial: () => void
 }
 function SubscriptionUpsellPrompt({
-  showTrial,
-  trialExpirationDate,
+  trial,
   startSubscription,
   startTrial,
 }: ISubscriptionUpsellPromptProps) {
-  const relativeExpiration = "12 days from now"
   return (
     <Col className="d-flex justify-content-center">
       <div className="m-auto">
         <h4 className="h5">
           Subscribe and use Kodiak on your private repositories!
         </h4>
-        {showTrial ? (
+        {trial == null ? (
           <>
             <div className="d-flex justify-content-center">
               <Button variant="success" size="lg" onClick={startTrial}>
@@ -282,9 +324,9 @@ function SubscriptionUpsellPrompt({
             </div>
             <p className="mb-0 text-center">or</p>
             <div className="d-flex justify-content-center">
-              <a href="#" onClick={startSubscription}>
+              <Button variant="dark" onClick={startSubscription}>
                 Subscribe
-              </a>
+              </Button>
             </div>
           </>
         ) : (
@@ -295,12 +337,29 @@ function SubscriptionUpsellPrompt({
           </div>
         )}
         <p className="text-center">($4.99 per active user per month)</p>
-        {trialExpirationDate ? (
+
+        {trial != null ? (
           <div className="d-flex justify-content-center">
-            <b className="mr-4">Trial expires</b>
-            <span>
-              {trialExpirationDate} ({relativeExpiration})
-            </span>
+            {!trial.expired ? (
+              <p>
+                Your active trial expires in{" "}
+                <b>{formatFromNow(trial.endDate)}</b> at{" "}
+                <b>
+                  {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
+                    " UTC"}
+                </b>
+                .
+              </p>
+            ) : (
+              <p>
+                Your trial expired at{" "}
+                <b>
+                  {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
+                    " UTC"}
+                </b>
+                .
+              </p>
+            )}
           </div>
         ) : null}
       </div>
@@ -383,60 +442,54 @@ function ActiveSubscription({
 }
 
 interface ISubscriptionProps {
-  readonly activeSubscription?: {
-    readonly cost: {
-      readonly perSeatCents: number
-      readonly totalCents: number
-    }
+  readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
-    readonly billingEmail: string
-  }
-  readonly state:
-    | "trialAvailable"
-    | "trialActive"
-    | "subscriptionAvailable"
-    | "subscriptionActive"
+    readonly active: boolean
+    readonly cost: {
+      readonly totalCents: number
+      readonly perSeatCents: number
+    }
+    readonly billingContact: {
+      readonly email: string
+    }
+  } | null
   readonly startSubscription: () => void
   readonly startTrial: () => void
+  readonly trial: {
+    readonly startDate: string
+    readonly endDate: string
+    readonly expired: boolean
+    readonly startedBy: {
+      readonly id: number
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+  } | null
 }
 function Subscription({
-  activeSubscription,
-  state = "subscriptionAvailable",
+  subscription,
   startSubscription,
   startTrial,
+  trial,
 }: ISubscriptionProps) {
+  const missingSubscription = !Boolean(subscription?.active)
+  const missingTrial = !Boolean(trial?.active)
   return (
     <>
       <h3 className="h5">Subscription</h3>
       <div className="border border-primary rounded p-2 mb-4">
         <Row>
-          {state === "trialAvailable" ? (
-            <SubscriptionUpsellPrompt
-              showTrial
-              startSubscription={startSubscription}
-              startTrial={startTrial}
-            />
-          ) : state === "trialActive" ? (
-            <SubscriptionUpsellPrompt
-              trialExpirationDate="2020-04-15"
-              startSubscription={startSubscription}
-              startTrial={startTrial}
-            />
-          ) : state === "subscriptionActive" && activeSubscription != null ? (
+          {subscription?.active ? (
             <ActiveSubscription
-              cost={{
-                perSeatCents: activeSubscription.cost.perSeatCents,
-                totalCents: activeSubscription.cost.totalCents,
-              }}
-              seats={activeSubscription.seats}
-              nextBillingDate={activeSubscription.nextBillingDate}
-              billingEmail={activeSubscription.billingEmail}
+              cost={subscription.cost}
+              seats={subscription.seats}
+              nextBillingDate={subscription.nextBillingDate}
+              billingEmail={subscription.billingEmail}
             />
           ) : (
-            // subscriptionAvailable case.
             <SubscriptionUpsellPrompt
-              showTrial={false}
+              trial={trial}
               startSubscription={startSubscription}
               startTrial={startTrial}
             />
@@ -543,10 +596,11 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           seatUsage={data.activeUsers.length}
         />
         <Subscription
-          state="trialAvailable"
           activeSubscription={subscriptionInfo}
           startSubscription={handleStartSubscription}
           startTrial={handleStartTrial}
+          subscription={data.subscription}
+          trial={data.trial}
         />
 
         <h3 className="h5">Usage</h3>
