@@ -206,7 +206,7 @@ function ActiveSubscription({
   nextBillingDate,
 }: IActiveSubscriptionProps) {
   return (
-    <>
+    <Col>
       <Row>
         <Col md={3}>
           <b>Seats</b>
@@ -234,7 +234,7 @@ function ActiveSubscription({
         <Col>
           <span className="mr-4">{formatCents(cost.totalCents)} / month</span>
           <span>
-            ({formatCents(cost.perSeatCents)} / seat * {seats})
+            ({formatCents(cost.perSeatCents)} / seat ⨉ {seats} seats)
           </span>
         </Col>
       </Row>
@@ -258,7 +258,7 @@ function ActiveSubscription({
           </p>
         </Col>
       </Row>
-    </>
+    </Col>
   )
 }
 
@@ -281,7 +281,7 @@ function Subscription({
         <Row>
           {state === "trialAvailable" ? (
             <SubscriptionUpsellPrompt showTrial />
-          ) : state === "trailActive" ? (
+          ) : state === "trialActive" ? (
             <SubscriptionUpsellPrompt trialExpirationDate="2020-04-15" />
           ) : state === "subscriptionActive" ? (
             <ActiveSubscription
