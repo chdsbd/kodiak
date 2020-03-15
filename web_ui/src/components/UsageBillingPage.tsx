@@ -141,61 +141,52 @@ function StartTrialModal() {
 }
 
 interface ISubscriptionUpsellPromptProps {
-  readonly trailAvailable: boolean
+  readonly showTrial?: boolean
+  readonly trialExpirationDate?: string
 }
-function SubscriptionUpsellPrompt({ trailAvailable }: ISubscriptionUpsellPromptProps) {
-  if (trailAvailable) {
-    return (
-      <>
-        <h4 className="h6">
+function SubscriptionUpsellPrompt({
+  showTrial,
+  trialExpirationDate,
+}: ISubscriptionUpsellPromptProps) {
+  const relativeExpiration = "12 days from now"
+  return (
+    <Col className="d-flex justify-content-center">
+      <div className="m-auto">
+        <h4 className="h5">
           Subscribe and use Kodiak on your private repositories!
         </h4>
-        <div className="d-flex align-items-center">
-          <Button variant="success" size="large">
-            Start Trial
-          </Button>
-          <span className="mx-2">or</span>{" "}
-          <a className="mr-2" href="#" variant="link">
-            subscribe
-          </a>{" "}
-          <span>($4.99 per active user per month)</span>
-        </div>
-      </>
-    )
-  }
-
-  return (
-    <>
-      <h4 className="h6">
-        Subscribe and use Kodiak on your private repositories!
-      </h4>
-      <div className="d-flex align-items-center">
-        <Button variant="success" size="large" className="mr-2">
-          Subscribe
-        </Button>
-        <span>($4.99 per active user per month)</span>
+        {showTrial ? (
+          <>
+            <div className="d-flex justify-content-center">
+              <Button variant="success" size="large">
+                Start 14 Day Trial
+              </Button>
+            </div>
+            <p className="mb-0 text-center">or</p>
+            <div className="d-flex justify-content-center">
+              <a href="#" variant="link">
+                Subscribe
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="d-flex justify-content-center">
+            <Button variant="success" size="large">
+              Subscribe
+            </Button>
+          </div>
+        )}
+        <p className="text-center">($4.99 per active user per month)</p>
+        {trialExpirationDate ? (
+          <div className="d-flex justify-content-center">
+            <b className="mr-4">Trial expires</b>
+            <span>
+              {trialExpirationDate} ({relativeExpiration})
+            </span>
+          </div>
+        ) : null}
       </div>
-    </>
-  )
-}
-
-function ActiveTrialPrompt() {
-  return (
-    <>
-      <div>
-        <h4 className="h6">
-          Subscribe to continue using Kodiak on your private repositories!
-        </h4>
-        <b className="mr-4">Trial expiration</b>
-        <span>2020-03-23 (12 days from now)</span>
-      </div>
-      <div className="d-flex align-items-center">
-        <Button variant="success" size="large" className="mr-2">
-          Subscribe
-        </Button>
-        <span>($4.99 per active user per month)</span>
-      </div>
-    </>
+    </Col>
   )
 }
 
@@ -288,23 +279,21 @@ function Subscription({
       <h3 className="h5">Subscription</h3>
       <div className="border border-primary rounded p-2 mb-4">
         <Row>
-          <Col>
-            {state === "trialAvailable" ? (
-              <SubscriptionUpsellPrompt trialAvailable />
-            ): state === "trailActive" ? (
-              <ActiveTrialPrompt />
-            )   : state === "subscriptionActive" ? (
-              <ActiveSubscription
-                cost={{ perSeatCents: 499, totalCents: 4999 }}
-                seats={10}
-                nextBillingDate="2020-04-15"
-                billingEmail="dev@acme-corp.com"
-              />
-            ) : (
-              // subscriptionAvailable case.
-              <SubscriptionUpsellPrompt trialAvailable={false} />
-            )}
-          </Col>
+          {state === "trialAvailable" ? (
+            <SubscriptionUpsellPrompt showTrial />
+          ) : state === "trailActive" ? (
+            <SubscriptionUpsellPrompt trialExpirationDate="2020-04-15" />
+          ) : state === "subscriptionActive" ? (
+            <ActiveSubscription
+              cost={{ perSeatCents: 499, totalCents: 4999 }}
+              seats={10}
+              nextBillingDate="2020-04-15"
+              billingEmail="dev@acme-corp.com"
+            />
+          ) : (
+            // subscriptionAvailable case.
+            <SubscriptionUpsellPrompt showTrial={false} />
+          )}
         </Row>
         <Row>
           <Col>
