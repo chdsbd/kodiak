@@ -26,6 +26,11 @@ export function useApi<T>(
   return [state, { refetch: fetch }]
 }
 
+export function useTeamId(): string | null {
+  const params = useParams<{ team_id: string }>()
+  return params.team_id
+}
+
 interface ITeamArgs {
   readonly teamId: string
 }
@@ -49,4 +54,14 @@ export function useTeamApi<T>(
   }, [func, teamId])
 
   return state
+}
+
+export function teamApi<T, V extends ITeamArgs>(
+  func: (args: V) => Promise<T>,
+  args: Omit<V, "teamId">,
+): Promise<{ ok: true; data: T } | { ok: false }> {
+  const teamId: string = location.pathname.split("/")[2]
+  return func({ ...args, teamId } as V)
+    .then(res => ({ ok: true, data: res }))
+    .catch(() => ({ ok: false }))
 }

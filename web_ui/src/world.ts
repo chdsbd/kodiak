@@ -107,5 +107,12 @@ export const Current: World = {
         )
       ).data
     },
+    startTrial: async (args: api.IStartTrialArgs) =>
+      (
+        await authRoute.post<unknown>(
+          `/v1/t/${args.teamId}/start_trial`,
+          jsonToFormData({ billingEmail: args.billingEmail }),
+        )
+      ).data,
   },
 }

@@ -33,6 +33,17 @@ export interface IUsageBillingPageArgs {
   readonly teamId: string
 }
 export interface IUsageBillingPageApiResponse {
+  readonly subscription: {
+    readonly seats: number
+    readonly nextBillingDate: string
+    readonly cost: {
+      readonly totalCents: number
+      readonly perSeatCents: number
+    }
+    readonly billingContact: {
+      readonly email: string
+    }
+  } | null
   readonly activeUsers: ReadonlyArray<{
     readonly id: number
     readonly name: string
@@ -95,6 +106,11 @@ export interface ICurrentAccountApiResponse {
   }>
 }
 
+export interface IStartTrialArgs {
+  readonly teamId: string
+  readonly billingEmail: string
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -107,4 +123,5 @@ export interface Api {
   getCurrentAccount: (
     args: ICurrentAccountArgs,
   ) => Promise<ICurrentAccountApiResponse>
+  startTrial: (args: IStartTrialArgs) => Promise<unknown>
 }
