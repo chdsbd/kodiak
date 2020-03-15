@@ -48,20 +48,13 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         trial = dict(
             startDate=account.trial_start,
             endDate=account.trial_expiration,
-            expired=True,
+            expired=account.trial_expired(),
             startedBy=dict(
                 id=account.trial_started_by.id,
                 name=account.trial_started_by.github_login,
                 profileImgUrl=account.trial_started_by.profile_image(),
             ),
         )
-    state = "subscriptionAvailable"
-    if subscription is None and account.trial_available():
-        state = "trialAvailable"
-    if account.trial_active():
-        state = "trialActive"
-    if subscription is not None:
-        state = "subscriptionActive"
     return JsonResponse(
         dict(
             # subscription=dict(
@@ -70,7 +63,6 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             #     costCents=499,
             #     billingContact=dict(email="billing@acme-corp.com", name="Acme Corp."),
             # ),
-            state=state,
             subscription=subscription,
             trial=trial,
             activeUsers=[
@@ -171,20 +163,18 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     billing_email = request.POST["billingEmail"]
     account.start_trial(request.user, billing_email=billing_email)
     return HttpResponse(status=204)
-    # return JsonResponse(
-    #     dict(
-    #         id=account.id,
-    #         name=account.github_account_login,
-    #         profileImgUrl=account.profile_image(),
-    #         trial_expiration=account.trial_expiration,
-    #         trial_start=account.trial_start,
-    #         trial_started_by=dict(
-    #             id=account.trial_started_by.id,
-    #             name=account.trial_started_by.github_login,
-    #             profileImgUrl=account.trial_started_by.profile_image(),
-    #         ),
-    #     )
-    # )
+
+
+@csrf_exempt
+@auth.login_required
+def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    billing_email: str = request.POST["billingEmail"]
+    seats = int(request.POST["seats"])
+    # account.start_trial(request.user, billing_email=billing_email)
+    return HttpResponse(status=204)
 
 
 @auth.login_required

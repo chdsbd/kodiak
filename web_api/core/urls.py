@@ -11,6 +11,7 @@ urlpatterns = [
     path("t/<uuid:team_id>/activity", views.activity),
     path("t/<uuid:team_id>/current_account", views.current_account),
     path("t/<uuid:team_id>/start_trial", views.start_trial),
+    path("t/<uuid:team_id>/update_subscription", views.update_subscription),
     path("accounts", views.accounts),
     path("ping", views.ping),
     path("debug_sentry", views.debug_sentry),

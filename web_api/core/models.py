@@ -233,20 +233,17 @@ class Account(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
-    def start_trial(self, actor: User,billing_email: str, length_days=14) -> None:
+    def start_trial(self, actor: User, billing_email: str, length_days=14) -> None:
         self.trial_expiration = timezone.now() + datetime.timedelta(days=length_days)
         self.trial_start = timezone.now()
         self.trial_started_by = actor
         self.billing_email = billing_email
         self.save()
 
-    def trial_available(self) -> bool:
-        return self.trial_expiration is None
-
-    def trial_active(self) -> bool:
+    def trial_expired(self) -> bool:
         if self.trial_expiration is None:
             return False
-        return (self.trial_expiration - timezone.now()).total_seconds() > 0
+        return (self.trial_expiration - timezone.now()).total_seconds() < 0
 
 
 class AccountRole(models.TextChoices):

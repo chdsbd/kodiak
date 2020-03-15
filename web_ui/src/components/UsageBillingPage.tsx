@@ -117,7 +117,7 @@ interface IInstallCompleteModalProps {
 }
 function InstallCompleteModal({ show, onClose }: IInstallCompleteModalProps) {
   return (
-    <Modal size="lg" show={show} onHide={onClose}>
+    <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
         <Modal.Title>🎉 Your Kodiak install is ready!</Modal.Title>
       </Modal.Header>
@@ -150,7 +150,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
     setError("")
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
       if (res.ok) {
-        location.href = `/t/${teamId}/usage`
+        location.href = `/t/${teamId}/usage?install_complete=1`
       } else {
         setLoading(false)
         setError("Failed to start trial")
@@ -207,18 +207,22 @@ function SubscriptionManagementModal({
   seatUsage,
 }: ISubscriptionManagementModalProps) {
   const [email, setEmail] = React.useState("")
+  const [seats, setSeats] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const teamId = useTeamId()
-  function startTrial() {
+  function setSubscription() {
     setLoading(true)
     setError("")
-    teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
-      setLoading(false)
+    teamApi(Current.api.updateSubscription, {
+      billingEmail: email,
+      seats: parseInt(seats, 10) || 0,
+    }).then(res => {
       if (res.ok) {
-        location.href = `/t/${teamId}/usage`
+        location.href = `/t/${teamId}/usage?install_complete=1`
       } else {
-        setError("Failed to start trial")
+        setLoading(false)
+        setError("Failed to update subscription")
       }
     })
   }
@@ -231,7 +235,7 @@ function SubscriptionManagementModal({
         <Form
           onSubmit={(e: React.FormEvent) => {
             e.preventDefault()
-            startTrial()
+            setSubscription()
           }}>
           <Form.Group controlId="formBasicEmail">
             <Form.Label>Billing Email</Form.Label>
@@ -254,6 +258,10 @@ function SubscriptionManagementModal({
               type="number"
               required
               placeholder="Enter seat count"
+              value={seats}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSeats(e.target.value)
+              }
             />
             <Form.Text className="text-muted">
               You have <b>{seatUsage}</b> active seats this billing period.
@@ -287,9 +295,46 @@ function SubscriptionUpsellPrompt({
   return (
     <Col className="d-flex justify-content-center">
       <div className="m-auto">
-        <h4 className="h5">
-          Subscribe and use Kodiak on your private repositories!
-        </h4>
+        {trial == null && (
+          <h4 className="h5">
+            Subscribe and use Kodiak on your private repositories!
+          </h4>
+        )}
+
+        {trial != null ? (
+          <>
+            {!trial.expired ? (
+              <>
+                <h3 className="text-center">Trial Active</h3>
+                <p className="text-center">
+                  Your active trial expires in{" "}
+                  <b>{formatFromNow(trial.endDate)}</b> at{" "}
+                  <b>
+                    {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
+                      " UTC"}
+                  </b>
+                  .
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-center text-danger">Trial Inactive</h3>
+                <p className="text-center">
+                  Your trial expired at{" "}
+                  <b>
+                    {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
+                      " UTC"}
+                  </b>
+                  .
+                </p>
+              </>
+            )}
+
+            <p className="text-center">
+              Subscribe to continue using Kodiak on your private repositories!
+            </p>
+          </>
+        ) : null}
         {trial == null ? (
           <>
             <div className="d-flex justify-content-center">
@@ -306,37 +351,12 @@ function SubscriptionUpsellPrompt({
           </>
         ) : (
           <div className="d-flex justify-content-center">
-            <Button variant="success" size="lg" onClick={startSubscription}>
+            <Button variant="dark" size="lg" onClick={startSubscription}>
               Subscribe
             </Button>
           </div>
         )}
         <p className="text-center">($4.99 per active user per month)</p>
-
-        {trial != null ? (
-          <div className="d-flex justify-content-center">
-            {!trial.expired ? (
-              <p>
-                Your active trial expires in{" "}
-                <b>{formatFromNow(trial.endDate)}</b> at{" "}
-                <b>
-                  {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
-                    " UTC"}
-                </b>
-                .
-              </p>
-            ) : (
-              <p>
-                Your trial expired at{" "}
-                <b>
-                  {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
-                    " UTC"}
-                </b>
-                .
-              </p>
-            )}
-          </div>
-        ) : null}
       </div>
     </Col>
   )

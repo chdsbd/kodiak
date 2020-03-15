@@ -8,14 +8,16 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0014_auto_20200315_1510'),
+        ("core", "0014_auto_20200315_1510"),
     ]
 
     operations = [
         CITextExtension(),
         migrations.AddField(
-            model_name='account',
-            name='billing_email',
-            field=django.contrib.postgres.fields.citext.CIEmailField(max_length=254, null=True),
+            model_name="account",
+            name="billing_email",
+            field=django.contrib.postgres.fields.citext.CIEmailField(
+                max_length=254, null=True
+            ),
         ),
     ]

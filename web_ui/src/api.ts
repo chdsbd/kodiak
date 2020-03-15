@@ -119,6 +119,11 @@ export interface IStartTrialArgs {
   readonly teamId: string
   readonly billingEmail: string
 }
+export interface IUpdateSubscriptionArgs {
+  readonly teamId: string
+  readonly billingEmail: string
+  readonly seats: number
+}
 
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
@@ -133,4 +138,5 @@ export interface Api {
     args: ICurrentAccountArgs,
   ) => Promise<ICurrentAccountApiResponse>
   startTrial: (args: IStartTrialArgs) => Promise<unknown>
+  updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
 }

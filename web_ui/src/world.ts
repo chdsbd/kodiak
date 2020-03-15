@@ -114,5 +114,15 @@ export const Current: World = {
           jsonToFormData({ billingEmail: args.billingEmail }),
         )
       ).data,
+    updateSubscription: async (args: api.IUpdateSubscriptionArgs) =>
+      (
+        await authRoute.post<unknown>(
+          `/v1/t/${args.teamId}/update_subscription`,
+          jsonToFormData({
+            billingEmail: args.billingEmail,
+            seats: args.seats,
+          }),
+        )
+      ).data,
   },
 }
