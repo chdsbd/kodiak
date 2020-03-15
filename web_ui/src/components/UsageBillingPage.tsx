@@ -14,12 +14,11 @@ import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
 import { useTeamApi, teamApi, useTeamId } from "../useApi"
-import sub from "date-fns/sub"
-import format from "date-fns/format"
-import sortBy from "lodash/sortBy"
-import parseISO from "date-fns/parseISO"
-import formatDistanceToNow from "date-fns/formatDistanceToNow"
 import formatDate from "date-fns/format"
+import formatDistanceToNow from "date-fns/formatDistanceToNow"
+import parseISO from "date-fns/parseISO"
+import sub from "date-fns/sub"
+import sortBy from "lodash/sortBy"
 import { useLocation, useHistory } from "react-router-dom"
 
 interface IQuestionProps {
@@ -473,8 +472,6 @@ function Subscription({
   startTrial,
   trial,
 }: ISubscriptionProps) {
-  const missingSubscription = !Boolean(subscription?.active)
-  const missingTrial = !Boolean(trial?.active)
   return (
     <>
       <h3 className="h5">Subscription</h3>
@@ -562,9 +559,9 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const data = props.data.data
 
   const dateToday = new Date()
-  const today = format(dateToday, "MMM do")
+  const today = formatDate(dateToday, "MMM do")
   const dateOneMonthAgo = sub(dateToday, { months: 1 })
-  const oneMonthAgo = format(dateOneMonthAgo, "MMM do")
+  const oneMonthAgo = formatDate(dateOneMonthAgo, "MMM do")
 
   function handleStartSubscription() {
     history.push(location.pathname + "?manage_subscription=1")
