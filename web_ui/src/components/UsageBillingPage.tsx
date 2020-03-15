@@ -46,17 +46,18 @@ export function UsageBillingPage() {
 interface IUsageBillingData {
   readonly subscription: {
     readonly seats: number
-    readonly active: boolean
     readonly nextBillingDate: string
-    readonly costCents: number
-    readonly billingContact: {
-      readonly email: string
+    readonly expired: boolean
+    readonly cost: {
+      readonly totalCents: number
+      readonly perSeatCents: number
     }
+    readonly billingEmail: string
   } | null
   readonly trial: {
     readonly startDate: string
     readonly endDate: string
-    readonly active: boolean
+    readonly expired: boolean
     readonly startedBy: {
       readonly id: number
       readonly name: string
@@ -270,35 +271,10 @@ function SubscriptionManagementModal({
   )
 }
 
-interface IStartDateProps {
-  readonly date: string
-}
-function StartDate({ date }: IStartDateProps) {
-  return <span>{formatDate(parseISO(date), "y-MM-d k:m") + " UTC"}</span>
-}
-interface IExpirationDateProps {
-  readonly date: string
-  readonly expired: boolean
-}
-function ExpirationDate({ date, expired }: IExpirationDateProps) {
-  return (
-    <span>
-      {formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"} (
-      {formatFromNow(date) + (expired ? " expired" : "")})
-    </span>
-  )
-}
-
 interface ISubscriptionUpsellPromptProps {
   readonly trial: {
-    readonly startDate: string
     readonly endDate: string
     readonly expired: boolean
-    readonly startedBy: {
-      readonly id: number
-      readonly name: string
-      readonly profileImgUrl: string
-    }
   } | null
   readonly startSubscription: () => void
   readonly startTrial: () => void
@@ -444,32 +420,23 @@ interface ISubscriptionProps {
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
-    readonly active: boolean
+    readonly expired: boolean
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
     }
-    readonly billingContact: {
-      readonly email: string
-    }
+    readonly billingEmail: string
   } | null
   readonly startSubscription: () => void
   readonly startTrial: () => void
-  readonly trial: {
-    readonly startDate: string
-    readonly endDate: string
-    readonly expired: boolean
-    readonly startedBy: {
-      readonly id: number
-      readonly name: string
-      readonly profileImgUrl: string
-    }
-  } | null
+  readonly modifySubscription: () => void
+  readonly trial: ISubscriptionUpsellPromptProps["trial"]
 }
 function Subscription({
   subscription,
   startSubscription,
   startTrial,
+  modifySubscription,
   trial,
 }: ISubscriptionProps) {
   return (
@@ -477,12 +444,13 @@ function Subscription({
       <h3 className="h5">Subscription</h3>
       <div className="border border-primary rounded p-2 mb-4">
         <Row>
-          {subscription?.active ? (
+          {subscription != null && !subscription.expired ? (
             <ActiveSubscription
               cost={subscription.cost}
               seats={subscription.seats}
               nextBillingDate={subscription.nextBillingDate}
               billingEmail={subscription.billingEmail}
+              modifySubscription={modifySubscription}
             />
           ) : (
             <SubscriptionUpsellPrompt
@@ -569,8 +537,8 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   function handleStartTrial() {
     history.push(location.pathname + "?start_trial=1")
   }
+  function modifySubscription() {}
 
-  const subscriptionInfo = undefined
   return (
     <UsageAndBillingContainer>
       <p>
@@ -593,9 +561,9 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           seatUsage={data.activeUsers.length}
         />
         <Subscription
-          activeSubscription={subscriptionInfo}
           startSubscription={handleStartSubscription}
           startTrial={handleStartTrial}
+          modifySubscription={modifySubscription}
           subscription={data.subscription}
           trial={data.trial}
         />
