@@ -30,10 +30,10 @@ implementations of PR automation and efficent branch updating and merging.
 
 ### Works With Branch Protection
 
-- doesn't require changing CI
-- follows commit statuses & GitHub checks
-- works with PRs — some services create separate test branches for merging
-  that circumvent the simpler GitHub PR workflow
+- depends on "Require branches to be up to date" feature of GitHub
+- when checking PR mergeability status it doesn't reinvent the wheel - delegates that check to GitHub
+- doesn't require changing the CI tool
+- doesn't create separate test branches for merging that would circumvent the GitHub PR workflow
 
 ### Auto Merging
 
