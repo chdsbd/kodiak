@@ -102,3 +102,7 @@ KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
 KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
 KODIAK_WEB_APP_URL = os.environ["KODIAK_WEB_APP_URL"]
 KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
+
+# Set your Stripe secret key. Remember to switch to your live secret key in production!
+# See your keys here: https://dashboard.stripe.com/account/apikeys
+STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
