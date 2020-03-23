@@ -215,7 +215,13 @@ class Account(BaseModel):
     trial_started_by = models.ForeignKey(
         User, null=True, on_delete=models.SET_NULL, related_name="+"
     )
-    billing_email = pg_fields.CIEmailField(null=True)
+
+    stripe_customer_id = models.CharField(
+        blank=True,
+        max_length=255,
+        db_index=True,
+        help_text="ID of the Stripe Customer associated with this account. This will have a corresponding object in StripeCustomerInformation if the user has created a subscription.",
+    )
 
     class Meta:
         db_table = "account"
@@ -644,3 +650,86 @@ class UserPullRequestActivityProgress(BaseModel):
 
     class Meta:
         db_table = "user_pull_request_activity_progress"
+
+
+class StripeCustomerInformation(models.Model):
+    customer_id = models.CharField(
+        max_length=255,
+        primary_key=True,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Customer object.",
+    )
+    subscription_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Subscription object.",
+    )
+    plan_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Plan object.",
+    )
+    payment_method_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe PaymentMethod object.",
+    )
+
+    # https://stripe.com/docs/api/customers/object
+    customer_email = models.CharField(
+        max_length=255, help_text="The customer’s email address."
+    )
+    customer_balance = models.IntegerField(
+        default=0,
+        help_text="Current balance, if any, being stored on the customer. If negative, the customer has credit to apply to their next invoice. If positive, the customer has an amount owed that will be added to their next invoice. The balance does not refer to any unpaid invoices; it solely takes into account amounts that have yet to be successfully applied to any invoice. This balance is only taken into account as invoices are finalized.",
+    )
+    customer_created = models.IntegerField(
+        help_text="Time at which the object was created. Measured in seconds since the Unix epoch."
+    )
+    customer_delinquent = models.BooleanField(
+        help_text="When the customer’s latest invoice is billed by charging automatically, delinquent is true if the invoice’s latest charge is failed. When the customer’s latest invoice is billed by sending an invoice, delinquent is true if the invoice is not paid by its due date."
+    )
+
+    # https://stripe.com/docs/api/payment_methods/object
+    payment_method_card_brand = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
+    )
+    payment_method_card_exp_month = models.IntegerField(
+        null=True,
+        help_text="Two-digit number representing the card’s expiration month.",
+    )
+    payment_method_card_exp_year = models.IntegerField(
+        null=True,
+        help_text="Four-digit number representing the card’s expiration year.",
+    )
+    payment_method_card_last4 = models.CharField(
+        max_length=255, null=True, help_text="The last four digits of the card."
+    )
+
+    # https://stripe.com/docs/api/plans/object
+    plan_amount = models.IntegerField(
+        help_text="The amount in cents to be charged on the interval specified."
+    )
+
+    # https://stripe.com/docs/api/subscriptions/object
+    subscription_quantity = models.IntegerField(
+        help_text="The quantity of the plan to which the customer is subscribed. For example, if your plan is $10/user/month, and your customer has 5 users, you could pass 5 as the quantity to have the customer charged $50 (5 x $10) monthly. Only set if the subscription contains a single plan."
+    )
+    subscription_start_date = models.IntegerField(
+        help_text="Date when the subscription was first created. The date might differ from the created date due to backdating."
+    )
+    subscription_current_period_end = models.IntegerField(
+        help_text="End of the current period that the subscription has been invoiced for. At the end of this period, a new invoice will be created."
+    )
+    subscription_current_period_start = models.IntegerField(
+        help_text="Start of the current period that the subscription has been invoiced for."
+    )
+
+    class Meta:
+        db_table = "stripe_customer_information"
