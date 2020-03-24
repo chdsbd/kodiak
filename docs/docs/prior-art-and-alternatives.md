@@ -5,7 +5,7 @@ sidebar_label: Prior Art / Alternatives
 ---
 
 If Kodiak doesn't suit your current needs, there are plenty of
-implementations of PR automation and efficent branch updating and merging.
+implementations of pull request (PR) automation and efficent branch updating and merging.
 
 | Name                                                                                                                 | Works With Branch Protection | Auto Merging | Auto Update Branches | Update Branches Efficiently | Open Source | Practice [Dogfooding](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) | Language   |
 | -------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------ | -------------------- | --------------------------- | ----------- | ----------------------------------------------------------------------------- | ---------- |
@@ -30,10 +30,9 @@ implementations of PR automation and efficent branch updating and merging.
 
 ### Works With Branch Protection
 
-- doesn't require changing CI
-- follows commit statuses & GitHub checks
-- works with PRs — some services create separate test branches for merging
-  that circumvent the simpler GitHub PR workflow
+- PR mergeability is determined by GitHub Branch Protection settings and app configuration
+- doesn't require changing continuous integration (CI) tools
+- doesn't create separate test branches for merging that would circumvent the GitHub PR workflow
 
 ### Auto Merging
 
