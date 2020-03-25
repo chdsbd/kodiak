@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import time
@@ -239,7 +241,14 @@ class Account(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
-    def start_trial(self, actor: User, billing_email: str, length_days=14) -> None:
+    def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
+        return StripeCustomerInformation.objects.filter(
+            customer_id=self.stripe_customer_id
+        ).first()
+
+    def start_trial(
+        self, actor: User, billing_email: str, length_days: int = 14
+    ) -> None:
         self.trial_expiration = timezone.now() + datetime.timedelta(days=length_days)
         self.trial_start = timezone.now()
         self.trial_started_by = actor
@@ -690,9 +699,6 @@ class StripeCustomerInformation(models.Model):
     customer_created = models.IntegerField(
         help_text="Time at which the object was created. Measured in seconds since the Unix epoch."
     )
-    customer_delinquent = models.BooleanField(
-        help_text="When the customer’s latest invoice is billed by charging automatically, delinquent is true if the invoice’s latest charge is failed. When the customer’s latest invoice is billed by sending an invoice, delinquent is true if the invoice is not paid by its due date."
-    )
 
     # https://stripe.com/docs/api/payment_methods/object
     payment_method_card_brand = models.CharField(
@@ -733,3 +739,14 @@ class StripeCustomerInformation(models.Model):
 
     class Meta:
         db_table = "stripe_customer_information"
+
+    @property
+    def expired(self) -> bool:
+        # provide two days of leeway for good measure
+        two_days = 60 * 60 * 24 * 2
+        now = int(time.time())
+        return now > (self.subscription_current_period_end + two_days)
+
+    @property
+    def next_billing_date(self) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
