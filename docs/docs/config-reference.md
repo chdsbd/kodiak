@@ -270,6 +270,13 @@ When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 
+### `update.blacklist_usernames`
+
+- **type:** `string[]`
+- **default:** `[]`
+
+When provided, Kodiak will not update PR's made from this user.
+
 ### `approve.auto_approve_usernames`
 
 - **type:** `string[]`

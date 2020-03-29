@@ -3608,6 +3608,57 @@ def test_get_merge_body_include_pull_request_author_mannequin(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_update_username_blacklist(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    Kodiak should not update PR if user is blacklisted
+    """
+    config.update.blacklist_usernames = ["mr-test"]
+    config.update.require_automerge_label = True
+    pull_request.author.login = "mr-test"
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.update_branch.call_count == 0
+    assert api.set_status.call_count == 0
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_mergeable_update_always(
     api: MockPrApi,
     config: V1,

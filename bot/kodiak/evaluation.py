@@ -323,6 +323,14 @@ async def mergeable(
         config.merge.automerge_label in pull_request.labels
         or not config.update.require_automerge_label
     )
+
+    if (
+        need_branch_update
+        and not merging
+        and pull_request.author.login in config.update.blacklist_usernames
+    ):
+        return
+
     if (
         need_branch_update
         and not merging
