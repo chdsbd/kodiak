@@ -287,7 +287,6 @@ This setting has no effect when `update.always` is disabled.
 update.blacklist_usernames = ["bernard-lowe", "dependabot-preview"]
 ```
 
-
 ### `approve.auto_approve_usernames`
 
 - **type:** `string[]`
