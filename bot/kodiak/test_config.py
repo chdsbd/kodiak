@@ -117,13 +117,10 @@ def test_config_schema() -> None:
     documentation for the bot config.
     """
     schema_path = load_config_fixture("config-schema.json")
-    assert json.loads(V1.schema_json()) == json.loads(
-        schema_path.read_text()
-    ), (
+    assert json.loads(V1.schema_json()) == json.loads(schema_path.read_text()), (
         "schema shouldn't change unexpectedly.\n"
         "Did you remember to run `poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json` in the `bot` directory?"
     )
-
 
 
 def test_bad_file() -> None:
