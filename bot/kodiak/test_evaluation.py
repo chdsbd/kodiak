@@ -3622,6 +3622,7 @@ async def test_mergeable_update_username_blacklist(
     """
     Kodiak should not update PR if user is blacklisted.
     """
+    config.update.always = True
     config.update.blacklist_usernames = ["mr-test"]
     config.update.require_automerge_label = True
     pull_request.author.login = "mr-test"
@@ -3651,7 +3652,11 @@ async def test_mergeable_update_username_blacklist(
         api_call_retry_method_name=None,
     )
     assert api.update_branch.call_count == 0
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert (
+        "not auto updating for update.blacklist_usernames"
+        in api.set_status.calls[0]["msg"]
+    )
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
@@ -3674,6 +3679,7 @@ async def test_mergeable_update_username_blacklist_merging(
     When the PR is merging, Kodiak should ignore update.username_blacklist and
     update the PR as necessary for GitHub branch protections.
     """
+    config.update.always = True
     config.update.blacklist_usernames = ["mr-test"]
     config.update.require_automerge_label = True
     pull_request.author.login = "mr-test"
