@@ -46,7 +46,8 @@
       "title": "Update",
       "default": {
         "always": false,
-        "require_automerge_label": true
+        "require_automerge_label": true,
+        "blacklist_usernames": []
       },
       "allOf": [
         {
@@ -235,6 +236,14 @@
           "title": "Require Automerge Label",
           "default": true,
           "type": "boolean"
+        },
+        "blacklist_usernames": {
+          "title": "Blacklist Usernames",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

@@ -100,7 +100,7 @@ class Update(BaseModel):
     # false.
     always: bool = False
     require_automerge_label: bool = True
-    # If the author of the PR is on the list, it will not be updated.
+    # Do not update PRs created by a listed user.
     blacklist_usernames: List[str] = []
 
 

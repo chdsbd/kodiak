@@ -275,7 +275,16 @@ This option only applies when `update.always = true`.
 - **type:** `string[]`
 - **default:** `[]`
 
-When provided, Kodiak will not update PR's made from this user.
+Pull requests opened by a user with a username in the `update.blacklist_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+
+If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
+
+#### example
+
+```
+update.blacklist_usernames = ["bernard-lowe", "dependabot-preview"]
+```
+
 
 ### `approve.auto_approve_usernames`
 

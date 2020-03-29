@@ -23,6 +23,8 @@ While Dependabot can [automerge dependency updates](https://dependabot.com/docs/
 
 Kodiak can help us here by automatically adding an approval to all Dependabot PRs, which will allow Dependabot PRs to be automatically merged without human intervention.
 
+If you use Kodiak with `update.always` enabled, we recommend adding Dependabot to the `update.blacklist_usernames` list. If a PR by Dependabot gets updated, Dependabot will not update or close the PR when stale.
+
 > **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot-preview[bot]"` use `"dependabot-preview"`.
 
 ```
@@ -33,6 +35,11 @@ version = 1
 # note: remove the "[bot]" suffix from GitHub Bot usernames.
 # Instead of "dependabot-preview[bot]" use "dependabot-preview".
 auto_approve_usernames = ["dependabot-preview"]
+
+# if using `update.always`, add dependabot-preview to the blacklist to allow
+# dependabot to update and close stale dependency upgrades.
+[update]
+blacklist_usernames = ["dependabot-preview"]
 ```
 
 ## The Favourite
