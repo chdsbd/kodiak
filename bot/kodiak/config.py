@@ -100,6 +100,8 @@ class Update(BaseModel):
     # false.
     always: bool = False
     require_automerge_label: bool = True
+    # Do not update PRs created by a listed user.
+    blacklist_usernames: List[str] = []
 
 
 class Approve(BaseModel):

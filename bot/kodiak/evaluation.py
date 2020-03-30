@@ -323,12 +323,18 @@ async def mergeable(
         config.merge.automerge_label in pull_request.labels
         or not config.update.require_automerge_label
     )
+
     if (
         need_branch_update
         and not merging
         and config.update.always
         and meets_label_requirement
     ):
+        if pull_request.author.login in config.update.blacklist_usernames:
+            await set_status(
+                f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+            )
+            return
         await set_status(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
