@@ -112,10 +112,15 @@ def test_config_parsing_opposite(config_fixture_name: str, expected_config: V1) 
 
 
 def test_config_schema() -> None:
+    """
+    Although we don't use the config schema anywhere, it provides a form of
+    documentation for the bot config.
+    """
     schema_path = load_config_fixture("config-schema.json")
-    assert json.loads(V1.schema_json()) == json.loads(
-        schema_path.read_text()
-    ), "schema shouldn't change unexpectedly."
+    assert json.loads(V1.schema_json()) == json.loads(schema_path.read_text()), (
+        "schema shouldn't change unexpectedly.\n"
+        "Did you remember to run `poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json` in the `bot` directory?"
+    )
 
 
 def test_bad_file() -> None:
