@@ -1,13 +1,16 @@
 import enum
+import logging
 from typing import Callable, Optional
 from urllib.parse import urlparse
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseServerError, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import SimpleLazyObject
 
 from core.auth import get_user
 from core.exceptions import ApiException
+
+logger = logging.getLogger(__name__)
 
 
 class AuthenticationMiddleware(MiddlewareMixin):
@@ -70,10 +73,10 @@ class HealthCheckMiddleware:
     from: https://www.ianlewis.org/en/kubernetes-health-checks-django
     """
 
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
         self.get_response = get_response
 
-    def __call__(self, request: HttpRequest):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         if request.method == "GET":
             if request.path == "/readiness":
                 return self.readiness(request)
@@ -104,7 +107,7 @@ class HealthCheckMiddleware:
                 if row is None:
                     return HttpResponseServerError(ReadinessError.PG_BAD_RESPONSE)
         except Exception:  # pylint: disable=broad-except
-            log.exception("could not connect to postgres")
+            logger.exception("could not connect to postgres")
             return HttpResponseServerError(ReadinessError.PG_CANNOT_CONNECT)
 
         return HttpResponse("OK")
