@@ -194,7 +194,7 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     seats = int(request.POST["seats"])
     proration_timestamp = int(request.POST["prorationTimestamp"])
     expected_cost = int(request.POST["expectedCost"])
-    # account.start_trial(request.user, billing_email=billing_email)
+    # TODO: Call out to Stripe to update subscription
     return HttpResponse(status=204)
 
 
