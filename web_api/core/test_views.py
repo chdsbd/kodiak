@@ -56,12 +56,6 @@ def authed_client(client: Client, user: User) -> Client:
     return client
 
 
-def test_healthcheck(client: Client) -> None:
-    res = client.get("/v1/_healthcheck")
-    assert res.status_code == 200
-    assert "OK" in res.content.decode()
-
-
 @pytest.mark.django_db
 def test_usage_billing(authed_client: Client, user: User, other_user: User) -> None:
     user_account = Account.objects.create(

@@ -63,9 +63,9 @@ class ExceptionMiddleware(MiddlewareMixin):
 
 
 @enum.unique
-class ReadinessError(enum.IntEnum):
-    PG_BAD_RESPONSE = 1
-    PG_CANNOT_CONNECT = 2
+class ReadinessError(enum.Enum):
+    PG_BAD_RESPONSE = "PG_BAD_RESPONSE"
+    PG_CANNOT_CONNECT = "PG_CANNOT_CONNECT"
 
 
 class HealthCheckMiddleware:
