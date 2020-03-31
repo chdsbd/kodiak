@@ -12,7 +12,6 @@ urlpatterns = [
     path("t/<uuid:team_id>/current_account", views.current_account),
     path("t/<uuid:team_id>/start_trial", views.start_trial),
     path("t/<uuid:team_id>/update_subscription", views.update_subscription),
-    path("t/<uuid:team_id>/fetch_subscription_info", views.fetch_subscription_info),
     path("t/<uuid:team_id>/fetch_proration", views.fetch_proration),
     path("t/<uuid:team_id>/cancel_subscription", views.cancel_subscription),
     path("t/<uuid:team_id>/start_checkout", views.start_checkout),

@@ -200,25 +200,6 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @csrf_exempt
 @auth.login_required
-def fetch_subscription_info(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
-    # session = stripe.checkout.Session.create(
-    #   payment_method_types=['card'],
-    #   subscription_data={
-    #     'items': [{
-    #       'plan': 'plan_GuwxuYeKZ3zDFG',
-    #     }],
-    #   },
-    #   success_url=f'https://app.localhost.kodiakhq.com/t/{account.id}/usage?success=1&session_id={{CHECKOUT_SESSION_ID}}',
-    #   cancel_url='https://app.localhost.kodiakhq.com/t/{account.id}/usage?cancel=1&session_id={{CHECKOUT_SESSION_ID}}',
-    # )
-    return JsonResponse(dict())
-
-
-@csrf_exempt
-@auth.login_required
 def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     seat_count = int(request.POST.get("seatCount", 1))
     account = get_object_or_404(
@@ -296,7 +277,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     payload = request.body
     try:
         event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
-    except ValueError as e:
+    except ValueError:
         # Invalid payload
         logger.warning("problem parsing stripe payload", exc_info=True)
         return HttpResponse(status=400)

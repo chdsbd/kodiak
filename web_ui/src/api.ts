@@ -131,9 +131,6 @@ export interface ICancelSubscriptionArgs {
 export interface IFetchSubscriptionInfoArgs {
   readonly teamId: string
 }
-export interface IFetchSubscriptionInfoResponse {
-  readonly braintreeCustomerId: string | null
-}
 
 export interface IStartCheckoutArgs {
   readonly teamId: string
@@ -168,8 +165,5 @@ export interface Api {
   updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
   cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
   fetchProration: (args: IFetchProrationArgs) => Promise<IFetchProrationResponse>
-  fetchSubscriptionInfo: (
-    args: IFetchSubscriptionInfoArgs,
-  ) => Promise<IFetchSubscriptionInfoResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
 }

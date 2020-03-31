@@ -126,12 +126,6 @@ export const Current: World = {
       cancelSubscription: async (args: api.ICancelSubscriptionArgs) => await authRoute.post<unknown>(
           `/v1/t/${args.teamId}/cancel_subscription`,
         ),
-    fetchSubscriptionInfo: async (args: api.IFetchSubscriptionInfoArgs) =>
-      (
-        await authRoute.get<api.IFetchSubscriptionInfoResponse>(
-          `/v1/t/${args.teamId}/fetch_subscription_info`,
-        )
-      ).data,
     startCheckout: async (args: api.IStartCheckoutArgs) =>
       (
         await authRoute.post<api.IStartCheckoutResponse>(
