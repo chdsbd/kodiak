@@ -121,8 +121,35 @@ export interface IStartTrialArgs {
 }
 export interface IUpdateSubscriptionArgs {
   readonly teamId: string
-  readonly billingEmail: string
   readonly seats: number
+  readonly prorationTime: number
+  readonly expectedCost: number
+}
+export interface ICancelSubscriptionArgs {
+  readonly teamId: string
+}
+export interface IFetchSubscriptionInfoArgs {
+  readonly teamId: string
+}
+export interface IFetchSubscriptionInfoResponse {
+  readonly braintreeCustomerId: string | null
+}
+
+export interface IStartCheckoutArgs {
+  readonly teamId: string
+  readonly seatCount: number
+}
+export interface IStartCheckoutResponse {
+  readonly stripeCheckoutSessionId: string
+}
+
+export interface IFetchProrationArgs {
+  readonly teamId: string
+  readonly subscriptionQuantity: number
+}
+export interface IFetchProrationResponse {
+  readonly proratedCost: number
+  readonly prorationTime: number
 }
 
 export interface Api {
@@ -139,4 +166,10 @@ export interface Api {
   ) => Promise<ICurrentAccountApiResponse>
   startTrial: (args: IStartTrialArgs) => Promise<unknown>
   updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
+  cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
+  fetchProration: (args: IFetchProrationArgs) => Promise<IFetchProrationResponse>
+  fetchSubscriptionInfo: (
+    args: IFetchSubscriptionInfoArgs,
+  ) => Promise<IFetchSubscriptionInfoResponse>
+  startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
 }

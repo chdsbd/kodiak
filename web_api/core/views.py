@@ -1,9 +1,13 @@
+import datetime
+import json
 import logging
+import time
 from dataclasses import asdict, dataclass
 from typing import Optional, Union
 from urllib.parse import parse_qsl
 
 import requests
+import stripe
 from django.conf import settings
 from django.http import (
     HttpRequest,
@@ -23,12 +27,15 @@ from core.models import (
     Account,
     AnonymousUser,
     PullRequestActivity,
+    StripeCustomerInformation,
     SyncAccountsError,
     User,
     UserPullRequestActivity,
 )
 
 logger = logging.getLogger(__name__)
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @auth.login_required
@@ -54,6 +61,19 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 name=account.trial_started_by.github_login,
                 profileImgUrl=account.trial_started_by.profile_image(),
             ),
+        )
+    stripe_customer_info = account.stripe_customer_info()
+    if stripe_customer_info:
+        subscription = dict(
+            seats=stripe_customer_info.subscription_quantity,
+            nextBillingDate=stripe_customer_info.next_billing_date,
+            expired=stripe_customer_info.expired,
+            cost=dict(
+                totalCents=stripe_customer_info.plan_amount
+                * stripe_customer_info.subscription_quantity,
+                perSeatCents=stripe_customer_info.plan_amount,
+            ),
+            billingEmail=stripe_customer_info.customer_email,
         )
     return JsonResponse(
         dict(
@@ -171,10 +191,197 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
         Account.objects.filter(memberships__user=request.user), id=team_id
     )
-    billing_email: str = request.POST["billingEmail"]
     seats = int(request.POST["seats"])
+    proration_timestamp = int(request.POST["prorationTimestamp"])
+    expected_cost = int(request.POST["expectedCost"])
     # account.start_trial(request.user, billing_email=billing_email)
     return HttpResponse(status=204)
+
+
+@csrf_exempt
+@auth.login_required
+def fetch_subscription_info(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    # session = stripe.checkout.Session.create(
+    #   payment_method_types=['card'],
+    #   subscription_data={
+    #     'items': [{
+    #       'plan': 'plan_GuwxuYeKZ3zDFG',
+    #     }],
+    #   },
+    #   success_url=f'https://app.localhost.kodiakhq.com/t/{account.id}/usage?success=1&session_id={{CHECKOUT_SESSION_ID}}',
+    #   cancel_url='https://app.localhost.kodiakhq.com/t/{account.id}/usage?cancel=1&session_id={{CHECKOUT_SESSION_ID}}',
+    # )
+    return JsonResponse(dict())
+
+
+@csrf_exempt
+@auth.login_required
+def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
+    seat_count = int(request.POST.get("seatCount", 1))
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    # if available, using the existing customer_id allows us to pre-fill the
+    # checkout form with their email.
+    customer_id = account.customer_id or None
+
+    # https://stripe.com/docs/api/checkout/sessions/create
+    session = stripe.checkout.Session.create(
+        client_reference_id=account.id,
+        customer=customer_id,
+        # cards only work with subscriptions and StripeCustomerInformation
+        # depends on credit cards
+        # (payment_method_card_{brand,exp_month,exp_year,last4}).
+        payment_method_types=["card"],
+        subscription_data={
+            # TODO: Don't hard code this plan
+            "items": [{"plan": "plan_GuzDf41AmGOJzQ", "quantity": seat_count}],
+        },
+        # TODO: Figure out where we want these endpoints to land.
+        success_url=f"http://app.localhost.kodiakhq.com:3000/t/{account.id}/usage?success=1&session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"http://app.localhost.kodiakhq.com:3000/t/{account.id}/usage?cancel=1&session_id={{CHECKOUT_SESSION_ID}}",
+    )
+    return JsonResponse(dict(stripeCheckoutSessionId=session.id))
+
+
+@csrf_exempt
+@auth.login_required
+def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+
+    customer_info = account.stripe_customer_info()
+    if customer_info is not None:
+        customer_info.cancel_subscription()
+    return HttpResponse(status=204)
+
+
+@csrf_exempt
+@auth.login_required
+def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    subscription_quantity = int(request.POST["subscriptionQuantity"])
+
+    customer_info = account.stripe_customer_info()
+    if customer_info is not None:
+        proration_date = int(time.time())
+        return JsonResponse(
+            dict(
+                proratedCost=customer_info.preview_proration(
+                    timestamp=proration_date,
+                    subscription_quantity=subscription_quantity,
+                ),
+                prorationTime=proration_date,
+            )
+        )
+    return HttpResponse(status=500)
+
+
+# @require_POST
+@csrf_exempt
+def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
+    """
+    After checkout, Stripe sends a checkout.session.completed event. Stripe will
+    wait up to 10 seconds for this webhook to return before redirecting a user
+    back to the return URL.
+
+    https://stripe.com/docs/billing/webhooks
+    """
+    payload = request.body
+    try:
+        event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+    except ValueError as e:
+        # Invalid payload
+        logger.warning("problem parsing stripe payload", exc_info=True)
+        return HttpResponse(status=400)
+
+    print(repr(event))
+
+    # https://stripe.com/docs/billing/lifecycle#subscription-lifecycle
+
+    # triggered when a customer completes the Stripe Checkout form.
+    # https://stripe.com/docs/payments/checkout/fulfillment#webhooks
+    if event.type == "checkout.session.completed":
+        # Stripe will wait until this webhook handler returns to redirect from checkout
+        checkout_session = event.data.object
+        subscription = stripe.Subscription.retrieve(checkout_session.subscription)
+        customer = stripe.Customer.retrieve(checkout_session.customer)
+        payment_method = stripe.PaymentMethod.retrieve(
+            subscription.default_payment_method
+        )
+        account = Account.objects.get(id=checkout_session.client_reference_id)
+        account.stripe_customer_id = customer.id
+        account.stripe_subscription_id = subscription.id
+        account.seats = subscription.quantity
+        account.save()
+
+        try:
+            stripe_customer_info = StripeCustomerInformation.objects.get(
+                customer_id=customer.id
+            )
+        except StripeCustomerInformation.DoesNotExist:
+            stripe_customer_info = StripeCustomerInformation(customer_id=customer.id)
+
+        stripe_customer_info.subscription_id = subscription.id
+        stripe_customer_info.plan_id = subscription.plan.id
+        stripe_customer_info.payment_method_id = payment_method.id
+
+        stripe_customer_info.customer_email = customer.email
+        stripe_customer_info.customer_balance = customer.balance
+        stripe_customer_info.customer_created = customer.created
+
+        stripe_customer_info.payment_method_card_brand = payment_method.card.brand
+        stripe_customer_info.payment_method_card_exp_month = (
+            payment_method.card.exp_month
+        )
+        stripe_customer_info.payment_method_card_exp_year = payment_method.card.exp_year
+        stripe_customer_info.payment_method_card_last4 = payment_method.card.last4
+
+        stripe_customer_info.plan_amount = subscription.plan.amount
+
+        stripe_customer_info.subscription_quantity = subscription.quantity
+        stripe_customer_info.subscription_start_date = subscription.start_date
+        stripe_customer_info.subscription_current_period_end = (
+            subscription.current_period_end
+        )
+        stripe_customer_info.subscription_current_period_start = (
+            subscription.current_period_start
+        )
+        stripe_customer_info.save()
+        # Then define and call a method to handle the successful payment intent.
+        # handle_payment_intent_succeeded(payment_intent)
+    elif event.type == "invoice.payment_succeeded":
+        # triggered whenever a subscription is paid. We need to update the
+        # subscription to have the correct period information.
+        invoice = event.data.object
+        if not invoice.paid:
+            logger.warning("invoice not paid %s", event)
+            return
+        stripe_customer = StripeCustomerInformation.objects.get(
+            customer_id=invoice.customer
+        )
+        stripe_customer.subscription_current_period_end = invoice.period_end
+        stripe_customer.subscription_current_period_start = invoice.period_start
+        stripe_customer.save()
+    elif event.type == "customer.subscription.deleted":
+        # I don't think we need to do anything on subscription deletion. We can
+        # let the subscription time run out.
+        pass
+    elif event.type == "invoice.payment_action_required":
+        logger.warning("more action required for payment %s", event)
+    elif event.type == "invoice.payment_failed":
+        logger.warning("invoice.payment_failed %s", event)
+    else:
+        # Unexpected event type
+        return HttpResponse(status=400)
+
+    return HttpResponse(status=200)
 
 
 @auth.login_required

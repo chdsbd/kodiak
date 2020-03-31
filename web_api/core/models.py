@@ -5,14 +5,17 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, cast
 
 import requests
+import stripe
+from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def sane_repr(*attrs: str) -> Callable:
@@ -242,9 +245,12 @@ class Account(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
     def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
-        return StripeCustomerInformation.objects.filter(
-            customer_id=self.stripe_customer_id
-        ).first()
+        return cast(
+            Optional[StripeCustomerInformation],
+            StripeCustomerInformation.objects.filter(
+                customer_id=self.stripe_customer_id
+            ).first(),
+        )
 
     def start_trial(
         self, actor: User, billing_email: str, length_days: int = 14
@@ -258,7 +264,7 @@ class Account(BaseModel):
     def trial_expired(self) -> bool:
         if self.trial_expiration is None:
             return False
-        return (self.trial_expiration - timezone.now()).total_seconds() < 0
+        return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
 
 
 class AccountRole(models.TextChoices):
@@ -745,8 +751,53 @@ class StripeCustomerInformation(models.Model):
         # provide two days of leeway for good measure
         two_days = 60 * 60 * 24 * 2
         now = int(time.time())
-        return now > (self.subscription_current_period_end + two_days)
+        return cast(bool, now > (self.subscription_current_period_end + two_days))
 
     @property
     def next_billing_date(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
+
+    def cancel_subscription(self) -> None:
+        """
+        Cancel the Account's subscription in Stripe and remove the
+        StripeCustomerInformation object.
+        """
+        # Calling delete on a subscription cancels it. If a user wants to
+        # resubscribe they must create a new subscription.
+        # https://stripe.com/docs/billing/subscriptions/canceling
+        stripe.Subscription.delete(self.subscription_id)
+        # we delete all the associated subscription info because the
+        # subscription is no longer valid. We leave the Stripe Customer and keep
+        # Account.customer_id alone. If a user resubscribes we can use their
+        # existing Stripe Customer to improve their Stripe Checkout flow with a
+        # prefilled email.
+        self.delete()
+
+    def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
+
+        proration_date = timestamp
+
+        subscription = stripe.Subscription.retrieve(self.subscription_id)
+
+        # See what the next invoice would look like with a plan switch
+        # and proration set:
+        items = [
+            {
+                "id": subscription["items"]["data"][0].id,
+                "quantity": subscription_quantity,
+            }
+        ]
+
+        invoice = stripe.Invoice.upcoming(
+            customer=self.customer_id,
+            subscription=self.subscription_id,
+            subscription_items=items,
+            subscription_proration_date=proration_date,
+        )
+
+        # Calculate the proration cost:
+        current_prorations = [
+            ii for ii in invoice.lines.data if ii.period.start - proration_date <= 1
+        ]
+        cost = sum([p.amount for p in current_prorations])
+        return cost

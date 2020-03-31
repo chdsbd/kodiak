@@ -20,6 +20,8 @@ import parseISO from "date-fns/parseISO"
 import sub from "date-fns/sub"
 import sortBy from "lodash/sortBy"
 import { useLocation, useHistory } from "react-router-dom"
+import { loadStripe } from "@stripe/stripe-js"
+import * as settings from "../settings"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -102,9 +104,8 @@ function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
   )
 }
 
-
 function formatCents(cents: number): string {
-  return `\$${cents / 100}`
+  return `\$${(cents / 100).toFixed(2)}`
 }
 
 function formatFromNow(dateString: string): string {
@@ -206,26 +207,56 @@ function SubscriptionManagementModal({
   onClose,
   seatUsage,
 }: ISubscriptionManagementModalProps) {
-  const [email, setEmail] = React.useState("")
-  const [seats, setSeats] = React.useState("")
+  const [seats, setSeats] = React.useState("1")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const teamId = useTeamId()
+
   function setSubscription() {
     setLoading(true)
     setError("")
-    teamApi(Current.api.updateSubscription, {
-      billingEmail: email,
-      seats: parseInt(seats, 10) || 0,
-    }).then(res => {
+
+    teamApi(Current.api.startCheckout, {
+      seatCount: parseInt(seats, 10) || 1,
+    }).then(async res => {
       if (res.ok) {
-        location.href = `/t/${teamId}/usage?install_complete=1`
+        const stripe = await loadStripe(settings.stripePublishableApiKey)
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: res.data.stripeCheckoutSessionId,
+        })
+        setError(error.message)
       } else {
-        setLoading(false)
-        setError("Failed to update subscription")
+        setError("Failed to start checkout")
       }
+      setLoading(false)
     })
+    // teamApi(Current.api.updateSubscription, {
+    //   billingEmail: email,
+    //   seats: parseInt(seats, 10) || 0,
+    // }).then(res => {
+    //   if (res.ok) {
+    //     location.href = `/t/${teamId}/usage?install_complete=1`
+    //   } else {
+    //     setLoading(false)
+    //     setError("Failed to update subscription")
+    //   }
+    // })
   }
+  React.useEffect(() => {
+    if (show) {
+      setLoading(true)
+      teamApi(Current.api.fetchSubscriptionInfo).then(res => {
+        if (res.ok) {
+          // pass
+        }
+        setLoading(false)
+      })
+    }
+  }, [show])
+
+  const monthlyCost = 499
+  const userCount = parseInt(seats, 0) || 0
+  const costCents = userCount * monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -238,25 +269,11 @@ function SubscriptionManagementModal({
             setSubscription()
           }}>
           <Form.Group controlId="formBasicEmail">
-            <Form.Label>Billing Email</Form.Label>
-            <Form.Control
-              type="email"
-              placeholder="Enter email"
-              required
-              value={email}
-              onChange={(x: React.ChangeEvent<HTMLInputElement>) =>
-                setEmail(x.target.value)
-              }
-            />
-            <Form.Text className="text-muted">
-              We’ll send you billing reminders at this email address.
-            </Form.Text>
-          </Form.Group>
-          <Form.Group controlId="formBasicEmail">
             <Form.Label>Seats</Form.Label>
             <Form.Control
               type="number"
               required
+              min="1"
               placeholder="Enter seat count"
               value={seats}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -269,11 +286,223 @@ function SubscriptionManagementModal({
             </Form.Text>
           </Form.Group>
 
-          <Button variant="primary" type="submit" disabled={loading}>
-            {loading ? "Loading" : "Pay"}
+          <Form.Group>
+            <Form.Label>Due Today</Form.Label>
+            <Form.Control
+              type="text"
+              required
+              disabled
+              value={formatCents(costCents)}
+            />
+            <Form.Text className="text-muted">
+              Billed monthly. <b>{userCount} seat(s) </b>
+              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+            </Form.Text>
+          </Form.Group>
+          <Button variant="primary" type="submit" block disabled={loading}>
+            {loading ? "Loading" : "Continue to Payment"}
           </Button>
+          <Form.Text className="text-muted">
+            Kodiak uses Stripe.com to securely handle payments.
+          </Form.Text>
           {error && <Form.Text className="text-danger">{error}</Form.Text>}
         </Form>
+      </Modal.Body>
+    </Modal>
+  )
+}
+
+interface ISubscriptionManagementModalV2Props {
+  readonly show: boolean
+  readonly onClose: (reload: boolean) => void
+  readonly seatUsage: number
+}
+function SubscriptionManagementModalV2({
+  show,
+  onClose,
+  seatUsage,
+}: ISubscriptionManagementModalV2Props) {
+  const [seats, setSeats] = React.useState("1")
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [prorationAmount, setProrationAmount] = React.useState<{kind: 'loading'} | {kind: 'failed'} | {kind: 'success', cost: number}>({kind: 'loading'})
+  const [prorationTimestamp, setprorationTimestamp] = React.useState(0)
+  const [expectedCost, setExpectedCost] = React.useState(0)
+  const teamId = useTeamId()
+
+  const userCount = parseInt(seats, 0) || 0
+
+  function setSubscription() {
+    setLoading(true)
+    setError("")
+    teamApi(Current.api.updateSubscription, {seats: userCount, prorationTimestamp, expectedCost }).then(res => {
+      if (res.ok) {
+
+      }
+      setLoading("false")
+    })
+    // teamApi(Current.api.startCheckout)().then(res => {
+    //   if (res.ok) {
+    //   }
+    //   setLoading(false)
+    // })
+    // confirm("Stripe")
+    // teamApi(Current.api.updateSubscription, {
+    //   billingEmail: email,
+    //   seats: parseInt(seats, 10) || 0,
+    // }).then(res => {
+    //   if (res.ok) {
+    //     location.href = `/t/${teamId}/usage?install_complete=1`
+    //   } else {
+    //     setLoading(false)
+    //     setError("Failed to update subscription")
+    //   }
+    // })
+  }
+  React.useEffect(() => {
+    if (show) {
+      setLoading(true)
+      teamApi(Current.api.fetchSubscriptionInfo).then(res => {
+        if (res.ok) {
+          // pass
+        }
+        setLoading(false)
+      })
+    }
+  }, [show])
+
+  function cancelSubscription() {
+    const res = prompt("Please enter 'cancel subscription' to cancel your subscription.")
+    if  (res == null || res.toLowerCase().replace(/\s/g, '') !== 'cancelsubscription') {
+      return
+    }
+    teamApi(Current.api.cancelSubscription).then(res => {
+      if (res.ok) {
+        onClose(true)
+      alert('subscription canceled')
+
+    } else {
+      alert('failed to cancel subscription')
+
+    }
+    })
+
+
+  }
+
+  React.useEffect(() => {
+    setProrationAmount({kind: 'loading'})
+ teamApi(Current.api.fetchProration, {subscriptionQuantity: seats}).then(res => {
+      if (res.ok) {
+        setProrationAmount({kind: 'success', cost: res.data.proratedCost})
+      } else {
+        setProrationAmount({kind: 'failed'})
+      }
+    })
+  }, [seats])
+  function formatProration(x) {
+   return (x.kind === 'loading' ? "--" : x.kind === 'failed' ? '--' : x.kind === 'success' ? formatCents(x.cost) : null)
+  }
+
+  const monthlyCost = 499
+  
+  // const costCents = userCount * monthlyCost - proration
+  const costCents =  userCount * monthlyCost
+  return (
+    <Modal show={show} onHide={onClose}>
+      <Modal.Header closeButton>
+        <Modal.Title>Manage Subscription</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault()
+            setSubscription()
+          }}>
+          <Form.Group controlId="formBasicEmail">
+            <Form.Label>Seats</Form.Label>
+            <Form.Control
+              type="number"
+              required
+              min="1"
+              placeholder="Enter seat count"
+              value={seats}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSeats(e.target.value)
+              }
+            />
+            <Form.Text className="text-muted">
+              You have <b>{seatUsage}</b> active seats this billing period.
+              Select at least <b>{seatUsage}</b> seats to continue service.
+            </Form.Text>
+            <Form.Text className="text-muted">
+              Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at <b>$4.99/seat</b>
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Billing Email </Form.Label>
+            <Form.Control
+              type="text"
+              required
+              disabled
+              value="accounting@acme-corp.com"
+            />
+            <Form.Text className="text-muted">
+              <a href="#">update</a>
+            </Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Payment Method </Form.Label>
+            <Form.Control
+              type="text"
+              required
+              disabled
+              value="MasterCard (5434)"
+            />
+            <Form.Text className="text-muted">
+              <a href="#">update</a>
+            </Form.Text>
+          </Form.Group>
+      {/*   <Form.Group>
+            <Form.Label>Due Monthly</Form.Label>
+            <Form.Control
+              type="text"
+              required
+              disabled
+              value={formatCents(costCents)}
+            />
+            <Form.Text className="text-muted">
+              <b>{userCount} seat(s) </b>
+              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+            </Form.Text>
+          </Form.Group>*/}
+          <Form.Group>
+            <Form.Label>Due Today</Form.Label>
+            <Form.Control
+              type="text"
+              required
+              disabled
+              value={userCount === 1 ? "--" : formatProration(prorationAmount)}
+            />
+            {userCount !== 1 && prorationAmount.kind === 'success' ?  <Form.Text className="text-muted">
+              Includes prorations. Renews monthly at <b>{formatCents(costCents)}</b> for <b>{userCount} seat(s) </b>
+              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+            </Form.Text> : null}
+          </Form.Group>
+          <Button variant="primary" type="submit" block disabled={prorationAmount.kind !== 'success' || userCount === 1}>
+            {/*{loading ? "Loading" : `Pay ${formatCents(costProrated)}`}*/}
+            {userCount === 1 ? "first modify your seat count..." : prorationAmount.kind === 'success' ? `Pay ${formatCents(prorationAmount.cost)}` : '--'}
+          </Button>
+{/*          <Form.Text className="text-muted">
+            Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at <b>$4.99/seat</b>
+          </Form.Text>
+*/}          {error && <Form.Text className="text-danger">{error}</Form.Text>}
+        </Form>
+        <hr/>
+           <Button variant="outline-danger" type="button" size="sm" onClick={cancelSubscription}>
+            Cancel Subscription
+          </Button>
       </Modal.Body>
     </Modal>
   )
@@ -531,10 +760,16 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const showStartTrialModal = Boolean(queryParams.get("start_trial"))
   const showInstallCompleteModal = Boolean(queryParams.get("install_complete"))
   const showSubscriptionManagerModal = Boolean(
-    queryParams.get("manage_subscription"),
+    queryParams.get("start_subscription"),
+  )
+  const showSubscriptionModifyModal = Boolean(
+    queryParams.get("modify_subscription"),
   )
   function clearQueryString() {
     history.push(location.pathname)
+  }
+  function clearQueryStringReload() {
+    location.href = location.pathname
   }
   if (props.data.status === "loading") {
     return <Loading />
@@ -552,12 +787,14 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const oneMonthAgo = formatDate(dateOneMonthAgo, "MMM do")
 
   function handleStartSubscription() {
-    history.push(location.pathname + "?manage_subscription=1")
+    history.push(location.pathname + "?start_subscription=1")
   }
   function handleStartTrial() {
     history.push(location.pathname + "?start_trial=1")
   }
-  function modifySubscription() {}
+  function modifySubscription() {
+    history.push(location.pathname + "?modify_subscription=1")
+  }
 
   return (
     <UsageAndBillingContainer>
@@ -579,6 +816,15 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           show={showSubscriptionManagerModal}
           onClose={clearQueryString}
           seatUsage={data.activeUsers.length}
+        />
+        <SubscriptionManagementModalV2
+          show={showSubscriptionModifyModal}
+          onClose={x => {
+            if (x) {
+              location.search = ''
+            } else {
+            clearQueryString()
+          }}}
         />
         <Subscription
           startSubscription={handleStartSubscription}

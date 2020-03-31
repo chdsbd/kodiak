@@ -119,9 +119,31 @@ export const Current: World = {
         await authRoute.post<unknown>(
           `/v1/t/${args.teamId}/update_subscription`,
           jsonToFormData({
-            billingEmail: args.billingEmail,
-            seats: args.seats,
+            ...args,
           }),
+        )
+      ).data,
+      cancelSubscription: async (args: api.ICancelSubscriptionArgs) => await authRoute.post<unknown>(
+          `/v1/t/${args.teamId}/cancel_subscription`,
+        ),
+    fetchSubscriptionInfo: async (args: api.IFetchSubscriptionInfoArgs) =>
+      (
+        await authRoute.get<api.IFetchSubscriptionInfoResponse>(
+          `/v1/t/${args.teamId}/fetch_subscription_info`,
+        )
+      ).data,
+    startCheckout: async (args: api.IStartCheckoutArgs) =>
+      (
+        await authRoute.post<api.IStartCheckoutResponse>(
+          `/v1/t/${args.teamId}/start_checkout`,
+          jsonToFormData({ seatCount: args.seatCount }),
+        )
+      ).data,
+    fetchProration: async (args: api.IFetchProrationArgs) =>
+      (
+        await authRoute.post<api.IFetchProrationResponse>(
+          `/v1/t/${args.teamId}/fetch_proration`,
+          jsonToFormData({ subscriptionQuantity: args.subscriptionQuantity })
         )
       ).data,
   },
