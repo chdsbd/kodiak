@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.19.0 - 2020-03-29
+
+### Added
+- add `update.blacklist_usernames` to enable Kodiak to skip automatic updates for PRs opened by certain users. This is useful for making Kodiak play nicely with Dependabot. See the [configuration reference](https://kodiakhq.com/docs/config-reference#updateblacklist_usernames) and the [Dependabot recipe](https://kodiakhq.com/docs/recipes#automated-dependency-updates-with-dependabot) for more information. This feature was contributed by Negan1911. (#327)
+
 ## 0.18.0 - 2020-03-04
 
 ### Added

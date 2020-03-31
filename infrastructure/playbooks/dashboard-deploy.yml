@@ -1,0 +1,105 @@
+---
+- hosts: "{{ target | default('no_hosts')}}"
+
+  vars_prompt:
+    - name: release_sha
+      prompt: "git SHA for version to release"
+      private: no
+
+  tasks:
+    # https://docs.ansible.com/ansible/latest/modules/apt_module.html
+    - name: install pip
+      become: true
+      apt:
+        name: python-pip
+        state: present
+
+    - name: install pip3
+      become: true
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: install postgres
+      become: true
+      apt:
+        name: postgresql-12
+        state: present
+
+    # https://docs.ansible.com/ansible/latest/modules/systemd_module.html
+    - name: ensure postgres is running
+      systemd:
+        name: postgresql@12-main.service
+        state: started
+
+    # https://docs.ansible.com/ansible/latest/modules/pip_module.html
+    - name: install python docker package
+      become: true
+      pip:
+        name: docker
+
+    # https://docs.ansible.com/ansible/latest/modules/template_module.html
+    - name: template & copy aggregate PR activity cron service
+      template:
+        src: "{{ playbook_dir | dirname }}/systemd/kodiak-aggregate_pull_request_activity.service.j2"
+        dest: /etc/systemd/system/kodiak-aggregate_pull_request_activity.service
+
+    # https://docs.ansible.com/ansible/latest/modules/copy_module.html#copy-module
+    - name: copy aggregate PR activity cron timer
+      copy:
+        src: "{{ playbook_dir | dirname }}/systemd/kodiak-aggregate_pull_request_activity.timer"
+        dest: /etc/systemd/system/kodiak-aggregate_pull_request_activity.timer
+
+    - name: template & copy aggregate user PR activity cron service
+      template:
+        src: "{{ playbook_dir | dirname }}/systemd/kodiak-aggregate_user_pull_request_activity.service.j2"
+        dest: /etc/systemd/system/kodiak-aggregate_user_pull_request_activity.service
+
+    - name: copy aggregate PR activity cron timer
+      copy:
+        src: "{{ playbook_dir | dirname }}/systemd/kodiak-aggregate_user_pull_request_activity.timer"
+        dest: /etc/systemd/system/kodiak-aggregate_user_pull_request_activity.timer
+
+    - name: start aggregate pr activity cron
+      systemd:
+        name: kodiak-aggregate_pull_request_activity.timer
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: start aggregate user pr activity cron
+      systemd:
+        name: kodiak-aggregate_pull_request_activity.timer
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # https://docs.ansible.com/ansible/latest/modules/docker_container_module.html
+    - name: run nginx for web ui static files
+      become: true
+      docker_container:
+        name: nginx
+        image: "cdignam/kodiak-web-ui:{{ release_sha }}"
+        ports:
+          - "4444:80"
+        env_file: /etc/kodiak/.env
+        restart_policy: always
+
+    - name: run web api gunicorn
+      become: true
+      docker_container:
+        name: gunicorn
+        image: "cdignam/kodiak-web-api:{{ release_sha }}"
+        ports:
+          - "8888:5000"
+        env_file: /etc/kodiak/.env
+        restart_policy: always
+
+    - name: run event ingestion
+      become: true
+      docker_container:
+        name: ingest_events
+        image: "cdignam/kodiak-web-api:{{ release_sha }}"
+        env_file: /etc/kodiak/.env
+        restart_policy: always
+        command: [".venv/bin/python", "./manage.py", "ingest_events"]
