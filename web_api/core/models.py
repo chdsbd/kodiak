@@ -255,6 +255,9 @@ class Account(BaseModel):
     def start_trial(
         self, actor: User, billing_email: str, length_days: int = 14
     ) -> None:
+        if self.trial_expiration is not None:
+            logger.warning("attempted to start trial when one already exists")
+            return
         self.trial_expiration = timezone.now() + datetime.timedelta(days=length_days)
         self.trial_start = timezone.now()
         self.trial_started_by = actor

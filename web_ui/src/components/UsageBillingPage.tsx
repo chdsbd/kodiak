@@ -242,17 +242,6 @@ function SubscriptionManagementModal({
     //   }
     // })
   }
-  React.useEffect(() => {
-    if (show) {
-      setLoading(true)
-      teamApi(Current.api.fetchSubscriptionInfo).then(res => {
-        if (res.ok) {
-          // pass
-        }
-        setLoading(false)
-      })
-    }
-  }, [show])
 
   const monthlyCost = 499
   const userCount = parseInt(seats, 0) || 0
@@ -359,17 +348,6 @@ function SubscriptionManagementModalV2({
     //   }
     // })
   }
-  React.useEffect(() => {
-    if (show) {
-      setLoading(true)
-      teamApi(Current.api.fetchSubscriptionInfo).then(res => {
-        if (res.ok) {
-          // pass
-        }
-        setLoading(false)
-      })
-    }
-  }, [show])
 
   function cancelSubscription() {
     const res = prompt("Please enter 'cancel subscription' to cancel your subscription.")

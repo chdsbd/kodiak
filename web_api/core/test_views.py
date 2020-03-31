@@ -4,6 +4,7 @@ from typing import Any, cast
 import pytest
 import responses
 from django.conf import settings
+from django.utils import timezone
 
 from core.models import (
     Account,
@@ -156,6 +157,39 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
             lastActiveDate="2020-12-05",
         )
     ]
+
+
+@pytest.mark.django_db
+def test_usage_billing_trial_expired(
+    authed_client: Client, user: User, other_user: User
+) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
+    user_account.trial_start = timezone.make_aware(datetime.datetime(2000, 4, 15))
+    user_account.trial_expiration = timezone.make_aware(datetime.datetime(2000, 5, 4))
+    user_account.save()
+    assert datetime.datetime.now() > datetime.datetime(
+        2000, 5, 4
+    ), "we expect the current time to be more recent"
+
+    assert user_account.trial_expired() is True
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["trial"] is not None
+    assert res.json()["trial"] == dict(
+        startDate="2000-04-15T00:00:00Z",
+        endDate="2000-05-04T00:00:00Z",
+        expired=True,
+        startedBy=dict(
+            id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
+        ),
+    )
 
 
 @pytest.mark.django_db
@@ -331,6 +365,77 @@ def test_accounts(authed_client: Client, user: User) -> None:
         accounts[0]["profileImgUrl"]
         == f"https://avatars.githubusercontent.com/u/{user_account.github_account_id}"
     )
+
+
+@pytest.mark.django_db
+def test_start_trial(authed_client: Client, user: User) -> None:
+    """
+    When a user starts a trial we should update their account.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    assert account.trial_start is None
+    assert account.trial_expiration is None
+    assert account.trial_started_by is None
+    assert (
+        account.trial_expired() is False
+    ), "when a trial is inactive, it shouldn't have expired."
+    res = authed_client.post(
+        f"/v1/t/{account.id}/start_trial", dict(billingEmail="b.lowe@example.com")
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert account.trial_start is not None
+    assert (
+        (account.trial_start - account.trial_expiration).total_seconds()
+        - datetime.timedelta(days=14).total_seconds()
+        < 60 * 60
+    ), "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
+    assert account.trial_started_by == user
+    assert account.trial_expired() is False
+
+
+def equal_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
+    """
+    Dates are equal if they are within 5 minutes of each other. This should
+    hopefully reduce flakiness is tests.
+    """
+    return abs(int(a.timestamp()) - int(b.timestamp())) < 60 * 5
+
+
+@pytest.mark.django_db
+def test_start_trial_existing_trial(authed_client: Client, user: User) -> None:
+    """
+    Starting a trial when there is already an existing trial shouldn't alter
+    current trial.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    account.start_trial(actor=user, billing_email="b.lowe@example.com", length_days=2)
+    original_trial_start = account.trial_start
+    original_trial_expiration = account.trial_expiration
+    original_trial_started_by = account.trial_started_by
+    original_billing_email = account.billing_email
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/start_trial", dict(billingEmail="d.abernathy@example.com")
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert equal_dates(account.trial_start, original_trial_start)
+    assert equal_dates(account.trial_expiration, original_trial_expiration)
+    assert account.trial_started_by == original_trial_started_by
+    assert account.billing_email == original_billing_email
 
 
 @pytest.mark.django_db
