@@ -235,9 +235,13 @@ def test_usage_billing_authentication(authed_client: Client, other_user: User) -
 
 
 @pytest.mark.django_db
-def test_usage_billing_susbcription_started(
-    authed_client: Client, user: User, other_user: User
+def test_usage_billing_subscription_started(
+    authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = 1650581784
+    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    mocker.patch("core.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC)
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -261,14 +265,14 @@ def test_usage_billing_susbcription_started(
         plan_amount=499,
         subscription_quantity=3,
         subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1655765784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
     )
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
-    assert res.json()["subscription"]["nextBillingDate"] == "2022-06-20T22:56:24"
-    assert isinstance(res.json()["subscription"]["expired"], bool)
+    assert res.json()["subscription"]["nextBillingDate"] == "2022-07-20T22:56:24"
+    assert res.json()["subscription"]["expired"] is False
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
