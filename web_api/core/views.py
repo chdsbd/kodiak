@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import time
@@ -207,7 +206,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     )
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
-    customer_id = account.customer_id or None
+    customer_id = account.stripe_customer_id or None
 
     # https://stripe.com/docs/api/checkout/sessions/create
     session = stripe.checkout.Session.create(
@@ -218,12 +217,10 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
         # (payment_method_card_{brand,exp_month,exp_year,last4}).
         payment_method_types=["card"],
         subscription_data={
-            # TODO: Don't hard code this plan
-            "items": [{"plan": "plan_GuzDf41AmGOJzQ", "quantity": seat_count}],
+            "items": [{"plan": settings.STRIPE_PLAN_ID, "quantity": seat_count}],
         },
-        # TODO: Figure out where we want these endpoints to land.
-        success_url=f"http://app.localhost.kodiakhq.com:3000/t/{account.id}/usage?success=1&session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"http://app.localhost.kodiakhq.com:3000/t/{account.id}/usage?cancel=1&session_id={{CHECKOUT_SESSION_ID}}",
+        success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
+        cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
     )
     return JsonResponse(dict(stripeCheckoutSessionId=session.id))
 

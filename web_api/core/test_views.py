@@ -269,6 +269,29 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 
 @pytest.mark.django_db
+def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+
+    class FakeCheckoutSession:
+        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
+
+    mocker.patch(
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
+    )
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+
+
+@pytest.mark.django_db
 def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
     user_account = Account.objects.create(
         github_installation_id=377930,
