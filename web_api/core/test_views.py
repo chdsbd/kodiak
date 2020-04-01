@@ -160,6 +160,32 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 
 
 @pytest.mark.django_db
+def test_usage_billing_trial_active(
+    authed_client: Client, user: User, other_user: User
+) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
+    user_account.save()
+
+    assert user_account.trial_expired() is False
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["trial"] is not None
+    assert isinstance(res.json()["trial"]["startDate"], str)
+    assert isinstance(res.json()["trial"]["endDate"], str)
+    assert res.json()["trial"]["expired"] is False
+    assert res.json()["trial"]["startedBy"] == dict(
+        id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
+    )
+
+
+@pytest.mark.django_db
 def test_usage_billing_trial_expired(
     authed_client: Client, user: User, other_user: User
 ) -> None:
