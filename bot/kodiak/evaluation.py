@@ -259,12 +259,12 @@ async def mergeable(
     if api_call_retry_timeout == 0:
         log.warning("timeout reached for api calls to GitHub")
         if api_call_retry_message is not None:
-            msg = f"⚠️ problem contacting GitHub API: {api_call_retry_message.message!r}"
+            msg = (
+                f"⚠️ problem contacting GitHub API: {api_call_retry_message.message!r}"
+            )
             if api_call_retry_message.description:
                 msg += f" ({api_call_retry_message.description})"
-            await set_status(
-                msg
-            )
+            await set_status(msg)
         else:
             await set_status("⚠️ problem contacting GitHub API")
         return
