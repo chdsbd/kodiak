@@ -12,6 +12,7 @@ from core.models import (
     PullRequestActivity,
     User,
     UserPullRequestActivity,
+    StripeCustomerInformation,
 )
 from core.testutils import TestClient as Client
 
@@ -231,6 +232,47 @@ def test_usage_billing_authentication(authed_client: Client, other_user: User) -
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_usage_billing_susbcription_started(
+    authed_client: Client, user: User, other_user: User
+) -> None:
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    stripe_customer_info = StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1655765784,
+    )
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"] is not None
+    assert res.json()["subscription"]["nextBillingDate"] == "2022-06-20T22:56:24"
+    assert isinstance(res.json()["subscription"]["expired"], bool)
+    assert res.json()["subscription"]["seats"] == 3
+    assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
+    assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
+    assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
 
 
 @pytest.mark.django_db
