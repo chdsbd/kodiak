@@ -133,6 +133,12 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
     return status
 
 
+@dataclass
+class ApiErrorMessage:
+    message: str
+    description: Optional[str] = None
+
+
 class PRAPI(Protocol):
     async def dequeue(self) -> None:
         ...
@@ -210,7 +216,7 @@ async def mergeable(
     is_active_merge: bool,
     skippable_check_timeout: int,
     api_call_retry_timeout: int,
-    api_call_retry_method_name: Optional[str],
+    api_call_retry_message: Optional[ApiErrorMessage],
     app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
@@ -252,9 +258,12 @@ async def mergeable(
 
     if api_call_retry_timeout == 0:
         log.warning("timeout reached for api calls to GitHub")
-        if api_call_retry_method_name is not None:
+        if api_call_retry_message is not None:
+            msg = f"⚠️ problem contacting GitHub API: {api_call_retry_message.message!r}"
+            if api_call_retry_message.description:
+                msg += f" ({api_call_retry_message.description})"
             await set_status(
-                f"⚠️ problem contacting GitHub API with method {api_call_retry_method_name!r}"
+                msg
             )
         else:
             await set_status("⚠️ problem contacting GitHub API")
