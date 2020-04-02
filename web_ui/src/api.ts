@@ -139,6 +139,12 @@ export interface IStartCheckoutArgs {
 export interface IStartCheckoutResponse {
   readonly stripeCheckoutSessionId: string
 }
+export interface IModifyBillingArgs {
+  readonly teamId: string
+}
+export interface ModifyBillingResponse {
+  readonly stripeCheckoutSessionId: string
+}
 
 export interface IFetchProrationArgs {
   readonly teamId: string
@@ -166,4 +172,5 @@ export interface Api {
   cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
   fetchProration: (args: IFetchProrationArgs) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
+  modifyBillingInfo: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
 }

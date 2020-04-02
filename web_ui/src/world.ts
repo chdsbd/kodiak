@@ -133,6 +133,12 @@ export const Current: World = {
           jsonToFormData({ seatCount: args.seatCount }),
         )
       ).data,
+    modifyBilling: async (args: api.IModifyBillingArgs) =>
+      (
+        await authRoute.post<api.ModifyBillingResponse>(
+          `/v1/t/${args.teamId}/modify_payment_details`
+        )
+      ).data,
     fetchProration: async (args: api.IFetchProrationArgs) =>
       (
         await authRoute.post<api.IFetchProrationResponse>(

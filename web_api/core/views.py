@@ -253,6 +253,23 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @csrf_exempt
 @auth.login_required
+def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+    session = stripe.checkout.Session.create(
+        client_reference_id=account.id,
+        customer=account.stripe_customer_id or None,
+        mode="setup",
+        payment_method_types=["card"],
+        success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
+        cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
+    )
+    return JsonResponse(dict(stripeCheckoutSessionId=session.id))
+
+
+@csrf_exempt
+@auth.login_required
 def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
         Account.objects.filter(memberships__user=request.user), id=team_id

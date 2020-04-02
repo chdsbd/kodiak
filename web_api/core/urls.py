@@ -15,6 +15,7 @@ urlpatterns = [
     path("t/<uuid:team_id>/fetch_proration", views.fetch_proration),
     path("t/<uuid:team_id>/cancel_subscription", views.cancel_subscription),
     path("t/<uuid:team_id>/start_checkout", views.start_checkout),
+    path("t/<uuid:team_id>/modify_payment_details", views.modify_payment_details),
     path("stripe_webhook", views.stripe_webhook_handler),
     path("accounts", views.accounts),
     path("ping", views.ping),

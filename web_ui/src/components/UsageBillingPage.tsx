@@ -383,6 +383,18 @@ function SubscriptionManagementModalV2({
    return (x.kind === 'loading' ? "--" : x.kind === 'failed' ? '--' : x.kind === 'success' ? formatCents(x.cost) : null)
   }
 
+  function updateBillingInfo() {
+    
+    teamApi(Current.api.modifyBilling).then(async res => {
+      if (res.ok) {
+        const stripe = await loadStripe(settings.stripePublishableApiKey)
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: res.data.stripeCheckoutSessionId,
+        })
+      }
+    })
+  }
+
   const monthlyCost = 499
   
   // const costCents = userCount * monthlyCost - proration
@@ -428,7 +440,7 @@ function SubscriptionManagementModalV2({
               value="accounting@acme-corp.com"
             />
             <Form.Text className="text-muted">
-              <a href="#">update</a>
+              <a href="#" onClick={updateBillingInfo}>update</a>
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -440,7 +452,7 @@ function SubscriptionManagementModalV2({
               value="MasterCard (5434)"
             />
             <Form.Text className="text-muted">
-              <a href="#">update</a>
+              <a href="#" onClick={updateBillingInfo}>update</a>
             </Form.Text>
           </Form.Group>
       {/*   <Form.Group>
