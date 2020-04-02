@@ -209,6 +209,17 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
         ],
         proration_date=proration_timestamp,
     )
+    stripe_customer_info.plan_amount = updated_subscription.plan.amount
+
+    stripe_customer_info.subscription_quantity = updated_subscription.quantity
+    stripe_customer_info.subscription_current_period_end = (
+        updated_subscription.current_period_end
+    )
+    stripe_customer_info.subscription_current_period_start = (
+        updated_subscription.current_period_start
+    )
+    stripe_customer_info.save()
+
     return HttpResponse(status=204)
 
 

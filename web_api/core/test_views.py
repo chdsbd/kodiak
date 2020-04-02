@@ -292,7 +292,11 @@ def test_update_subscription(
         dict(
             object="subscription",
             id="sub_Gu1xedsfo1",
+            current_period_end=period_start,
+            current_period_start=period_end,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            quantity=4,
         ),
         "fake-key",
     )
