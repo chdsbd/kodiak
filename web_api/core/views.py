@@ -22,6 +22,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
+from core.exceptions import UnprocessableEntity
 from core.models import (
     Account,
     AnonymousUser,
@@ -192,8 +193,22 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     )
     seats = int(request.POST["seats"])
     proration_timestamp = int(request.POST["prorationTimestamp"])
-    expected_cost = int(request.POST["expectedCost"])
-    # TODO: Call out to Stripe to update subscription
+    stripe_customer_info = account.stripe_customer_info()
+    if stripe_customer_info is None:
+        raise UnprocessableEntity("Subscription does not exist to modify.")
+
+    subscription = stripe.Subscription.retrieve(stripe_customer_info.subscription_id)
+    updated_subscription = stripe.Subscription.modify(
+        subscription.id,
+        items=[
+            {
+                "id": subscription["items"]["data"][0].id,
+                "plan": stripe_customer_info.plan_id,
+                "quantity": seats,
+            }
+        ],
+        proration_date=proration_timestamp,
+    )
     return HttpResponse(status=204)
 
 

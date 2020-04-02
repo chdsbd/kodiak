@@ -315,7 +315,7 @@ function SubscriptionManagementModalV2({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [prorationAmount, setProrationAmount] = React.useState<{kind: 'loading'} | {kind: 'failed'} | {kind: 'success', cost: number}>({kind: 'loading'})
-  const [prorationTimestamp, setprorationTimestamp] = React.useState(0)
+  const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const [expectedCost, setExpectedCost] = React.useState(0)
   const teamId = useTeamId()
 
@@ -373,6 +373,7 @@ function SubscriptionManagementModalV2({
  teamApi(Current.api.fetchProration, {subscriptionQuantity: seats}).then(res => {
       if (res.ok) {
         setProrationAmount({kind: 'success', cost: res.data.proratedCost})
+        setProrationTimestamp(res.data.prorationTime)
       } else {
         setProrationAmount({kind: 'failed'})
       }

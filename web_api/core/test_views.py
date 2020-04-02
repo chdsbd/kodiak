@@ -3,6 +3,7 @@ from typing import Any, cast
 
 import pytest
 import responses
+import stripe
 from django.conf import settings
 from django.utils import timezone
 
@@ -10,9 +11,9 @@ from core.models import (
     Account,
     AccountMembership,
     PullRequestActivity,
+    StripeCustomerInformation,
     User,
     UserPullRequestActivity,
-    StripeCustomerInformation,
 )
 from core.testutils import TestClient as Client
 
@@ -250,7 +251,7 @@ def test_usage_billing_subscription_started(
         stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
-    stripe_customer_info = StripeCustomerInformation.objects.create(
+    StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
@@ -277,6 +278,148 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
+
+
+@pytest.mark.django_db
+def test_update_subscription(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = 1650581784
+    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    # fake_subscription = stripe.Subscription(id='sub_Gu1xedsfo1', items=dict(data=[stripe.SubscriptionItem(id='si_Gx234091sd2')]))
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+        ),
+        "fake-key",
+    )
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify", return_value=fake_subscription
+    )
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
+    )
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=24),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 1
+    assert stripe_subscription_modify.call_count == 1
+
+
+@pytest.mark.django_db
+def test_update_subscription_missing_customer(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+        ),
+        "fake-key",
+    )
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify", return_value=fake_subscription
+    )
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    assert StripeCustomerInformation.objects.count() == 0
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=1650581784, seats=24),
+    )
+    assert res.status_code == 422
+    assert res.json()["message"] == "Subscription does not exist to modify."
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+
+
+@pytest.mark.django_db
+def test_cancel_subscription(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = 1650581784
+    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    patched = mocker.patch("core.models.stripe.Subscription.delete")
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
+    )
+    assert patched.call_count == 0
+    assert StripeCustomerInformation.objects.count() == 1
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 204
+    assert patched.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 0
 
 
 @pytest.mark.django_db

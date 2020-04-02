@@ -1,9 +1,12 @@
+from typing import Any
+
 import pytest
+
 from core.models import StripeCustomerInformation
 
 
 @pytest.mark.django_db
-def test_expired(mocker):
+def test_expired(mocker: Any) -> None:
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = 1650581784
     period_end = 1655765784 + ONE_DAY_SEC * 30  # start plus one month.
@@ -31,7 +34,7 @@ def test_expired(mocker):
 
 
 @pytest.mark.django_db
-def test_expired_inside_grace_period(mocker):
+def test_expired_inside_grace_period(mocker: Any) -> None:
     """
     Inside the grace period (two days) we will not show the subscription as
     expired.
