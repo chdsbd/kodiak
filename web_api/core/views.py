@@ -332,14 +332,17 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         # Stripe will wait until this webhook handler returns to redirect from checkout
         checkout_session = event.data.object
         if checkout_session.mode == "setup":
-            # if this is setup we won't have a subscription
+            # a setup checkout session occurs when a user updates their payment
+            # method or billing email. We update the associated account and
+            # stripe_customer_info on this event. Setup should occur after a
+            # subscription has been created.
             account = Account.objects.get(id=checkout_session.client_reference_id)
             customer = stripe.Customer.retrieve(checkout_session.customer)
             account.update_from(customer)
             stripe_customer_info = account.stripe_customer_info()
             if stripe_customer_info is None:
                 logger.warning("expected account %s to have customer info", account)
-                raise BadRequest
+                return HttpResponse(status=200)
             subscription = stripe.Subscription.retrieve(
                 stripe_customer_info.subscription_id
             )
@@ -352,6 +355,8 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
                 payment_method=payment_method,
             )
         elif checkout_session.mode == "subscription":
+            # subscription occurs after a user creates a subscription through
+            # the checkout.
             account = Account.objects.get(id=checkout_session.client_reference_id)
             subscription = stripe.Subscription.retrieve(checkout_session.subscription)
             customer = stripe.Customer.retrieve(checkout_session.customer)
