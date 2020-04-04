@@ -163,7 +163,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 
 @pytest.mark.django_db
 def test_usage_billing_trial_active(
-    authed_client: Client, user: User, other_user: User
+    authed_client: Client, user: User, other_user: User,patch_start_trial: object
 ) -> None:
     user_account = Account.objects.create(
         github_installation_id=377930,
@@ -189,7 +189,7 @@ def test_usage_billing_trial_active(
 
 @pytest.mark.django_db
 def test_usage_billing_trial_expired(
-    authed_client: Client, user: User, other_user: User
+    authed_client: Client, user: User, other_user: User,patch_start_trial: object
 ) -> None:
     user_account = Account.objects.create(
         github_installation_id=377930,
@@ -631,8 +631,18 @@ def test_accounts(authed_client: Client, user: User) -> None:
     )
 
 
+@pytest.fixture
+def patch_start_trial(mocker: Any) -> None:
+    fake_customer = stripe.Customer.construct_from(
+        dict(object="customer", id="cust_Gx2a3gd5x6",), "fake-key",
+    )
+    mocker.patch("core.models.stripe.Customer.create", return_value=fake_customer)
+
+
 @pytest.mark.django_db
-def test_start_trial(authed_client: Client, user: User) -> None:
+def test_start_trial(
+    authed_client: Client, user: User, patch_start_trial: object
+) -> None:
     """
     When a user starts a trial we should update their account.
     """
@@ -673,7 +683,9 @@ def equal_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
 
 
 @pytest.mark.django_db
-def test_start_trial_existing_trial(authed_client: Client, user: User) -> None:
+def test_start_trial_existing_trial(
+    authed_client: Client, user: User, patch_start_trial: object
+) -> None:
     """
     Starting a trial when there is already an existing trial shouldn't alter
     current trial.
@@ -689,7 +701,6 @@ def test_start_trial_existing_trial(authed_client: Client, user: User) -> None:
     original_trial_start = account.trial_start
     original_trial_expiration = account.trial_expiration
     original_trial_started_by = account.trial_started_by
-    original_billing_email = account.billing_email
 
     res = authed_client.post(
         f"/v1/t/{account.id}/start_trial", dict(billingEmail="d.abernathy@example.com")
@@ -699,7 +710,6 @@ def test_start_trial_existing_trial(authed_client: Client, user: User) -> None:
     assert equal_dates(account.trial_start, original_trial_start)
     assert equal_dates(account.trial_expiration, original_trial_expiration)
     assert account.trial_started_by == original_trial_started_by
-    assert account.billing_email == original_billing_email
 
 
 @pytest.mark.django_db

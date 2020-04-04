@@ -22,7 +22,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.exceptions import UnprocessableEntity
+from core.exceptions import BadRequest, UnprocessableEntity
 from core.models import (
     Account,
     AnonymousUser,
@@ -320,7 +320,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     except ValueError:
         # Invalid payload
         logger.warning("problem parsing stripe payload", exc_info=True)
-        return HttpResponse(status=400)
+        raise BadRequest
 
     print(repr(event))
 
@@ -331,50 +331,51 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     if event.type == "checkout.session.completed":
         # Stripe will wait until this webhook handler returns to redirect from checkout
         checkout_session = event.data.object
-        subscription = stripe.Subscription.retrieve(checkout_session.subscription)
-        customer = stripe.Customer.retrieve(checkout_session.customer)
-        payment_method = stripe.PaymentMethod.retrieve(
-            subscription.default_payment_method
-        )
-        account = Account.objects.get(id=checkout_session.client_reference_id)
-        account.stripe_customer_id = customer.id
-        account.stripe_subscription_id = subscription.id
-        account.seats = subscription.quantity
-        account.save()
-
-        try:
-            stripe_customer_info = StripeCustomerInformation.objects.get(
-                customer_id=customer.id
+        if checkout_session.mode == "setup":
+            # if this is setup we won't have a subscription
+            account = Account.objects.get(id=checkout_session.client_reference_id)
+            customer = stripe.Customer.retrieve(checkout_session.customer)
+            account.update_from(customer)
+            stripe_customer_info = account.stripe_customer_info()
+            if stripe_customer_info is None:
+                logger.warning("expected account %s to have customer info", account)
+                raise BadRequest
+            subscription = stripe.Subscription.retrieve(
+                stripe_customer_info.subscription_id
             )
-        except StripeCustomerInformation.DoesNotExist:
-            stripe_customer_info = StripeCustomerInformation(customer_id=customer.id)
+            payment_method = stripe.PaymentMethod.retrieve(
+                subscription.default_payment_method
+            )
+            stripe_customer_info.update_from(
+                customer=customer,
+                subscription=subscription,
+                payment_method=payment_method,
+            )
+        elif checkout_session.mode == "subscription":
+            account = Account.objects.get(id=checkout_session.client_reference_id)
+            subscription = stripe.Subscription.retrieve(checkout_session.subscription)
+            customer = stripe.Customer.retrieve(checkout_session.customer)
+            payment_method = stripe.PaymentMethod.retrieve(
+                subscription.default_payment_method
+            )
 
-        stripe_customer_info.subscription_id = subscription.id
-        stripe_customer_info.plan_id = subscription.plan.id
-        stripe_customer_info.payment_method_id = payment_method.id
+            account.update_from(customer=customer)
 
-        stripe_customer_info.customer_email = customer.email
-        stripe_customer_info.customer_balance = customer.balance
-        stripe_customer_info.customer_created = customer.created
-
-        stripe_customer_info.payment_method_card_brand = payment_method.card.brand
-        stripe_customer_info.payment_method_card_exp_month = (
-            payment_method.card.exp_month
-        )
-        stripe_customer_info.payment_method_card_exp_year = payment_method.card.exp_year
-        stripe_customer_info.payment_method_card_last4 = payment_method.card.last4
-
-        stripe_customer_info.plan_amount = subscription.plan.amount
-
-        stripe_customer_info.subscription_quantity = subscription.quantity
-        stripe_customer_info.subscription_start_date = subscription.start_date
-        stripe_customer_info.subscription_current_period_end = (
-            subscription.current_period_end
-        )
-        stripe_customer_info.subscription_current_period_start = (
-            subscription.current_period_start
-        )
-        stripe_customer_info.save()
+            try:
+                stripe_customer_info = StripeCustomerInformation.objects.get(
+                    customer_id=customer.id
+                )
+            except StripeCustomerInformation.DoesNotExist:
+                stripe_customer_info = StripeCustomerInformation(
+                    customer_id=customer.id
+                )
+            stripe_customer_info.update_from(
+                subscription=subscription,
+                customer=customer,
+                payment_method=payment_method,
+            )
+        else:
+            raise BadRequest
         # Then define and call a method to handle the successful payment intent.
         # handle_payment_intent_succeeded(payment_intent)
     elif event.type == "invoice.payment_succeeded":
@@ -383,7 +384,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         invoice = event.data.object
         if not invoice.paid:
             logger.warning("invoice not paid %s", event)
-            return
+            return HttpResponse(status=200)
         stripe_customer = StripeCustomerInformation.objects.get(
             customer_id=invoice.customer
         )
@@ -400,7 +401,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         logger.warning("invoice.payment_failed %s", event)
     else:
         # Unexpected event type
-        return HttpResponse(status=400)
+        raise BadRequest
 
     return HttpResponse(status=200)
 

@@ -12,6 +12,11 @@ class ApiException(Exception):
             self.code = code
 
 
+class BadRequest(ApiException):
+    code = 400
+    message = "Bad Request"
+
+
 class AuthenticationRequired(ApiException):
     code = 401
     message = "Authentication Required"

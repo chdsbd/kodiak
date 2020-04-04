@@ -261,13 +261,19 @@ class Account(BaseModel):
         self.trial_expiration = timezone.now() + datetime.timedelta(days=length_days)
         self.trial_start = timezone.now()
         self.trial_started_by = actor
-        self.billing_email = billing_email
+        if not self.stripe_customer_id:
+            customer = stripe.Customer.create(email=billing_email)
+            self.stripe_customer_id = customer.id
         self.save()
 
     def trial_expired(self) -> bool:
         if self.trial_expiration is None:
             return False
         return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
+
+    def update_from(self, customer: stripe.Customer) -> None:
+        self.stripe_customer_id = customer
+        self.save()
 
 
 class AccountRole(models.TextChoices):
@@ -748,6 +754,34 @@ class StripeCustomerInformation(models.Model):
 
     class Meta:
         db_table = "stripe_customer_information"
+
+    def update_from(
+        self,
+        subscription: stripe.Subscription,
+        customer: stripe.Customer,
+        payment_method: stripe.PaymentMethod,
+    ) -> None:
+
+        self.subscription_id = subscription.id
+        self.plan_id = subscription.plan.id
+        self.payment_method_id = payment_method.id
+
+        self.customer_email = customer.email
+        self.customer_balance = customer.balance
+        self.customer_created = customer.created
+
+        self.payment_method_card_brand = payment_method.card.brand
+        self.payment_method_card_exp_month = payment_method.card.exp_month
+        self.payment_method_card_exp_year = payment_method.card.exp_year
+        self.payment_method_card_last4 = payment_method.card.last4
+
+        self.plan_amount = subscription.plan.amount
+
+        self.subscription_quantity = subscription.quantity
+        self.subscription_start_date = subscription.start_date
+        self.subscription_current_period_end = subscription.current_period_end
+        self.subscription_current_period_start = subscription.current_period_start
+        self.save()
 
     @property
     def expired(self) -> bool:
