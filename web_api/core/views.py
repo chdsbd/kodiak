@@ -266,7 +266,7 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
         mode="setup",
         payment_method_types=["card"],
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
-        cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
+        cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?modify_subscription=1",
     )
     return JsonResponse(dict(stripeCheckoutSessionId=session.id))
 
