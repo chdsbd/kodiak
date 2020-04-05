@@ -170,7 +170,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
             startTrial()
           }}>
           <Form.Group controlId="formBasicEmail">
-            <Form.Label>Billing Email</Form.Label>
+            <Form.Label>Notification Email</Form.Label>
             <Form.Control
               type="email"
               placeholder="Enter email"
@@ -181,7 +181,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
               }
             />
             <Form.Text className="text-muted">
-              We’ll send you billing reminders at this email address.
+              We’ll send you trial reminders at this email address.
             </Form.Text>
           </Form.Group>
           <Button variant="primary" type="submit" disabled={loading}>
