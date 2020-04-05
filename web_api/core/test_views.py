@@ -1,12 +1,13 @@
 import datetime
 import json
 import time
-from typing import Any, cast
+from typing import Any, Union, cast
 
 import pytest
 import responses
 import stripe
 from django.conf import settings
+from django.http import HttpResponse
 from django.utils import timezone
 
 from core.models import (
@@ -714,7 +715,7 @@ def test_start_trial_existing_trial(
     assert account.trial_started_by == original_trial_started_by
 
 
-def generate_header(payload: str):
+def generate_header(payload: str) -> str:
     """
     https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
     """
@@ -727,7 +728,7 @@ def generate_header(payload: str):
     return header
 
 
-def test_generate_header():
+def test_generate_header() -> None:
     """
     https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
     """
@@ -739,7 +740,7 @@ def test_generate_header():
     assert isinstance(event, stripe.Event)
 
 
-def post_webhook(event: dict):
+def post_webhook(event: Union[dict, str]) -> HttpResponse:
     if isinstance(event, str):
         payload = event
     else:
@@ -803,7 +804,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         github_account_type="User",
         stripe_customer_id="cus_Gz7jQFKdh4KirU",
     )
-    stripe_customer_info = StripeCustomerInformation.objects.create(
+    StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
