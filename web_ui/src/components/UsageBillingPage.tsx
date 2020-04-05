@@ -112,6 +112,11 @@ function formatFromNow(dateString: string): string {
   return formatDistanceToNow(parseISO(dateString))
 }
 
+function FormatDate({date}: {date: string}) {
+  return formatDate(parseISO(date), "y-MM-dd kk:mm") +
+                      " UTC"
+}
+
 interface IInstallCompleteModalProps {
   readonly show: boolean
   readonly onClose: () => void
@@ -197,16 +202,16 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
   )
 }
 
-interface ISubscriptionManagementModalProps {
+interface IStartSubscriptionModalProps {
   readonly show: boolean
   readonly onClose: () => void
   readonly seatUsage: number
 }
-function SubscriptionManagementModal({
+function StartSubscriptionModal({
   show,
   onClose,
   seatUsage,
-}: ISubscriptionManagementModalProps) {
+}: IStartSubscriptionModalProps) {
   const [seats, setSeats] = React.useState("1")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -266,13 +271,15 @@ function SubscriptionManagementModal({
               placeholder="Enter seat count"
               value={seats}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSeats(e.target.value)
+                setSeats(Math.max(parseInt(e.target.value, 10) || 1, 1))
               }
             />
-            <Form.Text className="text-muted">
-              You have <b>{seatUsage}</b> active seats this billing period.
-              Select at least <b>{seatUsage}</b> seats to continue service.
-            </Form.Text>
+            {seatUsage > 0 && (
+              <Form.Text className="text-muted">
+                You have <b>{seatUsage}</b> active seats this billing period.
+                Select at least <b>{seatUsage}</b> seats to continue service.
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Form.Group>
@@ -301,20 +308,22 @@ function SubscriptionManagementModal({
   )
 }
 
-interface ISubscriptionManagementModalV2Props {
+interface IManageSubscriptionModalProps {
   readonly show: boolean
   readonly onClose: (reload: boolean) => void
   readonly seatUsage: number
 }
-function SubscriptionManagementModalV2({
+function ManageSubscriptionModal({
   show,
   onClose,
   seatUsage,
-}: ISubscriptionManagementModalV2Props) {
+}: IManageSubscriptionModalProps) {
   const [seats, setSeats] = React.useState("1")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [prorationAmount, setProrationAmount] = React.useState<{kind: 'loading'} | {kind: 'failed'} | {kind: 'success', cost: number}>({kind: 'loading'})
+  const [prorationAmount, setProrationAmount] = React.useState<
+    { kind: "loading" } | { kind: "failed" } | { kind: "success"; cost: number }
+  >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const [expectedCost, setExpectedCost] = React.useState(0)
   const teamId = useTeamId()
@@ -324,9 +333,12 @@ function SubscriptionManagementModalV2({
   function setSubscription() {
     setLoading(true)
     setError("")
-    teamApi(Current.api.updateSubscription, {seats: userCount, prorationTimestamp, expectedCost }).then(res => {
+    teamApi(Current.api.updateSubscription, {
+      seats: userCount,
+      prorationTimestamp,
+      expectedCost,
+    }).then(res => {
       if (res.ok) {
-
       }
       setLoading("false")
     })
@@ -350,41 +362,49 @@ function SubscriptionManagementModalV2({
   }
 
   function cancelSubscription() {
-    const res = prompt("Please enter 'cancel subscription' to cancel your subscription.")
-    if  (res == null || res.toLowerCase().replace(/\s/g, '') !== 'cancelsubscription') {
+    const res = prompt(
+      "Please enter 'cancel subscription' to cancel your subscription.",
+    )
+    if (
+      res == null ||
+      res.toLowerCase().replace(/\s/g, "") !== "cancelsubscription"
+    ) {
       return
     }
     teamApi(Current.api.cancelSubscription).then(res => {
       if (res.ok) {
         onClose(true)
-      alert('subscription canceled')
-
-    } else {
-      alert('failed to cancel subscription')
-
-    }
+        alert("subscription canceled")
+      } else {
+        alert("failed to cancel subscription")
+      }
     })
-
-
   }
 
   React.useEffect(() => {
-    setProrationAmount({kind: 'loading'})
- teamApi(Current.api.fetchProration, {subscriptionQuantity: seats}).then(res => {
-      if (res.ok) {
-        setProrationAmount({kind: 'success', cost: res.data.proratedCost})
-        setProrationTimestamp(res.data.prorationTime)
-      } else {
-        setProrationAmount({kind: 'failed'})
-      }
-    })
+    setProrationAmount({ kind: "loading" })
+    teamApi(Current.api.fetchProration, { subscriptionQuantity: seats }).then(
+      res => {
+        if (res.ok) {
+          setProrationAmount({ kind: "success", cost: res.data.proratedCost })
+          setProrationTimestamp(res.data.prorationTime)
+        } else {
+          setProrationAmount({ kind: "failed" })
+        }
+      },
+    )
   }, [seats])
   function formatProration(x) {
-   return (x.kind === 'loading' ? "--" : x.kind === 'failed' ? '--' : x.kind === 'success' ? formatCents(x.cost) : null)
+    return x.kind === "loading"
+      ? "--"
+      : x.kind === "failed"
+      ? "--"
+      : x.kind === "success"
+      ? formatCents(x.cost)
+      : null
   }
 
   function updateBillingInfo() {
-    
     teamApi(Current.api.modifyBilling).then(async res => {
       if (res.ok) {
         const stripe = await loadStripe(settings.stripePublishableApiKey)
@@ -396,9 +416,9 @@ function SubscriptionManagementModalV2({
   }
 
   const monthlyCost = 499
-  
+
   // const costCents = userCount * monthlyCost - proration
-  const costCents =  userCount * monthlyCost
+  const costCents = userCount * monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -418,19 +438,21 @@ function SubscriptionManagementModalV2({
               min="1"
               placeholder="Enter seat count"
               value={seats}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSeats(e.target.value)
-              }
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setSeats(Math.max(parseInt(e.target.value, 10) || 1, 1))
+              }}
             />
+            {seatUsage > 0 && (
+              <Form.Text className="text-muted">
+                You have <b>{seatUsage}</b> active seats this billing period.
+                Select at least <b>{seatUsage}</b> seats to continue service.
+              </Form.Text>
+            )}
             <Form.Text className="text-muted">
-              You have <b>{seatUsage}</b> active seats this billing period.
-              Select at least <b>{seatUsage}</b> seats to continue service.
-            </Form.Text>
-            <Form.Text className="text-muted">
-              Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at <b>$4.99/seat</b>
+              Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at{" "}
+              <b>$4.99/seat</b>
             </Form.Text>
           </Form.Group>
-
           <Form.Group>
             <Form.Label>Billing Email </Form.Label>
             <Form.Control
@@ -440,7 +462,9 @@ function SubscriptionManagementModalV2({
               value="accounting@acme-corp.com"
             />
             <Form.Text className="text-muted">
-              <a href="#" onClick={updateBillingInfo}>update</a>
+              <a href="#" onClick={updateBillingInfo}>
+                update
+              </a>
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -452,10 +476,12 @@ function SubscriptionManagementModalV2({
               value="MasterCard (5434)"
             />
             <Form.Text className="text-muted">
-              <a href="#" onClick={updateBillingInfo}>update</a>
+              <a href="#" onClick={updateBillingInfo}>
+                update
+              </a>
             </Form.Text>
           </Form.Group>
-      {/*   <Form.Group>
+          {/*   <Form.Group>
             <Form.Label>Due Monthly</Form.Label>
             <Form.Control
               type="text"
@@ -476,24 +502,40 @@ function SubscriptionManagementModalV2({
               disabled
               value={userCount === 1 ? "--" : formatProration(prorationAmount)}
             />
-            {userCount !== 1 && prorationAmount.kind === 'success' ?  <Form.Text className="text-muted">
-              Includes prorations. Renews monthly at <b>{formatCents(costCents)}</b> for <b>{userCount} seat(s) </b>
-              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
-            </Form.Text> : null}
+            {userCount !== 1 && prorationAmount.kind === "success" ? (
+              <Form.Text className="text-muted">
+                Includes prorations. Renews monthly at{" "}
+                <b>{formatCents(costCents)}</b> for <b>{userCount} seat(s) </b>
+                at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+              </Form.Text>
+            ) : null}
           </Form.Group>
-          <Button variant="primary" type="submit" block disabled={prorationAmount.kind !== 'success' || userCount === 1}>
+          <Button
+            variant="primary"
+            type="submit"
+            block
+            disabled={prorationAmount.kind !== "success" || userCount === 1}>
             {/*{loading ? "Loading" : `Pay ${formatCents(costProrated)}`}*/}
-            {userCount === 1 ? "first modify your seat count..." : prorationAmount.kind === 'success' ? `Pay ${formatCents(prorationAmount.cost)}` : '--'}
+            {userCount === 1
+              ? "first modify your seat count..."
+              : prorationAmount.kind === "success"
+              ? `Pay ${formatCents(prorationAmount.cost)}`
+              : "--"}
           </Button>
-{/*          <Form.Text className="text-muted">
+          {/*          <Form.Text className="text-muted">
             Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at <b>$4.99/seat</b>
           </Form.Text>
-*/}          {error && <Form.Text className="text-danger">{error}</Form.Text>}
+*/}{" "}
+          {error && <Form.Text className="text-danger">{error}</Form.Text>}
         </Form>
-        <hr/>
-           <Button variant="outline-danger" type="button" size="sm" onClick={cancelSubscription}>
-            Cancel Subscription
-          </Button>
+        <hr />
+        <Button
+          variant="outline-danger"
+          type="button"
+          size="sm"
+          onClick={cancelSubscription}>
+          Cancel Subscription
+        </Button>
       </Modal.Body>
     </Modal>
   )
@@ -530,8 +572,7 @@ function SubscriptionUpsellPrompt({
                   Your active trial expires in{" "}
                   <b>{formatFromNow(trial.endDate)}</b> at{" "}
                   <b>
-                    {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
-                      " UTC"}
+                  <FormatDate date={trial.endDate}/>
                   </b>
                   .
                 </p>
@@ -542,8 +583,7 @@ function SubscriptionUpsellPrompt({
                 <p className="text-center">
                   Your trial expired at{" "}
                   <b>
-                    {formatDate(parseISO(trial.endDate), "y-MM-dd kk:mm") +
-                      " UTC"}
+                  <FormatDate date={trial.endDate}/>
                   </b>
                   .
                 </p>
@@ -619,7 +659,7 @@ function ActiveSubscription({
         <Col md={3}>
           <b>Next Billing Date</b>
         </Col>
-        <Col>{nextBillingDate}</Col>
+        <Col><FormatDate date={nextBillingDate}/></Col>
       </Row>
       <Row>
         <Col md={3}>
@@ -803,19 +843,20 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           show={showStartTrialModal}
           onClose={clearQueryString}
         />
-        <SubscriptionManagementModal
+        <StartSubscriptionModal
           show={showSubscriptionManagerModal}
           onClose={clearQueryString}
           seatUsage={data.activeUsers.length}
         />
-        <SubscriptionManagementModalV2
+        <ManageSubscriptionModal
           show={showSubscriptionModifyModal}
           onClose={x => {
             if (x) {
-              location.search = ''
+              location.search = ""
             } else {
-            clearQueryString()
-          }}}
+              clearQueryString()
+            }
+          }}
         />
         <Subscription
           startSubscription={handleStartSubscription}
