@@ -693,6 +693,7 @@ def patch_start_trial(mocker: Any) -> None:
         dict(object="customer", id="cust_Gx2a3gd5x6",), "fake-key",
     )
     mocker.patch("core.models.stripe.Customer.create", return_value=fake_customer)
+    mocker.patch("core.models.stripe.Customer.modify", return_value=fake_customer)
 
 
 @pytest.mark.django_db
@@ -728,6 +729,7 @@ def test_start_trial(
     ), "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
     assert account.trial_started_by == user
     assert account.trial_expired() is False
+    assert account.trial_email == "b.lowe@example.com"
 
 
 def equal_dates(a: datetime.datetime, b: datetime.datetime) -> bool:

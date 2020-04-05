@@ -90,9 +90,12 @@ class User(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
 
     def can_edit(self, account: Account) -> bool:
-        return AccountMembership.objects.filter(
-            account=account, user=self, role=AccountRole.admin
-        ).exists()
+        return cast(
+            bool,
+            AccountMembership.objects.filter(
+                account=account, user=self, role=AccountRole.admin
+            ).exists(),
+        )
 
     def sync_accounts(self) -> None:
         """
@@ -228,6 +231,7 @@ class Account(BaseModel):
     trial_started_by = models.ForeignKey(
         User, null=True, on_delete=models.SET_NULL, related_name="+"
     )
+    trial_email = models.CharField(blank=True, max_length=255)
 
     stripe_customer_id = models.CharField(
         blank=True,
@@ -263,15 +267,26 @@ class Account(BaseModel):
     def start_trial(
         self, actor: User, billing_email: str, length_days: int = 14
     ) -> None:
-        if self.trial_expiration is not None:
+        """
+        Start the timer for the trial and create a Stripe customer.
+
+        If the trial already exists, we only update the email if provided. We
+        also update the Stripe customer email.
+        """
+        self.trial_email = billing_email
+        if self.trial_expiration is None:
+            self.trial_expiration = timezone.now() + datetime.timedelta(
+                days=length_days
+            )
+            self.trial_start = timezone.now()
+            self.trial_started_by = actor
+        else:
             logger.warning("attempted to start trial when one already exists")
-            return
-        self.trial_expiration = timezone.now() + datetime.timedelta(days=length_days)
-        self.trial_start = timezone.now()
-        self.trial_started_by = actor
         if not self.stripe_customer_id:
             customer = stripe.Customer.create(email=billing_email)
             self.stripe_customer_id = customer.id
+        else:
+            stripe.Customer.modify(self.stripe_customer_id, email=billing_email)
         self.save()
 
     def trial_expired(self) -> bool:
