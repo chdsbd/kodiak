@@ -713,6 +713,7 @@ def test_start_trial_existing_trial(
     assert equal_dates(account.trial_expiration, original_trial_expiration)
     assert account.trial_started_by == original_trial_started_by
 
+
 def generate_header(payload: str):
     """
     https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
@@ -874,10 +875,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert StripeCustomerInformation.objects.count() == 1
 
     stripe_customer_info_updated = StripeCustomerInformation.objects.get()
-    assert (
-        stripe_customer_info_updated.subscription_id
-        == stripe_customer_info.subscription_id
-    )
+    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
     assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
     assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
     assert stripe_customer_info_updated.customer_email == fake_customer.email
@@ -918,8 +916,180 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     )
 
 
-def test_stripe_webhook_handler_checkout_session_complete_subscription() -> None:
-    assert False
+@pytest.mark.django_db
+def test_stripe_webhook_handler_checkout_session_complete_subscription(
+    mocker: Any,
+) -> None:
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id="cus_Gz7jQFKdh4KirU",
+            email="j.doe@example.com",
+            balance=5000,
+            created=1643455402,
+        ),
+        "fake-key",
+    )
+    customer_retrieve = mocker.patch(
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            default_payment_method="pm_47xubd3i",
+            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            quantity=10,
+            start_date=1443556775,
+            current_period_start=1653173784,
+            current_period_end=1660949784,
+        ),
+        "fake-key",
+    )
+    subscription_retrieve = mocker.patch(
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    payment_method_retrieve = mocker.patch(
+        "core.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+    )
+
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="",
+    )
+    assert StripeCustomerInformation.objects.count() == 0
+    res = post_webhook(
+        """
+{
+  "id": "evt_1GQQCUCoyKa1V9Y6EvAMbLgM",
+  "object": "event",
+  "api_version": "2020-03-02",
+  "created": 1585108002,
+  "data": {
+    "object": {
+      "id": "cs_test_3UbqT95rC08iaEzKbGT5tkYgLwuoEeUFfd93uiFaQoo9ZeslGZeV27fP",
+      "object": "checkout.session",
+      "billing_address_collection": null,
+      "cancel_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?cancel=1",
+      "client_reference_id": "%s",
+      "customer": "cus_GyMwpHE6qQb4cr",
+      "customer_email": null,
+      "display_items": [
+        {
+          "amount": 499,
+          "currency": "usd",
+          "plan": {
+            "id": "plan_GuzDf41AmGOJzQ",
+            "object": "plan",
+            "active": true,
+            "aggregate_usage": null,
+            "amount": 499,
+            "amount_decimal": "499",
+            "billing_scheme": "per_unit",
+            "created": 1584327811,
+            "currency": "usd",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {
+            },
+            "nickname": "Monthly",
+            "product": "prod_GuzCMVKonQIp2l",
+            "tiers": null,
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "quantity": 2,
+          "type": "plan"
+        }
+      ],
+      "livemode": false,
+      "locale": null,
+      "metadata": {
+      },
+      "mode": "subscription",
+      "payment_intent": null,
+      "payment_method_types": [
+        "card"
+      ],
+      "setup_intent": null,
+      "shipping": null,
+      "shipping_address_collection": null,
+      "submit_type": null,
+      "subscription": "sub_GyMw1lyNB2LXmn",
+      "success_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?success=1"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_nIsiFwPHQZauDS",
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed"
+}"""
+        % account.id
+    )
+
+    assert res.status_code == 200
+    assert customer_retrieve.call_count == 1
+    assert subscription_retrieve.call_count == 1
+    assert payment_method_retrieve.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 1
+
+    stripe_customer_info_updated = StripeCustomerInformation.objects.get()
+    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
+    assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
+    assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
+    assert stripe_customer_info_updated.customer_email == fake_customer.email
+    assert stripe_customer_info_updated.customer_balance == fake_customer.balance
+    assert stripe_customer_info_updated.customer_created == fake_customer.created
+
+    assert (
+        stripe_customer_info_updated.payment_method_card_brand
+        == fake_payment_method.card.brand
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_month
+        == fake_payment_method.card.exp_month
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_year
+        == fake_payment_method.card.exp_year
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_last4
+        == fake_payment_method.card.last4
+    )
+    assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
+    assert (
+        stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
+    )
+    assert (
+        stripe_customer_info_updated.subscription_start_date
+        == fake_subscription.start_date
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_end
+        == fake_subscription.current_period_end
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_start
+        == fake_subscription.current_period_start
+    )
 
 
 def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
