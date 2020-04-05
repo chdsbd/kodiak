@@ -21,7 +21,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from core import auth
-from core.exceptions import BadRequest, UnprocessableEntity
+from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
     AnonymousUser,
@@ -190,6 +190,9 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
         Account.objects.filter(memberships__user=request.user), id=team_id
     )
+    # restrict updates to admins
+    if not request.user.can_edit(account):
+        raise PermissionDenied
     seats = int(request.POST["seats"])
     proration_timestamp = int(request.POST["prorationTimestamp"])
     stripe_customer_info = account.stripe_customer_info()
@@ -273,6 +276,8 @@ def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
         Account.objects.filter(memberships__user=request.user), id=team_id
     )
+    if not request.user.can_edit(account):
+        raise PermissionDenied
 
     customer_info = account.stripe_customer_info()
     if customer_info is not None:

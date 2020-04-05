@@ -89,6 +89,11 @@ class User(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
 
+    def can_edit(self, account: Account) -> bool:
+        return AccountMembership.objects.filter(
+            account=account, user=self, role=AccountRole.admin
+        ).exists()
+
     def sync_accounts(self) -> None:
         """
 

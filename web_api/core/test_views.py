@@ -317,7 +317,7 @@ def test_update_subscription(
         github_account_type="User",
         stripe_customer_id="cus_Ged32s2xnx12",
     )
-    AccountMembership.objects.create(account=account, user=user, role="member")
+    AccountMembership.objects.create(account=account, user=user, role="admin")
     StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
@@ -373,7 +373,7 @@ def test_update_subscription_missing_customer(
         github_account_type="User",
         stripe_customer_id="cus_Ged32s2xnx12",
     )
-    AccountMembership.objects.create(account=account, user=user, role="member")
+    AccountMembership.objects.create(account=account, user=user, role="admin")
     assert StripeCustomerInformation.objects.count() == 0
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
@@ -385,6 +385,25 @@ def test_update_subscription_missing_customer(
     assert res.json()["message"] == "Subscription does not exist to modify."
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
+
+
+@pytest.mark.django_db
+def test_update_subscription_not_admin(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=1650581784, seats=24),
+    )
+    assert res.status_code == 403
 
 
 @pytest.mark.django_db
@@ -402,7 +421,7 @@ def test_cancel_subscription(
         github_account_type="User",
         stripe_customer_id="cus_Ged32s2xnx12",
     )
-    AccountMembership.objects.create(account=account, user=user, role="member")
+    AccountMembership.objects.create(account=account, user=user, role="admin")
     StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
@@ -427,6 +446,40 @@ def test_cancel_subscription(
     assert res.status_code == 204
     assert patched.call_count == 1
     assert StripeCustomerInformation.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_cancel_subscription_not_admin(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1658357784,
+    )
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 403
 
 
 @pytest.mark.django_db

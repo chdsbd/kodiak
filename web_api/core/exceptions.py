@@ -22,6 +22,11 @@ class AuthenticationRequired(ApiException):
     message = "Authentication Required"
 
 
+class PermissionDenied(ApiException):
+    code = 403
+    message = "Permission Denied"
+
+
 class UnprocessableEntity(ApiException):
     code = 422
     message = "Unprocessable Entity"
