@@ -254,7 +254,7 @@ function StartSubscriptionModal({
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Manage Subscription</Modal.Title>
+        <Modal.Title>Start Subscription</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form
