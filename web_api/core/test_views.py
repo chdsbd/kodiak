@@ -281,6 +281,7 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
+    assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
 
 
 @pytest.mark.django_db

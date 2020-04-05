@@ -249,8 +249,7 @@ function StartSubscriptionModal({
   }
 
   const monthlyCost = 499
-  const userCount = parseInt(seats, 0) || 0
-  const costCents = userCount * monthlyCost
+  const costCents = seats * monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -291,7 +290,7 @@ function StartSubscriptionModal({
               value={formatCents(costCents)}
             />
             <Form.Text className="text-muted">
-              Billed monthly. <b>{userCount} seat(s) </b>
+              Billed monthly. <b>{seats} seat(s) </b>
               at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
@@ -312,13 +311,19 @@ interface IManageSubscriptionModalProps {
   readonly show: boolean
   readonly onClose: (reload: boolean) => void
   readonly seatUsage: number
+  readonly currentSeats: number
+  readonly billingEmail: string
+  readonly cardInfo: string
 }
 function ManageSubscriptionModal({
   show,
   onClose,
   seatUsage,
+  billingEmail,
+  cardInfo,
+  currentSeats
 }: IManageSubscriptionModalProps) {
-  const [seats, setSeats] = React.useState("1")
+  const [seats, setSeats] = React.useState(currentSeats)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [prorationAmount, setProrationAmount] = React.useState<
@@ -328,13 +333,11 @@ function ManageSubscriptionModal({
   const [expectedCost, setExpectedCost] = React.useState(0)
   const teamId = useTeamId()
 
-  const userCount = parseInt(seats, 0) || 0
-
   function setSubscription() {
     setLoading(true)
     setError("")
     teamApi(Current.api.updateSubscription, {
-      seats: userCount,
+      seats,
       prorationTimestamp,
       expectedCost,
     }).then(res => {
@@ -342,23 +345,6 @@ function ManageSubscriptionModal({
       }
       setLoading("false")
     })
-    // teamApi(Current.api.startCheckout)().then(res => {
-    //   if (res.ok) {
-    //   }
-    //   setLoading(false)
-    // })
-    // confirm("Stripe")
-    // teamApi(Current.api.updateSubscription, {
-    //   billingEmail: email,
-    //   seats: parseInt(seats, 10) || 0,
-    // }).then(res => {
-    //   if (res.ok) {
-    //     location.href = `/t/${teamId}/usage?install_complete=1`
-    //   } else {
-    //     setLoading(false)
-    //     setError("Failed to update subscription")
-    //   }
-    // })
   }
 
   function cancelSubscription() {
@@ -417,8 +403,7 @@ function ManageSubscriptionModal({
 
   const monthlyCost = 499
 
-  // const costCents = userCount * monthlyCost - proration
-  const costCents = userCount * monthlyCost
+  const costCents = seats * monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -449,8 +434,8 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at{" "}
-              <b>$4.99/seat</b>
+              Your current plan costs <b>$4.99/month</b> for <b>{currentSeats} seat(s)</b> at{" "}
+              <b>$4.99/seat</b>.
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -459,7 +444,7 @@ function ManageSubscriptionModal({
               type="text"
               required
               disabled
-              value="accounting@acme-corp.com"
+              value={billingEmail}
             />
             <Form.Text className="text-muted">
               <a href="#" onClick={updateBillingInfo}>
@@ -473,7 +458,7 @@ function ManageSubscriptionModal({
               type="text"
               required
               disabled
-              value="MasterCard (5434)"
+              value={cardInfo}
             />
             <Form.Text className="text-muted">
               <a href="#" onClick={updateBillingInfo}>
@@ -490,7 +475,7 @@ function ManageSubscriptionModal({
               value={formatCents(costCents)}
             />
             <Form.Text className="text-muted">
-              <b>{userCount} seat(s) </b>
+              <b>{seats} seat(s) </b>
               at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>*/}
@@ -500,12 +485,12 @@ function ManageSubscriptionModal({
               type="text"
               required
               disabled
-              value={userCount === 1 ? "--" : formatProration(prorationAmount)}
+              value={seats === currentSeats ? "--" : formatProration(prorationAmount)}
             />
-            {userCount !== 1 && prorationAmount.kind === "success" ? (
+            {seats !== currentSeats && prorationAmount.kind === "success" ? (
               <Form.Text className="text-muted">
                 Includes prorations. Renews monthly at{" "}
-                <b>{formatCents(costCents)}</b> for <b>{userCount} seat(s) </b>
+                <b>{formatCents(costCents)}</b> for <b>{seats} seat(s) </b>
                 at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
@@ -514,9 +499,9 @@ function ManageSubscriptionModal({
             variant="primary"
             type="submit"
             block
-            disabled={prorationAmount.kind !== "success" || userCount === 1}>
+            disabled={prorationAmount.kind !== "success" || seats === currentSeats}>
             {/*{loading ? "Loading" : `Pay ${formatCents(costProrated)}`}*/}
-            {userCount === 1
+            {seats === currentSeats
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
               ? `Pay ${formatCents(prorationAmount.cost)}`
@@ -850,6 +835,10 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
         />
         <ManageSubscriptionModal
           show={showSubscriptionModifyModal}
+          currentSeats={data.subscription?.seats}
+          seatUsage={data.activeUsers.length}
+          billingEmail={data.subscription?.billingEmail}
+          cardInfo={data.subscription?.cardInfo}
           onClose={x => {
             if (x) {
               location.search = ""

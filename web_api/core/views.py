@@ -73,6 +73,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 perSeatCents=stripe_customer_info.plan_amount,
             ),
             billingEmail=stripe_customer_info.customer_email,
+            cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})"
         )
     return JsonResponse(
         dict(

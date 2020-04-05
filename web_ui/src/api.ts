@@ -42,6 +42,7 @@ export interface IUsageBillingPageApiResponse {
       readonly perSeatCents: number
     }
     readonly billingEmail: string
+    readonly cardInfo: string
   } | null
   readonly trial: {
     readonly startDate: string
