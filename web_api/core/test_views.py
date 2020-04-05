@@ -1092,8 +1092,188 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
 
 
+@pytest.mark.django_db
 def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
-    assert False
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="cus_523405923045",
+    )
+
+    stripe_customer_info = StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1590982549,
+        subscription_current_period_end=1588304149,
+    )
+    assert StripeCustomerInformation.objects.count() == 1
+    res = post_webhook(
+        """
+{
+  "created": 1326853478,
+  "livemode": false,
+  "id": "evt_00000000000000",
+  "type": "invoice.payment_succeeded",
+  "object": "event",
+  "request": null,
+  "pending_webhooks": 1,
+  "api_version": "2020-03-02",
+  "data": {
+    "object": {
+      "id": "in_00000000000000",
+      "object": "invoice",
+      "account_country": "US",
+      "account_name": "Kodiakhq",
+      "amount_due": 9980,
+      "amount_paid": 9980,
+      "amount_remaining": 0,
+      "application_fee_amount": null,
+      "attempt_count": 1,
+      "attempted": true,
+      "auto_advance": false,
+      "billing_reason": "subscription_create",
+      "charge": "_00000000000000",
+      "collection_method": "charge_automatically",
+      "created": 1584328318,
+      "currency": "usd",
+      "custom_fields": null,
+      "customer": "%s",
+      "customer_address": null,
+      "customer_email": "j.doe@example.com",
+      "customer_name": null,
+      "customer_phone": null,
+      "customer_shipping": null,
+      "customer_tax_exempt": "none",
+      "customer_tax_ids": [
+      ],
+      "default_payment_method": null,
+      "default_source": null,
+      "default_tax_rates": [
+      ],
+      "description": null,
+      "discount": null,
+      "due_date": null,
+      "ending_balance": 0,
+      "footer": null,
+      "hosted_invoice_url": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T",
+      "invoice_pdf": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T/pdf",
+      "lines": {
+        "data": [
+          {
+            "id": "il_00000000000000",
+            "object": "line_item",
+            "amount": 4990,
+            "currency": "usd",
+            "description": "10 seat × Kodiak Seat License (at $4.99 / month)",
+            "discountable": true,
+            "livemode": false,
+            "metadata": {
+            },
+            "period": {
+              "end": 1660949784,
+              "start": 1653173784
+            },
+            "plan": {
+              "id": "plan_00000000000000",
+              "object": "plan",
+              "active": true,
+              "aggregate_usage": null,
+              "amount": 499,
+              "amount_decimal": "499",
+              "billing_scheme": "per_unit",
+              "created": 1584327811,
+              "currency": "usd",
+              "interval": "month",
+              "interval_count": 1,
+              "livemode": false,
+              "metadata": {
+              },
+              "nickname": "Monthly",
+              "product": "prod_00000000000000",
+              "tiers": null,
+              "tiers_mode": null,
+              "transform_usage": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "proration": false,
+            "quantity": 10,
+            "subscription": "sub_00000000000000",
+            "subscription_item": "si_00000000000000",
+            "tax_amounts": [
+            ],
+            "tax_rates": [
+            ],
+            "type": "subscription"
+          }
+        ],
+        "has_more": false,
+        "object": "list",
+        "url": "/v1/invoices/in_1GN9MwCoyKa1V9Y6Ox2tehjN/lines"
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "next_payment_attempt": null,
+      "number": "E5700931-0001",
+      "paid": true,
+      "payment_intent": "pi_00000000000000",
+      "period_end": 1660949784,
+      "period_start": 1653173784,
+      "post_payment_credit_notes_amount": 0,
+      "pre_payment_credit_notes_amount": 0,
+      "receipt_number": "2421-2035",
+      "starting_balance": 0,
+      "statement_descriptor": null,
+      "status": "paid",
+      "status_transitions": {
+        "finalized_at": 1584328319,
+        "marked_uncollectible_at": null,
+        "paid_at": 1584328320,
+        "voided_at": null
+      },
+      "subscription": "sub_00000000000000",
+      "subtotal": 9980,
+      "tax": null,
+      "tax_percent": null,
+      "total": 9980,
+      "total_tax_amounts": [
+      ],
+      "webhooks_delivered_at": 1584328320,
+      "closed": true
+    }
+  }
+}"""
+        % account.stripe_customer_id
+    )
+
+    assert res.status_code == 200
+    assert StripeCustomerInformation.objects.count() == 1
+    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
+    assert (
+        updated_stripe_customer_info.subscription_current_period_start
+        > stripe_customer_info.subscription_current_period_start
+    )
+    assert (
+        updated_stripe_customer_info.subscription_current_period_end
+        > stripe_customer_info.subscription_current_period_end
+    )
+    assert updated_stripe_customer_info.subscription_current_period_end == 1660949784
+    assert updated_stripe_customer_info.subscription_current_period_start == 1653173784
 
 
 @pytest.mark.django_db
