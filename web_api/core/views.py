@@ -314,15 +314,20 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 
     https://stripe.com/docs/billing/webhooks
     """
-    payload = request.body
+    sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
     try:
-        event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+        event = stripe.Webhook.construct_event(
+            payload=request.body,
+            sig_header=sig_header,
+            secret=settings.STRIPE_WEBHOOK_SECRET,
+        )
     except ValueError:
         # Invalid payload
         logger.warning("problem parsing stripe payload", exc_info=True)
         raise BadRequest
-
-    print(repr(event))
+    except stripe.error.SignatureVerificationError:
+        logger.warning("invalid signature for webhook request", exc_info=True)
+        raise BadRequest
 
     # https://stripe.com/docs/billing/lifecycle#subscription-lifecycle
 

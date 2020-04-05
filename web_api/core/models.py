@@ -52,6 +52,9 @@ class BaseModel(models.Model):
 
     __repr__ = sane_repr("id")
 
+    def __str__(self) -> str:
+        return repr(self)
+
 
 class SyncAccountsError(Exception):
     pass
@@ -272,7 +275,7 @@ class Account(BaseModel):
         return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
 
     def update_from(self, customer: stripe.Customer) -> None:
-        self.stripe_customer_id = customer
+        self.stripe_customer_id = customer.id
         self.save()
 
 
@@ -721,13 +724,15 @@ class StripeCustomerInformation(models.Model):
         null=True,
         help_text="Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
     )
-    payment_method_card_exp_month = models.IntegerField(
+    payment_method_card_exp_month = models.CharField(
         null=True,
         help_text="Two-digit number representing the card’s expiration month.",
+        max_length=255,
     )
-    payment_method_card_exp_year = models.IntegerField(
+    payment_method_card_exp_year = models.CharField(
         null=True,
         help_text="Four-digit number representing the card’s expiration year.",
+        max_length=255,
     )
     payment_method_card_last4 = models.CharField(
         max_length=255, null=True, help_text="The last four digits of the card."

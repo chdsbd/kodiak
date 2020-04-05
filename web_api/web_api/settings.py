@@ -107,3 +107,4 @@ KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth")
 # See your keys here: https://dashboard.stripe.com/account/apikeys
 STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
 STRIPE_PLAN_ID = os.environ["STRIPE_PLAN_ID"]
+STRIPE_WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
