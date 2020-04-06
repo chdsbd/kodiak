@@ -836,7 +836,6 @@ class StripeCustomerInformation(models.Model):
         self.delete()
 
     def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
-
         proration_date = timestamp
 
         subscription = stripe.Subscription.retrieve(self.subscription_id)

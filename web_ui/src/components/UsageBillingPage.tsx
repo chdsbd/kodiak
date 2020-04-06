@@ -225,7 +225,7 @@ function StartSubscriptionModal({
       seatCount: seats,
     }).then(async res => {
       if (res.ok) {
-        const stripe = await loadStripe(settings.stripePublishableApiKey)
+        const stripe = await loadStripe(res.data.stripePublishableApiKey)
         if (stripe == null) {
           setError("Failed to load Stripe")
           return
@@ -406,7 +406,7 @@ function ManageSubscriptionModal({
   function updateBillingInfo() {
     teamApi(Current.api.modifyBilling).then(async res => {
       if (res.ok) {
-        const stripe = await loadStripe(settings.stripePublishableApiKey)
+        const stripe = await loadStripe(res.data.stripePublishableApiKey)
         if (stripe == null) {
           setError("Failed to load Stripe")
           return

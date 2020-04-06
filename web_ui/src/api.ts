@@ -138,12 +138,14 @@ export interface IStartCheckoutArgs {
 }
 export interface IStartCheckoutResponse {
   readonly stripeCheckoutSessionId: string
+  readonly stripePublishableApiKey: string
 }
 export interface IModifyBillingArgs {
   readonly teamId: string
 }
 export interface ModifyBillingResponse {
   readonly stripeCheckoutSessionId: string
+  readonly stripePublishableApiKey: string
 }
 
 export interface IFetchProrationArgs {

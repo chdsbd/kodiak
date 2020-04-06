@@ -77,12 +77,6 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     return JsonResponse(
         dict(
-            # subscription=dict(
-            #     seats=5,
-            #     nextBillingDate="February 21st, 2019",
-            #     costCents=499,
-            #     billingContact=dict(email="billing@acme-corp.com", name="Acme Corp."),
-            # ),
             subscription=subscription,
             trial=trial,
             activeUsers=[
@@ -261,7 +255,12 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
     )
-    return JsonResponse(dict(stripeCheckoutSessionId=session.id))
+    return JsonResponse(
+        dict(
+            stripeCheckoutSessionId=session.id,
+            stripePublishableApiKey=settings.STRIPE_PUBLISHABLE_API_KEY,
+        )
+    )
 
 
 @csrf_exempt
@@ -278,7 +277,12 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?modify_subscription=1",
     )
-    return JsonResponse(dict(stripeCheckoutSessionId=session.id))
+    return JsonResponse(
+        dict(
+            stripeCheckoutSessionId=session.id,
+            stripePublishableApiKey=settings.STRIPE_PUBLISHABLE_API_KEY,
+        )
+    )
 
 
 @csrf_exempt
@@ -319,7 +323,6 @@ def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=500)
 
 
-# @require_POST
 @csrf_exempt
 def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     """

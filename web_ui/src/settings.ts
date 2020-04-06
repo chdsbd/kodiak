@@ -21,11 +21,5 @@ export const helpUrl = "https://kodiakhq.com/help"
 export const loginUrl = `${API_ROOT}/v1/oauth_login`
 export const monthlyCost = 499
 
-export const stripePublishableApiKey = String(
-  process.env.REACT_APP_STRIPE_PUBLISHABLE_API_KEY,
-)
-
 // tslint:disable-next-line no-console
-console.info(
-  `API_ROOT=${API_ROOT}\nstripePublishableApiKey=${stripePublishableApiKey}`,
-)
+console.info(`API_ROOT=${API_ROOT}`)

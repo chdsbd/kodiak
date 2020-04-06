@@ -549,6 +549,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     )
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
 
 @pytest.mark.django_db
@@ -571,6 +572,7 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     res = authed_client.post(f"/v1/t/{user_account.id}/modify_payment_details")
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
 
 @pytest.mark.django_db
