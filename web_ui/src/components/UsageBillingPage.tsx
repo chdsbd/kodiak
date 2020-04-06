@@ -56,6 +56,7 @@ interface IUsageBillingData {
       readonly perSeatCents: number
     }
     readonly billingEmail: string
+    readonly cardInfo: string
   } | null
   readonly trial: {
     readonly startDate: string
@@ -114,7 +115,7 @@ function formatFromNow(dateString: string): string {
 }
 
 function FormatDate({ date }: { date: string }) {
-  return formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"
+  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"}</>
 }
 
 interface IInstallCompleteModalProps {
@@ -212,24 +213,27 @@ function StartSubscriptionModal({
   onClose,
   seatUsage,
 }: IStartSubscriptionModalProps) {
-  const [seats, setSeats] = React.useState("1")
+  const [seats, setSeats] = React.useState(1)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const teamId = useTeamId()
 
   function setSubscription() {
     setLoading(true)
     setError("")
 
     teamApi(Current.api.startCheckout, {
-      seatCount: parseInt(seats, 10) || 1,
+      seatCount: seats,
     }).then(async res => {
       if (res.ok) {
         const stripe = await loadStripe(settings.stripePublishableApiKey)
+        if (stripe == null) {
+          setError("Failed to load Stripe")
+          return
+        }
         const { error } = await stripe.redirectToCheckout({
           sessionId: res.data.stripeCheckoutSessionId,
         })
-        setError(error.message)
+        setError(error.message || 'error redirecting to checkout')
       } else {
         setError("Failed to start checkout")
       }
@@ -256,7 +260,7 @@ function StartSubscriptionModal({
               required
               min="1"
               placeholder="Enter seat count"
-              value={seats}
+              value={String(seats)}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setSeats(Math.max(parseInt(e.target.value, 10) || 1, 1))
               }
@@ -295,9 +299,11 @@ function StartSubscriptionModal({
   )
 }
 
+type IProrationAmount = { kind: "loading" } | { kind: "failed" } | { kind: "success"; cost: number }
+
 interface IManageSubscriptionModalProps {
   readonly show: boolean
-  readonly onClose: (reload: boolean) => void
+  readonly onClose: (props?: {reload?:boolean} ) => void
   readonly seatUsage: number
   readonly currentSeats: number
   readonly billingEmail: string
@@ -314,13 +320,9 @@ function ManageSubscriptionModal({
   const [seats, setSeats] = React.useState(currentSeats)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [prorationAmount, setProrationAmount] = React.useState<
-    { kind: "loading" } | { kind: "failed" } | { kind: "success"; cost: number }
-  >({ kind: "loading" })
+  const [prorationAmount, setProrationAmount] = React.useState<IProrationAmount>({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
-  const [expectedCost, setExpectedCost] = React.useState(0)
   const seatsRef = React.useRef(0)
-  const teamId = useTeamId()
 
   React.useEffect(() => {
     seatsRef.current = seats
@@ -332,14 +334,13 @@ function ManageSubscriptionModal({
     teamApi(Current.api.updateSubscription, {
       seats,
       prorationTimestamp,
-      expectedCost,
     }).then(res => {
       if (res.ok) {
         location.search = ""
       } else {
         setError("failed to update plan")
       }
-      setLoading("false")
+      setLoading(false)
     })
   }
 
@@ -355,7 +356,7 @@ function ManageSubscriptionModal({
     }
     teamApi(Current.api.cancelSubscription).then(res => {
       if (res.ok) {
-        onClose(true)
+        onClose({reload: true})
         alert("subscription canceled")
         location.search = ""
       } else {
@@ -383,8 +384,8 @@ function ManageSubscriptionModal({
 
   React.useEffect(() => {
     fetchProrationDebounced()
-  }, [seats])
-  function formatProration(x) {
+  }, [fetchProrationDebounced, seats])
+  function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
       return "--"
     }
@@ -394,23 +395,32 @@ function ManageSubscriptionModal({
       }
       return `account credit of ${formatCents(-x.cost)}`
     }
-    return null
+    return '--'
   }
 
   function updateBillingInfo() {
     teamApi(Current.api.modifyBilling).then(async res => {
       if (res.ok) {
         const stripe = await loadStripe(settings.stripePublishableApiKey)
+        if (stripe == null) {
+          setError("Failed to load Stripe")
+          return
+        }
         const { error } = await stripe.redirectToCheckout({
           sessionId: res.data.stripeCheckoutSessionId,
         })
+        if (error) {
+          setError("Problem updating billing info")
+        }
+      } else {
+        setError("Problem updating billing info")
       }
     })
   }
 
   const costCents = seats * settings.monthlyCost
   return (
-    <Modal show={show} onHide={onClose}>
+    <Modal show={show} onHide={() => onClose()}>
       <Modal.Header closeButton>
         <Modal.Title>Manage Subscription</Modal.Title>
       </Modal.Header>
@@ -427,7 +437,7 @@ function ManageSubscriptionModal({
               required
               min="1"
               placeholder="Enter seat count"
-              value={seats}
+              value={String(seats)}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setSeats(Math.max(parseInt(e.target.value, 10) || 1, 1))
               }}
@@ -468,7 +478,9 @@ function ManageSubscriptionModal({
               required
               disabled
               value={
-                seats === currentSeats || prorationAmount.kind !== "success" ? "--" : formatProration(prorationAmount)
+                seats === currentSeats || prorationAmount.kind !== "success"
+                  ? "--"
+                  : formatProration(prorationAmount)
               }
             />
             {seats !== currentSeats && prorationAmount.kind === "success" ? (
@@ -484,12 +496,16 @@ function ManageSubscriptionModal({
             type="submit"
             block
             disabled={
-              loading || prorationAmount.kind !== "success" || seats === currentSeats
+              loading ||
+              prorationAmount.kind !== "success" ||
+              seats === currentSeats
             }>
             {seats === currentSeats
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
-              ? (prorationAmount.cost > 0? `Update Plan for ${formatCents(prorationAmount.cost)}` : 'Update Plan')
+              ? prorationAmount.cost > 0
+                ? `Update Plan for ${formatCents(prorationAmount.cost)}`
+                : "Update Plan"
               : "loading..."}
           </Button>
           {error && <Form.Text className="text-danger">{error}</Form.Text>}
@@ -767,9 +783,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   function clearQueryString() {
     history.push(location.pathname)
   }
-  function clearQueryStringReload() {
-    location.href = location.pathname
-  }
   if (props.data.status === "loading") {
     return <Loading />
   }
@@ -816,20 +829,20 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           onClose={clearQueryString}
           seatUsage={data.activeUsers.length}
         />
-        <ManageSubscriptionModal
+        {data.subscription != null  ? <ManageSubscriptionModal
           show={showSubscriptionModifyModal}
-          currentSeats={data.subscription?.seats}
+          currentSeats={data.subscription.seats}
           seatUsage={data.activeUsers.length}
-          billingEmail={data.subscription?.billingEmail}
-          cardInfo={data.subscription?.cardInfo}
+          billingEmail={data.subscription.billingEmail}
+          cardInfo={data.subscription.cardInfo}
           onClose={x => {
-            if (x) {
+            if (x?.reload) {
               location.search = ""
             } else {
               clearQueryString()
             }
           }}
-        />
+        /> : null}
         <Subscription
           startSubscription={handleStartSubscription}
           startTrial={handleStartTrial}

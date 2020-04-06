@@ -58,7 +58,7 @@ export function useTeamApi<T>(
 
 export function teamApi<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
-  args?: Omit<V, "teamId"> = {},
+  args: Omit<V, "teamId"> = {} as Omit<V, "teamId">,
 ): Promise<{ ok: true; data: T } | { ok: false }> {
   const teamId: string = location.pathname.split("/")[2]
   return func({ ...args, teamId } as V)

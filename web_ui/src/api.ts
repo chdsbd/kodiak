@@ -123,8 +123,7 @@ export interface IStartTrialArgs {
 export interface IUpdateSubscriptionArgs {
   readonly teamId: string
   readonly seats: number
-  readonly prorationTime: number
-  readonly expectedCost: number
+  readonly prorationTimestamp: number
 }
 export interface ICancelSubscriptionArgs {
   readonly teamId: string
@@ -175,7 +174,7 @@ export interface Api {
     args: IFetchProrationArgs,
   ) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
-  modifyBillingInfo: (
+  modifyBilling: (
     args: IModifyBillingArgs,
   ) => Promise<ModifyBillingResponse>
 }
