@@ -171,7 +171,11 @@ export interface Api {
   startTrial: (args: IStartTrialArgs) => Promise<unknown>
   updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
   cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
-  fetchProration: (args: IFetchProrationArgs) => Promise<IFetchProrationResponse>
+  fetchProration: (
+    args: IFetchProrationArgs,
+  ) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
-  modifyBillingInfo: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
+  modifyBillingInfo: (
+    args: IModifyBillingArgs,
+  ) => Promise<ModifyBillingResponse>
 }

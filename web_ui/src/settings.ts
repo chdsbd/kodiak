@@ -19,6 +19,7 @@ export const installUrl = "https://github.com/marketplace/kodiakhq"
 export const docsUrl = "https://kodiakhq.com/docs/quickstart"
 export const helpUrl = "https://kodiakhq.com/help"
 export const loginUrl = `${API_ROOT}/v1/oauth_login`
+export const monthlyCost = 499
 
 export const stripePublishableApiKey =
   process.env.REACT_APP_STRIPE_PUBLISHABLE_API_KEY

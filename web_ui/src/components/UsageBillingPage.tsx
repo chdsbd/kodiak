@@ -22,6 +22,7 @@ import sortBy from "lodash/sortBy"
 import { useLocation, useHistory } from "react-router-dom"
 import { loadStripe } from "@stripe/stripe-js"
 import * as settings from "../settings"
+import debounce from "lodash/debounce"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -112,9 +113,8 @@ function formatFromNow(dateString: string): string {
   return formatDistanceToNow(parseISO(dateString))
 }
 
-function FormatDate({date}: {date: string}) {
-  return formatDate(parseISO(date), "y-MM-dd kk:mm") +
-                      " UTC"
+function FormatDate({ date }: { date: string }) {
+  return formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"
 }
 
 interface IInstallCompleteModalProps {
@@ -235,21 +235,9 @@ function StartSubscriptionModal({
       }
       setLoading(false)
     })
-    // teamApi(Current.api.updateSubscription, {
-    //   billingEmail: email,
-    //   seats: parseInt(seats, 10) || 0,
-    // }).then(res => {
-    //   if (res.ok) {
-    //     location.href = `/t/${teamId}/usage?install_complete=1`
-    //   } else {
-    //     setLoading(false)
-    //     setError("Failed to update subscription")
-    //   }
-    // })
   }
 
-  const monthlyCost = 499
-  const costCents = seats * monthlyCost
+  const costCents = seats * settings.monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -291,7 +279,7 @@ function StartSubscriptionModal({
             />
             <Form.Text className="text-muted">
               Billed monthly. <b>{seats} seat(s) </b>
-              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+              at <b>{formatCents(settings.monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
           <Button variant="primary" type="submit" block disabled={loading}>
@@ -321,7 +309,7 @@ function ManageSubscriptionModal({
   seatUsage,
   billingEmail,
   cardInfo,
-  currentSeats
+  currentSeats,
 }: IManageSubscriptionModalProps) {
   const [seats, setSeats] = React.useState(currentSeats)
   const [loading, setLoading] = React.useState(false)
@@ -331,7 +319,12 @@ function ManageSubscriptionModal({
   >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const [expectedCost, setExpectedCost] = React.useState(0)
+  const seatsRef = React.useRef(0)
   const teamId = useTeamId()
+
+  React.useEffect(() => {
+    seatsRef.current = seats
+  }, [seats])
 
   function setSubscription() {
     setLoading(true)
@@ -367,18 +360,25 @@ function ManageSubscriptionModal({
     })
   }
 
-  React.useEffect(() => {
-    setProrationAmount({ kind: "loading" })
-    teamApi(Current.api.fetchProration, { subscriptionQuantity: seats }).then(
-      res => {
+  const fetchProrationDebounced = React.useCallback(
+    debounce(() => {
+      setProrationAmount({ kind: "loading" })
+      teamApi(Current.api.fetchProration, {
+        subscriptionQuantity: seatsRef.current,
+      }).then(res => {
         if (res.ok) {
           setProrationAmount({ kind: "success", cost: res.data.proratedCost })
           setProrationTimestamp(res.data.prorationTime)
         } else {
           setProrationAmount({ kind: "failed" })
         }
-      },
-    )
+      })
+    }, 250),
+    [],
+  )
+
+  React.useEffect(() => {
+    fetchProrationDebounced()
   }, [seats])
   function formatProration(x) {
     return x.kind === "loading"
@@ -401,9 +401,7 @@ function ManageSubscriptionModal({
     })
   }
 
-  const monthlyCost = 499
-
-  const costCents = seats * monthlyCost
+  const costCents = seats * settings.monthlyCost
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -434,18 +432,13 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs <b>$4.99/month</b> for <b>{currentSeats} seat(s)</b> at{" "}
-              <b>$4.99/seat</b>.
+              Your current plan costs <b>$4.99/month</b> for{" "}
+              <b>{currentSeats} seat(s)</b> at <b>$4.99/seat</b>.
             </Form.Text>
           </Form.Group>
           <Form.Group>
             <Form.Label>Billing Email </Form.Label>
-            <Form.Control
-              type="text"
-              required
-              disabled
-              value={billingEmail}
-            />
+            <Form.Control type="text" required disabled value={billingEmail} />
             <Form.Text className="text-muted">
               <a href="#" onClick={updateBillingInfo}>
                 update
@@ -454,44 +447,28 @@ function ManageSubscriptionModal({
           </Form.Group>
           <Form.Group>
             <Form.Label>Payment Method </Form.Label>
-            <Form.Control
-              type="text"
-              required
-              disabled
-              value={cardInfo}
-            />
+            <Form.Control type="text" required disabled value={cardInfo} />
             <Form.Text className="text-muted">
               <a href="#" onClick={updateBillingInfo}>
                 update
               </a>
             </Form.Text>
           </Form.Group>
-          {/*   <Form.Group>
-            <Form.Label>Due Monthly</Form.Label>
-            <Form.Control
-              type="text"
-              required
-              disabled
-              value={formatCents(costCents)}
-            />
-            <Form.Text className="text-muted">
-              <b>{seats} seat(s) </b>
-              at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
-            </Form.Text>
-          </Form.Group>*/}
           <Form.Group>
             <Form.Label>Due Today</Form.Label>
             <Form.Control
               type="text"
               required
               disabled
-              value={seats === currentSeats ? "--" : formatProration(prorationAmount)}
+              value={
+                seats === currentSeats ? "--" : formatProration(prorationAmount)
+              }
             />
             {seats !== currentSeats && prorationAmount.kind === "success" ? (
               <Form.Text className="text-muted">
                 Includes prorations. Renews monthly at{" "}
                 <b>{formatCents(costCents)}</b> for <b>{seats} seat(s) </b>
-                at <b>{formatCents(monthlyCost)}/seat</b>.{" "}
+                at <b>{formatCents(settings.monthlyCost)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
           </Form.Group>
@@ -499,18 +476,15 @@ function ManageSubscriptionModal({
             variant="primary"
             type="submit"
             block
-            disabled={prorationAmount.kind !== "success" || seats === currentSeats}>
-            {/*{loading ? "Loading" : `Pay ${formatCents(costProrated)}`}*/}
+            disabled={
+              prorationAmount.kind !== "success" || seats === currentSeats
+            }>
             {seats === currentSeats
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
               ? `Pay ${formatCents(prorationAmount.cost)}`
               : "--"}
           </Button>
-          {/*          <Form.Text className="text-muted">
-            Your current plan costs <b>$4.99/month</b> for <b>1 seat(s)</b> at <b>$4.99/seat</b>
-          </Form.Text>
-*/}{" "}
           {error && <Form.Text className="text-danger">{error}</Form.Text>}
         </Form>
         <hr />
@@ -557,7 +531,7 @@ function SubscriptionUpsellPrompt({
                   Your active trial expires in{" "}
                   <b>{formatFromNow(trial.endDate)}</b> at{" "}
                   <b>
-                  <FormatDate date={trial.endDate}/>
+                    <FormatDate date={trial.endDate} />
                   </b>
                   .
                 </p>
@@ -568,7 +542,7 @@ function SubscriptionUpsellPrompt({
                 <p className="text-center">
                   Your trial expired at{" "}
                   <b>
-                  <FormatDate date={trial.endDate}/>
+                    <FormatDate date={trial.endDate} />
                   </b>
                   .
                 </p>
@@ -644,7 +618,9 @@ function ActiveSubscription({
         <Col md={3}>
           <b>Next Billing Date</b>
         </Col>
-        <Col><FormatDate date={nextBillingDate}/></Col>
+        <Col>
+          <FormatDate date={nextBillingDate} />
+        </Col>
       </Row>
       <Row>
         <Col md={3}>
