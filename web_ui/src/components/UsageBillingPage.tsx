@@ -335,6 +335,9 @@ function ManageSubscriptionModal({
       expectedCost,
     }).then(res => {
       if (res.ok) {
+        location.search = ""
+      } else {
+        setError("failed to update plan")
       }
       setLoading("false")
     })
@@ -354,6 +357,7 @@ function ManageSubscriptionModal({
       if (res.ok) {
         onClose(true)
         alert("subscription canceled")
+        location.search = ""
       } else {
         alert("failed to cancel subscription")
       }
@@ -381,13 +385,16 @@ function ManageSubscriptionModal({
     fetchProrationDebounced()
   }, [seats])
   function formatProration(x) {
-    return x.kind === "loading"
-      ? "--"
-      : x.kind === "failed"
-      ? "--"
-      : x.kind === "success"
-      ? formatCents(x.cost)
-      : null
+    if (x.kind === "loading" || x.kind === "failed") {
+      return "--"
+    }
+    if (x.kind === "success") {
+      if (x.cost > 0) {
+        return formatCents(x.cost)
+      }
+      return `account credit of ${formatCents(-x.cost)}`
+    }
+    return null
   }
 
   function updateBillingInfo() {
@@ -461,7 +468,7 @@ function ManageSubscriptionModal({
               required
               disabled
               value={
-                seats === currentSeats ? "--" : formatProration(prorationAmount)
+                seats === currentSeats || prorationAmount.kind !== "success" ? "--" : formatProration(prorationAmount)
               }
             />
             {seats !== currentSeats && prorationAmount.kind === "success" ? (
@@ -477,13 +484,13 @@ function ManageSubscriptionModal({
             type="submit"
             block
             disabled={
-              prorationAmount.kind !== "success" || seats === currentSeats
+              loading || prorationAmount.kind !== "success" || seats === currentSeats
             }>
             {seats === currentSeats
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
-              ? `Pay ${formatCents(prorationAmount.cost)}`
-              : "--"}
+              ? (prorationAmount.cost > 0? `Update Plan for ${formatCents(prorationAmount.cost)}` : 'Update Plan')
+              : "loading..."}
           </Button>
           {error && <Form.Text className="text-danger">{error}</Form.Text>}
         </Form>
