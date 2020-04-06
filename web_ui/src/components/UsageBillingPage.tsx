@@ -233,7 +233,7 @@ function StartSubscriptionModal({
         const { error } = await stripe.redirectToCheckout({
           sessionId: res.data.stripeCheckoutSessionId,
         })
-        setError(error.message || 'error redirecting to checkout')
+        setError(error.message || "error redirecting to checkout")
       } else {
         setError("Failed to start checkout")
       }
@@ -299,11 +299,14 @@ function StartSubscriptionModal({
   )
 }
 
-type IProrationAmount = { kind: "loading" } | { kind: "failed" } | { kind: "success"; cost: number }
+type IProrationAmount =
+  | { kind: "loading" }
+  | { kind: "failed" }
+  | { kind: "success"; cost: number }
 
 interface IManageSubscriptionModalProps {
   readonly show: boolean
-  readonly onClose: (props?: {reload?:boolean} ) => void
+  readonly onClose: (props?: { reload?: boolean }) => void
   readonly seatUsage: number
   readonly currentSeats: number
   readonly billingEmail: string
@@ -320,7 +323,9 @@ function ManageSubscriptionModal({
   const [seats, setSeats] = React.useState(currentSeats)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [prorationAmount, setProrationAmount] = React.useState<IProrationAmount>({ kind: "loading" })
+  const [prorationAmount, setProrationAmount] = React.useState<
+    IProrationAmount
+  >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const seatsRef = React.useRef(0)
 
@@ -356,7 +361,7 @@ function ManageSubscriptionModal({
     }
     teamApi(Current.api.cancelSubscription).then(res => {
       if (res.ok) {
-        onClose({reload: true})
+        onClose({ reload: true })
         alert("subscription canceled")
         location.search = ""
       } else {
@@ -395,7 +400,7 @@ function ManageSubscriptionModal({
       }
       return `account credit of ${formatCents(-x.cost)}`
     }
-    return '--'
+    return "--"
   }
 
   function updateBillingInfo() {
@@ -829,20 +834,22 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           onClose={clearQueryString}
           seatUsage={data.activeUsers.length}
         />
-        {data.subscription != null  ? <ManageSubscriptionModal
-          show={showSubscriptionModifyModal}
-          currentSeats={data.subscription.seats}
-          seatUsage={data.activeUsers.length}
-          billingEmail={data.subscription.billingEmail}
-          cardInfo={data.subscription.cardInfo}
-          onClose={x => {
-            if (x?.reload) {
-              location.search = ""
-            } else {
-              clearQueryString()
-            }
-          }}
-        /> : null}
+        {data.subscription != null ? (
+          <ManageSubscriptionModal
+            show={showSubscriptionModifyModal}
+            currentSeats={data.subscription.seats}
+            seatUsage={data.activeUsers.length}
+            billingEmail={data.subscription.billingEmail}
+            cardInfo={data.subscription.cardInfo}
+            onClose={x => {
+              if (x?.reload) {
+                location.search = ""
+              } else {
+                clearQueryString()
+              }
+            }}
+          />
+        ) : null}
         <Subscription
           startSubscription={handleStartSubscription}
           startTrial={handleStartTrial}

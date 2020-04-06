@@ -174,7 +174,5 @@ export interface Api {
     args: IFetchProrationArgs,
   ) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
-  modifyBilling: (
-    args: IModifyBillingArgs,
-  ) => Promise<ModifyBillingResponse>
+  modifyBilling: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
 }
