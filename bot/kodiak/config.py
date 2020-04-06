@@ -12,7 +12,6 @@ class MergeMethod(str, Enum):
     squash = "squash"
     rebase = "rebase"
 
-
 class MergeTitleStyle(Enum):
     github_default = "github_default"
     pull_request_title = "pull_request_title"
@@ -29,6 +28,9 @@ class BodyText(Enum):
     markdown = "markdown"
     html = "html"
 
+class UpdateMethod(str, Enum):
+    merge = "merge"
+    label = "label"
 
 class MergeMessage(BaseModel):
     """
@@ -102,6 +104,9 @@ class Update(BaseModel):
     require_automerge_label: bool = True
     # Do not update PRs created by a listed user.
     blacklist_usernames: List[str] = []
+
+    # method for updating out-dated PRs 
+    method: UpdateMethod = UpdateMethod.merge
 
 
 class Approve(BaseModel):

@@ -155,6 +155,9 @@ class PRAPI(Protocol):
     async def remove_label(self, label: str) -> None:
         ...
 
+    async def add_label(self, label: str) -> None:
+        ...
+
     async def create_comment(self, body: str) -> None:
         ...
 
@@ -172,7 +175,7 @@ class PRAPI(Protocol):
     async def queue_for_merge(self) -> Optional[int]:
         ...
 
-    async def update_branch(self) -> None:
+    async def update_branch(self, update_method: str) -> None:
         ...
 
     async def approve_pull_request(self) -> None:
@@ -339,7 +342,7 @@ async def mergeable(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
         )
-        await api.update_branch()
+        await api.update_branch(config.update.method)
         return
 
     if (
@@ -589,7 +592,7 @@ async def mergeable(
                 "🔄 updating branch",
                 markdown_content="branch updated because `merge.update_branch_immediately = true` is configured.",
             )
-            await api.update_branch()
+            await api.update_branch(config.update.method)
             return
 
         if merging:
@@ -597,7 +600,7 @@ async def mergeable(
             if config.merge.optimistic_updates:
                 if need_branch_update:
                     await set_status("⛴ merging PR (updating branch)")
-                    await api.update_branch()
+                    await api.update_branch(config.update.method)
                     raise PollForever
                 if wait_for_checks:
                     await set_status(
@@ -614,7 +617,7 @@ async def mergeable(
                     raise PollForever
                 if need_branch_update:
                     await set_status("⛴ merging PR (updating branch)")
-                    await api.update_branch()
+                    await api.update_branch(config.update.method)
                     raise PollForever
 
         # if we reach this point and we don't need to wait for checks or update a branch we've failed to calculate why the PR is blocked. This should _not_ happen normally.

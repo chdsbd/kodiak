@@ -932,6 +932,18 @@ class Client:
         async with self.throttler:
             return await self.session.post(url, headers=headers, json=body)
 
+    async def add_label(self, label: str, pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        body = dict(
+            labels = [label]
+        )
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels",
+                headers=headers,
+                json=body
+            )
+
     async def delete_label(self, label: str, pull_number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:

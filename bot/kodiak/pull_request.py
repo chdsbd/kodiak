@@ -10,6 +10,7 @@ import kodiak.app_config as conf
 from kodiak.errors import ApiCallException, PollForever, RetryForSkippableChecks
 from kodiak.evaluation import mergeable
 from kodiak.queries import Client, EventInfoResponse
+from kodiak.config import UpdateMethod
 
 logger = structlog.get_logger()
 
@@ -207,18 +208,30 @@ class PRV2:
                 else:
                     self.log.exception("failed to delete branch", res=res)
 
-    async def update_branch(self) -> None:
-        self.log.info("update_branch")
+    async def update_branch(self, method: UpdateMethod) -> None:
+        self.log.info("update_branch", method=method)
+        
         async with Client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
-            res = await api_client.update_branch(pull_number=self.number)
-            try:
-                res.raise_for_status()
-            except HTTPError:
-                self.log.exception("failed to update branch", res=res)
-                # we raise an exception to retry this request.
-                raise ApiCallException("update branch")
+            if method == UpdateMethod.merge
+                res = await api_client.update_branch(pull_number=self.number)
+                try:
+                    res.raise_for_status()
+                except HTTPError:
+                    self.log.exception("failed to update branch", res=res)
+                    # we raise an exception to retry this request.
+                    raise ApiCallException("update branch")
+            else if method == UpdateMethod.label:
+                 res = await api_client.add_label(pull_number=self.number, label="automerge_needs_update") # todo: make label configurable
+                try:
+                    res.raise_for_status()
+                except HTTPError:
+                    self.log.exception("failed to update branch", res=res)
+                    # we raise an exception to retry this request.
+                    raise ApiCallException("update branch")
+                
+            
 
     async def approve_pull_request(self) -> None:
         self.log.info("approve_pull_request")
@@ -275,6 +288,22 @@ class PRV2:
     async def queue_for_merge(self) -> Optional[int]:
         self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback()
+
+    async def add_label(self, label: str) -> None:
+        """
+        add the PR label specified by `label_id` for a given `pr_number`
+        """
+        self.log.info("add_label", label=label)
+        async with Client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.add_label(label, pull_number=self.number)
+            try:
+                res.raise_for_status()
+            except HTTPError:
+                self.log.exception("failed to add label", label=label, res=res)
+                # we raise an exception to retry this request.
+                raise ApiCallException("add label")
 
     async def remove_label(self, label: str) -> None:
         """
