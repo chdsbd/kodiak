@@ -301,6 +301,7 @@ def test_update_subscription(
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
             plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
             quantity=4,
+            default_payment_method="pm_22dldxf3",
         ),
         "fake-key",
     )
@@ -311,6 +312,13 @@ def test_update_subscription(
     stripe_subscription_modify = mocker.patch(
         "core.models.stripe.Subscription.modify", return_value=fake_subscription
     )
+    fake_invoice = stripe.Invoice.construct_from(
+        dict(object="invoice", id="in_00000000000000"), "fake-key",
+    )
+    stripe_invoice_create = mocker.patch(
+        "core.models.stripe.Invoice.create", return_value=fake_invoice
+    )
+    stripe_invoice_pay = mocker.patch("core.models.stripe.Invoice.pay")
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -346,6 +354,8 @@ def test_update_subscription(
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 1
     assert stripe_subscription_modify.call_count == 1
+    assert stripe_invoice_create.call_count == 1
+    assert stripe_invoice_pay.call_count == 1
 
 
 @pytest.mark.django_db

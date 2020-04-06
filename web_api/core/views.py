@@ -73,7 +73,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 perSeatCents=stripe_customer_info.plan_amount,
             ),
             billingEmail=stripe_customer_info.customer_email,
-            cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})"
+            cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
         )
     return JsonResponse(
         dict(
@@ -212,6 +212,16 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
         ],
         proration_date=proration_timestamp,
     )
+    # when we upgrade a users plan Stripe will charge them on their next billing
+    # cycle. To make Stripe charge for the upgrade immediately we must create an
+    # invoice and pay it. If we don't pay the invoice Stripe will wait 1 hour
+    # before attempting to charge user.
+    invoice = stripe.Invoice.create(
+        customer=stripe_customer_info.customer_id, auto_advance=True
+    )
+    # we must specify the payment method because our Stripe customers don't have
+    # a default payment method, so the default invoicing will fail.
+    stripe.Invoice.pay(invoice.id, payment_method=subscription.default_payment_method)
     stripe_customer_info.plan_amount = updated_subscription.plan.amount
 
     stripe_customer_info.subscription_quantity = updated_subscription.quantity
