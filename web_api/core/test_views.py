@@ -168,6 +168,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 def test_usage_billing_trial_active(
     authed_client: Client, user: User, other_user: User, patch_start_trial: object
 ) -> None:
+    """
+    When the Account has an active trial, we return trial information in the API response.
+    """
     user_account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -194,6 +197,10 @@ def test_usage_billing_trial_active(
 def test_usage_billing_trial_expired(
     authed_client: Client, user: User, other_user: User, patch_start_trial: object
 ) -> None:
+    """
+    When the Account has an expired trial, we return trial information in the
+    API response and indicate that the trial is expired.
+    """
     user_account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -242,6 +249,10 @@ def test_usage_billing_authentication(authed_client: Client, other_user: User) -
 def test_usage_billing_subscription_started(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    When the Account has an active subscription we should return the
+    subscription information in the API response.
+    """
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
@@ -291,10 +302,12 @@ def test_usage_billing_subscription_started(
 def test_update_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    Verify that updating an Account's subscription updates Stripe.
+    """
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
-    # fake_subscription = stripe.Subscription(id='sub_Gu1xedsfo1', items=dict(data=[stripe.SubscriptionItem(id='si_Gx234091sd2')]))
     fake_subscription = stripe.Subscription.construct_from(
         dict(
             object="subscription",
@@ -365,6 +378,10 @@ def test_update_subscription(
 def test_update_subscription_missing_customer(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    We should get an error when we try to update a subscription for an Account
+    that doesn't have an associated subscription.
+    """
     fake_subscription = stripe.Subscription.construct_from(
         dict(
             object="subscription",
@@ -388,7 +405,9 @@ def test_update_subscription_missing_customer(
         stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
-    assert StripeCustomerInformation.objects.count() == 0
+    assert (
+        StripeCustomerInformation.objects.count() == 0
+    ), "we shouldn't have an associated subscription for this test."
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
     res = authed_client.post(
@@ -405,6 +424,9 @@ def test_update_subscription_missing_customer(
 def test_update_subscription_not_admin(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    Only admins should be able to modify subscriptions.
+    """
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -424,6 +446,9 @@ def test_update_subscription_not_admin(
 def test_cancel_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    Canceling a subscription should immediately cancel the subscription in Stripe.
+    """
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
@@ -466,6 +491,9 @@ def test_cancel_subscription(
 def test_cancel_subscription_not_admin(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    Only admins should be able to cancel a subscription.
+    """
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -532,7 +560,25 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 
 @pytest.mark.django_db
+def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=other_user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(
+        account=user_account, user=other_user, role="member"
+    )
+    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
+    assert res.status_code == 404
+
+
+@pytest.mark.django_db
 def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Start a Stripe checkout session and return the required credentials to the frontend.
+    """
     user_account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -557,6 +603,9 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
 
 @pytest.mark.django_db
 def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Start a new checkout session in "setup" mode to update the payment information.
+    """
     user_account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -576,21 +625,6 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
-
-@pytest.mark.django_db
-def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
-    AccountMembership.objects.create(
-        account=user_account, user=other_user, role="member"
-    )
-    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
-    assert res.status_code == 404
 
 
 @pytest.mark.django_db
@@ -803,7 +837,7 @@ def test_generate_header() -> None:
     https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
     """
     payload_v2 = json.dumps({"blah": 123})
-    header = generate_header((payload_v2))
+    header = generate_header(payload_v2)
     event = stripe.Webhook.construct_event(
         payload_v2, header, settings.STRIPE_WEBHOOK_SECRET
     )
@@ -811,6 +845,9 @@ def test_generate_header() -> None:
 
 
 def post_webhook(event: Union[dict, str]) -> HttpResponse:
+    """
+    Send a signed payload to our stripe webhook endpoint
+    """
     if isinstance(event, str):
         payload = event
     else:
@@ -826,6 +863,9 @@ def post_webhook(event: Union[dict, str]) -> HttpResponse:
 
 @pytest.mark.django_db
 def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+    """
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
@@ -991,6 +1031,9 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
 def test_stripe_webhook_handler_checkout_session_complete_subscription(
     mocker: Any,
 ) -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+    """
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
@@ -1165,6 +1208,11 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
 
 @pytest.mark.django_db
 def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+
+    This event will get sent when a subscription is updated.
+    """
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
