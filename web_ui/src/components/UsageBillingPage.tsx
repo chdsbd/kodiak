@@ -145,29 +145,24 @@ function InstallCompleteModal({ show, onClose }: IInstallCompleteModalProps) {
   )
 }
 
-type IStartTrialModalState =
-  | { kind: "initial" }
-  | { kind: "loading" }
-  | { kind: "success" }
-  | { kind: "error"; error: string }
 interface IStartTrialModalProps {
   readonly show: boolean
   readonly onClose: () => void
 }
 function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
   const [email, setEmail] = React.useState("")
-  const [state, setState] = React.useState<IStartTrialModalState>({
-    kind: "initial",
-  })
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
   const teamId = useTeamId()
   function startTrial() {
-    setState({ kind: "loading" })
+    setLoading(true)
+    setError("")
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
       if (res.ok) {
         location.href = `/t/${teamId}/usage?install_complete=1`
-        setState({ kind: "success" })
       } else {
-        setState({ kind: "error", error: "Failed to start trial" })
+        setLoading(false)
+        setError("Failed to start trial")
       }
     })
   }
@@ -197,15 +192,10 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
               We’ll send you trial reminders at this email address.
             </Form.Text>
           </Form.Group>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={state.kind === "loading"}>
-            {state.kind === "loading" ? "Loading" : "Begin Trial"}
+          <Button variant="primary" type="submit" disabled={loading}>
+            {loading ? "Loading" : "Begin Trial"}
           </Button>
-          {state.kind === "error" && (
-            <Form.Text className="text-danger">{state.error}</Form.Text>
-          )}
+          {error && <Form.Text className="text-danger">{error}</Form.Text>}
           <Form.Text className="text-muted">
             Your trial will expire 14 days after start.
           </Form.Text>
