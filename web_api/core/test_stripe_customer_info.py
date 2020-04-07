@@ -7,6 +7,11 @@ from core.models import StripeCustomerInformation
 
 @pytest.mark.django_db
 def test_expired(mocker: Any) -> None:
+    """
+    The subscription should be expired if past the period end. We give a grace
+    period of two days, so to be expired we need to be three days pass the
+    expiration period.
+    """
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = 1650581784
     period_end = 1655765784 + ONE_DAY_SEC * 30  # start plus one month.
