@@ -118,6 +118,8 @@ function FormatDate({ date }: { date: string }) {
   return <>{formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"}</>
 }
 
+const formattedMonthlyCost = formatCents(settings.monthlyCost)
+
 interface IInstallCompleteModalProps {
   readonly show: boolean
   readonly onClose: () => void
@@ -454,8 +456,9 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs <b>$4.99/month</b> for{" "}
-              <b>{currentSeats} seat(s)</b> at <b>$4.99/seat</b>.
+              Your current plan costs <b>{formattedMonthlyCost}/month</b> for{" "}
+              <b>{currentSeats} seat(s)</b> at{" "}
+              <b>{formattedMonthlyCost}/seat</b>.
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -603,7 +606,9 @@ function SubscriptionUpsellPrompt({
             </Button>
           </div>
         )}
-        <p className="text-center">($4.99 per active user per month)</p>
+        <p className="text-center">
+          ({formattedMonthlyCost} per active user per month)
+        </p>
       </div>
     </Col>
   )
@@ -762,9 +767,9 @@ function Subscription({
           <Col>
             <b>Pricing</b>
             <p>
-              Kodiak is $4.99 per active user per month. An active user is
-              anyone that opens a GitHub pull request that Kodiak updates,
-              approves, or merges.
+              Kodiak is {formattedMonthlyCost} per active user per month. An
+              active user is anyone that opens a GitHub pull request that Kodiak
+              updates, approves, or merges.
             </p>
           </Col>
         </Row>
@@ -786,7 +791,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
     queryParams.get("modify_subscription"),
   )
   function clearQueryString() {
-    history.push(location.pathname)
+    history.push({ search: "" })
   }
   if (props.data.status === "loading") {
     return <Loading />
@@ -804,13 +809,13 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const oneMonthAgo = formatDate(dateOneMonthAgo, "MMM do")
 
   function handleStartSubscription() {
-    history.push(location.pathname + "?start_subscription=1")
+    history.push({ search: "start_subscription=1" })
   }
   function handleStartTrial() {
-    history.push(location.pathname + "?start_trial=1")
+    history.push({ search: "start_trial=1" })
   }
   function modifySubscription() {
-    history.push(location.pathname + "?modify_subscription=1")
+    history.push({ search: "modify_subscription=1" })
   }
 
   return (

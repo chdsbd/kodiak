@@ -52,8 +52,7 @@ class BaseModel(models.Model):
 
     __repr__ = sane_repr("id")
 
-    def __str__(self) -> str:
-        return repr(self)
+    __str__ = __repr__
 
 
 class SyncAccountsError(Exception):
@@ -842,7 +841,7 @@ class StripeCustomerInformation(models.Model):
 
         # See what the next invoice would look like with a plan switch
         # and proration set:
-        items = [
+        subscription_items = [
             {
                 "id": subscription["items"]["data"][0].id,
                 "quantity": subscription_quantity,
@@ -852,13 +851,14 @@ class StripeCustomerInformation(models.Model):
         invoice = stripe.Invoice.upcoming(
             customer=self.customer_id,
             subscription=self.subscription_id,
-            subscription_items=items,
+            subscription_items=subscription_items,
             subscription_proration_date=proration_date,
         )
 
         # Calculate the proration cost:
-        current_prorations = [
-            ii for ii in invoice.lines.data if ii.period.start - proration_date <= 1
-        ]
-        cost = sum([p.amount for p in current_prorations])
-        return cost
+
+        return sum(
+            proration.amount
+            for proration in invoice.lines.data
+            if proration.period.start - proration_date <= 1
+        )

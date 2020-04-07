@@ -15,7 +15,6 @@ from django.http import (
     JsonResponse,
 )
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from typing_extensions import Literal
 from yarl import URL
@@ -168,7 +167,6 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
     )
 
 
-@csrf_exempt
 @auth.login_required
 def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
@@ -179,7 +177,6 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=204)
 
 
-@csrf_exempt
 @auth.login_required
 def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
@@ -230,7 +227,6 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=204)
 
 
-@csrf_exempt
 @auth.login_required
 def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     seat_count = int(request.POST.get("seatCount", 1))
@@ -263,7 +259,6 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     )
 
 
-@csrf_exempt
 @auth.login_required
 def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
@@ -285,7 +280,6 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
     )
 
 
-@csrf_exempt
 @auth.login_required
 def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
@@ -300,7 +294,6 @@ def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=204)
 
 
-@csrf_exempt
 @auth.login_required
 def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
@@ -323,7 +316,6 @@ def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=500)
 
 
-@csrf_exempt
 def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     """
     After checkout, Stripe sends a checkout.session.completed event. Stripe will
@@ -596,7 +588,6 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     return Success()
 
 
-@csrf_exempt
 @require_http_methods(["POST", "OPTIONS"])
 def oauth_complete(request: HttpRequest) -> HttpResponse:
     """
@@ -612,14 +603,12 @@ def oauth_complete(request: HttpRequest) -> HttpResponse:
     return HttpResponse()
 
 
-@csrf_exempt
 def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
     request.user = AnonymousUser()
     return HttpResponse(status=201)
 
 
-@csrf_exempt
 @auth.login_required
 @require_http_methods(["POST"])
 def sync_accounts(request: HttpRequest) -> HttpResponse:

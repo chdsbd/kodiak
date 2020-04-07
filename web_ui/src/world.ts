@@ -118,9 +118,7 @@ export const Current: World = {
       (
         await authRoute.post<unknown>(
           `/v1/t/${args.teamId}/update_subscription`,
-          jsonToFormData({
-            ...args,
-          }),
+          jsonToFormData(args),
         )
       ).data,
     cancelSubscription: async (args: api.ICancelSubscriptionArgs) =>

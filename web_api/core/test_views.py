@@ -243,8 +243,8 @@ def test_usage_billing_subscription_started(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
     ONE_DAY_SEC = 60 * 60 * 24
-    period_start = 1650581784
-    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     mocker.patch("core.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC)
     account = Account.objects.create(
         github_installation_id=377930,
@@ -275,7 +275,10 @@ def test_usage_billing_subscription_started(
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
-    assert res.json()["subscription"]["nextBillingDate"] == "2022-07-20T22:56:24"
+    assert (
+        res.json()["subscription"]["nextBillingDate"]
+        == datetime.datetime.fromtimestamp(period_end).isoformat()
+    )
     assert res.json()["subscription"]["expired"] is False
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
@@ -289,8 +292,8 @@ def test_update_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
     ONE_DAY_SEC = 60 * 60 * 24
-    period_start = 1650581784
-    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     # fake_subscription = stripe.Subscription(id='sub_Gu1xedsfo1', items=dict(data=[stripe.SubscriptionItem(id='si_Gx234091sd2')]))
     fake_subscription = stripe.Subscription.construct_from(
         dict(
@@ -422,8 +425,8 @@ def test_cancel_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
     ONE_DAY_SEC = 60 * 60 * 24
-    period_start = 1650581784
-    period_end = 1655765784 + 30 * ONE_DAY_SEC  # start plus one month.
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     patched = mocker.patch("core.models.stripe.Subscription.delete")
     account = Account.objects.create(
         github_installation_id=377930,
@@ -745,7 +748,7 @@ def test_start_trial(
     assert account.trial_email == "b.lowe@example.com"
 
 
-def equal_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
+def similar_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
     """
     Dates are equal if they are within 5 minutes of each other. This should
     hopefully reduce flakiness is tests.
@@ -778,8 +781,8 @@ def test_start_trial_existing_trial(
     )
     assert res.status_code == 204
     account.refresh_from_db()
-    assert equal_dates(account.trial_start, original_trial_start)
-    assert equal_dates(account.trial_expiration, original_trial_expiration)
+    assert similar_dates(account.trial_start, original_trial_start)
+    assert similar_dates(account.trial_expiration, original_trial_expiration)
     assert account.trial_started_by == original_trial_started_by
 
 
@@ -792,8 +795,7 @@ def generate_header(payload: str) -> str:
     payload_to_sign = "%d.%s" % (timestamp, payload)
     scheme = stripe.WebhookSignature.EXPECTED_SCHEME
     signature = stripe.WebhookSignature._compute_signature(payload_to_sign, secret)
-    header = "t=%d,%s=%s" % (timestamp, scheme, signature)
-    return header
+    return "t=%d,%s=%s" % (timestamp, scheme, signature)
 
 
 def test_generate_header() -> None:
