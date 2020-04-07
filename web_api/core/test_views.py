@@ -545,8 +545,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
 
     mocker.patch(
-        "core.views.billing.stripe.checkout.Session.create",
-        return_value=FakeCheckoutSession,
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
     )
     res = authed_client.post(
         f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
@@ -571,8 +570,7 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
 
     mocker.patch(
-        "core.views.billing.stripe.checkout.Session.create",
-        return_value=FakeCheckoutSession,
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
     )
     res = authed_client.post(f"/v1/t/{user_account.id}/modify_payment_details")
     assert res.status_code == 200
@@ -839,7 +837,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         "fake-key",
     )
     customer_retrieve = mocker.patch(
-        "core.views.billing.stripe.Customer.retrieve", return_value=fake_customer
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
     )
     fake_subscription = stripe.Subscription.construct_from(
         dict(
@@ -855,8 +853,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         "fake-key",
     )
     subscription_retrieve = mocker.patch(
-        "core.views.billing.stripe.Subscription.retrieve",
-        return_value=fake_subscription,
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -867,8 +864,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         "fake-key",
     )
     payment_method_retrieve = mocker.patch(
-        "core.views.billing.stripe.PaymentMethod.retrieve",
-        return_value=fake_payment_method,
+        "core.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
     account = Account.objects.create(
@@ -1006,7 +1002,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         "fake-key",
     )
     customer_retrieve = mocker.patch(
-        "core.views.billing.stripe.Customer.retrieve", return_value=fake_customer
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
     )
     fake_subscription = stripe.Subscription.construct_from(
         dict(
@@ -1022,8 +1018,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         "fake-key",
     )
     subscription_retrieve = mocker.patch(
-        "core.views.billing.stripe.Subscription.retrieve",
-        return_value=fake_subscription,
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -1034,8 +1029,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         "fake-key",
     )
     payment_method_retrieve = mocker.patch(
-        "core.views.billing.stripe.PaymentMethod.retrieve",
-        return_value=fake_payment_method,
+        "core.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
     account = Account.objects.create(
