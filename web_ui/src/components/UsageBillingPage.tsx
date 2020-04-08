@@ -159,6 +159,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
     setError("")
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
       if (res.ok) {
+        // trigger full page reload
         location.href = `/t/${teamId}/usage?install_complete=1`
       } else {
         setLoading(false)
