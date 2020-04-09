@@ -151,19 +151,18 @@ interface IStartTrialModalProps {
 }
 function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
   const [email, setEmail] = React.useState("")
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState("")
+  const [status, setStatus] = React.useState<
+    { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
+  >({ type: "initial" })
   const teamId = useTeamId()
   function startTrial() {
-    setLoading(true)
-    setError("")
+    setStatus({ type: "error", msg: "" })
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
       if (res.ok) {
         // trigger full page reload
         location.href = `/t/${teamId}/usage?install_complete=1`
       } else {
-        setLoading(false)
-        setError("Failed to start trial")
+        setStatus({ type: "error", msg: "Failed to start trial" })
       }
     })
   }
@@ -193,10 +192,15 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
               We’ll send you trial reminders at this email address.
             </Form.Text>
           </Form.Group>
-          <Button variant="primary" type="submit" disabled={loading}>
-            {loading ? "Loading" : "Begin Trial"}
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={status.type === "loading"}>
+            {status.type === "loading" ? "Loading" : "Begin Trial"}
           </Button>
-          {error && <Form.Text className="text-danger">{error}</Form.Text>}
+          {status.type === "error" && (
+            <Form.Text className="text-danger">{status.msg}</Form.Text>
+          )}
           <Form.Text className="text-muted">
             Your trial will expire 14 days after start.
           </Form.Text>
@@ -217,12 +221,12 @@ function StartSubscriptionModal({
   seatUsage,
 }: IStartSubscriptionModalProps) {
   const [seats, setSeats] = React.useState(1)
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState("")
+  const [status, setStatus] = React.useState<
+    { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
+  >({ type: "initial" })
 
   function setSubscription() {
-    setLoading(true)
-    setError("")
+    setStatus({ type: "loading" })
 
     teamApi(Current.api.startCheckout, {
       seatCount: seats,
@@ -230,17 +234,22 @@ function StartSubscriptionModal({
       if (res.ok) {
         const stripe = await loadStripe(res.data.stripePublishableApiKey)
         if (stripe == null) {
-          setError("Failed to load Stripe")
+          setStatus({ type: "error", msg: "Failed to load Stripe" })
           return
         }
         const { error } = await stripe.redirectToCheckout({
           sessionId: res.data.stripeCheckoutSessionId,
         })
-        setError(error.message || "error redirecting to checkout")
+        setStatus({
+          type: "error",
+          msg: error.message || "error redirecting to checkout",
+        })
       } else {
-        setError("Failed to start checkout")
+        setStatus({
+          type: "error",
+          msg: "Failed to start checkout",
+        })
       }
-      setLoading(false)
     })
   }
 
@@ -289,13 +298,19 @@ function StartSubscriptionModal({
               at <b>{formatCents(settings.monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
-          <Button variant="primary" type="submit" block disabled={loading}>
-            {loading ? "Loading" : "Continue to Payment"}
+          <Button
+            variant="primary"
+            type="submit"
+            block
+            disabled={status.type === "loading"}>
+            {status.type === "loading" ? "Loading" : "Continue to Payment"}
           </Button>
           <Form.Text className="text-muted">
             Kodiak uses Stripe.com to securely handle payments.
           </Form.Text>
-          {error && <Form.Text className="text-danger">{error}</Form.Text>}
+          {status.type === "error" && (
+            <Form.Text className="text-danger">{status.msg}</Form.Text>
+          )}
         </Form>
       </Modal.Body>
     </Modal>
@@ -344,6 +359,7 @@ function ManageSubscriptionModal({
       prorationTimestamp,
     }).then(res => {
       if (res.ok) {
+        // trigger page refresh.
         location.search = ""
       } else {
         setError("failed to update plan")
