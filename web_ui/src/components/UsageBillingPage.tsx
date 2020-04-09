@@ -156,7 +156,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
   >({ type: "initial" })
   const teamId = useTeamId()
   function startTrial() {
-    setStatus({ type: "error", msg: "" })
+    setStatus({ type: "loading" })
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
       if (res.ok) {
         // trigger full page reload
