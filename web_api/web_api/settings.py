@@ -38,7 +38,6 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.AuthenticationMiddleware",
     "core.middleware.CORSMiddleware",
@@ -103,3 +102,9 @@ KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
 KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
 KODIAK_WEB_APP_URL = os.environ["KODIAK_WEB_APP_URL"]
 KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
+
+# Stripe Credentials https://dashboard.stripe.com/account/apikeys
+STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
+STRIPE_PLAN_ID = os.environ["STRIPE_PLAN_ID"]
+STRIPE_WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
+STRIPE_PUBLISHABLE_API_KEY = os.environ["STRIPE_PUBLISHABLE_API_KEY"]

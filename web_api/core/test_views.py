@@ -1,14 +1,20 @@
 import datetime
-from typing import Any, cast
+import json
+import time
+from typing import Any, Union, cast
 
 import pytest
 import responses
+import stripe
 from django.conf import settings
+from django.http import HttpResponse
+from django.utils import timezone
 
 from core.models import (
     Account,
     AccountMembership,
     PullRequestActivity,
+    StripeCustomerInformation,
     User,
     UserPullRequestActivity,
 )
@@ -159,6 +165,72 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 
 
 @pytest.mark.django_db
+def test_usage_billing_trial_active(
+    authed_client: Client, user: User, other_user: User, patch_start_trial: object
+) -> None:
+    """
+    When the Account has an active trial, we return trial information in the API response.
+    """
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
+    user_account.save()
+
+    assert user_account.trial_expired() is False
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["trial"] is not None
+    assert isinstance(res.json()["trial"]["startDate"], str)
+    assert isinstance(res.json()["trial"]["endDate"], str)
+    assert res.json()["trial"]["expired"] is False
+    assert res.json()["trial"]["startedBy"] == dict(
+        id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
+    )
+
+
+@pytest.mark.django_db
+def test_usage_billing_trial_expired(
+    authed_client: Client, user: User, other_user: User, patch_start_trial: object
+) -> None:
+    """
+    When the Account has an expired trial, we return trial information in the
+    API response and indicate that the trial is expired.
+    """
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
+    user_account.trial_start = timezone.make_aware(datetime.datetime(2000, 4, 15))
+    user_account.trial_expiration = timezone.make_aware(datetime.datetime(2000, 5, 4))
+    user_account.save()
+    assert datetime.datetime.now() > datetime.datetime(
+        2000, 5, 4
+    ), "we expect the current time to be more recent"
+
+    assert user_account.trial_expired() is True
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["trial"] is not None
+    assert res.json()["trial"] == dict(
+        startDate="2000-04-15T00:00:00Z",
+        endDate="2000-05-04T00:00:00Z",
+        expired=True,
+        startedBy=dict(
+            id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
+        ),
+    )
+
+
+@pytest.mark.django_db
 def test_usage_billing_authentication(authed_client: Client, other_user: User) -> None:
     user_account = Account.objects.create(
         github_installation_id=377930,
@@ -171,6 +243,285 @@ def test_usage_billing_authentication(authed_client: Client, other_user: User) -
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_usage_billing_subscription_started(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    When the Account has an active subscription we should return the
+    subscription information in the API response.
+    """
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
+    mocker.patch("core.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC)
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
+    )
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"] is not None
+    assert (
+        res.json()["subscription"]["nextBillingDate"]
+        == datetime.datetime.fromtimestamp(period_end).isoformat()
+    )
+    assert res.json()["subscription"]["expired"] is False
+    assert res.json()["subscription"]["seats"] == 3
+    assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
+    assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
+    assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
+    assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
+
+
+@pytest.mark.django_db
+def test_update_subscription(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    Verify that updating an Account's subscription updates Stripe.
+    """
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=period_start,
+            current_period_start=period_end,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify", return_value=fake_subscription
+    )
+    fake_invoice = stripe.Invoice.construct_from(
+        dict(object="invoice", id="in_00000000000000"), "fake-key",
+    )
+    stripe_invoice_create = mocker.patch(
+        "core.models.stripe.Invoice.create", return_value=fake_invoice
+    )
+    stripe_invoice_pay = mocker.patch("core.models.stripe.Invoice.pay")
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="admin")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
+    )
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=24),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 1
+    assert stripe_subscription_modify.call_count == 1
+    assert stripe_invoice_create.call_count == 1
+    assert stripe_invoice_pay.call_count == 1
+
+
+@pytest.mark.django_db
+def test_update_subscription_missing_customer(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    We should get an error when we try to update a subscription for an Account
+    that doesn't have an associated subscription.
+    """
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+        ),
+        "fake-key",
+    )
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify", return_value=fake_subscription
+    )
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="admin")
+    assert (
+        StripeCustomerInformation.objects.count() == 0
+    ), "we shouldn't have an associated subscription for this test."
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=1650581784, seats=24),
+    )
+    assert res.status_code == 422
+    assert res.json()["message"] == "Subscription does not exist to modify."
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+
+
+@pytest.mark.django_db
+def test_update_subscription_not_admin(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    Only admins should be able to modify subscriptions.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=1650581784, seats=24),
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
+def test_cancel_subscription(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    Canceling a subscription should immediately cancel the subscription in Stripe.
+    """
+    ONE_DAY_SEC = 60 * 60 * 24
+    period_start = int(time.time())
+    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
+    patched = mocker.patch("core.models.stripe.Subscription.delete")
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="admin")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=period_start,
+        subscription_current_period_end=period_end,
+    )
+    assert patched.call_count == 0
+    assert StripeCustomerInformation.objects.count() == 1
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 204
+    assert patched.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_cancel_subscription_not_admin(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    Only admins should be able to cancel a subscription.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1658357784,
+    )
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 403
 
 
 @pytest.mark.django_db
@@ -221,6 +572,59 @@ def test_activity_authentication(authed_client: Client, other_user: User,) -> No
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Start a Stripe checkout session and return the required credentials to the frontend.
+    """
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+
+    class FakeCheckoutSession:
+        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
+
+    mocker.patch(
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
+    )
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+
+
+@pytest.mark.django_db
+def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Start a new checkout session in "setup" mode to update the payment information.
+    """
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_customer_id="cus_Ged32s2xnx12",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+
+    class FakeCheckoutSession:
+        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
+
+    mocker.patch(
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
+    )
+    res = authed_client.post(f"/v1/t/{user_account.id}/modify_payment_details")
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
 
 @pytest.mark.django_db
@@ -331,6 +735,664 @@ def test_accounts(authed_client: Client, user: User) -> None:
         accounts[0]["profileImgUrl"]
         == f"https://avatars.githubusercontent.com/u/{user_account.github_account_id}"
     )
+
+
+@pytest.fixture
+def patch_start_trial(mocker: Any) -> None:
+    fake_customer = stripe.Customer.construct_from(
+        dict(object="customer", id="cust_Gx2a3gd5x6",), "fake-key",
+    )
+    mocker.patch("core.models.stripe.Customer.create", return_value=fake_customer)
+    mocker.patch("core.models.stripe.Customer.modify", return_value=fake_customer)
+
+
+@pytest.mark.django_db
+def test_start_trial(
+    authed_client: Client, user: User, patch_start_trial: object
+) -> None:
+    """
+    When a user starts a trial we should update their account.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    assert account.trial_start is None
+    assert account.trial_expiration is None
+    assert account.trial_started_by is None
+    assert (
+        account.trial_expired() is False
+    ), "when a trial is inactive, it shouldn't have expired."
+    res = authed_client.post(
+        f"/v1/t/{account.id}/start_trial", dict(billingEmail="b.lowe@example.com")
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert account.trial_start is not None
+    assert (
+        (account.trial_start - account.trial_expiration).total_seconds()
+        - datetime.timedelta(days=14).total_seconds()
+        < 60 * 60
+    ), "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
+    assert account.trial_started_by == user
+    assert account.trial_expired() is False
+    assert account.trial_email == "b.lowe@example.com"
+
+
+def similar_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
+    """
+    Dates are equal if they are within 5 minutes of each other. This should
+    hopefully reduce flakiness is tests.
+    """
+    return abs(int(a.timestamp()) - int(b.timestamp())) < 60 * 5
+
+
+@pytest.mark.django_db
+def test_start_trial_existing_trial(
+    authed_client: Client, user: User, patch_start_trial: object
+) -> None:
+    """
+    Starting a trial when there is already an existing trial shouldn't alter
+    current trial.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+    )
+    AccountMembership.objects.create(account=account, user=user, role="member")
+    account.start_trial(actor=user, billing_email="b.lowe@example.com", length_days=2)
+    original_trial_start = account.trial_start
+    original_trial_expiration = account.trial_expiration
+    original_trial_started_by = account.trial_started_by
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/start_trial", dict(billingEmail="d.abernathy@example.com")
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert similar_dates(account.trial_start, original_trial_start)
+    assert similar_dates(account.trial_expiration, original_trial_expiration)
+    assert account.trial_started_by == original_trial_started_by
+
+
+def generate_header(payload: str) -> str:
+    """
+    https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
+    """
+    secret = settings.STRIPE_WEBHOOK_SECRET
+    timestamp = int(time.time())
+    payload_to_sign = "%d.%s" % (timestamp, payload)
+    scheme = stripe.WebhookSignature.EXPECTED_SCHEME
+    signature = stripe.WebhookSignature._compute_signature(payload_to_sign, secret)
+    return "t=%d,%s=%s" % (timestamp, scheme, signature)
+
+
+def test_generate_header() -> None:
+    """
+    https://github.com/stripe/stripe-python/blob/a16bdc5123bcc25e20b309419f547a150e83e44d/tests/test_webhook.py#L19
+    """
+    payload_v2 = json.dumps({"blah": 123})
+    header = generate_header(payload_v2)
+    event = stripe.Webhook.construct_event(
+        payload_v2, header, settings.STRIPE_WEBHOOK_SECRET
+    )
+    assert isinstance(event, stripe.Event)
+
+
+def post_webhook(event: Union[dict, str]) -> HttpResponse:
+    """
+    Send a signed payload to our stripe webhook endpoint
+    """
+    if isinstance(event, str):
+        payload = event
+    else:
+        payload = json.dumps(event)
+    sig_header = generate_header(payload)
+    return Client().post(
+        "/v1/stripe_webhook",
+        payload,
+        content_type="application/json",
+        HTTP_STRIPE_SIGNATURE=sig_header,
+    )
+
+
+@pytest.mark.django_db
+def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+    """
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id="cus_Gz7jQFKdh4KirU",
+            email="j.doe@example.com",
+            balance=5000,
+            created=1643455402,
+        ),
+        "fake-key",
+    )
+    customer_retrieve = mocker.patch(
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            default_payment_method="pm_47xubd3i",
+            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            quantity=10,
+            start_date=1443556775,
+            current_period_start=1653173784,
+            current_period_end=1660949784,
+        ),
+        "fake-key",
+    )
+    subscription_retrieve = mocker.patch(
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    payment_method_retrieve = mocker.patch(
+        "core.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+    )
+
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="cus_Gz7jQFKdh4KirU",
+    )
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1658357784,
+    )
+    assert StripeCustomerInformation.objects.count() == 1
+    res = post_webhook(
+        """
+{
+  "id": "evt_1GTJLPCoyKa1V9Y6dIfvIuva",
+  "object": "event",
+  "api_version": "2020-03-02",
+  "created": 1585796631,
+  "data": {
+    "object": {
+      "id": "cs_test_Enc3u2mzp4vowbDcwrSneOhGOLwoYHX4UJGmUh6f4b3fnS88LTZgsJZT",
+      "object": "checkout.session",
+      "billing_address_collection": null,
+      "cancel_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?start_subscription=1",
+      "client_reference_id": "%s",
+      "customer": "%s",
+      "customer_email": null,
+      "display_items": [
+      ],
+      "livemode": false,
+      "locale": null,
+      "metadata": {
+      },
+      "mode": "setup",
+      "payment_intent": null,
+      "payment_method_types": [
+        "card"
+      ],
+      "setup_intent": "seti_1GTJKRCoyKa1V9Y6M41eERR5",
+      "shipping": null,
+      "shipping_address_collection": null,
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?install_complete=1"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed"
+}
+"""
+        % (account.id, account.stripe_customer_id)
+    )
+    assert res.status_code == 200
+    assert customer_retrieve.call_count == 1
+    assert subscription_retrieve.call_count == 1
+    assert payment_method_retrieve.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 1
+
+    stripe_customer_info_updated = StripeCustomerInformation.objects.get()
+    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
+    assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
+    assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
+    assert stripe_customer_info_updated.customer_email == fake_customer.email
+    assert stripe_customer_info_updated.customer_balance == fake_customer.balance
+    assert stripe_customer_info_updated.customer_created == fake_customer.created
+
+    assert (
+        stripe_customer_info_updated.payment_method_card_brand
+        == fake_payment_method.card.brand
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_month
+        == fake_payment_method.card.exp_month
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_year
+        == fake_payment_method.card.exp_year
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_last4
+        == fake_payment_method.card.last4
+    )
+    assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
+    assert (
+        stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
+    )
+    assert (
+        stripe_customer_info_updated.subscription_start_date
+        == fake_subscription.start_date
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_end
+        == fake_subscription.current_period_end
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_start
+        == fake_subscription.current_period_start
+    )
+
+
+@pytest.mark.django_db
+def test_stripe_webhook_handler_checkout_session_complete_subscription(
+    mocker: Any,
+) -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+    """
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id="cus_Gz7jQFKdh4KirU",
+            email="j.doe@example.com",
+            balance=5000,
+            created=1643455402,
+        ),
+        "fake-key",
+    )
+    customer_retrieve = mocker.patch(
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            default_payment_method="pm_47xubd3i",
+            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            quantity=10,
+            start_date=1443556775,
+            current_period_start=1653173784,
+            current_period_end=1660949784,
+        ),
+        "fake-key",
+    )
+    subscription_retrieve = mocker.patch(
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    payment_method_retrieve = mocker.patch(
+        "core.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+    )
+
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="",
+    )
+    assert StripeCustomerInformation.objects.count() == 0
+    res = post_webhook(
+        """
+{
+  "id": "evt_1GQQCUCoyKa1V9Y6EvAMbLgM",
+  "object": "event",
+  "api_version": "2020-03-02",
+  "created": 1585108002,
+  "data": {
+    "object": {
+      "id": "cs_test_3UbqT95rC08iaEzKbGT5tkYgLwuoEeUFfd93uiFaQoo9ZeslGZeV27fP",
+      "object": "checkout.session",
+      "billing_address_collection": null,
+      "cancel_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?cancel=1",
+      "client_reference_id": "%s",
+      "customer": "cus_GyMwpHE6qQb4cr",
+      "customer_email": null,
+      "display_items": [
+        {
+          "amount": 499,
+          "currency": "usd",
+          "plan": {
+            "id": "plan_GuzDf41AmGOJzQ",
+            "object": "plan",
+            "active": true,
+            "aggregate_usage": null,
+            "amount": 499,
+            "amount_decimal": "499",
+            "billing_scheme": "per_unit",
+            "created": 1584327811,
+            "currency": "usd",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {
+            },
+            "nickname": "Monthly",
+            "product": "prod_GuzCMVKonQIp2l",
+            "tiers": null,
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "quantity": 2,
+          "type": "plan"
+        }
+      ],
+      "livemode": false,
+      "locale": null,
+      "metadata": {
+      },
+      "mode": "subscription",
+      "payment_intent": null,
+      "payment_method_types": [
+        "card"
+      ],
+      "setup_intent": null,
+      "shipping": null,
+      "shipping_address_collection": null,
+      "submit_type": null,
+      "subscription": "sub_GyMw1lyNB2LXmn",
+      "success_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?success=1"
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_nIsiFwPHQZauDS",
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed"
+}"""
+        % account.id
+    )
+
+    assert res.status_code == 200
+    assert customer_retrieve.call_count == 1
+    assert subscription_retrieve.call_count == 1
+    assert payment_method_retrieve.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 1
+
+    stripe_customer_info_updated = StripeCustomerInformation.objects.get()
+    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
+    assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
+    assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
+    assert stripe_customer_info_updated.customer_email == fake_customer.email
+    assert stripe_customer_info_updated.customer_balance == fake_customer.balance
+    assert stripe_customer_info_updated.customer_created == fake_customer.created
+
+    assert (
+        stripe_customer_info_updated.payment_method_card_brand
+        == fake_payment_method.card.brand
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_month
+        == fake_payment_method.card.exp_month
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_exp_year
+        == fake_payment_method.card.exp_year
+    )
+    assert (
+        stripe_customer_info_updated.payment_method_card_last4
+        == fake_payment_method.card.last4
+    )
+    assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
+    assert (
+        stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
+    )
+    assert (
+        stripe_customer_info_updated.subscription_start_date
+        == fake_subscription.start_date
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_end
+        == fake_subscription.current_period_end
+    )
+    assert (
+        stripe_customer_info_updated.subscription_current_period_start
+        == fake_subscription.current_period_start
+    )
+
+
+@pytest.mark.django_db
+def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
+    """
+    Verify our webhook handler updates our subscription on this event.
+
+    This event will get sent when a subscription is updated.
+    """
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="cus_523405923045",
+    )
+
+    stripe_customer_info = StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1590982549,
+        subscription_current_period_end=1588304149,
+    )
+    assert StripeCustomerInformation.objects.count() == 1
+    res = post_webhook(
+        """
+{
+  "created": 1326853478,
+  "livemode": false,
+  "id": "evt_00000000000000",
+  "type": "invoice.payment_succeeded",
+  "object": "event",
+  "request": null,
+  "pending_webhooks": 1,
+  "api_version": "2020-03-02",
+  "data": {
+    "object": {
+      "id": "in_00000000000000",
+      "object": "invoice",
+      "account_country": "US",
+      "account_name": "Kodiakhq",
+      "amount_due": 9980,
+      "amount_paid": 9980,
+      "amount_remaining": 0,
+      "application_fee_amount": null,
+      "attempt_count": 1,
+      "attempted": true,
+      "auto_advance": false,
+      "billing_reason": "subscription_create",
+      "charge": "_00000000000000",
+      "collection_method": "charge_automatically",
+      "created": 1584328318,
+      "currency": "usd",
+      "custom_fields": null,
+      "customer": "%s",
+      "customer_address": null,
+      "customer_email": "j.doe@example.com",
+      "customer_name": null,
+      "customer_phone": null,
+      "customer_shipping": null,
+      "customer_tax_exempt": "none",
+      "customer_tax_ids": [
+      ],
+      "default_payment_method": null,
+      "default_source": null,
+      "default_tax_rates": [
+      ],
+      "description": null,
+      "discount": null,
+      "due_date": null,
+      "ending_balance": 0,
+      "footer": null,
+      "hosted_invoice_url": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T",
+      "invoice_pdf": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T/pdf",
+      "lines": {
+        "data": [
+          {
+            "id": "il_00000000000000",
+            "object": "line_item",
+            "amount": 4990,
+            "currency": "usd",
+            "description": "10 seat × Kodiak Seat License (at $4.99 / month)",
+            "discountable": true,
+            "livemode": false,
+            "metadata": {
+            },
+            "period": {
+              "end": 1660949784,
+              "start": 1653173784
+            },
+            "plan": {
+              "id": "plan_00000000000000",
+              "object": "plan",
+              "active": true,
+              "aggregate_usage": null,
+              "amount": 499,
+              "amount_decimal": "499",
+              "billing_scheme": "per_unit",
+              "created": 1584327811,
+              "currency": "usd",
+              "interval": "month",
+              "interval_count": 1,
+              "livemode": false,
+              "metadata": {
+              },
+              "nickname": "Monthly",
+              "product": "prod_00000000000000",
+              "tiers": null,
+              "tiers_mode": null,
+              "transform_usage": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "proration": false,
+            "quantity": 10,
+            "subscription": "sub_00000000000000",
+            "subscription_item": "si_00000000000000",
+            "tax_amounts": [
+            ],
+            "tax_rates": [
+            ],
+            "type": "subscription"
+          }
+        ],
+        "has_more": false,
+        "object": "list",
+        "url": "/v1/invoices/in_1GN9MwCoyKa1V9Y6Ox2tehjN/lines"
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "next_payment_attempt": null,
+      "number": "E5700931-0001",
+      "paid": true,
+      "payment_intent": "pi_00000000000000",
+      "period_end": 1660949784,
+      "period_start": 1653173784,
+      "post_payment_credit_notes_amount": 0,
+      "pre_payment_credit_notes_amount": 0,
+      "receipt_number": "2421-2035",
+      "starting_balance": 0,
+      "statement_descriptor": null,
+      "status": "paid",
+      "status_transitions": {
+        "finalized_at": 1584328319,
+        "marked_uncollectible_at": null,
+        "paid_at": 1584328320,
+        "voided_at": null
+      },
+      "subscription": "sub_00000000000000",
+      "subtotal": 9980,
+      "tax": null,
+      "tax_percent": null,
+      "total": 9980,
+      "total_tax_amounts": [
+      ],
+      "webhooks_delivered_at": 1584328320,
+      "closed": true
+    }
+  }
+}"""
+        % account.stripe_customer_id
+    )
+
+    assert res.status_code == 200
+    assert StripeCustomerInformation.objects.count() == 1
+    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
+    assert (
+        updated_stripe_customer_info.subscription_current_period_start
+        > stripe_customer_info.subscription_current_period_start
+    )
+    assert (
+        updated_stripe_customer_info.subscription_current_period_end
+        > stripe_customer_info.subscription_current_period_end
+    )
+    assert updated_stripe_customer_info.subscription_current_period_end == 1660949784
+    assert updated_stripe_customer_info.subscription_current_period_start == 1653173784
 
 
 @pytest.mark.django_db

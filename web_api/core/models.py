@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, cast
 
 import requests
+import stripe
+from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def sane_repr(*attrs: str) -> Callable:
@@ -47,6 +52,8 @@ class BaseModel(models.Model):
 
     __repr__ = sane_repr("id")
 
+    __str__ = __repr__
+
 
 class SyncAccountsError(Exception):
     pass
@@ -80,6 +87,14 @@ class User(BaseModel):
 
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
+
+    def can_edit(self, account: Account) -> bool:
+        return cast(
+            bool,
+            AccountMembership.objects.filter(
+                account=account, user=self, role=AccountRole.admin
+            ).exists(),
+        )
 
     def sync_accounts(self) -> None:
         """
@@ -210,6 +225,19 @@ class Account(BaseModel):
         help_text="GitHub username for account with installation.",
     )
     github_account_type = models.CharField(max_length=255, choices=AccountType.choices)
+    trial_expiration = models.DateTimeField(null=True)
+    trial_start = models.DateTimeField(null=True)
+    trial_started_by = models.ForeignKey(
+        User, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    trial_email = models.CharField(blank=True, max_length=255)
+
+    stripe_customer_id = models.CharField(
+        blank=True,
+        max_length=255,
+        db_index=True,
+        help_text="ID of the Stripe Customer associated with this account. This will have a corresponding object in StripeCustomerInformation if the user has created a subscription.",
+    )
 
     class Meta:
         db_table = "account"
@@ -226,6 +254,48 @@ class Account(BaseModel):
 
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
+
+    def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
+        return cast(
+            Optional[StripeCustomerInformation],
+            StripeCustomerInformation.objects.filter(
+                customer_id=self.stripe_customer_id
+            ).first(),
+        )
+
+    def start_trial(
+        self, actor: User, billing_email: str, length_days: int = 14
+    ) -> None:
+        """
+        Start the timer for the trial and create a Stripe customer.
+
+        If the trial already exists, we only update the email if provided. We
+        also update the Stripe customer email.
+        """
+        self.trial_email = billing_email
+        if self.trial_expiration is None:
+            self.trial_expiration = timezone.now() + datetime.timedelta(
+                days=length_days
+            )
+            self.trial_start = timezone.now()
+            self.trial_started_by = actor
+        else:
+            logger.warning("attempted to start trial when one already exists")
+        if not self.stripe_customer_id:
+            customer = stripe.Customer.create(email=billing_email)
+            self.stripe_customer_id = customer.id
+        else:
+            stripe.Customer.modify(self.stripe_customer_id, email=billing_email)
+        self.save()
+
+    def trial_expired(self) -> bool:
+        if self.trial_expiration is None:
+            return False
+        return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
+
+    def update_from(self, customer: stripe.Customer) -> None:
+        self.stripe_customer_id = customer.id
+        self.save()
 
 
 class AccountRole(models.TextChoices):
@@ -626,3 +696,169 @@ class UserPullRequestActivityProgress(BaseModel):
 
     class Meta:
         db_table = "user_pull_request_activity_progress"
+
+
+class StripeCustomerInformation(models.Model):
+    customer_id = models.CharField(
+        max_length=255,
+        primary_key=True,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Customer object.",
+    )
+    subscription_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Subscription object.",
+    )
+    plan_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Plan object.",
+    )
+    payment_method_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe PaymentMethod object.",
+    )
+
+    # https://stripe.com/docs/api/customers/object
+    customer_email = models.CharField(
+        max_length=255, help_text="The customer’s email address."
+    )
+    customer_balance = models.IntegerField(
+        default=0,
+        help_text="Current balance, if any, being stored on the customer. If negative, the customer has credit to apply to their next invoice. If positive, the customer has an amount owed that will be added to their next invoice. The balance does not refer to any unpaid invoices; it solely takes into account amounts that have yet to be successfully applied to any invoice. This balance is only taken into account as invoices are finalized.",
+    )
+    customer_created = models.IntegerField(
+        help_text="Time at which the object was created. Measured in seconds since the Unix epoch."
+    )
+
+    # https://stripe.com/docs/api/payment_methods/object
+    payment_method_card_brand = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
+    )
+    payment_method_card_exp_month = models.CharField(
+        null=True,
+        help_text="Two-digit number representing the card’s expiration month.",
+        max_length=255,
+    )
+    payment_method_card_exp_year = models.CharField(
+        null=True,
+        help_text="Four-digit number representing the card’s expiration year.",
+        max_length=255,
+    )
+    payment_method_card_last4 = models.CharField(
+        max_length=255, null=True, help_text="The last four digits of the card."
+    )
+
+    # https://stripe.com/docs/api/plans/object
+    plan_amount = models.IntegerField(
+        help_text="The amount in cents to be charged on the interval specified."
+    )
+
+    # https://stripe.com/docs/api/subscriptions/object
+    subscription_quantity = models.IntegerField(
+        help_text="The quantity of the plan to which the customer is subscribed. For example, if your plan is $10/user/month, and your customer has 5 users, you could pass 5 as the quantity to have the customer charged $50 (5 x $10) monthly. Only set if the subscription contains a single plan."
+    )
+    subscription_start_date = models.IntegerField(
+        help_text="Date when the subscription was first created. The date might differ from the created date due to backdating."
+    )
+    subscription_current_period_end = models.IntegerField(
+        help_text="End of the current period that the subscription has been invoiced for. At the end of this period, a new invoice will be created."
+    )
+    subscription_current_period_start = models.IntegerField(
+        help_text="Start of the current period that the subscription has been invoiced for."
+    )
+
+    class Meta:
+        db_table = "stripe_customer_information"
+
+    def update_from(
+        self,
+        subscription: stripe.Subscription,
+        customer: stripe.Customer,
+        payment_method: stripe.PaymentMethod,
+    ) -> None:
+
+        self.subscription_id = subscription.id
+        self.plan_id = subscription.plan.id
+        self.payment_method_id = payment_method.id
+
+        self.customer_email = customer.email
+        self.customer_balance = customer.balance
+        self.customer_created = customer.created
+
+        self.payment_method_card_brand = payment_method.card.brand
+        self.payment_method_card_exp_month = payment_method.card.exp_month
+        self.payment_method_card_exp_year = payment_method.card.exp_year
+        self.payment_method_card_last4 = payment_method.card.last4
+
+        self.plan_amount = subscription.plan.amount
+
+        self.subscription_quantity = subscription.quantity
+        self.subscription_start_date = subscription.start_date
+        self.subscription_current_period_end = subscription.current_period_end
+        self.subscription_current_period_start = subscription.current_period_start
+        self.save()
+
+    @property
+    def expired(self) -> bool:
+        # provide two days of leeway for good measure
+        two_days = 60 * 60 * 24 * 2
+        now = int(time.time())
+        return cast(bool, now > (self.subscription_current_period_end + two_days))
+
+    @property
+    def next_billing_date(self) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
+
+    def cancel_subscription(self) -> None:
+        """
+        Cancel the Account's subscription in Stripe and remove the
+        StripeCustomerInformation object.
+        """
+        # Calling delete on a subscription cancels it. If a user wants to
+        # resubscribe they must create a new subscription.
+        # https://stripe.com/docs/billing/subscriptions/canceling
+        stripe.Subscription.delete(self.subscription_id)
+        # we delete all the associated subscription info because the
+        # subscription is no longer valid. We leave the Stripe Customer and keep
+        # Account.customer_id alone. If a user resubscribes we can use their
+        # existing Stripe Customer to improve their Stripe Checkout flow with a
+        # prefilled email.
+        self.delete()
+
+    def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
+        proration_date = timestamp
+
+        subscription = stripe.Subscription.retrieve(self.subscription_id)
+
+        # See what the next invoice would look like with a plan switch
+        # and proration set:
+        subscription_items = [
+            {
+                "id": subscription["items"]["data"][0].id,
+                "quantity": subscription_quantity,
+            }
+        ]
+
+        invoice = stripe.Invoice.upcoming(
+            customer=self.customer_id,
+            subscription=self.subscription_id,
+            subscription_items=subscription_items,
+            subscription_proration_date=proration_date,
+        )
+
+        # Calculate the proration cost:
+
+        return sum(
+            proration.amount
+            for proration in invoice.lines.data
+            if proration.period.start - proration_date <= 1
+        )

@@ -33,6 +33,27 @@ export interface IUsageBillingPageArgs {
   readonly teamId: string
 }
 export interface IUsageBillingPageApiResponse {
+  readonly subscription: {
+    readonly seats: number
+    readonly nextBillingDate: string
+    readonly expired: boolean
+    readonly cost: {
+      readonly totalCents: number
+      readonly perSeatCents: number
+    }
+    readonly billingEmail: string
+    readonly cardInfo: string
+  } | null
+  readonly trial: {
+    readonly startDate: string
+    readonly endDate: string
+    readonly expired: boolean
+    readonly startedBy: {
+      readonly id: number
+      readonly name: string
+      readonly profileImgUrl: string
+    }
+  } | null
   readonly activeUsers: ReadonlyArray<{
     readonly id: number
     readonly name: string
@@ -95,6 +116,47 @@ export interface ICurrentAccountApiResponse {
   }>
 }
 
+export interface IStartTrialArgs {
+  readonly teamId: string
+  readonly billingEmail: string
+}
+export interface IUpdateSubscriptionArgs {
+  readonly teamId: string
+  readonly seats: number
+  readonly prorationTimestamp: number
+}
+export interface ICancelSubscriptionArgs {
+  readonly teamId: string
+}
+export interface IFetchSubscriptionInfoArgs {
+  readonly teamId: string
+}
+
+export interface IStartCheckoutArgs {
+  readonly teamId: string
+  readonly seatCount: number
+}
+export interface IStartCheckoutResponse {
+  readonly stripeCheckoutSessionId: string
+  readonly stripePublishableApiKey: string
+}
+export interface IModifyBillingArgs {
+  readonly teamId: string
+}
+export interface ModifyBillingResponse {
+  readonly stripeCheckoutSessionId: string
+  readonly stripePublishableApiKey: string
+}
+
+export interface IFetchProrationArgs {
+  readonly teamId: string
+  readonly subscriptionQuantity: number
+}
+export interface IFetchProrationResponse {
+  readonly proratedCost: number
+  readonly prorationTime: number
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -107,4 +169,12 @@ export interface Api {
   getCurrentAccount: (
     args: ICurrentAccountArgs,
   ) => Promise<ICurrentAccountApiResponse>
+  startTrial: (args: IStartTrialArgs) => Promise<unknown>
+  updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
+  cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
+  fetchProration: (
+    args: IFetchProrationArgs,
+  ) => Promise<IFetchProrationResponse>
+  startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
+  modifyBilling: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
 }
