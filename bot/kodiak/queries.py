@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast, Literal
 
 import arrow
 import jwt
@@ -77,6 +77,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
+    isPrivate
     pullRequest(number: $PRNumber) {
       id
       author {
@@ -246,11 +247,11 @@ class PullRequest(BaseModel):
     url: str
 
 
-@dataclass
-class RepoInfo:
+class RepoInfo(BaseModel):
     merge_commit_allowed: bool
     rebase_merge_allowed: bool
     squash_merge_allowed: bool
+    is_private: bool
 
 
 @dataclass
@@ -259,7 +260,8 @@ class EventInfoResponse:
     config_str: str
     config_file_expression: str
     pull_request: PullRequest
-    repo: RepoInfo
+    repository: RepoInfo
+    subscription: Optional[Subscription]
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
@@ -591,6 +593,10 @@ class GetOpenPullRequestsResponse(Protocol):
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
 
+@dataclass
+class Subscription:
+    is_valid: bool
+    error_type: Optional[Literal["seats_exceeded", "trial_expired", "subscription_expired"]]
 
 class Client:
     session: http.Session
@@ -771,6 +777,8 @@ class Client:
             log.warning("could not find repository")
             return None
 
+        subscription = await self.get_subscription()
+
         root_config_str = get_root_config_str(repo=repository)
         github_config_str = get_github_config_str(repo=repository)
         if root_config_str is not None:
@@ -815,11 +823,13 @@ class Client:
             config_str=config_str,
             config_file_expression=config_file_expression,
             pull_request=pr,
-            repo=RepoInfo(
+            repository=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
                 rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
+                is_private=pull_request.get("isPrivate") is True
             ),
+            subscription=subscription,
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
@@ -948,6 +958,16 @@ class Client:
                 json=dict(body=body),
                 headers=headers,
             )
+    async def get_subscription(self) -> Optional[Subscription]:
+        """
+        Get subscription information for installation.
+        """
+        from kodiak.event_handlers import get_redis
+        redis = await get_redis()
+        res = await redis.hgetall(f"kodiak:subscription:{self.installation_id}")
+        if not res:
+            return None
+        return Subscription(is_valid=res.get('is_valid'), error_type=res.get("error_type"))
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:

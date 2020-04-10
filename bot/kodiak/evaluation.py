@@ -13,7 +13,7 @@ from typing_extensions import Protocol
 from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.messages import get_markdown_for_config
+from kodiak.messages import get_markdown_for_config, get_markdown_for_paywall
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -23,9 +23,11 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewRequest,
+    RepoInfo,
     PRReviewState,
     PullRequest,
     PullRequestState,
+    Subscription,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -206,11 +208,13 @@ async def mergeable(
     check_runs: List[CheckRun],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
+    repository: RepoInfo,
     merging: bool,
     is_active_merge: bool,
     skippable_check_timeout: int,
     api_call_retry_timeout: int,
     api_call_retry_method_name: Optional[str],
+    subscription: Optional[Subscription],
     app_id: Optional[str] = None,
 ) -> None:
     log = logger.bind(
@@ -297,6 +301,23 @@ async def mergeable(
 
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
+
+    if repository.is_private and subscription is not None and not subscription.is_valid:
+        # we only count private repositories in our usage calculations. We only
+        # paywall if we have subscription information. If subscription
+        # information is missing we want to ignore raising a paywall.
+        message = "your subscription needs to be updated"
+        if subscription.error_type == "seats_exceeded":
+            message = "you've exceeded your number of purchased seats"
+        elif subscription.error_type == "trial_expired":
+            message = "your trial has ended"
+        elif subscription.error_type == "subscription_expired":
+            message = "your subscription has expired"
+        await set_status(
+            f"💳 payment required: {message}",
+            markdown_content=get_markdown_for_paywall(),
+        )
+        return
 
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
