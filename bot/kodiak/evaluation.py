@@ -306,13 +306,13 @@ async def mergeable(
         # we only count private repositories in our usage calculations. We only
         # paywall if we have subscription information. If subscription
         # information is missing we want to ignore raising a paywall.
-        message = "your subscription needs to be updated"
+        message = "subscription update required"
         if subscription.error_type == "seats_exceeded":
-            message = "you've exceeded your number of purchased seats"
+            message = "usage has exceeded licensed seats"
         elif subscription.error_type == "trial_expired":
-            message = "your trial has ended"
+            message = "trial ended"
         elif subscription.error_type == "subscription_expired":
-            message = "your subscription has expired"
+            message = "subscription expired"
         await set_status(
             f"💳 payment required: {message}",
             markdown_content=get_markdown_for_paywall(),
