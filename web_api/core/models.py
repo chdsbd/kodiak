@@ -7,15 +7,18 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable, List, Optional, cast
 
+import redis
 import requests
 import stripe
 from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 from django.utils import timezone
+from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
+r = redis.Redis.from_url(settings.REDIS_URL)
 
 
 def sane_repr(*attrs: str) -> Callable:
@@ -287,15 +290,45 @@ class Account(BaseModel):
         else:
             stripe.Customer.modify(self.stripe_customer_id, email=billing_email)
         self.save()
+        self.update_bot()
 
     def trial_expired(self) -> bool:
         if self.trial_expiration is None:
             return False
         return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
 
+    def get_active_user_count(self) -> int:
+        return len(
+            UserPullRequestActivity.get_active_users_in_last_30_days(account=self)
+        )
+
+    def get_subscription_blocker(
+        self,
+    ) -> Optional[Literal["subscription_expired", "trial_expired", "seats_exceeded"]]:
+        customer_info = self.stripe_customer_info()
+        if customer_info and customer_info.expired:
+            return "subscription_expired"
+        if self.trial_expired():
+            return "trial_expired"
+        if (
+            customer_info
+            and customer_info.subscription_quantity > self.get_active_user_count()
+        ):
+            return "seats_exceeded"
+        return None
+
     def update_from(self, customer: stripe.Customer) -> None:
         self.stripe_customer_id = customer.id
         self.save()
+
+    def update_bot(self) -> None:
+        """
+        Refresh subscription information in Redis for GitHub bot to load.
+        """
+        key = f"kodiak:subscription:{self.github_installation_id}"
+
+        r.hset(key, "account_id", self.id)  # type: ignore
+        r.hset(key, "subscription_blocker", self.get_subscription_blocker())  # type: ignore
 
 
 class AccountRole(models.TextChoices):
@@ -806,6 +839,7 @@ class StripeCustomerInformation(models.Model):
         self.subscription_current_period_end = subscription.current_period_end
         self.subscription_current_period_start = subscription.current_period_start
         self.save()
+        self.update_bot()
 
     @property
     def expired(self) -> bool:

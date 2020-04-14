@@ -595,8 +595,8 @@ class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
 
 @dataclass
 class Subscription:
-    is_valid: bool
-    error_type: Optional[Literal["seats_exceeded", "trial_expired", "subscription_expired"]]
+    account_id: str
+    subscription_blocker: Optional[Literal["seats_exceeded", "trial_expired", "subscription_expired"]]
 
 class Client:
     session: http.Session
@@ -967,7 +967,7 @@ class Client:
         res = await redis.hgetall(f"kodiak:subscription:{self.installation_id}")
         if not res:
             return None
-        return Subscription(is_valid=res.get('is_valid'), error_type=res.get("error_type"))
+        return Subscription(account_id=res['account_id'], subscription_blocker=res.get("subscription_blocker"))
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
