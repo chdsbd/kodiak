@@ -4,12 +4,12 @@ import markupsafe
 import pydantic
 import toml
 
-
 FOOTER = """
 If you need help, you can open a GitHub issue, check the docs, or reach us privately at support@kodiakhq.com.
 
 [docs](https://kodiakhq.com/docs/troubleshooting) | [dashboard](https://app.kodiakhq.com) | [support](https://kodiakhq.com/help)
 """
+
 
 def get_markdown_for_config(
     error: Union[pydantic.ValidationError, toml.TomlDecodeError],

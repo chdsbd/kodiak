@@ -23,14 +23,13 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewRequest,
-    RepoInfo,
     PRReviewState,
     PullRequest,
     PullRequestState,
-    Subscription,
     RepoInfo,
     StatusContext,
     StatusState,
+    Subscription,
 )
 from kodiak.text import strip_html_comments_from_markdown
 
@@ -302,17 +301,25 @@ async def mergeable(
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
 
-    if repository.is_private and subscription is not None and not subscription.is_valid:
+    if (
+        repository.is_private
+        and subscription is not None
+        and subscription.subscription_blocker is not None
+    ):
         # we only count private repositories in our usage calculations. We only
         # paywall if we have subscription information. If subscription
         # information is missing we want to ignore raising a paywall.
         message = "subscription update required"
-        if subscription.error_type == "seats_exceeded":
+        if subscription.subscription_blocker == "seats_exceeded":
             message = "usage has exceeded licensed seats"
-        elif subscription.error_type == "trial_expired":
+        elif subscription.subscription_blocker == "trial_expired":
             message = "trial ended"
-        elif subscription.error_type == "subscription_expired":
+        elif subscription.subscription_blocker == "subscription_expired":
             message = "subscription expired"
+        else:
+            log.warning(
+                "unexpected subscription_blocker %s ", subscription.subscription_blocker
+            )
         await set_status(
             f"💳 payment required: {message}",
             markdown_content=get_markdown_for_paywall(),

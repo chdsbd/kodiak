@@ -3,10 +3,12 @@ from pathlib import Path
 from typing import cast
 
 import arrow
+import asyncio_redis
 import pytest
 from pytest_mock import MockFixture
 from requests_async import Response
 
+from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
     BranchProtectionRule,
@@ -28,6 +30,7 @@ from kodiak.queries import (
     RepoInfo,
     StatusContext,
     StatusState,
+    Subscription,
 )
 from kodiak.test_utils import wrap_future
 
@@ -40,8 +43,13 @@ def private_key() -> str:
 
 
 @pytest.fixture
-def api_client(mocker: MockFixture) -> Client:
-    client = Client(installation_id="foo", owner="foo", repo="foo")
+def github_installation_id() -> str:
+    return "8912353"
+
+
+@pytest.fixture
+def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
+    client = Client(installation_id=github_installation_id, owner="foo", repo="foo")
     mocker.patch.object(client, "send_query")
     return client
 
@@ -104,6 +112,7 @@ def block_event() -> EventInfoResponse:
         merge_commit_allowed=False,
         rebase_merge_allowed=False,
         squash_merge_allowed=True,
+        is_private=True,
     )
     branch_protection = BranchProtectionRule(
         requiresApprovingReviews=True,
@@ -130,7 +139,10 @@ method = "squash"
         config_file_expression="master:.kodiak.toml",
         head_exists=True,
         pull_request=pr,
-        repo=rep_info,
+        repository=rep_info,
+        subscription=Subscription(
+            account_id="D1606A79-A1A1-4550-BA7B-C9ED0D792B1E", subscription_blocker=None
+        ),
         branch_protection=branch_protection,
         review_requests=[
             PRReviewRequest(name="ghost"),
@@ -191,6 +203,24 @@ method = "squash"
     )
 
 
+@pytest.mark.asyncio
+@pytest.fixture
+async def setup_redis(github_installation_id: str):
+    r = await asyncio_redis.Connection.create(
+        host=conf.REDIS_URL.hostname,
+        port=conf.REDIS_URL.port,
+        password=(
+            conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
+        ),
+    )
+    key = f"kodiak:subscription:{github_installation_id}"
+    await r.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
+    await r.hset(key, "subscription_blocker", "")
+    yield
+    await r.delete([key])
+    r.close()
+
+
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
@@ -198,7 +228,9 @@ async def test_get_event_info_blocked(
     blocked_response: dict,
     block_event: EventInfoResponse,
     mocker: MockFixture,
+    setup_redis: object,
 ) -> None:
+
     mocker.patch.object(
         api_client,
         "send_query",

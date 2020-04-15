@@ -325,10 +325,10 @@ class Account(BaseModel):
         """
         Refresh subscription information in Redis for GitHub bot to load.
         """
-        key = f"kodiak:subscription:{self.github_installation_id}"
+        key = f"kodiak:subscription:{self.github_installation_id}".encode()
 
-        r.hset(key, "account_id", self.id)  # type: ignore
-        r.hset(key, "subscription_blocker", self.get_subscription_blocker())  # type: ignore
+        r.hset(key, b"account_id", self.id)  # type: ignore
+        r.hset(key, b"subscription_blocker", self.get_subscription_blocker().encode())  # type: ignore
 
 
 class AccountRole(models.TextChoices):

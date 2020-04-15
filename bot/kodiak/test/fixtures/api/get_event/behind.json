@@ -29,6 +29,7 @@
       "mergeCommitAllowed": false,
       "rebaseMergeAllowed": false,
       "squashMergeAllowed": true,
+      "isPrivate": true,
       "pullRequest": {
         "id": "e14ff7599399478fb9dbc2dacb87da72",
         "mergeStateStatus": "BEHIND",

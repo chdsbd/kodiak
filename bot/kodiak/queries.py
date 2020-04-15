@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast, Literal
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
 import arrow
 import jwt
@@ -15,7 +15,7 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Protocol
+from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
@@ -593,10 +593,14 @@ class GetOpenPullRequestsResponse(Protocol):
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
 
+
 @dataclass
 class Subscription:
     account_id: str
-    subscription_blocker: Optional[Literal["seats_exceeded", "trial_expired", "subscription_expired"]]
+    subscription_blocker: Optional[
+        Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+    ]
+
 
 class Client:
     session: http.Session
@@ -827,7 +831,7 @@ class Client:
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
                 rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
-                is_private=pull_request.get("isPrivate") is True
+                is_private=repository.get("isPrivate") is True,
             ),
             subscription=subscription,
             branch_protection=branch_protection,
@@ -958,16 +962,29 @@ class Client:
                 json=dict(body=body),
                 headers=headers,
             )
+
     async def get_subscription(self) -> Optional[Subscription]:
         """
         Get subscription information for installation.
         """
         from kodiak.event_handlers import get_redis
+
         redis = await get_redis()
-        res = await redis.hgetall(f"kodiak:subscription:{self.installation_id}")
+        res = await redis.hgetall(
+            f"kodiak:subscription:{self.installation_id}".encode()
+        )
         if not res:
             return None
-        return Subscription(account_id=res['account_id'], subscription_blocker=res.get("subscription_blocker"))
+        real_response = await res.asdict()
+        if not real_response:
+            return None
+        subscription_blocker: Optional[
+            Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+        ] = (real_response.get(b"subscription_blocker") or b"").decode() or None
+        return Subscription(
+            account_id=real_response[b"account_id"].decode(),
+            subscription_blocker=subscription_blocker,
+        )
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:
