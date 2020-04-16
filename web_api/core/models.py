@@ -312,7 +312,7 @@ class Account(BaseModel):
             return "trial_expired"
         if (
             customer_info
-            and customer_info.subscription_quantity > self.get_active_user_count()
+            and customer_info.subscription_quantity < self.get_active_user_count()
         ):
             return "seats_exceeded"
         return None
