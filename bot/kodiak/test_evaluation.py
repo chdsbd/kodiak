@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple, Union
 
+import pydantic
 import pytest
 from toml import TomlDecodeError
 
@@ -294,32 +295,32 @@ def test_config_fixtures_equal(config_str: str, config: V1) -> None:
 
 
 async def mergeable(
-    api,
-    config,
-    config_str,
-    config_path,
-    pull_request,
-    branch_protection,
-    review_requests,
-    reviews,
-    contexts,
-    check_runs,
-    valid_signature,
-    valid_merge_methods,
-    merging,
-    is_active_merge,
-    skippable_check_timeout,
-    api_call_retry_timeout,
-    api_call_retry_method_name,
-    repository=RepoInfo(
+    api: PRAPI,
+    config: Union[V1, pydantic.ValidationError, TomlDecodeError],
+    config_str: str,
+    config_path: str,
+    pull_request: PullRequest,
+    branch_protection: Optional[BranchProtectionRule],
+    review_requests: List[PRReviewRequest],
+    reviews: List[PRReview],
+    contexts: List[StatusContext],
+    check_runs: List[CheckRun],
+    valid_signature: bool,
+    valid_merge_methods: List[MergeMethod],
+    merging: bool,
+    is_active_merge: bool,
+    skippable_check_timeout: int,
+    api_call_retry_timeout: int,
+    api_call_retry_method_name: Optional[str],
+    repository: RepoInfo = RepoInfo(
         merge_commit_allowed=True,
         rebase_merge_allowed=True,
         squash_merge_allowed=True,
         is_private=False,
     ),
-    subscription=None,
-    app_id=None,
-):
+    subscription: Optional[Subscription] = None,
+    app_id: Optional[str] = None,
+) -> None:
     return await mergeable_func(
         api=api,
         config=config,

@@ -978,9 +978,12 @@ class Client:
         real_response = await res.asdict()
         if not real_response:
             return None
-        subscription_blocker: Optional[
-            Literal["seats_exceeded", "trial_expired", "subscription_expired"]
-        ] = (real_response.get(b"subscription_blocker") or b"").decode() or None
+        subscription_blocker = cast(
+            Optional[
+                Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+            ],
+            (real_response.get(b"subscription_blocker") or b"").decode() or None,
+        )
         return Subscription(
             account_id=real_response[b"account_id"].decode(),
             subscription_blocker=subscription_blocker,
