@@ -223,6 +223,7 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
         updated_subscription.current_period_start
     )
     stripe_customer_info.save()
+    account.update_bot()
 
     return HttpResponse(status=204)
 
@@ -418,6 +419,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         stripe_customer.subscription_current_period_end = invoice.period_end
         stripe_customer.subscription_current_period_start = invoice.period_start
         stripe_customer.save()
+        stripe_customer.get_account().update_bot()
     elif event.type == "customer.subscription.deleted":
         # I don't think we need to do anything on subscription deletion. We can
         # let the subscription time run out.

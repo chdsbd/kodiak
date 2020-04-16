@@ -327,8 +327,9 @@ class Account(BaseModel):
         """
         key = f"kodiak:subscription:{self.github_installation_id}".encode()
 
-        r.hset(key, b"account_id", self.id)  # type: ignore
-        r.hset(key, b"subscription_blocker", self.get_subscription_blocker().encode())  # type: ignore
+        r.hset(key, b"account_id", str(self.id))  # type: ignore
+        subscription_blocker = self.get_subscription_blocker() or ""
+        r.hset(key, b"subscription_blocker", subscription_blocker.encode())  # type: ignore
 
 
 class AccountRole(models.TextChoices):
@@ -839,7 +840,10 @@ class StripeCustomerInformation(models.Model):
         self.subscription_current_period_end = subscription.current_period_end
         self.subscription_current_period_start = subscription.current_period_start
         self.save()
-        self.update_bot()
+        self.get_account().update_bot()
+
+    def get_account(self) -> Account:
+        return cast(Account, Account.objects.get(stripe_customer_id=self.customer_id))
 
     @property
     def expired(self) -> bool:
@@ -866,7 +870,9 @@ class StripeCustomerInformation(models.Model):
         # Account.customer_id alone. If a user resubscribes we can use their
         # existing Stripe Customer to improve their Stripe Checkout flow with a
         # prefilled email.
+        account = self.get_account()
         self.delete()
+        account.update_bot()
 
     def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
         proration_date = timestamp

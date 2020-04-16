@@ -308,6 +308,7 @@ def test_update_subscription(
     ONE_DAY_SEC = 60 * 60 * 24
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
+    update_bot = mocker.patch("core.models.Account.update_bot")
     fake_subscription = stripe.Subscription.construct_from(
         dict(
             object="subscription",
@@ -363,12 +364,14 @@ def test_update_subscription(
     )
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
+    assert update_bot.call_count == 0
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
         dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=24),
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 1
+    assert update_bot.call_count == 1
     assert stripe_subscription_modify.call_count == 1
     assert stripe_invoice_create.call_count == 1
     assert stripe_invoice_pay.call_count == 1
@@ -453,6 +456,7 @@ def test_cancel_subscription(
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     patched = mocker.patch("core.models.stripe.Subscription.delete")
+    update_bot = mocker.patch("core.models.Account.update_bot")
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -481,8 +485,10 @@ def test_cancel_subscription(
     )
     assert patched.call_count == 0
     assert StripeCustomerInformation.objects.count() == 1
+    assert update_bot.call_count == 0
     res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
     assert res.status_code == 204
+    assert update_bot.call_count == 1
     assert patched.call_count == 1
     assert StripeCustomerInformation.objects.count() == 0
 
@@ -748,11 +754,12 @@ def patch_start_trial(mocker: Any) -> None:
 
 @pytest.mark.django_db
 def test_start_trial(
-    authed_client: Client, user: User, patch_start_trial: object
+    authed_client: Client, user: User, patch_start_trial: object, mocker: Any
 ) -> None:
     """
     When a user starts a trial we should update their account.
     """
+    update_bot = mocker.patch("core.models.Account.update_bot")
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -770,6 +777,7 @@ def test_start_trial(
         f"/v1/t/{account.id}/start_trial", dict(billingEmail="b.lowe@example.com")
     )
     assert res.status_code == 204
+    assert update_bot.call_count == 1
     account.refresh_from_db()
     assert account.trial_start is not None
     assert (
@@ -866,6 +874,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     """
     Verify our webhook handler updates our subscription on this event.
     """
+    update_bot = mocker.patch("core.models.Account.update_bot")
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
@@ -985,6 +994,8 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert payment_method_retrieve.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
 
+    assert update_bot.call_count == 1
+
     stripe_customer_info_updated = StripeCustomerInformation.objects.get()
     assert stripe_customer_info_updated.subscription_id == fake_subscription.id
     assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
@@ -1034,6 +1045,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     """
     Verify our webhook handler updates our subscription on this event.
     """
+    update_bot = mocker.patch("core.models.Account.update_bot")
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
@@ -1083,6 +1095,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         stripe_customer_id="",
     )
     assert StripeCustomerInformation.objects.count() == 0
+    assert update_bot.call_count == 0
     res = post_webhook(
         """
 {
@@ -1159,6 +1172,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
 
     assert res.status_code == 200
+    assert update_bot.call_count == 1
     assert customer_retrieve.call_count == 1
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
@@ -1207,12 +1221,13 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
 
 
 @pytest.mark.django_db
-def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
+def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     """
     Verify our webhook handler updates our subscription on this event.
 
     This event will get sent when a subscription is updated.
     """
+    update_bot = mocker.patch("core.models.Account.update_bot")
     account = Account.objects.create(
         github_installation_id=377930,
         github_account_id=900966,
@@ -1240,6 +1255,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
         subscription_current_period_end=1588304149,
     )
     assert StripeCustomerInformation.objects.count() == 1
+    assert update_bot.call_count == 0
     res = post_webhook(
         """
 {
@@ -1381,6 +1397,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded() -> None:
     )
 
     assert res.status_code == 200
+    assert update_bot.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert (
