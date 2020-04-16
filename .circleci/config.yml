@@ -4,6 +4,7 @@ jobs:
   bot_test:
     docker:
       - image: python:3.7
+      - image: circleci/redis:5.0
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
