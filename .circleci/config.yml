@@ -152,6 +152,7 @@ jobs:
         environment:
           POSTGRES_DB: web_api_test
           POSTGRES_PASSWORD: my_test_postgres_password
+      - image: circleci/redis:5.0
     environment:
       DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
     steps:
