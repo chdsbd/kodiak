@@ -133,7 +133,7 @@ def test_get_subscription_blocker_expired_trial_subscription_ok(mocker: Any) -> 
     If an account has a trial that is expired, but their subscription is valid,
     we should not raise the paywall.
     """
-    get_active_users_in_last_30_days = mocker.patch(
+    mocker.patch(
         "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
         return_value=[1, 2, 3, 4, 5],
     )
@@ -145,7 +145,7 @@ def test_get_subscription_blocker_expired_trial_subscription_ok(mocker: Any) -> 
         stripe_customer_id="cus_H2pvQ2kt7nk0JY",
         trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),
     )
-    stripe_customer_information = StripeCustomerInformation.objects.create(
+    StripeCustomerInformation.objects.create(
         customer_id="cus_H2pvQ2kt7nk0JY",
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
