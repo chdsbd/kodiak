@@ -190,7 +190,11 @@ disable=print-statement,
         no-name-in-module,,
         # handled by flake8
         unused-import,
-        unused-variable
+        unused-variable,
+
+        # kodiak
+        # doesn't seem to work 100%.
+        cyclic-import
 
 
 # Enable the message, report, category or checker with the given id(s). You can

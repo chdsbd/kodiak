@@ -13,7 +13,7 @@ from typing_extensions import Protocol
 from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.messages import get_markdown_for_config
+from kodiak.messages import get_markdown_for_config, get_markdown_for_paywall
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -29,6 +29,7 @@ from kodiak.queries import (
     RepoInfo,
     StatusContext,
     StatusState,
+    Subscription,
 )
 from kodiak.text import strip_html_comments_from_markdown
 
@@ -206,24 +207,17 @@ async def mergeable(
     check_runs: List[CheckRun],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
+    repository: RepoInfo,
     merging: bool,
     is_active_merge: bool,
     skippable_check_timeout: int,
     api_call_retry_timeout: int,
     api_call_retry_method_name: Optional[str],
+    subscription: Optional[Subscription],
     app_id: Optional[str] = None,
 ) -> None:
-    log = logger.bind(
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=review_requests,
-        reviews=reviews,
-        contexts=contexts,
-        valid_signature=valid_signature,
-        valid_merge_methods=valid_merge_methods,
-    )
-
+    # TODO(chdsbd): Use structlog bind_contextvars to automatically set useful context (install id, repo, pr number).
+    log = logger.bind(number=pull_request.number, url=pull_request.url)
     # we set is_active_merge when the PR is being merged from the merge queue.
     # We don't want to clobber any statuses set by that system, so we take no
     # action. If the PR becomes ineligible for merging that logic will handle
@@ -297,6 +291,33 @@ async def mergeable(
 
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
+
+    if (
+        app_config.SUBSCRIPTIONS_ENABLED
+        and repository.is_private
+        and (subscription is None or subscription.subscription_blocker is not None)
+    ):
+        # we only count private repositories in our usage calculations. A user
+        # has an active subscription if a subscription exists in Redis and has
+        # an empty subscription_blocker.
+        message = "subscription missing"
+        if subscription is not None:
+            if subscription.subscription_blocker == "seats_exceeded":
+                message = "usage has exceeded licensed seats"
+            elif subscription.subscription_blocker == "trial_expired":
+                message = "trial ended"
+            elif subscription.subscription_blocker == "subscription_expired":
+                message = "subscription expired"
+            else:
+                log.warning(
+                    "unexpected subscription_blocker %s ",
+                    subscription.subscription_blocker,
+                )
+        await set_status(
+            f"💳 payment required: {message}",
+            markdown_content=get_markdown_for_paywall(),
+        )
+        return
 
     if (
         pull_request.author.login in config.approve.auto_approve_usernames

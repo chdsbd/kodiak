@@ -15,7 +15,7 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Protocol
+from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
@@ -77,6 +77,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
+    isPrivate
     pullRequest(number: $PRNumber) {
       id
       author {
@@ -246,11 +247,11 @@ class PullRequest(BaseModel):
     url: str
 
 
-@dataclass
-class RepoInfo:
+class RepoInfo(BaseModel):
     merge_commit_allowed: bool
     rebase_merge_allowed: bool
     squash_merge_allowed: bool
+    is_private: bool
 
 
 @dataclass
@@ -259,7 +260,8 @@ class EventInfoResponse:
     config_str: str
     config_file_expression: str
     pull_request: PullRequest
-    repo: RepoInfo
+    repository: RepoInfo
+    subscription: Optional[Subscription]
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
@@ -592,6 +594,14 @@ class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
 
 
+@dataclass
+class Subscription:
+    account_id: str
+    subscription_blocker: Optional[
+        Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+    ]
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -771,6 +781,8 @@ class Client:
             log.warning("could not find repository")
             return None
 
+        subscription = await self.get_subscription()
+
         root_config_str = get_root_config_str(repo=repository)
         github_config_str = get_github_config_str(repo=repository)
         if root_config_str is not None:
@@ -815,11 +827,13 @@ class Client:
             config_str=config_str,
             config_file_expression=config_file_expression,
             pull_request=pr,
-            repo=RepoInfo(
+            repository=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
                 rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
+                is_private=repository.get("isPrivate") is True,
             ),
+            subscription=subscription,
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
@@ -948,6 +962,32 @@ class Client:
                 json=dict(body=body),
                 headers=headers,
             )
+
+    async def get_subscription(self) -> Optional[Subscription]:
+        """
+        Get subscription information for installation.
+        """
+        from kodiak.event_handlers import get_redis
+
+        redis = await get_redis()
+        res = await redis.hgetall(
+            f"kodiak:subscription:{self.installation_id}".encode()
+        )
+        if not res:
+            return None
+        real_response = await res.asdict()
+        if not real_response:
+            return None
+        subscription_blocker = cast(
+            Optional[
+                Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+            ],
+            (real_response.get(b"subscription_blocker") or b"").decode() or None,
+        )
+        return Subscription(
+            account_id=real_response[b"account_id"].decode(),
+            subscription_blocker=subscription_blocker,
+        )
 
 
 def generate_jwt(*, private_key: str, app_identifier: str) -> str:

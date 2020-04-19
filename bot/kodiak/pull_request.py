@@ -79,10 +79,12 @@ async def evaluate_pr(
         try:
             await mergeable(
                 api=pr,
+                subscription=pr.event.subscription,
                 config=pr.event.config,
                 config_str=pr.event.config_str,
                 config_path=pr.event.config_file_expression,
                 app_id=conf.GITHUB_APP_ID,
+                repository=pr.event.repository,
                 pull_request=pr.event.pull_request,
                 branch_protection=pr.event.branch_protection,
                 review_requests=pr.event.review_requests,

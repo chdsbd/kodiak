@@ -14,8 +14,12 @@ TomlDecodeError(&#39;Key group not on a line by itself. (line 1 column 1 char 0)
 </pre>
 
 ## notes
-- Setup information can be found in the [Kodiak README](https://github.com/chdsbd/kodiak/blob/master/README.md)
-- Example configuration files can be found in [kodiak/test/fixtures/config](https://github.com/chdsbd/kodiak/tree/master/kodiak/test/fixtures/config)
-- The corresponding Python models can be found in [kodiak/config.py](https://github.com/chdsbd/kodiak/blob/master/kodiak/config.py)
+- Check the Kodiak docs for setup information at https://kodiakhq.com/docs/quickstart.
+- A configuration reference is available at https://kodiakhq.com/docs/config-reference.
+- Full examples are available at https://kodiakhq.com/docs/recipes
 
-If you need any help, please open an issue on https://github.com/chdsbd/kodiak.
+
+If you need help, you can open a GitHub issue, check the docs, or reach us privately at support@kodiakhq.com.
+
+[docs](https://kodiakhq.com/docs/troubleshooting) | [dashboard](https://app.kodiakhq.com) | [support](https://kodiakhq.com/help)
+
