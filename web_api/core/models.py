@@ -327,7 +327,7 @@ class Account(BaseModel):
         if self.trial_expired():
             return "trial_expired"
 
-        logger.warning("we should know the subscription status before this point")
+        # the user has never signed up for a trial or subscription
         return None
 
     def update_from(self, customer: stripe.Customer) -> None:
