@@ -293,9 +293,14 @@ class Account(BaseModel):
         self.update_bot()
 
     def trial_expired(self) -> bool:
-        if self.trial_expiration is None:
-            return False
-        return cast(bool, (self.trial_expiration - timezone.now()).total_seconds() < 0)
+        return self.trial_expiration is not None and cast(
+            bool, (self.trial_expiration - timezone.now()).total_seconds() < 0
+        )
+
+    def active_trial(self) -> bool:
+        return self.trial_expiration is not None and cast(
+            bool, (self.trial_expiration - timezone.now()).total_seconds() > 0
+        )
 
     def get_active_user_count(self) -> int:
         return len(
@@ -305,16 +310,24 @@ class Account(BaseModel):
     def get_subscription_blocker(
         self,
     ) -> Optional[Literal["subscription_expired", "trial_expired", "seats_exceeded"]]:
+        """
+        If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
+        """
+        if self.active_trial():
+            return None
+
         customer_info = self.stripe_customer_info()
-        if customer_info and customer_info.expired:
-            return "subscription_expired"
+        if customer_info:
+            if customer_info.expired:
+                return "subscription_expired"
+            if customer_info.subscription_quantity < self.get_active_user_count():
+                return "seats_exceeded"
+            return None
+
         if self.trial_expired():
             return "trial_expired"
-        if (
-            customer_info
-            and customer_info.subscription_quantity < self.get_active_user_count()
-        ):
-            return "seats_exceeded"
+
+        logger.warning("we should know the subscription status before this point")
         return None
 
     def update_from(self, customer: stripe.Customer) -> None:
