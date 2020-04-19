@@ -13,3 +13,4 @@ def pytest_load_initial_conftests(args, early_config, parser):
     os.environ[
         "GITHUB_PRIVATE_KEY"
     ] = "-----BEGIN RSA PRIVATE KEY-----\nmockPrivateKeyDataSDLFKJSDLFSDLFJSDLKJF\n-----END RSA PRIVATE KEY-----\n"
+    os.environ["SUBSCRIPTIONS_ENABLED"] = "1"

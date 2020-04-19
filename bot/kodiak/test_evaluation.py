@@ -321,6 +321,10 @@ async def mergeable(
     subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
 ) -> None:
+    """
+    wrapper around evaluation.mergeable that simplifies tests by providing
+    default arguments to override.
+    """
     return await mergeable_func(
         api=api,
         config=config,
@@ -4297,39 +4301,50 @@ async def test_mergeable_paywall(
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        reviews=[review],
-        review_requests=[],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        repository=RepoInfo(
-            merge_commit_allowed=True,
-            rebase_merge_allowed=True,
-            squash_merge_allowed=True,
-            is_private=True,
-        ),
-        subscription=Subscription(
-            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-            subscription_blocker="seats_exceeded",
-        ),
-    )
-    assert api.set_status.call_count == 1
+    """
+    If a subscription is missing or a subscription has a subscription_blocker,
+    we should display the paywall.
+    """
+    for index, subscription in enumerate(
+        (
+            None,
+            Subscription(
+                account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+                subscription_blocker="seats_exceeded",
+            ),
+        )
+    ):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            reviews=[review],
+            review_requests=[],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            merging=False,
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            repository=RepoInfo(
+                merge_commit_allowed=True,
+                rebase_merge_allowed=True,
+                squash_merge_allowed=True,
+                is_private=True,
+            ),
+            subscription=subscription,
+        )
+        assert api.set_status.call_count == index + 1
+    assert "💳 payment required: subscription missing" in api.set_status.calls[0]["msg"]
     assert (
         "💳 payment required: usage has exceeded licensed seats"
-        in api.set_status.calls[0]["msg"]
+        in api.set_status.calls[1]["msg"]
     )
 
     assert api.queue_for_merge.call_count == 0
@@ -4351,6 +4366,9 @@ async def test_mergeable_paywall_public_repository(
     context: StatusContext,
     check_run: CheckRun,
 ) -> None:
+    """
+    Public repositories should never see a paywall.
+    """
     for index, subscription in enumerate(
         (
             None,
@@ -4384,10 +4402,7 @@ async def test_mergeable_paywall_public_repository(
                 squash_merge_allowed=True,
                 is_private=False,
             ),
-            subscription=Subscription(
-                account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-                subscription_blocker="seats_exceeded",
-            ),
+            subscription=subscription,
         )
         assert api.queue_for_merge.call_count == index + 1
 
@@ -4395,3 +4410,57 @@ async def test_mergeable_paywall_public_repository(
         assert api.dequeue.call_count == 0
         assert api.merge.call_count == 0
         assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_missing_env(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+    mocker: Any,
+) -> None:
+    """
+    If the environment variable is disabled we should not throw up the paywall.
+    """
+    mocker.patch("kodiak.evaluation.app_config.SUBSCRIPTIONS_ENABLED", False)
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=[review],
+        review_requests=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        repository=RepoInfo(
+            merge_commit_allowed=True,
+            rebase_merge_allowed=True,
+            squash_merge_allowed=True,
+            is_private=True,
+        ),
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker="seats_exceeded",
+        ),
+    )
+    assert api.queue_for_merge.call_count == 1
+
+    assert api.approve_pull_request.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0

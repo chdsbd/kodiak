@@ -292,8 +292,10 @@ async def mergeable(
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
 
-    if repository.is_private and (
-        subscription is None or subscription.subscription_blocker is not None
+    if (
+        app_config.SUBSCRIPTIONS_ENABLED
+        and repository.is_private
+        and (subscription is None or subscription.subscription_blocker is not None)
     ):
         # we only count private repositories in our usage calculations. A user
         # has an active subscription if a subscription exists in Redis and has
