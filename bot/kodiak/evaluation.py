@@ -292,25 +292,25 @@ async def mergeable(
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
 
-    if (
-        repository.is_private
-        and subscription is not None
-        and subscription.subscription_blocker is not None
+    if repository.is_private and (
+        subscription is None or subscription.subscription_blocker is not None
     ):
-        # we only count private repositories in our usage calculations. We only
-        # paywall if we have subscription information. If subscription
-        # information is missing we want to ignore raising a paywall.
-        message = "subscription update required"
-        if subscription.subscription_blocker == "seats_exceeded":
-            message = "usage has exceeded licensed seats"
-        elif subscription.subscription_blocker == "trial_expired":
-            message = "trial ended"
-        elif subscription.subscription_blocker == "subscription_expired":
-            message = "subscription expired"
-        else:
-            log.warning(
-                "unexpected subscription_blocker %s ", subscription.subscription_blocker
-            )
+        # we only count private repositories in our usage calculations. A user
+        # has an active subscription if a subscription exists in Redis and has
+        # an empty subscription_blocker.
+        message = "subscription missing"
+        if subscription is not None:
+            if subscription.subscription_blocker == "seats_exceeded":
+                message = "usage has exceeded licensed seats"
+            elif subscription.subscription_blocker == "trial_expired":
+                message = "trial ended"
+            elif subscription.subscription_blocker == "subscription_expired":
+                message = "subscription expired"
+            else:
+                log.warning(
+                    "unexpected subscription_blocker %s ",
+                    subscription.subscription_blocker,
+                )
         await set_status(
             f"💳 payment required: {message}",
             markdown_content=get_markdown_for_paywall(),
