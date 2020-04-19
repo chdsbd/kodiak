@@ -216,17 +216,8 @@ async def mergeable(
     subscription: Optional[Subscription],
     app_id: Optional[str] = None,
 ) -> None:
-    log = logger.bind(
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=review_requests,
-        reviews=reviews,
-        contexts=contexts,
-        valid_signature=valid_signature,
-        valid_merge_methods=valid_merge_methods,
-    )
-
+    # TODO(chdsbd): Use structlog bind_contextvars to automatically set useful context (install id, repo, pr number).
+    log = logger.bind(number=pull_request.number, url=pull_request.url)
     # we set is_active_merge when the PR is being merged from the merge queue.
     # We don't want to clobber any statuses set by that system, so we take no
     # action. If the PR becomes ineligible for merging that logic will handle
