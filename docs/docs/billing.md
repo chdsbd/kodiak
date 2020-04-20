@@ -10,6 +10,8 @@ Kodiak is $4.99 per active user per month. An active user is anyone that opens a
 
 Kodiak has a 14-day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
 
+If you have any questions or concerns about billing please contact us at support@kodiakhq.com.
+
 ## Start Trial
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
@@ -49,3 +51,6 @@ You can modify your subscription at any time. Any changes will be prorated.
 GitHub Sponsors and non-commercial users can use Kodiak at no cost.
 
 Please start a trial and send us an email at support@kodiakhq.com. We'll extend your trial to last indefinitely.
+
+## Self-hosting
+For information on self-hosting Kodiak, see the [self-hosting docs](self-hosting.md).
