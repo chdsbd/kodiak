@@ -38,7 +38,7 @@ Kodiak has a 14-day free trial that can be activated on [the dashboard](https://
 
 You can modify your subscription at any time. Any changes will be prorated.
 
-> Note: For GitHub organizations you must have an "Owner" role to modify a subscription.
+> For GitHub organizations you must have an "Owner" role to modify a subscription.
 
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
