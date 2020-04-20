@@ -51,7 +51,7 @@ def get_markdown_for_paywall() -> str:
     return f"""\
 You can update your subscription on the Kodiak dashboard at https://app.kodiakhq.com.
 
-See the [Kodiak docs](https://kodiakhq.com/docs/billing#modify-plan) for more information on modifying your subscription.
+See the [Kodiak docs](https://kodiakhq.com/docs/billing) for more information on modifying your subscription.
 
 {FOOTER}
 """
