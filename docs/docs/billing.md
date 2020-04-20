@@ -1,0 +1,46 @@
+---
+id: billing
+title: Billing
+sidebar_label: Billing
+---
+
+Kodiak is free to use on public repositories, but requires a subscription to use with private repositories.
+
+Kodiak is $4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
+
+Kodiak has a 14-day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
+
+## Start Trial
+1. Login to the Kodiak dashboard at https://app.kodiakhq.com
+2. Choose the account you wish to modify from the account switcher
+3. Select "Usage & Billing" from the sidebar
+4. Click "Start 14 Day Trial"
+5. Enter a notification email
+6. Click "Begin Trial"
+7. You should now have full access to Kodiak! 🎉
+
+## Create Subscription
+> Note: For GitHub organizations you must have an "Owner" role to create a subscription.
+
+1. Login to the Kodiak dashboard at https://app.kodiakhq.com
+2. Choose the account you wish to modify from the account switcher
+3. Select "Usage & Billing" from the sidebar
+4. Click "Subscribe"
+5. Enter the seats you need. This is the number of active users you will have using Kodiak each month.
+6. Click "Continue to Payment" to enter payment information via Stripe
+7. After payment you should now have an active subscription! 🎉
+
+## Modify Subscription
+You can modify your subscription at any time. Any changes will be prorated.
+
+> Note: For GitHub organizations you must have an "Owner" role to modify a subscription.
+
+1. Login to the Kodiak dashboard at https://app.kodiakhq.com
+2. Choose the account you wish to modify from the account switcher
+3. Select "Usage & Billing" from the sidebar
+4. Select "Modify Subscription" (See "Start Trial" or "Create Subscription" above if you do not see this option.)
+
+## Complimentary Access
+GitHub Sponsors and non-commercial users can use Kodiak at no cost.
+
+Please start a trial and send us an email at support@kodiakhq.com. We'll extend your trial to last indefinitely.
