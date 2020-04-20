@@ -6,13 +6,14 @@ sidebar_label: Billing
 
 Kodiak is free to use on public repositories, but requires a subscription to use with private repositories.
 
-Kodiak is $4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
+Kodiak is \$4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
 
 Kodiak has a 14-day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
 
 > If you have any questions or concerns about billing please contact us at support@kodiakhq.com.
 
 ## Start Trial
+
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
 3. Select "Usage & Billing" from the sidebar
@@ -22,6 +23,7 @@ Kodiak has a 14-day free trial that can be activated on [the dashboard](https://
 7. You should now have full access to Kodiak! 🎉
 
 ## Create Subscription
+
 > For GitHub organizations you must have an "Owner" role to create a subscription.
 
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
@@ -33,6 +35,7 @@ Kodiak has a 14-day free trial that can be activated on [the dashboard](https://
 7. After payment you should now have an active subscription! 🎉
 
 ## Modify/Cancel Subscription
+
 You can modify your subscription at any time. Any changes will be prorated.
 
 > Note: For GitHub organizations you must have an "Owner" role to modify a subscription.
@@ -42,15 +45,16 @@ You can modify your subscription at any time. Any changes will be prorated.
 3. Select "Usage & Billing" from the sidebar
 4. Select "Modify Subscription" (See "Start Trial" or "Create Subscription" above if you do not see this option.)
 5. With the "Manage Subscription" modal you can add/remove seats, change your billing email or payment method, or cancel your subscription.
-    - To add/remove seats, change the seat count and then click "Update Plan for $x.xx" (your payment method will be charged immediately).
-    - To change your billing email or payment method, click the "update" link next to the fields and you will be direct to Stripe to handle this update process.
-    - To cancel your subscription click "Cancel Subscription" at the end of the modal and confirm the cancellation.
-
+   - To add/remove seats, change the seat count and then click "Update Plan for \$x.xx" (your payment method will be charged immediately).
+   - To change your billing email or payment method, click the "update" link next to the fields and you will be direct to Stripe to handle this update process.
+   - To cancel your subscription click "Cancel Subscription" at the end of the modal and confirm the cancellation.
 
 ## Complimentary Access
+
 GitHub Sponsors and non-commercial users can use Kodiak at no cost.
 
 Please start a trial and send us an email at support@kodiakhq.com. We'll extend your trial to last indefinitely.
 
 ## Self-hosting
+
 For information on self-hosting Kodiak, see the [self-hosting docs](self-hosting.md).
