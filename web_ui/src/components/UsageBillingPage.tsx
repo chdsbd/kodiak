@@ -793,7 +793,13 @@ function Subscription({
         <Row>
           <Col>
             <p>
-              For more information about billing visit <a href="https://kodiakhq.com/docs/billing">https://kodiakhq.com/docs/billing</a>. Send us an email at <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if you need any assistance.
+              For more information about billing visit{" "}
+              <a href="https://kodiakhq.com/docs/billing">
+                https://kodiakhq.com/docs/billing
+              </a>
+              . Send us an email at{" "}
+              <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
+              you need any assistance.
             </p>
           </Col>
         </Row>
