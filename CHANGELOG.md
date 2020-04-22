@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.20.0 - 2020-04-22
+
+### Added
+- add billing support to bot and dashboard. More information can be found at https://kodiakhq.com/docs/billing. (#325, #337, #340, #339, #342)
+- add ansible playbook for deploying web services (api, ui, crons, event ingestion) (#331)
+
+### Fixed
+- fix missing cache-control headers to disable caching of index.html for dashboard. (#334, #336)
+
 ## 0.19.0 - 2020-03-29
 
 ### Added
