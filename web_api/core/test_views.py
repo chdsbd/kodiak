@@ -634,6 +634,57 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
 
 
 @pytest.mark.django_db
+def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
+    """
+    Ensure we order the accounts in the response by name.
+
+    We could also sort them on the frontend.
+    """
+    industries = Account.objects.create(
+        github_installation_id=125,
+        github_account_login="industries",
+        github_account_id=2234,
+        github_account_type="Organization",
+    )
+    AccountMembership.objects.create(account=industries, user=user, role="member")
+
+    acme = Account.objects.create(
+        github_installation_id=1066615,
+        github_account_login="acme-corp",
+        github_account_id=523412234,
+        github_account_type="Organization",
+    )
+    AccountMembership.objects.create(account=acme, user=user, role="member")
+
+    market = Account.objects.create(
+        github_installation_id=540,
+        github_account_login="market",
+        github_account_id=1020,
+        github_account_type="Organization",
+    )
+    AccountMembership.objects.create(account=market, user=user, role="member")
+
+    res = authed_client.get("/v1/accounts")
+    assert res.json() == [
+        {
+            "id": acme.id,
+            "name": "acme-corp",
+            "profileImgUrl": "https://avatars.githubusercontent.com/u/523412234",
+        },
+        {
+            "id": industries.id,
+            "name": "industries",
+            "profileImgUrl": "https://avatars.githubusercontent.com/u/2234",
+        },
+        {
+            "id": market.id,
+            "name": "market",
+            "profileImgUrl": "https://avatars.githubusercontent.com/u/1020",
+        },
+    ]
+
+
+@pytest.mark.django_db
 def test_sync_accounts_success(
     authed_client: Client, successful_sync_accounts_response: object
 ) -> None:

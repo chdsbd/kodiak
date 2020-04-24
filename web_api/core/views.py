@@ -439,8 +439,10 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 def accounts(request: HttpRequest) -> HttpResponse:
     return JsonResponse(
         [
-            dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image(),)
-            for x in Account.objects.filter(memberships__user=request.user)
+            dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image())
+            for x in Account.objects.filter(memberships__user=request.user).order_by(
+                "github_account_login"
+            )
         ],
         safe=False,
     )
