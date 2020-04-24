@@ -667,17 +667,17 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
     res = authed_client.get("/v1/accounts")
     assert res.json() == [
         {
-            "id": acme.id,
+            "id": str(acme.id),
             "name": "acme-corp",
             "profileImgUrl": "https://avatars.githubusercontent.com/u/523412234",
         },
         {
-            "id": industries.id,
+            "id": str(industries.id),
             "name": "industries",
             "profileImgUrl": "https://avatars.githubusercontent.com/u/2234",
         },
         {
-            "id": market.id,
+            "id": str(market.id),
             "name": "market",
             "profileImgUrl": "https://avatars.githubusercontent.com/u/1020",
         },
