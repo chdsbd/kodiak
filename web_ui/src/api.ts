@@ -1,4 +1,4 @@
-export interface ILoginUserArgs {
+export type ILoginUserArgs = {
   code: string
   serverState: string
   clientState: string
@@ -120,7 +120,7 @@ export interface IStartTrialArgs {
   readonly teamId: string
   readonly billingEmail: string
 }
-export interface IUpdateSubscriptionArgs {
+export type IUpdateSubscriptionArgs = {
   readonly teamId: string
   readonly seats: number
   readonly prorationTimestamp: number
