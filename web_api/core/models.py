@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable, List, Optional, cast
 
+import pydantic
 import redis
 import requests
 import stripe
@@ -347,7 +348,7 @@ class Account(BaseModel):
         # Trigger bot to reevaluate pull request mergeability.
         # We can use this to trigger the bot to remove the paywall status message on upgrades.
 
-        class RefreshPullRequestsMessage(BaseModel):
+        class RefreshPullRequestsMessage(pydantic.BaseModel):
             installation_id: str
 
         r.rpush(
