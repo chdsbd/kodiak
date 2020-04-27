@@ -7,7 +7,7 @@ from typing import cast
 import asyncio_redis
 import requests_async as http
 import sentry_sdk
-from asyncio_redis.replies import BlockingZPopReply
+from asyncio_redis.replies import BlockingPopReply
 from pydantic import BaseModel
 
 from kodiak import app_config as conf
@@ -120,7 +120,7 @@ async def main_async() -> None:
     while True:
         logger.info("block for new events")
         try:
-            res: BlockingZPopReply = await redis.bzpopmin(
+            res: BlockingPopReply = await redis.blpop(
                 ["kodiak:refresh_pull_requests_for_installation"], timeout=5
             )
         except asyncio_redis.exceptions.TimeoutError:
