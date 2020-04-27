@@ -416,8 +416,9 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
                 "expected invoice to have corresponding StripeCustomerInformation"
             )
             raise BadRequest
-        stripe_customer.subscription_current_period_end = invoice.period_end
-        stripe_customer.subscription_current_period_start = invoice.period_start
+        sub = stripe.Subscription.retrieve(stripe_customer.subscription_id)
+        stripe_customer.subscription_current_period_end = sub.current_period_end
+        stripe_customer.subscription_current_period_start = sub.current_period_start
         stripe_customer.save()
         stripe_customer.get_account().update_bot()
     elif event.type == "customer.subscription.deleted":

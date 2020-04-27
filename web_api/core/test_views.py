@@ -1305,8 +1305,26 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
         subscription_current_period_start=1590982549,
         subscription_current_period_end=1588304149,
     )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=1690982549,
+            current_period_start=1688304149,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+    retrieve_subscription = mocker.patch(
+        "core.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    update_bot = mocker.patch("core.models.Account.update_bot")
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
+    assert retrieve_subscription.call_count == 0
     res = post_webhook(
         """
 {
@@ -1449,6 +1467,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
 
     assert res.status_code == 200
     assert update_bot.call_count == 1
+    assert retrieve_subscription.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert (
@@ -1459,8 +1478,8 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
         updated_stripe_customer_info.subscription_current_period_end
         > stripe_customer_info.subscription_current_period_end
     )
-    assert updated_stripe_customer_info.subscription_current_period_end == 1660949784
-    assert updated_stripe_customer_info.subscription_current_period_start == 1653173784
+    assert updated_stripe_customer_info.subscription_current_period_end == 1690982549
+    assert updated_stripe_customer_info.subscription_current_period_start == 1688304149
 
 
 @pytest.mark.django_db
