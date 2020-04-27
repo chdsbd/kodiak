@@ -33,11 +33,10 @@ authRoute.interceptors.response.use(
  * Our Django app only accepts multi-part and url encoded form data. JSON is not
  * supported.
  */
-function jsonToFormData(data: object) {
+function jsonToFormData(data: { readonly [_: string]: string | number }) {
   const form = new FormData()
   Object.entries(data).forEach(([k, v]) => {
-    // tslint:disable-next-line no-unsafe-any
-    form.set(k, v)
+    form.set(k, String(v))
   })
   return form
 }
@@ -140,7 +139,9 @@ export const Current: World = {
       (
         await authRoute.post<api.IFetchProrationResponse>(
           `/v1/t/${args.teamId}/fetch_proration`,
-          jsonToFormData({ subscriptionQuantity: args.subscriptionQuantity }),
+          jsonToFormData({
+            subscriptionQuantity: args.subscriptionQuantity,
+          }),
         )
       ).data,
   },
