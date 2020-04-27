@@ -344,6 +344,19 @@ class Account(BaseModel):
         subscription_blocker = self.get_subscription_blocker() or ""
         r.hset(key, b"subscription_blocker", subscription_blocker.encode())  # type: ignore
 
+        # Trigger bot to reevaluate pull request mergeability.
+        # We can use this to trigger the bot to remove the paywall status message on upgrades.
+
+        class RefreshPullRequestsMessage(BaseModel):
+            installation_id: str
+
+        r.rpush(
+            "kodiak:refresh_pull_requests_for_installation",
+            RefreshPullRequestsMessage(
+                installation_id=self.github_installation_id
+            ).json(),
+        )
+
 
 class AccountRole(models.TextChoices):
     admin = "admin"
