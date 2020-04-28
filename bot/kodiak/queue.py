@@ -38,6 +38,9 @@ class WebhookEvent(BaseModel):
     def get_merge_target_queue_name(self) -> str:
         return self.get_merge_queue_name() + ":target"
 
+    def get_webhook_queue_name(self) -> str:
+        return get_webhook_queue_name(self)
+
     def __hash__(self) -> int:
         return (
             hash(self.repo_owner)

@@ -78,7 +78,9 @@ def validate_config(config_path: str) -> None:
     assert isinstance(cfg_file, V1)
     click.echo(cfg_file.json(indent=2))
 
+
 @cli.command()
 def refresh_pull_requests() -> None:
     from kodiak.refresh_pull_requests import main
+
     main()

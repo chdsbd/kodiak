@@ -1,31 +1,37 @@
 from __future__ import annotations
 
 import asyncio
-import structlog
+import time
 from typing import cast
 
 import asyncio_redis
 import requests_async as http
 import sentry_sdk
+import structlog
+from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
 from pydantic import BaseModel
 
 from kodiak import app_config as conf
 from kodiak.queries import generate_jwt, get_token_for_install
-from kodiak.queue import WebhookEvent, redis_webhook_queue
+from kodiak.queue import WebhookEvent
 
 sentry_sdk.init()
 
 
 logger = structlog.get_logger()
 
+# we query for both organization repositories and user repositories because we
+# do not know of the installation is a user or an organization.
+#
+# The limits on repositories and pull requests are arbitrary.
 QUERY = """
 query ($login: String!) {
   userdata: user(login: $login) {
-    repositories(first: 5) {
+    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         name
-        pullRequests(first: 50, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
           }
@@ -34,10 +40,10 @@ query ($login: String!) {
     }
   }
   organizationdata: organization(login: $login) {
-    repositories(first: 5) {
+    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         name
-        pullRequests(first: 50, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
           }
@@ -65,9 +71,11 @@ async def get_login_for_install(*, installation_id: str) -> str:
     return cast(str, res.json()["account"]["login"])
 
 
-async def refresh_pull_requests_for_installation(*, installation_id: str) -> None:
+async def refresh_pull_requests_for_installation(
+    *, installation_id: str, redis: RedisConnection
+) -> None:
     login = await get_login_for_install(installation_id=installation_id)
-    token = get_token_for_install(installation_id=installation_id)
+    token = await get_token_for_install(installation_id=installation_id)
     res = await http.post(
         "https://api.github.com/graphql",
         json=dict(query=QUERY, variables=dict(login=login)),
@@ -77,9 +85,12 @@ async def refresh_pull_requests_for_installation(*, installation_id: str) -> Non
 
     organizationdata = res.json()["data"]["organizationdata"]
     userdata = res.json()["data"]["userdata"]
+    user_kind = None
     if organizationdata is not None:
+        user_kind = "organization"
         data = organizationdata
     elif userdata is not None:
+        user_kind = "user"
         data = userdata
     else:
         raise ValueError("missing data for user/organization")
@@ -96,9 +107,18 @@ async def refresh_pull_requests_for_installation(*, installation_id: str) -> Non
                     installation_id=installation_id,
                 )
             )
-    logger.info("queuing %s events", len(events))
     for event in events:
-        await redis_webhook_queue.enqueue(event=event)
+        await redis.zadd(
+            event.get_webhook_queue_name(),
+            {event.json(): time.time()},
+            only_if_not_exists=True,
+        )
+    logger.info(
+        "pull_requests_refreshed",
+        installation_id=installation_id,
+        events_queued=len(events),
+        user_kind=user_kind,
+    )
 
 
 class RefreshPullRequestsMessage(BaseModel):
@@ -118,17 +138,19 @@ async def main_async() -> None:
         db=redis_db,
     )
     while True:
-        logger.info("block for new events")
         try:
             res: BlockingPopReply = await redis.blpop(
                 ["kodiak:refresh_pull_requests_for_installation"], timeout=5
             )
         except asyncio_redis.exceptions.TimeoutError:
+            logger.info("pull_request_refresh", timeout_reached=True)
             continue
         pr_refresh_message = RefreshPullRequestsMessage.parse_raw(res.value)
         installation_id = pr_refresh_message.installation_id
-        logger.info("refreshing pull requests for", installation_id=installation_id)
-        await refresh_pull_requests_for_installation(installation_id=installation_id)
+        await refresh_pull_requests_for_installation(
+            installation_id=installation_id, redis=redis
+        )
+        logger.info("pull_request_refresh", installation_id=installation_id)
 
 
 def main() -> None:
