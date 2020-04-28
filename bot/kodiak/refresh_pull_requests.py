@@ -22,13 +22,15 @@ sentry_sdk.init()
 logger = structlog.get_logger()
 
 # we query for both organization repositories and user repositories because we
-# do not know of the installation is a user or an organization.
+# do not know of the installation is a user or an organization. We filter to
+# private repositories only because we may not have access to all public
+# repositories and we'll only be able to see private repositories we can access.
 #
 # The limits on repositories and pull requests are arbitrary.
 QUERY = """
 query ($login: String!) {
   userdata: user(login: $login) {
-    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}, privacy: PRIVATE) {
       nodes {
         name
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
@@ -40,7 +42,7 @@ query ($login: String!) {
     }
   }
   organizationdata: organization(login: $login) {
-    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    repositories(first: 100, orderBy: {field: UPDATED_AT, direction: DESC}, privacy: PRIVATE) {
       nodes {
         name
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
@@ -147,10 +149,11 @@ async def main_async() -> None:
             continue
         pr_refresh_message = RefreshPullRequestsMessage.parse_raw(res.value)
         installation_id = pr_refresh_message.installation_id
+        start = time.time()
         await refresh_pull_requests_for_installation(
             installation_id=installation_id, redis=redis
         )
-        logger.info("pull_request_refresh", installation_id=installation_id)
+        logger.info("pull_request_refresh", installation_id=installation_id, duration=time.time() -start)
 
 
 def main() -> None:
