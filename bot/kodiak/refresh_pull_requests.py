@@ -153,7 +153,11 @@ async def main_async() -> None:
         await refresh_pull_requests_for_installation(
             installation_id=installation_id, redis=redis
         )
-        logger.info("pull_request_refresh", installation_id=installation_id, duration=time.time() -start)
+        logger.info(
+            "pull_request_refresh",
+            installation_id=installation_id,
+            duration=time.time() - start,
+        )
 
 
 def main() -> None:
