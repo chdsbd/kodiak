@@ -6,11 +6,11 @@ sidebar_label: Billing
 
 Kodiak is free to use on public repositories, but requires a subscription to use with private repositories.
 
-Kodiak is \$4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
+A Kodiak subscription is billed at \$4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
 
 Kodiak has a 30 day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
 
-> If you have any questions or concerns about billing please contact us at support@kodiakhq.com.
+Contact us with any questions or concerns at support@kodiakhq.com.
 
 ## Start Trial
 
