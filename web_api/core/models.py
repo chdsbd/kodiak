@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable, List, Optional, cast
 
+import pydantic
 import redis
 import requests
 import stripe
@@ -343,6 +344,19 @@ class Account(BaseModel):
         r.hset(key, b"account_id", str(self.id))  # type: ignore
         subscription_blocker = self.get_subscription_blocker() or ""
         r.hset(key, b"subscription_blocker", subscription_blocker.encode())  # type: ignore
+
+        # Trigger bot to reevaluate pull request mergeability.
+        # We can use this to trigger the bot to remove the paywall status message on upgrades.
+
+        class RefreshPullRequestsMessage(pydantic.BaseModel):
+            installation_id: str
+
+        r.rpush(
+            "kodiak:refresh_pull_requests_for_installation",
+            RefreshPullRequestsMessage(
+                installation_id=self.github_installation_id
+            ).json(),
+        )
 
 
 class AccountRole(models.TextChoices):

@@ -77,3 +77,13 @@ def validate_config(config_path: str) -> None:
     cfg_file = V1.parse_toml(cfg_text)
     assert isinstance(cfg_file, V1)
     click.echo(cfg_file.json(indent=2))
+
+
+@cli.command(help="listen for messages and trigger pull request refreshes")
+def refresh_pull_requests() -> None:
+    """
+    Listen on a Redis list for messages triggering pull request reevaluations.
+    """
+    from kodiak.refresh_pull_requests import main
+
+    main()
