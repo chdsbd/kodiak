@@ -1,3 +1,13 @@
+"""
+A process for triggering reevaluation of pull requests for a given installation.
+This is useful for triggering the bot to remove the paywall status check message
+after a user has started a trial or subscription.
+
+We listen for events on a Redis list. When we receive an event we look up all
+the private PRs associated with that installation. We queue webhook events like
+a GitHub webhook would for each pull request to trigger the bot to reevaluate
+the mergeability.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -184,14 +194,14 @@ async def main_async() -> None:
             continue
         pr_refresh_message = RefreshPullRequestsMessage.parse_raw(res.value)
         installation_id = pr_refresh_message.installation_id
-        start = time.time()
+        start = time.monotonic()
         await refresh_pull_requests_for_installation(
             installation_id=installation_id, redis=redis
         )
         logger.info(
             "pull_request_refresh",
             installation_id=installation_id,
-            duration=time.time() - start,
+            duration=time.monotonic() - start,
         )
 
 

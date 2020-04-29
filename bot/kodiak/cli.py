@@ -79,8 +79,11 @@ def validate_config(config_path: str) -> None:
     click.echo(cfg_file.json(indent=2))
 
 
-@cli.command()
+@cli.command(help="listen for messages and trigger pull request refreshes")
 def refresh_pull_requests() -> None:
+    """
+    Listen on a Redis list for messages triggering pull request reevaluations.
+    """
     from kodiak.refresh_pull_requests import main
 
     main()
