@@ -202,7 +202,7 @@ function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
             <Form.Text className="text-danger">{status.msg}</Form.Text>
           )}
           <Form.Text className="text-muted">
-            Your trial will expire 14 days after start.
+            Your trial will expire 30 days after start.
           </Form.Text>
         </Form>
       </Modal.Body>
@@ -606,7 +606,7 @@ function SubscriptionUpsellPrompt({
           <>
             <div className="d-flex justify-content-center">
               <Button variant="success" size="lg" onClick={startTrial}>
-                Start 14 Day Trial
+                Start 30 Day Trial
               </Button>
             </div>
             <p className="mb-0 text-center">or</p>
@@ -774,8 +774,8 @@ function Subscription({
           <Col>
             <b>Trial</b>
             <p>
-              The 14-day trial is free and allows for using Kodiak on private
-              repos with an unlimited number of users. After 14-days you can
+              The 30-day trial is free and allows for using Kodiak on private
+              repos with an unlimited number of users. After 30-days you can
               subscribe to continue using Kodiak on private repositories.
             </p>
           </Col>
