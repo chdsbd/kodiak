@@ -833,7 +833,7 @@ def test_start_trial(
     assert account.trial_start is not None
     assert (
         (account.trial_start - account.trial_expiration).total_seconds()
-        - datetime.timedelta(days=14).total_seconds()
+        - datetime.timedelta(days=30).total_seconds()
         < 60 * 60
     ), "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
     assert account.trial_started_by == user

@@ -8,7 +8,7 @@ Kodiak is free to use on public repositories, but requires a subscription to use
 
 Kodiak is \$4.99 per active user per month. An active user is anyone that opens a private GitHub pull request that Kodiak updates, approves, or merges.
 
-Kodiak has a 14-day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
+Kodiak has a 30 day free trial that can be activated on [the dashboard](https://app.kodiakhq.com).
 
 > If you have any questions or concerns about billing please contact us at support@kodiakhq.com.
 
@@ -17,7 +17,7 @@ Kodiak has a 14-day free trial that can be activated on [the dashboard](https://
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
 3. Select "Usage & Billing" from the sidebar
-4. Click "Start 14 Day Trial"
+4. Click "Start 30 Day Trial"
 5. Enter a notification email
 6. Click "Begin Trial"
 7. You should now have full access to Kodiak! 🎉

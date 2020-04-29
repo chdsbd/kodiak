@@ -268,7 +268,7 @@ class Account(BaseModel):
         )
 
     def start_trial(
-        self, actor: User, billing_email: str, length_days: int = 14
+        self, actor: User, billing_email: str, length_days: int = 30
     ) -> None:
         """
         Start the timer for the trial and create a Stripe customer.
