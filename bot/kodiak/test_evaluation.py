@@ -1791,32 +1791,41 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.FAILURE
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        contexts=[],
-    )
-    assert api.set_status.call_count == 1
-    assert api.dequeue.call_count == 1
-    assert (
-        "failing required status checks: {'ci/test-api'}"
-        in api.set_status.calls[0]["msg"]
-    )
+    for index, check_run_conclusion in enumerate(
+        (
+            CheckConclusionState.ACTION_REQUIRED,
+            CheckConclusionState.FAILURE,
+            CheckConclusionState.TIMED_OUT,
+            CheckConclusionState.CANCELLED,
+        )
+    ):
+        check_run.conclusion = check_run_conclusion
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            merging=False,
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            contexts=[],
+        )
+        assert api.set_status.call_count == 1 + index
+        assert api.dequeue.call_count == 1 + index
+        assert (
+            "failing required status checks: {'ci/test-api'}"
+            in api.set_status.calls[index]["msg"]
+        )
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
