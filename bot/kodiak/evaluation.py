@@ -314,7 +314,7 @@ async def mergeable(
                     subscription.subscription_blocker,
                 )
         await set_status(
-            f"💳 payment required: {message}",
+            f"💳 subscription: {message}",
             markdown_content=get_markdown_for_paywall(),
         )
         return
