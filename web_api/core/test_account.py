@@ -133,6 +133,52 @@ def test_get_subscription_blocker_seats_exceeded(mocker: Any) -> None:
 
 
 @pytest.mark.django_db
+def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(mocker: Any) -> None:
+    """
+    If an account has active users but no trial or subscription, that should
+    trigger the paywall when the active user count has been exceeded.
+    """
+    get_active_users_in_last_30_days = mocker.patch(
+        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
+        return_value=[1, 2, 3, 4, 5],
+    )
+    account = Account.objects.create(
+        github_installation_id=1066615,
+        github_account_login="acme-corp",
+        github_account_id=523412234,
+        github_account_type="Organization",
+        stripe_customer_id="cus_H2pvQ2kt7nk0JY",
+    )
+    assert get_active_users_in_last_30_days.call_count == 0
+    assert account.get_subscription_blocker() == "seats_exceeded"
+    assert get_active_users_in_last_30_days.call_count == 1
+    assert account.get_active_user_count() == 5
+
+
+@pytest.mark.django_db
+def test_get_subscription_blocker_seats_exceeded_with_trial(mocker: Any) -> None:
+    """
+    If an account has active users but is on the trial we should allow them full
+    access.
+    """
+    mocker.patch(
+        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
+        return_value=[1, 2, 3, 4, 5],
+    )
+    account = Account.objects.create(
+        github_installation_id=1066615,
+        github_account_login="acme-corp",
+        github_account_id=523412234,
+        github_account_type="Organization",
+        stripe_customer_id="cus_H2pvQ2kt7nk0JY",
+        trial_expiration=make_aware(datetime.datetime(2100, 2, 13)),
+    )
+    assert account.active_trial() is True
+    assert account.get_active_user_count() == 5
+    assert account.get_subscription_blocker() is None
+
+
+@pytest.mark.django_db
 def test_get_subscription_blocker_expired_trial_subscription_ok(mocker: Any) -> None:
     """
     If an account has a trial that is expired, but their subscription is valid,

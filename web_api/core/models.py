@@ -318,17 +318,24 @@ class Account(BaseModel):
             return None
 
         customer_info = self.stripe_customer_info()
+
+        subscription_quantity = (
+            customer_info.subscription_quantity if customer_info else 0
+        )
+        if subscription_quantity < self.get_active_user_count():
+            return "seats_exceeded"
+
         if customer_info:
             if customer_info.expired:
                 return "subscription_expired"
-            if customer_info.subscription_quantity < self.get_active_user_count():
-                return "seats_exceeded"
+            # active subscription within active user limits.
             return None
 
         if self.trial_expired():
             return "trial_expired"
 
-        # the user has never signed up for a trial or subscription
+        # the user has never signed up for a trial or subscription and has 0
+        # active users.
         return None
 
     def update_from(self, customer: stripe.Customer) -> None:
