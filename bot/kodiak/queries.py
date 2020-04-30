@@ -358,6 +358,8 @@ class CheckConclusionState(Enum):
     CANCELLED = "CANCELLED"
     FAILURE = "FAILURE"
     NEUTRAL = "NEUTRAL"
+    SKIPPED = "SKIPPED"
+    STALE = "STALE"
     SUCCESS = "SUCCESS"
     TIMED_OUT = "TIMED_OUT"
 

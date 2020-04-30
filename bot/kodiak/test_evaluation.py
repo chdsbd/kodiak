@@ -1797,6 +1797,8 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
             CheckConclusionState.FAILURE,
             CheckConclusionState.TIMED_OUT,
             CheckConclusionState.CANCELLED,
+            CheckConclusionState.SKIPPED,
+            CheckConclusionState.STALE,
         )
     ):
         check_run.conclusion = check_run_conclusion
