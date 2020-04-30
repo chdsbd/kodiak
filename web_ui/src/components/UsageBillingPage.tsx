@@ -919,7 +919,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                   Days Active{" "}
                   <Question
                     content={
-                      "This user opened, reviewed or edited a pull request that Kodiak updated, approved, or merged."
+                      "This user opened a GitHub pull request that Kodiak updated, approved, or merged."
                     }
                   />
                 </th>
