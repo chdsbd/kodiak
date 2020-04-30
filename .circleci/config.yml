@@ -10,9 +10,7 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - bot-v1-{{ .Branch }}-
-            - bot-v1-
+            - bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: install dependencies
           working_directory: bot
@@ -26,7 +24,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
           working_directory: bot
@@ -40,9 +38,7 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
-            - bot-v1-{{ .Branch }}-
-            - bot-v1-
+            - bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: install dependencies
           working_directory: bot
@@ -56,7 +52,7 @@ jobs:
           paths:
             - ./bot/.mypy_cache
             - /root/.cache/
-          key: bot-v1-{{ .Branch }}-{{ checksum "bot/poetry.lock" }}
+          key: bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
           working_directory: bot
@@ -81,9 +77,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -92,7 +86,7 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run typechecker
           working_directory: docs
@@ -106,9 +100,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -116,7 +108,7 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run fmt
           working_directory: docs
@@ -129,9 +121,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -139,7 +129,7 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: build
           working_directory: docs
@@ -160,9 +150,7 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
-            - web_api-v1-{{ .Branch }}-
-            - web_api-v1-
+            - web_api-v1-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: install dependencies
           working_directory: web_api
@@ -176,7 +164,7 @@ jobs:
           paths:
             - ./web_api/.mypy_cache
             - /root/.cache/
-          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+          key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: run tests
           working_directory: web_api
@@ -190,9 +178,7 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
-            - web_api-v1-{{ .Branch }}-
-            - web_api-v1-
+            - web_api-v1-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: install dependencies
           working_directory: web_api
@@ -206,7 +192,7 @@ jobs:
           paths:
             - ./web_api/.mypy_cache
             - /root/.cache/
-          key: web_api-v1-{{ .Branch }}-{{ checksum "web_api/poetry.lock" }}
+          key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
       - run:
           name: run lints
           working_directory: web_api
@@ -231,9 +217,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - web-ui-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
-            - web-ui-v1-{{ .Branch }}-
-            - web-ui-v1-v1-
+            - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: web_ui
@@ -241,7 +225,7 @@ jobs:
       - save_cache:
           paths:
             - ./web_ui/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "web_ui/yarn.lock" }}
       - run:
           name: lint
           working_directory: web_ui
@@ -254,9 +238,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - web-ui-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
-            - web-ui-v1-{{ .Branch }}-
-            - web-ui-v1-v1-
+            - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: web_ui
@@ -264,7 +246,7 @@ jobs:
       - save_cache:
           paths:
             - ./web_ui/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "web_ui/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "web_ui/yarn.lock" }}
       - run:
           name: test
           working_directory: web_ui
