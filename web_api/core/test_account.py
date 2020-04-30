@@ -161,7 +161,7 @@ def test_get_subscription_blocker_seats_exceeded_with_trial(mocker: Any) -> None
     If an account has active users but is on the trial we should allow them full
     access.
     """
-    get_active_users_in_last_30_days = mocker.patch(
+    mocker.patch(
         "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
         return_value=[1, 2, 3, 4, 5],
     )
