@@ -543,6 +543,9 @@ async def mergeable(
                     CheckConclusionState.ACTION_REQUIRED,
                     CheckConclusionState.FAILURE,
                     CheckConclusionState.TIMED_OUT,
+                    CheckConclusionState.CANCELLED,
+                    CheckConclusionState.SKIPPED,
+                    CheckConclusionState.STALE,
                 ):
                     failing_contexts.append(check_run.name)
             passing = set(passing_contexts)
