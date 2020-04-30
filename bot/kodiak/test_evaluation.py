@@ -4352,9 +4352,9 @@ async def test_mergeable_paywall(
             subscription=subscription,
         )
         assert api.set_status.call_count == index + 1
-    assert "💳 payment required: subscription missing" in api.set_status.calls[0]["msg"]
+    assert "💳 subscription: subscription missing" in api.set_status.calls[0]["msg"]
     assert (
-        "💳 payment required: usage has exceeded licensed seats"
+        "💳 subscription: usage has exceeded licensed seats"
         in api.set_status.calls[1]["msg"]
     )
 
