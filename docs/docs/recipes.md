@@ -44,7 +44,7 @@ blacklist_usernames = ["dependabot-preview"]
 
 ## The Favourite
 
-This is the config use by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
+This is the config used by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
 
 We squash all PR commits and use the PR title and body for the merge commit. Once merged, we delete the PR's branch.
 
