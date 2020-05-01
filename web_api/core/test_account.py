@@ -156,6 +156,29 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(mocker: Any) ->
 
 
 @pytest.mark.django_db
+def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial_no_activity(
+    mocker: Any,
+) -> None:
+    """
+    If an account has no trial or subscription, but also no active users, we
+    should not raise the paywall.
+    """
+    mocker.patch(
+        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
+        return_value=[],
+    )
+    account = Account.objects.create(
+        github_installation_id=1066615,
+        github_account_login="acme-corp",
+        github_account_id=523412234,
+        github_account_type="Organization",
+        stripe_customer_id="cus_H2pvQ2kt7nk0JY",
+    )
+    assert account.get_subscription_blocker() is None
+    assert account.get_active_user_count() == 0
+
+
+@pytest.mark.django_db
 def test_get_subscription_blocker_seats_exceeded_with_trial(mocker: Any) -> None:
     """
     If an account has active users but is on the trial we should allow them full
