@@ -194,6 +194,16 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     )
 
 
+def get_paywall_status_for_blocker(subscription_blocker: str) -> Optional[str]:
+    if subscription_blocker == "seats_exceeded":
+        return "usage has exceeded licensed seats"
+    if subscription_blocker == "trial_expired":
+        return "trial ended"
+    if subscription_blocker == "subscription_expired":
+        return "subscription expired"
+    return None
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -295,28 +305,27 @@ async def mergeable(
     if (
         app_config.SUBSCRIPTIONS_ENABLED
         and repository.is_private
-        and (subscription is None or subscription.subscription_blocker is not None)
+        and subscription is not None
+        and subscription.subscription_blocker is not None
     ):
-        # we only count private repositories in our usage calculations. A user
+        # We only count private repositories in our usage calculations. A user
         # has an active subscription if a subscription exists in Redis and has
         # an empty subscription_blocker.
-        message = "subscription missing"
-        if subscription is not None:
-            if subscription.subscription_blocker == "seats_exceeded":
-                message = "usage has exceeded licensed seats"
-            elif subscription.subscription_blocker == "trial_expired":
-                message = "trial ended"
-            elif subscription.subscription_blocker == "subscription_expired":
-                message = "subscription expired"
-            else:
-                log.warning(
-                    "unexpected subscription_blocker %s ",
-                    subscription.subscription_blocker,
-                )
-        await set_status(
-            f"💳 subscription: {message}", markdown_content=get_markdown_for_paywall()
+        #
+        # We also ignore missing subscriptions. The web api will set
+        # subscription blockers if usage exceeds limits.
+        status_message = get_paywall_status_for_blocker(
+            subscription.subscription_blocker
         )
-        return
+        if status_message is not None:
+            await set_status(
+                f"💳 subscription: {status_message}",
+                markdown_content=get_markdown_for_paywall(),
+            )
+            return
+        log.warning(
+            "unexpected subscription_blocker %s ", subscription.subscription_blocker
+        )
 
     if (
         pull_request.author.login in config.approve.auto_approve_usernames

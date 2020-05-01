@@ -4301,7 +4301,7 @@ async def test_mergeable_auto_approve_ignore_draft_pr(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_paywall(
+async def test_mergeable_paywall_missing_subscription(
     api: MockPrApi,
     config: V1,
     config_path: str,
@@ -4313,49 +4313,92 @@ async def test_mergeable_paywall(
     check_run: CheckRun,
 ) -> None:
     """
-    If a subscription is missing or a subscription has a subscription_blocker,
-    we should display the paywall.
+    If a subscription is missing we should not raise the paywall. The web_api
+    system will set a subscription blocker if active users exceed the limit.
     """
-    for index, subscription in enumerate(
-        (
-            None,
-            Subscription(
-                account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-                subscription_blocker="seats_exceeded",
-            ),
-        )
-    ):
-        await mergeable(
-            api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            reviews=[review],
-            review_requests=[],
-            contexts=[context],
-            check_runs=[check_run],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            merging=False,
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            repository=RepoInfo(
-                merge_commit_allowed=True,
-                rebase_merge_allowed=True,
-                squash_merge_allowed=True,
-                is_private=True,
-            ),
-            subscription=subscription,
-        )
-        assert api.set_status.call_count == index + 1
-    assert "💳 subscription: subscription missing" in api.set_status.calls[0]["msg"]
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=[review],
+        review_requests=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        repository=RepoInfo(
+            merge_commit_allowed=True,
+            rebase_merge_allowed=True,
+            squash_merge_allowed=True,
+            is_private=True,
+        ),
+        subscription=None,
+    )
+
+    assert api.queue_for_merge.call_count == 1
+    assert api.set_status.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_subscription_blocker(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If an account has a subscription_blocker we should display the paywall.
+    """
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=[review],
+        review_requests=[],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        repository=RepoInfo(
+            merge_commit_allowed=True,
+            rebase_merge_allowed=True,
+            squash_merge_allowed=True,
+            is_private=True,
+        ),
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker="seats_exceeded",
+        ),
+    )
+    assert api.set_status.call_count == 1
     assert (
         "💳 subscription: usage has exceeded licensed seats"
-        in api.set_status.calls[1]["msg"]
+        in api.set_status.calls[0]["msg"]
     )
 
     assert api.queue_for_merge.call_count == 0
