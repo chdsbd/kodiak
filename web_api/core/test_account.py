@@ -160,7 +160,7 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial_no_activity(
     mocker: Any,
 ) -> None:
     """
-    If an account has no trial or subscription, but also not active users, we
+    If an account has no trial or subscription, but also no active users, we
     should not raise the paywall.
     """
     mocker.patch(
