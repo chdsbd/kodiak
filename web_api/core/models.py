@@ -782,13 +782,11 @@ class StripeCustomerInformation(models.Model):
     )
     plan_id = models.CharField(
         max_length=255,
-        unique=True,
         db_index=True,
         help_text="Unique identifier for Stripe Plan object.",
     )
     payment_method_id = models.CharField(
         max_length=255,
-        unique=True,
         db_index=True,
         help_text="Unique identifier for Stripe PaymentMethod object.",
     )
