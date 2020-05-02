@@ -1089,12 +1089,23 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     )
 
 
+def equal_subscriptions(
+    a: StripeCustomerInformation, b: StripeCustomerInformation
+) -> bool:
+    for field_name in (
+        field.attname for field in StripeCustomerInformation._meta.fields
+    ):
+        if getattr(a, field_name) != getattr(b, field_name):
+            return False
+    return True
+
+
 @pytest.mark.django_db
 def test_stripe_webhook_handler_checkout_session_complete_subscription(
     mocker: Any,
 ) -> None:
     """
-    Verify our webhook handler updates our subscription on this event.
+    Verify our webhook handler creates a subscription on this event.
     """
     update_bot = mocker.patch("core.models.Account.update_bot")
     fake_customer = stripe.Customer.construct_from(
@@ -1145,7 +1156,32 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         github_account_type="User",
         stripe_customer_id="",
     )
-    assert StripeCustomerInformation.objects.count() == 0
+    other_account = Account.objects.create(
+        github_installation_id=523940,
+        github_account_id=65234234,
+        github_account_login="delos-engineering",
+        github_account_type="Organization",
+        stripe_customer_id="cus_354HjLriodop21",
+    )
+    other_subscription = StripeCustomerInformation.objects.create(
+        customer_id=other_account.stripe_customer_id,
+        subscription_id="sub_L43DyAEVGwzt32",
+        plan_id="plan_Gz345gdsdf",
+        payment_method_id="pm_34lbsdf3",
+        customer_email="engineering@delos.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1658357784,
+    )
+    assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
     res = post_webhook(
         """
@@ -1161,7 +1197,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
       "billing_address_collection": null,
       "cancel_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?cancel=1",
       "client_reference_id": "%s",
-      "customer": "cus_GyMwpHE6qQb4cr",
+      "customer": "cus_Gz7jQFKdh4KirU",
       "customer_email": null,
       "display_items": [
         {
@@ -1227,9 +1263,17 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     assert customer_retrieve.call_count == 1
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 1
+    assert StripeCustomerInformation.objects.count() == 2
 
-    stripe_customer_info_updated = StripeCustomerInformation.objects.get()
+    # verify `other_subscription` hasn't been modified
+    other_subscription_refreshed = StripeCustomerInformation.objects.filter(
+        subscription_id=other_subscription.subscription_id
+    ).get()
+    assert equal_subscriptions(other_subscription_refreshed, other_subscription) is True
+
+    stripe_customer_info_updated = StripeCustomerInformation.objects.filter(
+        customer_id="cus_Gz7jQFKdh4KirU"
+    ).get()
     assert stripe_customer_info_updated.subscription_id == fake_subscription.id
     assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
     assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
