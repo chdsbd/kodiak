@@ -55,6 +55,12 @@ GitHub Sponsors and non-commercial users can use Kodiak at no cost.
 
 Please start a trial and send us an email at support@kodiakhq.com. We'll extend your trial to last indefinitely.
 
+## Multiple Organizations
+
+If your company uses Kodiak across multiple GitHub organizations, you only need to pay for Kodiak once.
+
+Please start a trial on your secondary organization(s) and send us an email at support@kodiakhq.com. We'll extend your trial to last indefinitely for your secondary organization(s).
+
 ## Self-hosting
 
 For information on self-hosting Kodiak, see the [self-hosting docs](self-hosting.md).
