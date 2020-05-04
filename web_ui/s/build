@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -e
+DOCKER_HUB_REPO='cdignam/kodiak-web-ui'
+docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
+
+set -x
+
+# https://circleci.com/docs/2.0/env-vars/#circleci-built-in-environment-variables
+LABEL="$CIRCLE_SHA1"
+if [ ! -z "$CIRCLE_TAG" ]; then
+    LABEL="$CIRCLE_TAG"
+fi
+
+docker build --tag "$DOCKER_HUB_REPO:$LABEL" .
+docker push "$DOCKER_HUB_REPO:$LABEL"

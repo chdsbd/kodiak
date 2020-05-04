@@ -1,0 +1,4 @@
+#!/bin/sh
+set -ex
+
+yarn tsc --noEmit "$@"

@@ -23,17 +23,28 @@ While Dependabot can [automerge dependency updates](https://dependabot.com/docs/
 
 Kodiak can help us here by automatically adding an approval to all Dependabot PRs, which will allow Dependabot PRs to be automatically merged without human intervention.
 
+If you use Kodiak with `update.always` enabled, we recommend adding Dependabot to the `update.blacklist_usernames` list. If a PR by Dependabot gets updated by a different user, Dependabot will not update or close the PR when stale, so this setting prevents Kodiak from breaking Dependabot PRs.
+
+> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot-preview[bot]"` use `"dependabot-preview"`.
+
 ```
 # .kodiak.toml
 version = 1
 
 [approve]
-auto_approve_usernames = ["dependabot-preview[bot]"]
+# note: remove the "[bot]" suffix from GitHub Bot usernames.
+# Instead of "dependabot-preview[bot]" use "dependabot-preview".
+auto_approve_usernames = ["dependabot-preview"]
+
+# if using `update.always`, add dependabot-preview to the blacklist to allow
+# dependabot to update and close stale dependency upgrades.
+[update]
+blacklist_usernames = ["dependabot-preview"]
 ```
 
 ## The Favourite
 
-This is the config use by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
+This is the config used by the [Kodiak repository](https://github.com/chdsbd/kodiak/blob/master/.kodiak.toml).
 
 We squash all PR commits and use the PR title and body for the merge commit. Once merged, we delete the PR's branch.
 

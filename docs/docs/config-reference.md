@@ -222,6 +222,28 @@ This setting is useful for stripping HTML comments created by PR templates.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
+### `merge.message.include_pull_request_author`
+
+- **type:** `boolean`
+- **default:** `false`
+
+Add the pull request author as a coauthor of the merge commit using `Co-authored-by: jdoe <828352+jdoe@users.noreply.github.com>` syntax.
+
+This setting will override `merge.message.body = "github_default"` and `merge.message.body = "empty"`. In both cases, the commit message will only contain coauthor information.
+
+This setting was added to mitigate the fallout of GitHub's change to the
+squash method on March 4th, 2020. GitHub reverted their change around
+March 6th, 2020, making this option no longer necessary.
+
+### `merge.message.include_pull_request_url`
+
+- **type:** `boolean`
+- **default:** `false`
+
+Append the pull request's URL to the commit message body.
+
+This can make accessing the relevant PR for a given commit easier.
+
 ### `update.always`
 
 - **type:** `boolean`
@@ -247,6 +269,23 @@ When enabled, Kodiak will only update PRs that have an automerge label (configur
 When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
+
+### `update.blacklist_usernames`
+
+- **type:** `string[]`
+- **default:** `[]`
+
+When `update.always` is enabled, pull requests opened by a user with a username in the `update.blacklist_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+
+If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
+
+This setting has no effect when `update.always` is disabled.
+
+#### example
+
+```
+update.blacklist_usernames = ["bernard-lowe", "dependabot-preview"]
+```
 
 ### `approve.auto_approve_usernames`
 
@@ -387,6 +426,15 @@ title = "github_default" # default: "github_default", options: "github_default",
 # content of the PR to generate the body content while `"empty"` sets an empty
 # body.
 body = "github_default" # default: "github_default", options: "github_default", "pull_request_body", "empty"
+
+# Option to mitigate the fallout of GitHub's change to the
+# squash method on March 4th, 2020. GitHub reverted their change around
+# March 6th, 2020, making this option no longer necessary.
+include_pull_request_author = false # default: false
+
+# Append the Pull Request URL to the merge message. Makes navigating to the PR
+# from the commit easier.
+include_pull_request_url = false # default: false
 
 # Add the PR number to the merge commit title. This setting replicates GitHub's
 # behavior of automatically adding the PR number to the title of merges created

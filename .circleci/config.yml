@@ -1,19 +1,19 @@
 version: 2
 
 jobs:
-  test_api:
+  bot_test:
     docker:
       - image: python:3.7
+      - image: circleci/redis:5.0
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: install dependencies
+          working_directory: bot
           command: |
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
@@ -22,14 +22,15 @@ jobs:
             poetry install
       - save_cache:
           paths:
-            - ./.mypy_cache
+            - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+          key: bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run tests
+          working_directory: bot
           command: ./s/test
 
-  lint_api:
+  bot_lint:
     docker:
       - image: python:3.7
     steps:
@@ -37,11 +38,10 @@ jobs:
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
-            - api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
-            - api-v1-{{ .Branch }}-
-            - api-v1-
+            - bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: install dependencies
+          working_directory: bot
           command: |
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
@@ -50,23 +50,34 @@ jobs:
             poetry install
       - save_cache:
           paths:
-            - ./.mypy_cache
+            - ./bot/.mypy_cache
             - /root/.cache/
-          key: api-v1-{{ .Branch }}-{{ checksum "poetry.lock" }}
+          key: bot-v1-{{ checksum "bot/poetry.lock" }}
       - run:
           name: run lints
+          working_directory: bot
           command: ./s/lint
 
-  docs_site_typecheck:
+  # https://circleci.com/docs/2.0/building-docker-images/
+  bot_build_container:
+    docker:
+      - image: docker:18.05.0-ce
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build container
+          working_directory: bot
+          command: ./s/build
+
+  docs_typecheck:
     docker:
       - image: circleci/node:12.4.0
     steps:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -75,23 +86,21 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run typechecker
           working_directory: docs
           command: |
             yarn typecheck
 
-  docs_site_fmt:
+  docs_fmt:
     docker:
       - image: circleci/node:12.4.0
     steps:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -99,22 +108,20 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: run fmt
           working_directory: docs
           command: yarn fmt-ci
 
-  docs_site_build:
+  docs_build:
     docker:
       - image: circleci/node:12.4.0
     steps:
       - checkout
       - restore_cache:
           keys:
-            - docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
-            - docs-site-v1-{{ .Branch }}-
-            - docs-site-v1-
+            - docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: install dependencies
           working_directory: docs
@@ -122,14 +129,77 @@ jobs:
       - save_cache:
           paths:
             - ./docs/node_modules
-          key: docs-site-v1-{{ .Branch }}-{{ checksum "docs/yarn.lock" }}
+          key: docs-site-v1-{{ checksum "docs/yarn.lock" }}
       - run:
           name: build
           working_directory: docs
           command: yarn build
 
+  web_api_test:
+    docker:
+      - image: python:3.7
+      - image: circleci/postgres:12-ram
+        environment:
+          POSTGRES_DB: web_api_test
+          POSTGRES_PASSWORD: my_test_postgres_password
+      - image: circleci/redis:5.0
+    environment:
+      DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: install dependencies
+          working_directory: web_api
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./web_api/.mypy_cache
+            - /root/.cache/
+          key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: run tests
+          working_directory: web_api
+          command: ./s/test
+
+  web_api_lint:
+    docker:
+      - image: python:3.7
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: install dependencies
+          working_directory: web_api
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./web_api/.mypy_cache
+            - /root/.cache/
+          key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: run lints
+          working_directory: web_api
+          command: ./s/lint
+
   # https://circleci.com/docs/2.0/building-docker-images/
-  build_container:
+  web_api_build_container:
     docker:
       - image: docker:18.05.0-ce
     steps:
@@ -137,20 +207,102 @@ jobs:
       - setup_remote_docker
       - run:
           name: build container
+          working_directory: web_api
+          command: ./s/build
+
+  web_ui_lint:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: install dependencies
+          working_directory: web_ui
+          command: yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./web_ui/node_modules
+          key: docs-site-v1-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: lint
+          working_directory: web_ui
+          command: ./s/lint
+
+  web_ui_test:
+    docker:
+      - image: circleci/node:12.4.0
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: install dependencies
+          working_directory: web_ui
+          command: yarn install --frozen-lockfile --non-interactive
+      - save_cache:
+          paths:
+            - ./web_ui/node_modules
+          key: docs-site-v1-{{ checksum "web_ui/yarn.lock" }}
+      - run:
+          name: test
+          working_directory: web_ui
+          command: ./s/test
+
+  shellcheck:
+    docker:
+      - image: ubuntu:18.04
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: |
+            apt-get update
+            apt-get install -y git shellcheck
+      - run:
+          name: run shellcheck
+          command: |
+            ./s/shellcheck
+
+  # https://circleci.com/docs/2.0/building-docker-images/
+  web_ui_build_container:
+    docker:
+      - image: docker:18.05.0-ce
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: build container
+          working_directory: web_ui
           command: ./s/build
 
 workflows:
   version: 2
-  test:
+  all:
     jobs:
-      - test_api
-      - lint_api
-      - docs_site_typecheck
-      - docs_site_fmt
-      - docs_site_build
-      - build_container:
-          filters:
-            branches:
-              only: master
-            tags:
-              only: /^v.*/
+      - shellcheck
+  bot:
+    jobs:
+      - bot_test
+      - bot_lint
+      - bot_build_container
+  docs:
+    jobs:
+      - docs_typecheck
+      - docs_fmt
+      - docs_build
+
+  web_ui:
+    jobs:
+      - web_ui_lint
+      - web_ui_test
+      - web_ui_build_container
+
+  web_api:
+    jobs:
+      - web_api_test
+      - web_api_lint
+      - web_api_build_container
