@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.21.0 - 2020-05-05
+
+### Added
+- add support for `requiresCommitSignatures` with the squash merge method (#275)
+- add documentation for billing at http://kodiakhq.com/docs/billing. (#348, #349, #358)
+
+### Fixed
+- fix handling of rare status checks. Treat `CANCELLED` as failure like GitHub. Support `STALE` and `SKIPPED` states.
+- fix order of account names on dashboard accounts page to be alphabetical.
+
 ## 0.20.0 - 2020-04-22
 
 ### Added
