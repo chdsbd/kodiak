@@ -115,7 +115,7 @@ function formatFromNow(dateString: string): string {
 }
 
 function FormatDate({ date }: { date: string }) {
-  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm") + " UTC"}</>
+  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
 }
 
 const formattedMonthlyCost = formatCents(settings.monthlyCost)
