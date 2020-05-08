@@ -1431,11 +1431,75 @@ async def test_mergeable_pull_request_merge_conflict_general_notify_on_conflict(
     assert api.add_label.call_count == 0
     assert api.create_comment.call_count == 0
 
+    assert api.queue_for_merge.called is True, "we should try to merge the PR"
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_general_notify_on_conflict_override_merge_notify_on_conflict(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    config.notify_on_conflict should override merge.notify_on_conflict. We should not set two comments when automerge is enabled.
+    """
+
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+
+    # in this scenario, assume that Kodiak has already added a label and comment
+    # for config.notify_on_conflict and is now getting another webhook event.
+    config.notify_on_conflict = True
+    config.notify_on_conflict_label = ":rotating_light: merge conflict"
+    pull_request.labels = [
+        config.merge.automerge_label,
+        config.notify_on_conflict_label,
+    ]
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert (
+        api.set_status.call_count == 1
+    ), "we should set a status saying merging is blocked"
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert (
+        api.remove_label.call_count == 0
+    ), "we shouldn't remove any label because config.notify_on_conflict overrides config.merge.notify_on_conflict"
+
+    assert api.add_label.call_count == 0
+    assert api.create_comment.call_count == 0
+
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
-    assert api.queue_for_merge.called is True
-    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is False
+    assert api.dequeue.call_count == 1
 
 
 @pytest.mark.asyncio

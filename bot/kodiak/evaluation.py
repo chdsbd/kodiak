@@ -467,8 +467,12 @@ async def mergeable(
         or pull_request.mergeable == MergeableState.CONFLICTING
     ):
         await block_merge(api, pull_request, "merge conflict")
-        # remove label if configured and send message
-        if config.merge.notify_on_conflict and config.merge.require_automerge_label:
+        # remove label if configured and send message. config.notify_on_conflict overrides this option.
+        if (
+            config.merge.notify_on_conflict
+            and config.merge.require_automerge_label
+            and not config.notify_on_conflict
+        ):
             automerge_label = config.merge.automerge_label
             await api.remove_label(automerge_label)
             body = textwrap.dedent(
