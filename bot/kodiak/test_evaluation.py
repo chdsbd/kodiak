@@ -148,6 +148,14 @@ class MockApprovePullRequest(BaseMockFunc):
         self.log_call(dict())
 
 
+class MockAddLabel(BaseMockFunc):
+    return_value: bool = True
+
+    async def __call__(self, label: str) -> bool:
+        self.log_call(dict(label=label))
+        return self.return_value
+
+
 class MockPrApi:
     def __init__(self) -> None:
         self.dequeue = MockDequeue()
@@ -161,6 +169,7 @@ class MockPrApi:
         self.queue_for_merge = MockQueueForMerge()
         self.update_branch = MockUpdateBranch()
         self.approve_pull_request = MockApprovePullRequest()
+        self.add_label = MockAddLabel()
 
     def get_api_methods(self) -> List[Tuple[str, BaseMockFunc]]:
         cls = type(self)
@@ -1366,6 +1375,67 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_general_notify_on_conflict(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    When config.notify_on_conflict is enabled, if a PR the
+    config.notify_on_conflict_label but does not have a merge conflict we should
+    remove the label.
+    """
+    config.notify_on_conflict = True
+    config.notify_on_conflict_label = ":rotating_light: merge conflict"
+    pull_request.labels = [
+        config.merge.automerge_label,
+        config.notify_on_conflict_label,
+    ]
+    api.queue_for_merge.return_value = 5
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert (
+        api.set_status.call_count == 1
+    ), "we should set a status saying merging is blocked"
+    assert "queued for merge" in api.set_status.calls[0]["msg"]
+    assert api.remove_label.call_count == 1
+    assert api.remove_label.calls[0]["label"] == config.notify_on_conflict_label
+
+    assert api.add_label.call_count == 0
+    assert api.create_comment.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is True
+    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio

@@ -65,6 +65,16 @@
           "$ref": "#/definitions/Approve"
         }
       ]
+    },
+    "notify_on_conflict": {
+      "title": "Notify On Conflict",
+      "default": false,
+      "type": "boolean"
+    },
+    "notify_on_conflict_label": {
+      "title": "Notify On Conflict Label",
+      "default": "kodiak:merge_conflict",
+      "type": "string"
     }
   },
   "required": [

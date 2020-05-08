@@ -124,6 +124,8 @@ class V1(BaseModel):
     merge: Merge = Merge()
     update: Update = Update()
     approve: Approve = Approve()
+    notify_on_conflict: bool = False
+    notify_on_conflict_label: str = "kodiak:merge_conflict"
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v: int) -> int:

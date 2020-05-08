@@ -153,6 +153,9 @@ class PRAPI(Protocol):
     async def delete_branch(self, branch_name: str) -> None:
         ...
 
+    async def add_label(self, label: str) -> bool:
+        ...
+
     async def remove_label(self, label: str) -> None:
         ...
 
@@ -343,6 +346,34 @@ async def mergeable(
             await api.approve_pull_request()
         else:
             log.info("approval already exists, not adding another")
+
+    has_merge_conflict = (
+        pull_request.mergeStateStatus == MergeStateStatus.DIRTY
+        or pull_request.mergeable == MergeableState.CONFLICTING
+    )
+    has_notify_on_conflict_label = (
+        config.notify_on_conflict_label in pull_request.labels
+    )
+    if (
+        not has_merge_conflict
+        and pull_request.mergeable == MergeableState.MERGEABLE
+        and has_notify_on_conflict_label
+        and config.notify_on_conflict
+    ):
+        await api.remove_label(config.notify_on_conflict_label)
+    if (
+        has_merge_conflict
+        and not has_notify_on_conflict_label
+        and config.notify_on_conflict
+    ):
+        await block_merge(api, pull_request, "merge conflict")
+        # we use the label to prevent adding duplicate comments so if add_label
+        # fails we don't want to leave a comment.
+        if await api.add_label(config.notify_on_conflict_label):
+            await api.create_comment(
+                "This PR has a merge conflict. Please resolve this to allow the PR to be updated and/or merged."
+            )
+        return
 
     need_branch_update = (
         branch_protection.requiresStrictStatusChecks

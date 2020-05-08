@@ -294,6 +294,19 @@ class PRV2:
                 # we raise an exception to retry this request.
                 raise ApiCallException("delete label")
 
+    async def add_label(self, label: str) -> bool:
+        self.log.info("add_label", label=label)
+        async with Client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.add_labels(labels=[label], pull_number=self.number)
+            try:
+                res.raise_for_status()
+                return True
+            except HTTPError:
+                self.log.exception("failed to create label", res=res)
+        return False
+
     async def create_comment(self, body: str) -> None:
         """
        create a comment on the specified `pr_number` with the given `body` as text.

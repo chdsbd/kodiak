@@ -956,6 +956,16 @@ class Client:
                 headers=headers,
             )
 
+    async def add_labels(self, labels: List[str], pull_number: int) -> http.Response:
+        headers = await get_headers(installation_id=self.installation_id)
+        # POST /repos/:owner/:repo/issues/:issue_number/labels
+        async with self.throttler:
+            return await self.session.post(
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels",
+                json=dict(labels=labels),
+                headers=headers,
+            )
+
     async def create_comment(self, body: str, pull_number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
