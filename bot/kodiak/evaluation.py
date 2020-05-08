@@ -373,7 +373,6 @@ async def mergeable(
             await api.create_comment(
                 "This PR has a merge conflict. Please resolve this to allow the PR to be updated and/or merged."
             )
-        return
 
     need_branch_update = (
         branch_protection.requiresStrictStatusChecks
