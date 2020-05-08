@@ -21,5 +21,8 @@ export const helpUrl = "https://kodiakhq.com/help"
 export const loginUrl = `${API_ROOT}/v1/oauth_login`
 export const monthlyCost = 499
 
+export const getStripeSelfServeUrl = (teamId: string) =>
+  `${API_ROOT}/v1/t/${teamId}/stripe_self_serve_redirect`
+
 // tslint:disable-next-line no-console
 console.info(`API_ROOT=${API_ROOT}`)

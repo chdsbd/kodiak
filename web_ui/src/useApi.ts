@@ -26,11 +26,6 @@ export function useApi<T>(
   return [state, { refetch: fetch }]
 }
 
-export function useTeamId(): string | null {
-  const params = useParams<{ team_id: string }>()
-  return params.team_id
-}
-
 interface ITeamArgs {
   readonly teamId: string
 }

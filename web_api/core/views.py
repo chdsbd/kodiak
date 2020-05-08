@@ -261,6 +261,29 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
+def redirect_to_stripe_self_serve_portal(
+    request: HttpRequest, team_id: str
+) -> HttpResponse:
+    """
+    Redirect the user to the temp URL so they can access the stripe self serve portal
+
+    https://stripe.com/docs/billing/subscriptions/integrating-self-serve-portal
+    """
+    account = get_object_or_404(
+        Account.objects.filter(memberships__user=request.user), id=team_id
+    )
+
+    customer_id = account.stripe_customer_id
+
+    session_url = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage",
+    ).url
+
+    return HttpResponseRedirect(session_url)
+
+
+@auth.login_required
 def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_object_or_404(
         Account.objects.filter(memberships__user=request.user), id=team_id
