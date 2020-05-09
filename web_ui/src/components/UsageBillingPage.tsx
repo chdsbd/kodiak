@@ -221,7 +221,7 @@ function StartSubscriptionModal({
   onClose,
   seatUsage,
 }: IStartSubscriptionModalProps) {
-  const [seats, setSeats] = React.useState(1)
+  const [seats, setSeats] = React.useState(seatUsage)
   const [status, setStatus] = React.useState<
     { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
   >({ type: "initial" })
@@ -255,6 +255,7 @@ function StartSubscriptionModal({
   }
 
   const costCents = seats * settings.monthlyCost
+  const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -280,8 +281,10 @@ function StartSubscriptionModal({
             />
             {seatUsage > 0 && (
               <Form.Text className="text-muted">
-                You have <b>{seatUsage}</b> active seats this billing period.
-                Select at least <b>{seatUsage}</b> seats to continue service.
+                You have <b>{seatUsage}</b> active seats this billing period.{" "}
+                <span className={notEnoughSeats ? "text-danger" : ""}>
+                  Select at least <b>{seatUsage}</b> seats to continue service.
+                </span>
               </Form.Text>
             )}
           </Form.Group>
@@ -303,9 +306,14 @@ function StartSubscriptionModal({
             variant="primary"
             type="submit"
             block
-            disabled={status.type === "loading"}>
+            disabled={status.type === "loading" || notEnoughSeats}>
             {status.type === "loading" ? "Loading" : "Continue to Payment"}
           </Button>
+          {notEnoughSeats && (
+            <Form.Text className="text-danger">
+              Select at least <b>{seatUsage}</b> seats.
+            </Form.Text>
+          )}
           <Form.Text className="text-muted">
             Kodiak uses Stripe.com to securely handle payments.
           </Form.Text>
