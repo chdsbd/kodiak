@@ -23,6 +23,7 @@ from core import auth
 from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
+    AccountType,
     AnonymousUser,
     PullRequestActivity,
     StripeCustomerInformation,
@@ -76,6 +77,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     return JsonResponse(
         dict(
+            canSubscribe=account.github_account_type != AccountType.user,
             subscription=subscription,
             trial=trial,
             activeUsers=[
