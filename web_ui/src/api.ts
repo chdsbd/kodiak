@@ -33,6 +33,7 @@ export interface IUsageBillingPageArgs {
   readonly teamId: string
 }
 export interface IUsageBillingPageApiResponse {
+  readonly canSubscribe: boolean
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string

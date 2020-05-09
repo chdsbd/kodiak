@@ -48,6 +48,7 @@ export function UsageBillingPage() {
 }
 
 interface IUsageBillingData {
+  readonly canSubscribe: boolean
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
@@ -913,14 +914,27 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
             }}
           />
         ) : null}
-        <Subscription
-          startSubscription={handleStartSubscription}
-          startTrial={handleStartTrial}
-          modifySubscription={modifySubscription}
-          subscription={data.subscription}
-          trial={data.trial}
-          teamId={teamId}
-        />
+        {data.canSubscribe ? (
+          <Subscription
+            startSubscription={handleStartSubscription}
+            startTrial={handleStartTrial}
+            modifySubscription={modifySubscription}
+            subscription={data.subscription}
+            trial={data.trial}
+            teamId={teamId}
+          />
+        ) : (
+          <Row>
+            <Col>
+              <p className="text-center">
+                Kodiak is free for personal GitHub accounts.
+                <br />
+                Organizations can subscribe to use Kodiak on private
+                repositories.
+              </p>
+            </Col>
+          </Row>
+        )}
 
         <h3 className="h5">Usage</h3>
         <div className="border border-primary rounded p-2">

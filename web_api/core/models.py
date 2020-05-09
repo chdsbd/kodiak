@@ -314,6 +314,9 @@ class Account(BaseModel):
         """
         If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
         """
+        if self.github_account_type == AccountType.user:
+            return None
+
         if self.active_trial():
             return None
 
