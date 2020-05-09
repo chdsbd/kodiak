@@ -77,7 +77,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     return JsonResponse(
         dict(
-            canSubscribe=account.github_account_type != AccountType.user,
+            accountCanSubscribe=account.github_account_type != AccountType.user,
             subscription=subscription,
             trial=trial,
             activeUsers=[

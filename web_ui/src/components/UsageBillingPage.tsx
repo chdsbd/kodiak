@@ -48,7 +48,7 @@ export function UsageBillingPage() {
 }
 
 interface IUsageBillingData {
-  readonly canSubscribe: boolean
+  readonly accountCanSubscribe: boolean
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
@@ -914,7 +914,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
             }}
           />
         ) : null}
-        {data.canSubscribe ? (
+        {data.accountCanSubscribe ? (
           <Subscription
             startSubscription={handleStartSubscription}
             startTrial={handleStartTrial}

@@ -155,7 +155,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
     assert (
-        res.json()["canSubscribe"] is False
+        res.json()["accountCanSubscribe"] is False
     ), "user accounts should not see subscription options"
     assert res.json()["activeUsers"] == [
         dict(
@@ -172,7 +172,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
     assert (
-        res.json()["canSubscribe"] is True
+        res.json()["accountCanSubscribe"] is True
     ), "organizations should see subscription options"
 
 
