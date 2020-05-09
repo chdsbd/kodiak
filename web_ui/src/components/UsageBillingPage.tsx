@@ -13,16 +13,17 @@ import { Image } from "./Image"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
-import { useTeamApi, teamApi, useTeamId } from "../useApi"
+import { useTeamApi, teamApi } from "../useApi"
 import formatDate from "date-fns/format"
 import formatDistanceToNow from "date-fns/formatDistanceToNow"
 import parseISO from "date-fns/parseISO"
 import sub from "date-fns/sub"
 import sortBy from "lodash/sortBy"
-import { useLocation, useHistory } from "react-router-dom"
+import { useLocation, useHistory, useParams } from "react-router-dom"
 import { loadStripe } from "@stripe/stripe-js"
 import * as settings from "../settings"
 import debounce from "lodash/debounce"
+import { GoLinkExternal } from "react-icons/go"
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -147,14 +148,14 @@ function InstallCompleteModal({ show, onClose }: IInstallCompleteModalProps) {
 
 interface IStartTrialModalProps {
   readonly show: boolean
+  readonly teamId: string
   readonly onClose: () => void
 }
-function StartTrialModal({ show, onClose }: IStartTrialModalProps) {
+function StartTrialModal({ show, onClose, teamId }: IStartTrialModalProps) {
   const [email, setEmail] = React.useState("")
   const [status, setStatus] = React.useState<
     { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
   >({ type: "initial" })
-  const teamId = useTeamId()
   function startTrial() {
     setStatus({ type: "loading" })
     teamApi(Current.api.startTrial, { billingEmail: email }).then(res => {
@@ -220,7 +221,7 @@ function StartSubscriptionModal({
   onClose,
   seatUsage,
 }: IStartSubscriptionModalProps) {
-  const [seats, setSeats] = React.useState(1)
+  const [seats, setSeats] = React.useState(seatUsage)
   const [status, setStatus] = React.useState<
     { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
   >({ type: "initial" })
@@ -254,6 +255,7 @@ function StartSubscriptionModal({
   }
 
   const costCents = seats * settings.monthlyCost
+  const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
     <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
@@ -279,8 +281,10 @@ function StartSubscriptionModal({
             />
             {seatUsage > 0 && (
               <Form.Text className="text-muted">
-                You have <b>{seatUsage}</b> active seats this billing period.
-                Select at least <b>{seatUsage}</b> seats to continue service.
+                You have <b>{seatUsage}</b> active seats this billing period.{" "}
+                <span className={notEnoughSeats ? "text-danger" : ""}>
+                  Select at least <b>{seatUsage}</b> seats to continue service.
+                </span>
               </Form.Text>
             )}
           </Form.Group>
@@ -302,9 +306,14 @@ function StartSubscriptionModal({
             variant="primary"
             type="submit"
             block
-            disabled={status.type === "loading"}>
+            disabled={status.type === "loading" || notEnoughSeats}>
             {status.type === "loading" ? "Loading" : "Continue to Payment"}
           </Button>
+          {notEnoughSeats && (
+            <Form.Text className="text-danger">
+              Select at least <b>{seatUsage}</b> seats.
+            </Form.Text>
+          )}
           <Form.Text className="text-muted">
             Kodiak uses Stripe.com to securely handle payments.
           </Form.Text>
@@ -640,6 +649,7 @@ interface IActiveSubscriptionProps {
     readonly perSeatCents: number
   }
   readonly modifySubscription: () => void
+  readonly teamId: string
 }
 function ActiveSubscription({
   seats,
@@ -647,6 +657,7 @@ function ActiveSubscription({
   billingEmail,
   nextBillingDate,
   modifySubscription,
+  teamId,
 }: IActiveSubscriptionProps) {
   return (
     <Col>
@@ -689,6 +700,17 @@ function ActiveSubscription({
         </Col>
         <Col>{billingEmail}</Col>
       </Row>
+      <Row>
+        <Col md={3}>
+          <b>Billing History</b>
+        </Col>
+        <Col>
+          <a href={settings.getStripeSelfServeUrl(teamId)}>
+            view billing history
+            <GoLinkExternal className="pl-1" />
+          </a>
+        </Col>
+      </Row>
       <Row className="mt-3">
         <Col>
           <Button variant="dark" size="sm" onClick={modifySubscription}>
@@ -722,6 +744,7 @@ interface ISubscriptionProps {
   readonly startTrial: () => void
   readonly modifySubscription: () => void
   readonly trial: ISubscriptionUpsellPromptProps["trial"]
+  readonly teamId: string
 }
 function Subscription({
   subscription,
@@ -729,6 +752,7 @@ function Subscription({
   startTrial,
   modifySubscription,
   trial,
+  teamId,
 }: ISubscriptionProps) {
   return (
     <>
@@ -742,6 +766,7 @@ function Subscription({
               nextBillingDate={subscription.nextBillingDate}
               billingEmail={subscription.billingEmail}
               modifySubscription={modifySubscription}
+              teamId={teamId}
             />
           ) : (
             <SubscriptionUpsellPrompt
@@ -811,6 +836,8 @@ function Subscription({
 function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const location = useLocation()
   const history = useHistory()
+  const params = useParams<{ readonly team_id: string }>()
+  const teamId = params.team_id
   const queryParams = new URLSearchParams(location.search)
   const showStartTrialModal = Boolean(queryParams.get("start_trial"))
   const showInstallCompleteModal = Boolean(queryParams.get("install_complete"))
@@ -863,6 +890,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
         <StartTrialModal
           show={showStartTrialModal}
           onClose={clearQueryString}
+          teamId={teamId}
         />
         <StartSubscriptionModal
           show={showSubscriptionManagerModal}
@@ -891,6 +919,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           modifySubscription={modifySubscription}
           subscription={data.subscription}
           trial={data.trial}
+          teamId={teamId}
         />
 
         <h3 className="h5">Usage</h3>
