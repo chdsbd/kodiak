@@ -6,7 +6,7 @@ import redis
 from django.conf import settings
 from django.utils.timezone import make_aware
 
-from core.models import Account, StripeCustomerInformation
+from core.models import Account, AccountType, StripeCustomerInformation
 
 
 @pytest.mark.django_db
@@ -149,10 +149,15 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(mocker: Any) ->
         github_account_type="Organization",
         stripe_customer_id="cus_H2pvQ2kt7nk0JY",
     )
+    assert account.github_account_type == AccountType.organization
     assert get_active_users_in_last_30_days.call_count == 0
     assert account.get_subscription_blocker() == "seats_exceeded"
     assert get_active_users_in_last_30_days.call_count == 1
     assert account.get_active_user_count() == 5
+
+    account.github_account_type = AccountType.user
+    account.save()
+    assert account.get_subscription_blocker() is None
 
 
 @pytest.mark.django_db

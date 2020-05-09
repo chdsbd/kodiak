@@ -13,6 +13,7 @@ from django.utils import timezone
 from core.models import (
     Account,
     AccountMembership,
+    AccountType,
     PullRequestActivity,
     StripeCustomerInformation,
     User,
@@ -153,6 +154,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
+    assert (
+        res.json()["canSubscribe"] is False
+    ), "user accounts should not see subscription options"
     assert res.json()["activeUsers"] == [
         dict(
             id=user.github_id,
@@ -162,6 +166,14 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
             lastActiveDate="2020-12-05",
         )
     ]
+
+    user_account.github_account_type = AccountType.organization
+    user_account.save()
+    res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
+    assert res.status_code == 200
+    assert (
+        res.json()["canSubscribe"] is True
+    ), "organizations should see subscription options"
 
 
 @pytest.mark.django_db
