@@ -123,10 +123,10 @@ def test_get_subscription_info_view_valid_account_personal_user(
     all personal accounts have valid subscriptions
     """
     user, account = create_account()
-    account.github_account_type = AccountType.organization
+    account.github_account_type = AccountType.user
     account.save()
 
-    assert account.github_account_type != AccountType.user
+    assert account.github_account_type == AccountType.user
 
     client = Client()
     client.login(user)
