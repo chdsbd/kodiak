@@ -92,15 +92,15 @@ export function SubscriptionAlert() {
     return null
   }
 
-  if (state.data.type === "validSubscription") {
+  if (state.data.type === "VALID_SUBSCRIPTION") {
     return null
   }
 
-  if (state.data.type === "trialExpired") {
+  if (state.data.type === "TRIAL_EXPIRED") {
     return <TrialExpiredAlert />
   }
 
-  if (state.data.type === "subscriptionExpired") {
+  if (state.data.type === "SUBSCRIPTION_EXPIRED") {
     return <SubscriptionExpiredAlert />
   }
 
