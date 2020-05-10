@@ -1367,6 +1367,7 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
 
+
 @pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex(
     api: MockPrApi,
