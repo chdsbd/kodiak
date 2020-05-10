@@ -6,7 +6,7 @@ sidebar_label: Features
 
 This is a close to exhaustive list of Kodiak's features.
 
-If you have any questions about Kodiak, some good places to look are this page, the [configuration reference](configuration-reference.md), our [Kodiak recipes](recipes.md), and the [the GitHub repository](https://github.com/chdsbd/kodiak).
+If you have any questions about Kodiak, some good places to look are this page, the [configuration reference](config-reference.md), our [Kodiak recipes](recipes.md), and the [the GitHub repository](https://github.com/chdsbd/kodiak).
 
 As always, feel free to email us at support@kodiakhq.com with any question or concern.
 
@@ -15,22 +15,25 @@ As always, feel free to email us at support@kodiakhq.com with any question or co
 Kodiak acts like a GitHub user. Any feature that works for a GitHub user likely works for Kodiak. Give it a go!
 
 ## GitHub Branch Protection
+
 Kodiak's behavior is largely driven by [GitHub Branch Protection](https://help.github.com/en/github/administering-a-repository/configuring-protected-branches). If a PR is blocked from merging by a missing required status check, missing approval, merge conflict, etc., Kodiak will not merge the PR.
 
 ## Updating Pull Requests
+
 To have Kodiak update branches you must enable the "Require branches to be up to date before merging" GitHub Branch Protection setting.
 
 ![Branch Protection – Require Branches to be up to date before merging](/img/branch-protection-require-branches-up-to-date.png)
+
 <!-- https://help.github.com/en/github/administering-a-repository/enabling-required-status-checks -->
 
 When merging a pull request, Kodiak will update the PR if out of date with the target branch.
 
 To have Kodiak immediately update any PR that is out-of-date, enable [`update.always`](https://kodiakhq.com/docs/config-reference#updatealways).
 
-If you use Kodiak with a dependancy update bot, you should disable auto updates for the bot via [`update.blacklist_usernames`](configuration-reference.md#updateblacklist_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
-
+If you use Kodiak with a dependancy update bot, you should disable auto updates for the bot via [`update.blacklist_usernames`](config-reference.md#updateblacklist_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
 
 ## Merging Pull Requests
+
 When the automerge label (configurable via [`merge.automerge_label`](https://kodiakhq.com/docs/config-reference#mergeautomerge_label)) is applied to a pull request, Kodiak will merge the pull request if all GitHub Branch Protection requirements are met (status checks, reviews, etc.).
 
 You can disable the `merge.automerge_label` requirement by disabling `merge.require_automerge_label`. This means that as soon as your pull request meets the GitHub Branch Protection requirements, Kodiak will merge the pull request.
@@ -41,6 +44,7 @@ To prevent these status checks from blocking Kodiak's merge queue you must add t
 <!-- TODO: Link up all these config references -->
 
 ### Merge Methods
+
 Like the GitHub UI, Kodiak supports merging via "squash", "rebase", and "merge" commits. This is configurable via [`merge.method`](https://kodiakhq.com/docs/config-reference#mergemethod).
 
 Kodiak also supports the "Require signed commits" branch protection setting for "squash" and "merge" commit methods. The "rebase" method is not compatible due to GitHub limitations.
@@ -48,6 +52,7 @@ Kodiak also supports the "Require signed commits" branch protection setting for 
 ![Branch Protection – require signed commits](/img/branch-protection-require-signed-commits.png)
 
 ### Merge Message
+
 The commit title and body of a comment can be customized with Kodiak via the `merge.message` configuration options.
 
 - `merge.message.body` – use GitHub default body, the pull request body, or an empty string
@@ -64,7 +69,6 @@ Kodiak has some internal features to disable merging as well:
 - `merge.blacklist_title_regex` – disable Kodiak merging based on a regex matching to the pull request title
 - `merge.blacklist_labels` – disable Kodiak merging based on labels applied to the PR
 - `merge.do_not_merge` – completely disable Kodiak from merging any PR. This is useful if you only want to use Kodiak for updating pull requests.
-
 
 ### Efficient Merging
 
@@ -84,8 +88,8 @@ Kodiak can delete branches on merge when `merge.delete_branch_on_merge` is enabl
 
 By default, if a pull request encounters a merge conflict with the `merge.automerge_label` applied, Kodiak will comment on the PR about the merge conflict and remove the automerge label. This can be turned off by disabling `merge.notify_on_conflict`.
 
-
 ## Approving Pull Requests
+
 Kodiak can approve PRs with `approve.auto_approve_usernames`.
 
 This is useful when the "Require pull request reviews before merging" Branch Protection setting is enabled and you want to automate dependency updates for services like dependabot.
