@@ -144,5 +144,11 @@ export const Current: World = {
           }),
         )
       ).data,
+    getSubscriptionInfo: (args: api.GetSubscriptionInfoArgs) =>
+      authRoute
+        .get<api.SubscriptionInfoResponse>(
+          `/v1/t/${args.teamId}/subscription_info`,
+        )
+        .then(d => d.data),
   },
 }
