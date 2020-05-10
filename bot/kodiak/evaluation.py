@@ -381,6 +381,28 @@ async def mergeable(
             f"missing automerge_label: {config.merge.automerge_label!r}",
         )
         return
+
+
+    # We want users to get notified a merge conflict even if the PR matches a
+    # WIP title via merge.blacklist_title_regex.
+    if (
+        pull_request.mergeStateStatus == MergeStateStatus.DIRTY
+        or pull_request.mergeable == MergeableState.CONFLICTING
+    ):
+        await block_merge(api, pull_request, "merge conflict")
+        # remove label if configured and send message
+        if config.merge.notify_on_conflict and config.merge.require_automerge_label:
+            automerge_label = config.merge.automerge_label
+            await api.remove_label(automerge_label)
+            body = textwrap.dedent(
+                f"""
+            This PR currently has a merge conflict. Please resolve this and then re-add the `{automerge_label}` label.
+            """
+            )
+            await api.create_comment(body)
+        return
+
+
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
         await block_merge(
@@ -430,22 +452,6 @@ async def mergeable(
 
     if pull_request.state == PullRequestState.CLOSED:
         await api.dequeue()
-        return
-    if (
-        pull_request.mergeStateStatus == MergeStateStatus.DIRTY
-        or pull_request.mergeable == MergeableState.CONFLICTING
-    ):
-        await block_merge(api, pull_request, "merge conflict")
-        # remove label if configured and send message
-        if config.merge.notify_on_conflict and config.merge.require_automerge_label:
-            automerge_label = config.merge.automerge_label
-            await api.remove_label(automerge_label)
-            body = textwrap.dedent(
-                f"""
-            This PR currently has a merge conflict. Please resolve this and then re-add the `{automerge_label}` label.
-            """
-            )
-            await api.create_comment(body)
         return
 
     if pull_request.mergeStateStatus == MergeStateStatus.UNSTABLE:
