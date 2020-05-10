@@ -382,7 +382,6 @@ async def mergeable(
         )
         return
 
-
     # We want users to get notified a merge conflict even if the PR matches a
     # WIP title via merge.blacklist_title_regex.
     if (
@@ -401,7 +400,6 @@ async def mergeable(
             )
             await api.create_comment(body)
         return
-
 
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
     if blacklist_labels:
