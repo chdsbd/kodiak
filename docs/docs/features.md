@@ -6,7 +6,7 @@ sidebar_label: Features
 
 This is a close to exhaustive list of Kodiak's features.
 
-If you have any questions about Kodiak, some good places to look are this page, the [configuration reference](config-reference.md), our [Kodiak recipes](recipes.md), and the [the GitHub repository](https://github.com/chdsbd/kodiak).
+If you have any questions about Kodiak, some good places to look are this page, the [configuration reference](config-reference.md), our [Kodiak recipes](recipes.md), and [the GitHub repository](https://github.com/chdsbd/kodiak).
 
 As always, feel free to email us at support@kodiakhq.com with any question or concern.
 
