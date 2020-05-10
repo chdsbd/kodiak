@@ -313,6 +313,11 @@ class Account(BaseModel):
     ) -> Optional[Literal["subscription_expired", "trial_expired", "seats_exceeded"]]:
         """
         If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
+
+        Note to future self: We do not need a "subscription_missing" state
+        because a user missing a subscription is equivalent to have 0 seats.
+        Once they exceed 0 active users they will hit the "seats_exceeded"
+        state.
         """
         if self.github_account_type == AccountType.user:
             return None
