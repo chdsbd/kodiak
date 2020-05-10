@@ -165,12 +165,12 @@ export type GetSubscriptionInfoArgs = {
 export type SubscriptionInfoResponse =
   | {
       // personal user, subscription valid, or trial account
-      readonly type: "validSubscription"
+      readonly type: "VALID_SUBSCRIPTION"
     }
-  | { readonly type: "trialExpired" }
-  | { readonly type: "subscriptionExpired" }
+  | { readonly type: "TRIAL_EXPIRED" }
+  | { readonly type: "SUBSCRIPTION_EXPIRED" }
   | {
-      readonly type: "subscriptionOverage"
+      readonly type: "SUBSCRIPTION_OVERAGE"
       readonly activeUserCount: number
 
       readonly licenseCount: number
