@@ -147,8 +147,9 @@ class User(BaseModel):
                 try:
                     account_membership_res.raise_for_status()
                 except requests.HTTPError:
-                    # TODO(chdsbd): Confirm that this gets a 403 when the user
-                    # is a collaborator instead of a member or admin.
+                    # If the user is a collaborator instead of a member or admin
+                    # of the organization, they won't have access and will get a
+                    # 403 error.
                     logger.warning(
                         "problem fetching account membership response=%s, installation_account_login=%s user_github_login=%s",
                         account_membership_res,
