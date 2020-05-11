@@ -125,6 +125,7 @@ def test_get_subscription_info_view_valid_account_personal_user(
     user, account = create_account()
     account.github_account_type = AccountType.user
     account.save()
+    create_active_user(account=account, user_id=user.github_id, pr_number=2)
 
     assert account.github_account_type == AccountType.user
 
