@@ -1,7 +1,7 @@
 import logging
 import time
 from dataclasses import asdict, dataclass
-from typing import Optional, Union
+from typing import Optional, Union, cast
 from urllib.parse import parse_qsl
 
 import requests
@@ -37,6 +37,13 @@ logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
+def get_account_or_404(*, team_id: str, user: User) -> Account:
+    return cast(
+        Account,
+        get_object_or_404(Account.objects.filter(memberships__user=user), id=team_id),
+    )
+
+
 @auth.login_required
 def ping(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
@@ -44,9 +51,7 @@ def ping(request: HttpRequest) -> HttpResponse:
 
 @auth.login_required
 def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(user=request.user, team_id=team_id)
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
     subscription = None
     trial = None
@@ -96,9 +101,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def activity(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     kodiak_activity_labels = []
     kodiak_activity_approved = []
     kodiak_activity_merged = []
@@ -142,9 +145,7 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     return JsonResponse(
         dict(
             user=dict(
@@ -171,9 +172,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     billing_email = request.POST["billingEmail"]
     account.start_trial(request.user, billing_email=billing_email)
     return HttpResponse(status=204)
@@ -181,9 +180,7 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     # restrict updates to admins
     if not request.user.can_edit(account):
         raise PermissionDenied
@@ -233,9 +230,7 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
 @auth.login_required
 def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     seat_count = int(request.POST.get("seatCount", 1))
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
     customer_id = account.stripe_customer_id or None
@@ -271,9 +266,7 @@ def redirect_to_stripe_self_serve_portal(
 
     https://stripe.com/docs/billing/subscriptions/integrating-self-serve-portal
     """
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
 
     customer_id = account.stripe_customer_id
 
@@ -287,9 +280,7 @@ def redirect_to_stripe_self_serve_portal(
 
 @auth.login_required
 def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     session = stripe.checkout.Session.create(
         client_reference_id=account.id,
         customer=account.stripe_customer_id or None,
@@ -308,9 +299,7 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(team_id=team_id, user=request.user)
     if not request.user.can_edit(account):
         raise PermissionDenied
 
@@ -321,10 +310,37 @@ def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
+@require_http_methods(["GET"])
+def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
+    account = get_account_or_404(team_id=team_id, user=request.user)
+
+    subscription_status = account.get_subscription_blocker()
+
+    if subscription_status == "trial_expired":
+        return JsonResponse({"type": "TRIAL_EXPIRED"})
+
+    if subscription_status == "seats_exceeded":
+        stripe_info = account.stripe_customer_info()
+        license_count = 0
+        if stripe_info and stripe_info.subscription_quantity:
+            license_count = stripe_info.subscription_quantity
+        return JsonResponse(
+            {
+                "type": "SUBSCRIPTION_OVERAGE",
+                "activeUserCount": account.get_active_user_count(),
+                "licenseCount": license_count,
+            }
+        )
+
+    if subscription_status == "subscription_expired":
+        return JsonResponse({"type": "SUBSCRIPTION_EXPIRED"})
+
+    return JsonResponse({"type": "VALID_SUBSCRIPTION"})
+
+
+@auth.login_required
 def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_object_or_404(
-        Account.objects.filter(memberships__user=request.user), id=team_id
-    )
+    account = get_account_or_404(user=request.user, team_id=team_id)
     subscription_quantity = int(request.POST["subscriptionQuantity"])
 
     customer_info = account.stripe_customer_info()

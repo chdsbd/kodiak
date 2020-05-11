@@ -158,6 +158,24 @@ export interface IFetchProrationResponse {
   readonly prorationTime: number
 }
 
+export type GetSubscriptionInfoArgs = {
+  readonly teamId: string
+}
+
+export type SubscriptionInfoResponse =
+  | {
+      // personal user, subscription valid, or trial account
+      readonly type: "VALID_SUBSCRIPTION"
+    }
+  | { readonly type: "TRIAL_EXPIRED" }
+  | { readonly type: "SUBSCRIPTION_EXPIRED" }
+  | {
+      readonly type: "SUBSCRIPTION_OVERAGE"
+      readonly activeUserCount: number
+
+      readonly licenseCount: number
+    }
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -178,4 +196,7 @@ export interface Api {
   ) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
   modifyBilling: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
+  getSubscriptionInfo: (
+    args: GetSubscriptionInfoArgs,
+  ) => Promise<SubscriptionInfoResponse>
 }
