@@ -533,9 +533,13 @@ def test_sync_accounts_failing_api_request(
 
 
 @pytest.mark.django_db
-def test_sync_accounts_failing_api_requestv2(
+def test_sync_accounts_failing_api_request_collaborator(
     user: User, failing_installation_response_membership_check: object
 ) -> None:
+    """
+    If the user is a collaborator of an organization they will get an API error
+    when testing membership. We should ignore the error and not add them to that organization.
+    """
     assert Account.objects.count() == 0
     assert AccountMembership.objects.count() == 0
     assert User.objects.count() == 1

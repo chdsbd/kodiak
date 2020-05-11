@@ -719,20 +719,6 @@ def test_sync_accounts_failure(
 
 
 @pytest.mark.django_db
-def test_sync_accounts_failure_account_membership(
-    authed_client: Client, failing_sync_accounts_response: object
-) -> None:
-    """
-    Verify that when a request to account membership fails we continue on without erring.
-    """
-    assert Account.objects.count() == 0
-    res = authed_client.post("/v1/sync_accounts")
-    assert res.status_code == 200
-    assert res.json()["ok"] is True
-    assert Account.objects.count() == 0
-
-
-@pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
     user_account = Account.objects.create(
         github_installation_id=377930,
