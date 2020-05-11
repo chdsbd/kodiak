@@ -144,7 +144,19 @@ class User(BaseModel):
                     headers=dict(authorization=f"Bearer {self.github_access_token}"),
                     timeout=5,
                 )
-                account_membership_res.raise_for_status()
+                try:
+                    account_membership_res.raise_for_status()
+                except requests.HTTPError:
+                    # If the user is a collaborator instead of a member or admin
+                    # of the organization, they won't have access and will get a
+                    # 403 error.
+                    logger.warning(
+                        "problem fetching account membership response=%s, installation_account_login=%s user_github_login=%s",
+                        account_membership_res,
+                        installation_account_login,
+                        self.github_login,
+                    )
+                    continue
                 role = account_membership_res.json()["role"]
             elif (
                 installation_account_type == "User"
