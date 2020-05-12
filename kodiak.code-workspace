@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "path": "web_ui"
+    },
+    {
+      "path": "bot"
+    },
+    {
+      "path": "web_api"
+    },
+    {
+      "path": "infrastructure"
+    }
+  ],
+  "settings": {}
+}
