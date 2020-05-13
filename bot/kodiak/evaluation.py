@@ -26,6 +26,7 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestState,
+    PushAllowance,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -194,6 +195,13 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     )
 
 
+def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
+    for push_allowance in push_allowances:
+        if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
+            return False
+    return True
+
+
 def get_paywall_status_for_blocker(subscription_blocker: str) -> Optional[str]:
     if subscription_blocker == "seats_exceeded":
         return "usage has exceeded licensed seats"
@@ -297,6 +305,19 @@ async def mergeable(
             pull_request,
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
         )
+        return
+
+    if (
+        not config.merge.do_not_merge
+        and branch_protection.restrictsPushes
+        and missing_push_allowance(branch_protection.pushAllowances.nodes)
+    ):
+        await cfg_err(
+            api,
+            pull_request,
+            "push restriction branch protection is missing push allowance for Kodiak",
+        )
+        # TODO: Markdown detail
         return
 
     # we keep the configuration errors before the rest of the application logic
