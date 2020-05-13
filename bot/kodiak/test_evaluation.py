@@ -23,6 +23,7 @@ from kodiak.queries import (
     CheckRun,
     MergeableState,
     MergeStateStatus,
+    NodeListPushAllowance,
     Permission,
     PRReview,
     PRReviewAuthor,
@@ -263,6 +264,8 @@ def branch_protection() -> BranchProtectionRule:
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
+        restrictsPushes=False,
+        pushAllowances=NodeListPushAllowance(nodes=[]),
     )
 
 

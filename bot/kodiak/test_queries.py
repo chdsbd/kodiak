@@ -19,6 +19,7 @@ from kodiak.queries import (
     GraphQLResponse,
     MergeableState,
     MergeStateStatus,
+    NodeListPushAllowance,
     Permission,
     PRReview,
     PRReviewAuthor,
@@ -27,6 +28,8 @@ from kodiak.queries import (
     PullRequest,
     PullRequestAuthor,
     PullRequestState,
+    PushAllowance,
+    PushAllowanceActorApp,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -127,6 +130,10 @@ def block_event() -> EventInfoResponse:
         ],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
+        restrictsPushes=True,
+        pushAllowances=NodeListPushAllowance(
+            nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=53453))]
+        ),
     )
 
     return EventInfoResponse(
