@@ -19,7 +19,7 @@ Kodiak won't activate if branch protection is disabled.
 
 ### Commit signature support
 
-Kodiak is able to [create signatures](https://help.github.com/en/articles/about-required-commit-signing) for merge and squash commits, but not rebase merge methods due to GitHub API limitations. ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
+Kodiak is able to [create signatures](https://help.github.com/en/articles/about-required-commit-signing) for merge and squash commits, but not rebase merges due to GitHub API limitations. ([kodiak#89](https://github.com/chdsbd/kodiak/issues/89))
 
 ### CodeOwners
 
