@@ -32,4 +32,4 @@ If you use the "Restrict who can push to matching branches" branch protection se
 
 ### Kodiak "Merging blocked by GitHub requirements" status check
 
-If you see Kodiak providing a status check of "Merging blocked by GitHub requirements", this likely means there is a branch protection setting that conflicts with Kodiak. If you see this issue persistently please contact as at support@kodiakhq.com.
+If you see Kodiak providing a status check of "Merging blocked by GitHub requirements", this likely means there is a branch protection setting that conflicts with Kodiak. If you see this issue persistently please contact us at support@kodiakhq.com.
