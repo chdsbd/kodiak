@@ -138,6 +138,9 @@ class PRAPI(Protocol):
     async def dequeue(self) -> None:
         ...
 
+    async def requeue(self) -> None:
+        ...
+
     async def set_status(
         self,
         msg: str,
@@ -461,6 +464,7 @@ async def mergeable(
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
+        await api.requeue()
         return
 
     wait_for_checks = False

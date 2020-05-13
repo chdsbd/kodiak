@@ -148,9 +148,15 @@ class MockApprovePullRequest(BaseMockFunc):
         self.log_call(dict())
 
 
+class MockRequeue(BaseMockFunc):
+    async def __call__(self) -> None:
+        self.log_call(dict())
+
+
 class MockPrApi:
     def __init__(self) -> None:
         self.dequeue = MockDequeue()
+        self.requeue = MockRequeue()
         self.set_status = MockSetStatus()
         self.pull_requests_for_ref = MockPullRequestsForRef()
         self.delete_branch = MockDeleteBranch()
