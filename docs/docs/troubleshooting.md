@@ -4,7 +4,7 @@ title: Troubleshooting
 sidebar_label: Troubleshooting
 ---
 
-If Kodiak isn't working as expected, feel free to file an [GitHub Issue](https://github.com/chdsbd/kodiak/issues/new/choose) or email us at support@kodiakhq.com.
+If Kodiak isn't working as expected, feel free to file a [GitHub Issue](https://github.com/chdsbd/kodiak/issues/new/choose) or email us at support@kodiakhq.com.
 
 ## Workarounds
 
