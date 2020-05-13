@@ -648,8 +648,6 @@ async def test_mergeable_missing_push_allowance_merge_do_not_merge(
 ) -> None:
     """
     When merge.do_not_merge is enabled, we should ignore any issues with restrictPushes because Kodiak isn't pushing.
-
-    TODO: What about problems with the current branch of the PR? we get an api error. We could check via branch protection for this as well I think.
     """
     branch_protection.restrictsPushes = True
     config.merge.do_not_merge = True

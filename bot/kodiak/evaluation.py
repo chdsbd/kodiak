@@ -13,7 +13,11 @@ from typing_extensions import Protocol
 from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.messages import get_markdown_for_config, get_markdown_for_paywall
+from kodiak.messages import (
+    get_markdown_for_config,
+    get_markdown_for_paywall,
+    get_markdown_for_push_allowance_error,
+)
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -181,10 +185,18 @@ class PRAPI(Protocol):
         ...
 
 
-async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
+async def cfg_err(
+    api: PRAPI,
+    pull_request: PullRequest,
+    msg: str,
+    *,
+    markdown_content: Optional[str] = None,
+) -> None:
     await api.dequeue()
     await api.set_status(
-        f"⚠️ config error ({msg})", latest_commit_sha=pull_request.latest_sha
+        f"⚠️ config error ({msg})",
+        latest_commit_sha=pull_request.latest_sha,
+        markdown_content=markdown_content,
     )
 
 
@@ -316,8 +328,10 @@ async def mergeable(
             api,
             pull_request,
             "push restriction branch protection is missing push allowance for Kodiak",
+            markdown_content=get_markdown_for_push_allowance_error(
+                branch_name=pull_request.baseRefName
+            ),
         )
-        # TODO: Markdown detail
         return
 
     # we keep the configuration errors before the rest of the application logic
