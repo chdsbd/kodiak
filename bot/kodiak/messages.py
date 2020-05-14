@@ -57,3 +57,14 @@ See the [Kodiak docs](https://kodiakhq.com/docs/billing) for more information ab
 
 {FOOTER}
 """
+
+
+def get_markdown_for_push_allowance_error(*, branch_name: str) -> str:
+    return f"""\
+Your branch protection setting for `{branch_name}` has "Restrict who can push to matching branches" enabled. You must allow Kodiak to push to this branch for Kodiak to merge pull requests.
+
+See the Kodiak troubleshooting docs for more information: https://kodiakhq.com/docs/troubleshooting#restricting-pushes
+
+
+{FOOTER}
+"""

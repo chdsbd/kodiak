@@ -23,6 +23,7 @@ from kodiak.queries import (
     CheckRun,
     MergeableState,
     MergeStateStatus,
+    NodeListPushAllowance,
     Permission,
     PRReview,
     PRReviewAuthor,
@@ -31,6 +32,8 @@ from kodiak.queries import (
     PullRequest,
     PullRequestAuthor,
     PullRequestState,
+    PushAllowance,
+    PushAllowanceActorApp,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -263,6 +266,8 @@ def branch_protection() -> BranchProtectionRule:
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,
+        restrictsPushes=False,
+        pushAllowances=NodeListPushAllowance(nodes=[]),
     )
 
 
@@ -531,6 +536,149 @@ async def test_mergeable_missing_branch_protection(
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_push_allowance(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    We should warn when user is missing a push allowance with restrictsPushes
+    enabled. If Kodiak isn't given an allowance it won't be able to merge pull
+    requests and will get a mysterious "merge blocked by GitHub requirements".
+    """
+    branch_protection.restrictsPushes = True
+    branch_protection.pushAllowances = NodeListPushAllowance(nodes=[])
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "config error" in api.set_status.calls[0]["msg"]
+    assert "missing push allowance for Kodiak" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_push_allowance_correct(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    When restrictsPushes is enabled, but Kodiak is added as a push allowance, we
+    should not raise a configuration error. We should let the merge continue
+    unimpeded.
+    """
+    branch_protection.restrictsPushes = True
+    branch_protection.pushAllowances = NodeListPushAllowance(
+        nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=534524))]
+    )
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+    assert api.queue_for_merge.called is True
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_push_allowance_merge_do_not_merge(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    When merge.do_not_merge is enabled, we should ignore any issues with restrictPushes because Kodiak isn't pushing.
+    """
+    branch_protection.restrictsPushes = True
+    config.merge.do_not_merge = True
+    branch_protection.pushAllowances = NodeListPushAllowance(nodes=[])
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+    )
+
+    assert api.set_status.call_count == 1
+    assert api.set_status.calls[0]["msg"] == "✅ okay to merge"
+
+    assert api.queue_for_merge.called is False
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.called is False
+    assert api.merge.called is False
 
 
 @pytest.mark.asyncio

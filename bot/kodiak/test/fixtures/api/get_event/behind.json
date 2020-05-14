@@ -22,7 +22,17 @@
               "WIP (beta)"
             ],
             "requiresStrictStatusChecks": true,
-            "requiresCommitSignatures": false
+            "requiresCommitSignatures": false,
+            "restrictsPushes": true,
+            "pushAllowances": {
+              "nodes": [
+                {
+                  "actor": {
+                    "databaseId": 53453
+                  }
+                }
+              ]
+            }
           }
         ]
       },

@@ -72,6 +72,16 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
         requiredStatusCheckContexts
         requiresStrictStatusChecks
         requiresCommitSignatures
+        restrictsPushes
+        pushAllowances(first: 100) {
+          nodes {
+            actor {
+              ... on App {
+                databaseId
+              }
+            }
+          }
+        }
       }
     }
     mergeCommitAllowed
@@ -282,13 +292,39 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 """
 
 
+class PushAllowanceActorApp(BaseModel):
+    """
+    https://developer.github.com/v4/object/app/
+    """
+
+    databaseId: int
+
+
+class PushAllowance(BaseModel):
+    """
+    https://developer.github.com/v4/object/pushallowance/
+    """
+
+    actor: PushAllowanceActorApp
+
+
+class NodeListPushAllowance(BaseModel):
+    nodes: List[PushAllowance]
+
+
 class BranchProtectionRule(BaseModel):
+    """
+    https://developer.github.com/v4/object/branchprotectionrule/
+    """
+
     requiresApprovingReviews: bool
     requiredApprovingReviewCount: Optional[int]
     requiresStatusChecks: bool
     requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
     requiresCommitSignatures: bool
+    restrictsPushes: bool
+    pushAllowances: NodeListPushAllowance
 
 
 class PRReviewState(Enum):
