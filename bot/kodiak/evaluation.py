@@ -13,7 +13,11 @@ from typing_extensions import Protocol
 from kodiak import app_config, config
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.messages import get_markdown_for_config, get_markdown_for_paywall
+from kodiak.messages import (
+    get_markdown_for_config,
+    get_markdown_for_paywall,
+    get_markdown_for_push_allowance_error,
+)
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -26,6 +30,7 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestState,
+    PushAllowance,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -183,10 +188,18 @@ class PRAPI(Protocol):
         ...
 
 
-async def cfg_err(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
+async def cfg_err(
+    api: PRAPI,
+    pull_request: PullRequest,
+    msg: str,
+    *,
+    markdown_content: Optional[str] = None,
+) -> None:
     await api.dequeue()
     await api.set_status(
-        f"⚠️ config error ({msg})", latest_commit_sha=pull_request.latest_sha
+        f"⚠️ config error ({msg})",
+        latest_commit_sha=pull_request.latest_sha,
+        markdown_content=markdown_content,
     )
 
 
@@ -195,6 +208,13 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.set_status(
         f"🛑 cannot merge ({msg})", latest_commit_sha=pull_request.latest_sha
     )
+
+
+def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
+    for push_allowance in push_allowances:
+        if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
+            return False
+    return True
 
 
 def get_paywall_status_for_blocker(subscription_blocker: str) -> Optional[str]:
@@ -299,6 +319,21 @@ async def mergeable(
             api,
             pull_request,
             f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
+        )
+        return
+
+    if (
+        not config.merge.do_not_merge
+        and branch_protection.restrictsPushes
+        and missing_push_allowance(branch_protection.pushAllowances.nodes)
+    ):
+        await cfg_err(
+            api,
+            pull_request,
+            "push restriction branch protection setting is missing push allowance for Kodiak",
+            markdown_content=get_markdown_for_push_allowance_error(
+                branch_name=pull_request.baseRefName
+            ),
         )
         return
 
