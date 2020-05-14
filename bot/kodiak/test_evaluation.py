@@ -552,7 +552,7 @@ async def test_mergeable_missing_push_allowance(
 ) -> None:
     """
     We should warn when user is missing a push allowance with restrictsPushes
-    enabled. If Kodiak is given an allowance it won't be able to merge pull
+    enabled. If Kodiak isn't given an allowance it won't be able to merge pull
     requests and will get a mysterious "merge blocked by GitHub requirements".
     """
     branch_protection.restrictsPushes = True
