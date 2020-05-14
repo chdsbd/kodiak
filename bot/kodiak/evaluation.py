@@ -327,7 +327,7 @@ async def mergeable(
         await cfg_err(
             api,
             pull_request,
-            "push restriction branch protection is missing push allowance for Kodiak",
+            "push restriction branch protection setting is missing push allowance for Kodiak",
             markdown_content=get_markdown_for_push_allowance_error(
                 branch_name=pull_request.baseRefName
             ),
