@@ -721,22 +721,17 @@ async def test_mergeable_requires_commit_signatures_rebase() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_requires_commit_signatures_squash_and_merge(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
     """
     requiresCommitSignatures works with merge commits and squash
     
     https://github.com/chdsbd/kodiak/issues/89
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    branch_protection = create_branch_protection()
+
     branch_protection.requiresCommitSignatures = True
     api.queue_for_merge.return_value = 3
     for index, method in enumerate((MergeMethod.squash, MergeMethod.merge)):
@@ -744,21 +739,7 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
-            pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            contexts=[context],
-            check_runs=[check_run],
-            valid_signature=False,
-            merging=False,
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             valid_merge_methods=[method],
         )
         assert api.set_status.call_count == index + 1
