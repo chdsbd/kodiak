@@ -933,43 +933,18 @@ async def test_mergeable_invalid_merge_method() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_block_on_reviews_requested(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-    review_request: PRReviewRequest,
-) -> None:
+async def test_mergeable_block_on_reviews_requested() -> None:
     """
     block merge if reviews are requested and merge.block_on_reviews_requested is
     enabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
     config.merge.block_on_reviews_requested = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[review_request],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
