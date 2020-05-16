@@ -857,6 +857,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     review: PRReview,
     context: StatusContext,
     check_run: CheckRun,
+    mocker: Any,
 ) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
@@ -865,6 +866,10 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     """
     # a ReDos regex and accompanying string
     # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    from kodiak.evaluation import re
+
+    kodiak_evaluation_re_search = mocker.spy(re, "search")
+
     config.merge.blacklist_title_regex = "^(a+)+$"
     pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
 
@@ -889,6 +894,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     )
     # we don't really care about the result for this so long as this test
     # doesn't hang the entire suite.
+    assert kodiak_evaluation_re_search.called, "we should hit our regex search"
 
 
 @pytest.mark.asyncio
@@ -2391,6 +2397,57 @@ async def test_mergeable_update_branch_immediately(
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
     )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_update_branch_immediately_mode_merging(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    update branch immediately if configured. When we are merging we should raise the PollForever exception to keep the merge loop going instead of returning.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    config.merge.update_branch_immediately = True
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            merging=True,
+        )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 1
