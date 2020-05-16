@@ -1365,7 +1365,12 @@ async def test_mergeable_missing_required_approving_reviews_has_review_with_miss
     review.state = PRReviewState.APPROVED
     review.author.permission = Permission.READ
 
-    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[review])
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=[review],
+    )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "missing required reviews" in api.set_status.calls[0]["msg"]
