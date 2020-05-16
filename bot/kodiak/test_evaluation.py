@@ -1100,41 +1100,17 @@ async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled()
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_closed(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_closed() -> None:
     """
     if a PR is closed we don't want to act on it.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.CLOSED
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
 
