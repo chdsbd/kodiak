@@ -866,6 +866,11 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     """
     # a ReDos regex and accompanying string
     # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     from kodiak.evaluation import re
 
     kodiak_evaluation_re_search = mocker.spy(re, "search")
@@ -873,25 +878,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     config.merge.blacklist_title_regex = "^(a+)+$"
     pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     # we don't really care about the result for this so long as this test
     # doesn't hang the entire suite.
     assert kodiak_evaluation_re_search.called, "we should hit our regex search"
