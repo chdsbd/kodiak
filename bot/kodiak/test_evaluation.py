@@ -597,40 +597,14 @@ async def test_mergeable_different_app_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_branch_protection(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_branch_protection() -> None:
     """
     We should warn when we cannot retrieve branch protection settings.
     """
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        branch_protection=None,
-    )
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(api=api, branch_protection=None)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "config error" in api.set_status.calls[0]["msg"]
