@@ -941,10 +941,11 @@ async def test_mergeable_block_on_reviews_requested() -> None:
     api = create_api()
     mergeable = create_mergeable()
     config = create_config()
+    review_request = create_review_request()
 
     config.merge.block_on_reviews_requested = True
 
-    await mergeable(api=api, config=config)
+    await mergeable(api=api, config=config, review_requests=[review_request])
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
