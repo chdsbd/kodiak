@@ -499,8 +499,12 @@ async def mergeable(
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
+
+        # we don't want to abort the merge if we encounter this status check.
+        # Just keep polling!
         if merging:
             raise PollForever
+
         await api.requeue()
         return
 
@@ -661,6 +665,8 @@ async def mergeable(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
+        # TODO(chdsbd): this will kick us out of merging if we need an update.
+        # We should fix this.
         if config.merge.update_branch_immediately and need_branch_update:
             await set_status(
                 "🔄 updating branch",
