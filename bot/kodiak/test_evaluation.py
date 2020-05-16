@@ -1318,43 +1318,25 @@ async def test_mergeable_pull_request_need_test_commit_merging() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't
     have enought approving reviews.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
         reviews=[],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
