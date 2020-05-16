@@ -123,7 +123,11 @@ async def process_repo_queue(
         )
 
     async def requeue() -> None:
-        await webhook_queue.enqueue(event=webhook_event)
+        await connection.zadd(
+            webhook_event.get_webhook_queue_name(),
+            {webhook_event.json(): time.time()},
+            only_if_not_exists=True,
+        )
 
     async def queue_for_merge() -> Optional[int]:
         raise NotImplementedError

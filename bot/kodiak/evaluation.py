@@ -499,6 +499,8 @@ async def mergeable(
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
+        if merging:
+            raise PollForever
         await api.requeue()
         return
 
