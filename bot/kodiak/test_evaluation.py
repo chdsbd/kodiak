@@ -5,6 +5,7 @@ from typing import Any, List, Mapping, Optional, Tuple, Union
 import pydantic
 import pytest
 from toml import TomlDecodeError
+from typing_extensions import Protocol
 
 from kodiak.config import (
     V1,
@@ -225,6 +226,17 @@ method = "squash"
 """
 
 
+def create_config_str() -> str:
+    return """\
+version = 1
+
+[merge]
+automerge_label = "automerge"
+blacklist_labels = []
+method = "squash"
+"""
+
+
 @pytest.fixture
 def config() -> V1:
     cfg = V1(version=1)
@@ -239,8 +251,35 @@ def config_path() -> str:
     return "master:.kodiak.toml"
 
 
+def create_config_path() -> str:
+    return "master:.kodiak.toml"
+
+
 @pytest.fixture
 def pull_request() -> PullRequest:
+    return PullRequest(
+        id="FDExOlB1bGxSZXX1ZXN0MjgxODQ0Nzg7",
+        number=142,
+        author=PullRequestAuthor(
+            login="barry", name="Barry Berkman", databaseId=828352, type="User"
+        ),
+        mergeStateStatus=MergeStateStatus.CLEAN,
+        state=PullRequestState.OPEN,
+        mergeable=MergeableState.MERGEABLE,
+        isCrossRepository=False,
+        labels=["bugfix", "automerge"],
+        latest_sha="f89be6c",
+        baseRefName="master",
+        headRefName="feature/hello-world",
+        title="new feature",
+        body="# some description",
+        bodyText="some description",
+        bodyHTML="<h1>some description</h1>",
+        url="https://github.com/example_org/example_repo/pull/65",
+    )
+
+
+def create_pull_request() -> PullRequest:
     return PullRequest(
         id="FDExOlB1bGxSZXX1ZXN0MjgxODQ0Nzg7",
         number=142,
@@ -277,8 +316,29 @@ def branch_protection() -> BranchProtectionRule:
     )
 
 
+def create_branch_protection() -> BranchProtectionRule:
+    return BranchProtectionRule(
+        requiresApprovingReviews=True,
+        requiredApprovingReviewCount=1,
+        requiresStatusChecks=True,
+        requiredStatusCheckContexts=["ci/api"],
+        requiresStrictStatusChecks=True,
+        requiresCommitSignatures=False,
+        restrictsPushes=False,
+        pushAllowances=NodeListPushAllowance(nodes=[]),
+    )
+
+
 @pytest.fixture
 def review() -> PRReview:
+    return PRReview(
+        state=PRReviewState.APPROVED,
+        createdAt=datetime(2015, 5, 25),
+        author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+    )
+
+
+def create_review() -> PRReview:
     return PRReview(
         state=PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
@@ -291,8 +351,16 @@ def context() -> StatusContext:
     return StatusContext(context="ci/api", state=StatusState.SUCCESS)
 
 
+def create_context() -> StatusContext:
+    return StatusContext(context="ci/api", state=StatusState.SUCCESS)
+
+
 @pytest.fixture
 def check_run() -> CheckRun:
+    return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
+
+
+def create_check_run() -> CheckRun:
     return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
 
 
@@ -301,8 +369,119 @@ def review_request() -> PRReviewRequest:
     return PRReviewRequest(name="ghost")
 
 
+def create_review_request() -> PRReviewRequest:
+    return PRReviewRequest(name="ghost")
+
+
 def test_config_fixtures_equal(config_str: str, config: V1) -> None:
     assert config == V1.parse_toml(config_str)
+
+
+def create_repo_info() -> RepoInfo:
+    return RepoInfo(
+        merge_commit_allowed=True,
+        rebase_merge_allowed=True,
+        squash_merge_allowed=True,
+        is_private=False,
+    )
+
+
+def create_api() -> MockPrApi:
+    return MockPrApi()
+
+
+def create_config() -> V1:
+    cfg = V1(version=1)
+    cfg.merge.automerge_label = "automerge"
+    cfg.merge.blacklist_labels = []
+    cfg.merge.method = MergeMethod.squash
+    return cfg
+
+
+class MergeableType(Protocol):
+    """
+    A type we define so our create_mergeable() can be typed.
+    """
+
+    async def __call__(
+        self,
+        *,
+        api: PRAPI = ...,
+        config: Union[V1, pydantic.ValidationError, TomlDecodeError] = ...,
+        config_str: str = ...,
+        config_path: str = ...,
+        pull_request: PullRequest = ...,
+        branch_protection: Optional[BranchProtectionRule] = ...,
+        review_requests: List[PRReviewRequest] = ...,
+        reviews: List[PRReview] = ...,
+        contexts: List[StatusContext] = ...,
+        check_runs: List[CheckRun] = ...,
+        valid_signature: bool = ...,
+        valid_merge_methods: List[MergeMethod] = ...,
+        merging: bool = ...,
+        is_active_merge: bool = ...,
+        skippable_check_timeout: int = ...,
+        api_call_retry_timeout: int = ...,
+        api_call_retry_method_name: Optional[str] = ...,
+        repository: RepoInfo = ...,
+        subscription: Optional[Subscription] = ...,
+        app_id: Optional[str] = ...,
+    ) -> None:
+        ...
+
+
+def create_mergeable() -> MergeableType:
+    async def mergeable(
+        *,
+        api: PRAPI = create_api(),
+        config: Union[V1, pydantic.ValidationError, TomlDecodeError] = create_config(),
+        config_str: str = create_config_str(),
+        config_path: str = create_config_path(),
+        pull_request: PullRequest = create_pull_request(),
+        branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
+        review_requests: List[PRReviewRequest] = [],
+        reviews: List[PRReview] = [create_review()],
+        contexts: List[StatusContext] = [create_context()],
+        check_runs: List[CheckRun] = [create_check_run()],
+        valid_signature: bool = False,
+        valid_merge_methods: List[MergeMethod] = [MergeMethod.squash],
+        merging: bool = False,
+        is_active_merge: bool = False,
+        skippable_check_timeout: int = 5,
+        api_call_retry_timeout: int = 5,
+        api_call_retry_method_name: Optional[str] = None,
+        repository: RepoInfo = create_repo_info(),
+        subscription: Optional[Subscription] = None,
+        app_id: Optional[str] = None,
+    ) -> None:
+        """
+            wrapper around evaluation.mergeable that simplifies tests by providing
+            default arguments to override.
+            """
+        return await mergeable_func(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=review_requests,
+            reviews=reviews,
+            contexts=contexts,
+            check_runs=check_runs,
+            valid_signature=valid_signature,
+            valid_merge_methods=valid_merge_methods,
+            repository=repository,
+            merging=merging,
+            is_active_merge=is_active_merge,
+            skippable_check_timeout=skippable_check_timeout,
+            api_call_retry_timeout=api_call_retry_timeout,
+            api_call_retry_method_name=api_call_retry_method_name,
+            subscription=subscription,
+            app_id=app_id,
+        )
+
+    return mergeable
 
 
 async def mergeable(
@@ -361,45 +540,21 @@ async def mergeable(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_abort_is_active_merge(
-    api: MockPrApi,
-    config: V1,
-    config_str: str,
-    config_path: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_abort_is_active_merge() -> None:
     """
     If we set is_active_merge, that means that in the merge queue the current PR
     is being updated/merged, so in the frontend we don't want to act on the PR
     because the PR is being handled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
     api.queue_for_merge.return_value = 4
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        is_active_merge=True,
-    )
+    await mergeable(api=api, is_active_merge=True)
     assert api.queue_for_merge.called is True
 
+    assert (
+        api.set_status.call_count == 0
+    ), "we don't want to set a status message from the frontend when the PR is being merged"
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
