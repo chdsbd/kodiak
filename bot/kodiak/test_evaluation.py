@@ -578,43 +578,16 @@ async def test_mergeable_config_error_sets_warning() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_different_app_id(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_different_app_id() -> None:
     """
     If our app id doesn't match the one in the config, we shouldn't touch the repo.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
     config.app_id = "1234567"
     our_fake_app_id = "909090"
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        app_id=our_fake_app_id,
-    )
+    await mergeable(api=api, config=config, app_id=our_fake_app_id)
     assert api.dequeue.called is True
 
     # verify we haven't tried to update/merge the PR
