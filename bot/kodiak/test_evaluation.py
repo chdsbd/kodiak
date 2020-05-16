@@ -1138,6 +1138,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     review: PRReview,
     context: StatusContext,
     check_run: CheckRun,
+    mocker: Any,
 ) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
@@ -1146,6 +1147,10 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     """
     # a ReDos regex and accompanying string
     # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    from kodiak.evaluation import re
+
+    kodiak_evaluation_re_search = mocker.spy(re, "search")
+
     config.merge.blacklist_title_regex = "^(a+)+$"
     pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
 
@@ -1170,6 +1175,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     )
     # we don't really care about the result for this so long as this test
     # doesn't hang the entire suite.
+    assert kodiak_evaluation_re_search.called, "we should hit our regex search"
 
 
 @pytest.mark.asyncio
