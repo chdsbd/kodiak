@@ -1349,45 +1349,23 @@ async def test_mergeable_missing_required_approving_reviews() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't have enough reviews. If a reviewer doesn't have permissions we should ignore their review.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    review = create_review()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
     review.state = PRReviewState.APPROVED
     review.author.permission = Permission.READ
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[review])
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "missing required reviews" in api.set_status.calls[0]["msg"]
