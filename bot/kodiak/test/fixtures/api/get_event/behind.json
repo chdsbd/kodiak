@@ -39,6 +39,7 @@
       "mergeCommitAllowed": false,
       "rebaseMergeAllowed": false,
       "squashMergeAllowed": true,
+      "deleteBranchOnMerge": true,
       "isPrivate": true,
       "pullRequest": {
         "id": "e14ff7599399478fb9dbc2dacb87da72",

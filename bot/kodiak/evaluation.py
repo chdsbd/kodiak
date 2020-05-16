@@ -470,7 +470,11 @@ async def mergeable(
             config.merge.delete_branch_on_merge,
         )
         await api.dequeue()
-        if not config.merge.delete_branch_on_merge or pull_request.isCrossRepository:
+        if (
+            not config.merge.delete_branch_on_merge
+            or pull_request.isCrossRepository
+            or repository.delete_branch_on_merge
+        ):
             return
         pr_count = await api.pull_requests_for_ref(ref=pull_request.headRefName)
         # if we couldn't access the dependent PR count or we have dependent PRs
