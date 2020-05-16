@@ -152,9 +152,15 @@ class MockApprovePullRequest(BaseMockFunc):
         self.log_call(dict())
 
 
+class MockRequeue(BaseMockFunc):
+    async def __call__(self) -> None:
+        self.log_call(dict())
+
+
 class MockPrApi:
     def __init__(self) -> None:
         self.dequeue = MockDequeue()
+        self.requeue = MockRequeue()
         self.set_status = MockSetStatus()
         self.pull_requests_for_ref = MockPullRequestsForRef()
         self.delete_branch = MockDeleteBranch()
@@ -376,6 +382,7 @@ def create_repo_info() -> RepoInfo:
         merge_commit_allowed=True,
         rebase_merge_allowed=True,
         squash_merge_allowed=True,
+        delete_branch_on_merge=False,
         is_private=False,
     )
 
@@ -496,12 +503,7 @@ async def mergeable(
     skippable_check_timeout: int,
     api_call_retry_timeout: int,
     api_call_retry_method_name: Optional[str],
-    repository: RepoInfo = RepoInfo(
-        merge_commit_allowed=True,
-        rebase_merge_allowed=True,
-        squash_merge_allowed=True,
-        is_private=False,
-    ),
+    repository: RepoInfo = create_repo_info(),
     subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
 ) -> None:
@@ -1033,6 +1035,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     review: PRReview,
     context: StatusContext,
     check_run: CheckRun,
+    mocker: Any,
 ) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
@@ -1041,6 +1044,10 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     """
     # a ReDos regex and accompanying string
     # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    from kodiak.evaluation import re
+
+    kodiak_evaluation_re_search = mocker.spy(re, "search")
+
     config.merge.blacklist_title_regex = "^(a+)+$"
     pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
 
@@ -1065,6 +1072,7 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     )
     # we don't really care about the result for this so long as this test
     # doesn't hang the entire suite.
+    assert kodiak_evaluation_re_search.called, "we should hit our regex search"
 
 
 @pytest.mark.asyncio
@@ -1407,6 +1415,57 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
+    )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
+    assert api.delete_branch.call_count == 0
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If the repository has delete_branch_on_merge enabled we shouldn't bother
+    trying to delete the branch.
+    """
+    pull_request.state = PullRequestState.MERGED
+    repository = create_repo_info()
+    repository.delete_branch_on_merge = True
+    config.merge.delete_branch_on_merge = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        config_str=config_str,
+        config_path=config_path,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        review_requests=[],
+        reviews=[review],
+        contexts=[context],
+        check_runs=[check_run],
+        valid_signature=False,
+        valid_merge_methods=[MergeMethod.squash],
+        merging=False,
+        is_active_merge=False,
+        skippable_check_timeout=5,
+        api_call_retry_timeout=5,
+        api_call_retry_method_name=None,
+        repository=repository,
     )
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
@@ -1766,6 +1825,57 @@ async def test_mergeable_pull_request_need_test_commit(
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.trigger_test_commit.call_count == 1
+    assert api.requeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_need_test_commit_merging(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    If we're merging a PR we should raise the PollForever exception instead of
+    returning. This way we stay in the merge loop.
+    """
+    pull_request.mergeable = MergeableState.UNKNOWN
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            contexts=[context],
+            check_runs=[check_run],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            merging=True,
+        )
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.trigger_test_commit.call_count == 1
+    assert api.requeue.call_count == 1
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
@@ -2465,6 +2575,57 @@ async def test_mergeable_update_branch_immediately(
         api_call_retry_timeout=5,
         api_call_retry_method_name=None,
     )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
+
+    # verify we haven't tried to merge the PR
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_update_branch_immediately_mode_merging(
+    api: MockPrApi,
+    config: V1,
+    config_path: str,
+    config_str: str,
+    pull_request: PullRequest,
+    branch_protection: BranchProtectionRule,
+    review: PRReview,
+    context: StatusContext,
+    check_run: CheckRun,
+) -> None:
+    """
+    update branch immediately if configured. When we are merging we should raise the PollForever exception to keep the merge loop going instead of returning.
+    """
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStrictStatusChecks = True
+    config.merge.update_branch_immediately = True
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            config_str=config_str,
+            config_path=config_path,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            review_requests=[],
+            reviews=[review],
+            check_runs=[check_run],
+            contexts=[context],
+            valid_signature=False,
+            valid_merge_methods=[MergeMethod.squash],
+            is_active_merge=False,
+            skippable_check_timeout=5,
+            api_call_retry_timeout=5,
+            api_call_retry_method_name=None,
+            #
+            merging=True,
+        )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 1
@@ -4594,6 +4755,7 @@ async def test_mergeable_paywall_missing_subscription(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
             squash_merge_allowed=True,
+            delete_branch_on_merge=False,
             is_private=True,
         ),
         subscription=None,
@@ -4644,6 +4806,7 @@ async def test_mergeable_paywall_subscription_blocker(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
             squash_merge_allowed=True,
+            delete_branch_on_merge=False,
             is_private=True,
         ),
         subscription=Subscription(
@@ -4710,6 +4873,7 @@ async def test_mergeable_paywall_public_repository(
                 merge_commit_allowed=True,
                 rebase_merge_allowed=True,
                 squash_merge_allowed=True,
+                delete_branch_on_merge=False,
                 is_private=False,
             ),
             subscription=subscription,
@@ -4761,6 +4925,7 @@ async def test_mergeable_paywall_missing_env(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
             squash_merge_allowed=True,
+            delete_branch_on_merge=False,
             is_private=True,
         ),
         subscription=Subscription(

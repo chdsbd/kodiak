@@ -143,6 +143,9 @@ class PRAPI(Protocol):
     async def dequeue(self) -> None:
         ...
 
+    async def requeue(self) -> None:
+        ...
+
     async def set_status(
         self,
         msg: str,
@@ -470,7 +473,11 @@ async def mergeable(
             config.merge.delete_branch_on_merge,
         )
         await api.dequeue()
-        if not config.merge.delete_branch_on_merge or pull_request.isCrossRepository:
+        if (
+            not config.merge.delete_branch_on_merge
+            or pull_request.isCrossRepository
+            or repository.delete_branch_on_merge
+        ):
             return
         pr_count = await api.pull_requests_for_ref(ref=pull_request.headRefName)
         # if we couldn't access the dependent PR count or we have dependent PRs
@@ -496,6 +503,16 @@ async def mergeable(
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
+
+        # queue the PR for evaluation again in case GitHub doesn't send another
+        # webhook for the commit test.
+        await api.requeue()
+
+        # we don't want to abort the merge if we encounter this status check.
+        # Just keep polling!
+        if merging:
+            raise PollForever
+
         return
 
     wait_for_checks = False
@@ -661,6 +678,8 @@ async def mergeable(
                 markdown_content="branch updated because `merge.update_branch_immediately = true` is configured.",
             )
             await api.update_branch()
+            if merging:
+                raise PollForever
             return
 
         if merging:
