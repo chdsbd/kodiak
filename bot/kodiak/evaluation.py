@@ -672,8 +672,6 @@ async def mergeable(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
-        # TODO(chdsbd): this will kick us out of merging if we need an update.
-        # We should fix this.
         if config.merge.update_branch_immediately and need_branch_update:
             await set_status(
                 "🔄 updating branch",
