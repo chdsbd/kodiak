@@ -94,6 +94,8 @@ Once a PR is merged, delete the branch.
 
 This option behaves like the GitHub repository setting "Automatically delete head branches", which automatically deletes head branches after pull requests are merged.
 
+If "Automatically delete head branches" is enabled on the repository via the GitHub UI, Kodiak will _not_ attempt branch deletion.
+
 ### `merge.block_on_reviews_requested`
 
 - **type:** `boolean`
