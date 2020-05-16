@@ -555,43 +555,18 @@ async def test_mergeable_abort_is_active_merge() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_config_error_sets_warning(
-    api: MockPrApi,
-    config_path: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_config_error_sets_warning() -> None:
     """
     If we have a problem finding or parsing a configuration error we should set
     a status and remove our item from the merge queue.
     """
+    api = create_api()
+    mergeable = create_mergeable()
     broken_config_str = "something[invalid["
     broken_config = V1.parse_toml(broken_config_str)
     assert isinstance(broken_config, TomlDecodeError)
 
-    await mergeable(
-        api=api,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        config=broken_config,
-        config_str=broken_config_str,
-    )
+    await mergeable(api=api, config=broken_config, config_str=broken_config_str)
     assert api.set_status.call_count == 1
     assert "Invalid configuration" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
