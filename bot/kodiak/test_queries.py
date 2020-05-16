@@ -115,6 +115,7 @@ def block_event() -> EventInfoResponse:
         merge_commit_allowed=False,
         rebase_merge_allowed=False,
         squash_merge_allowed=True,
+        delete_branch_on_merge=True,
         is_private=True,
     )
     branch_protection = BranchProtectionRule(

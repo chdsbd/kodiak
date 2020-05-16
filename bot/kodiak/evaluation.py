@@ -473,7 +473,11 @@ async def mergeable(
             config.merge.delete_branch_on_merge,
         )
         await api.dequeue()
-        if not config.merge.delete_branch_on_merge or pull_request.isCrossRepository:
+        if (
+            not config.merge.delete_branch_on_merge
+            or pull_request.isCrossRepository
+            or repository.delete_branch_on_merge
+        ):
             return
         pr_count = await api.pull_requests_for_ref(ref=pull_request.headRefName)
         # if we couldn't access the dependent PR count or we have dependent PRs
@@ -668,6 +672,8 @@ async def mergeable(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
 
+        # TODO(chdsbd): this will kick us out of merging if we need an update.
+        # We should fix this.
         if config.merge.update_branch_immediately and need_branch_update:
             await set_status(
                 "🔄 updating branch",
