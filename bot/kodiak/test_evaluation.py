@@ -557,43 +557,18 @@ async def test_mergeable_abort_is_active_merge() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_config_error_sets_warning(
-    api: MockPrApi,
-    config_path: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_config_error_sets_warning() -> None:
     """
     If we have a problem finding or parsing a configuration error we should set
     a status and remove our item from the merge queue.
     """
+    api = create_api()
+    mergeable = create_mergeable()
     broken_config_str = "something[invalid["
     broken_config = V1.parse_toml(broken_config_str)
     assert isinstance(broken_config, TomlDecodeError)
 
-    await mergeable(
-        api=api,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        config=broken_config,
-        config_str=broken_config_str,
-    )
+    await mergeable(api=api, config=broken_config, config_str=broken_config_str)
     assert api.set_status.call_count == 1
     assert "Invalid configuration" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
@@ -605,43 +580,16 @@ async def test_mergeable_config_error_sets_warning(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_different_app_id(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_different_app_id() -> None:
     """
     If our app id doesn't match the one in the config, we shouldn't touch the repo.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
     config.app_id = "1234567"
     our_fake_app_id = "909090"
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        app_id=our_fake_app_id,
-    )
+    await mergeable(api=api, config=config, app_id=our_fake_app_id)
     assert api.dequeue.called is True
 
     # verify we haven't tried to update/merge the PR
@@ -651,40 +599,14 @@ async def test_mergeable_different_app_id(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_branch_protection(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_branch_protection() -> None:
     """
     We should warn when we cannot retrieve branch protection settings.
     """
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        branch_protection=None,
-    )
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(api=api, branch_protection=None)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "config error" in api.set_status.calls[0]["msg"]
@@ -696,43 +618,18 @@ async def test_mergeable_missing_branch_protection(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_push_allowance(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_push_allowance() -> None:
     """
     We should warn when user is missing a push allowance with restrictsPushes
     enabled. If Kodiak isn't given an allowance it won't be able to merge pull
     requests and will get a mysterious "merge blocked by GitHub requirements".
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
     branch_protection.restrictsPushes = True
     branch_protection.pushAllowances = NodeListPushAllowance(nodes=[])
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, branch_protection=branch_protection)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "config error" in api.set_status.calls[0]["msg"]
