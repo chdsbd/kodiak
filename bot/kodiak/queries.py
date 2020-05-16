@@ -87,6 +87,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
+    deleteBranchOnMerge
     isPrivate
     pullRequest(number: $PRNumber) {
       id
@@ -261,6 +262,7 @@ class RepoInfo(BaseModel):
     merge_commit_allowed: bool
     rebase_merge_allowed: bool
     squash_merge_allowed: bool
+    delete_branch_on_merge: bool
     is_private: bool
 
 
@@ -869,6 +871,7 @@ class Client:
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
                 rebase_merge_allowed=repository.get("rebaseMergeAllowed", False),
                 squash_merge_allowed=repository.get("squashMergeAllowed", False),
+                delete_branch_on_merge=repository.get("deleteBranchOnMerge") is True,
                 is_private=repository.get("isPrivate") is True,
             ),
             subscription=subscription,

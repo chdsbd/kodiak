@@ -70,6 +70,13 @@ async def process_webhook_event(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
+    async def requeue() -> None:
+        await connection.zadd(
+            webhook_event.get_webhook_queue_name(),
+            {webhook_event.json(): time.time()},
+            only_if_not_exists=True,
+        )
+
     async def queue_for_merge() -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event)
 
@@ -81,6 +88,7 @@ async def process_webhook_event(
         number=webhook_event.pull_request_number,
         merging=False,
         dequeue_callback=dequeue,
+        requeue_callback=requeue,
         queue_for_merge_callback=queue_for_merge,
         is_active_merging=is_active_merging,
     )
@@ -118,6 +126,13 @@ async def process_repo_queue(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
+    async def requeue() -> None:
+        await connection.zadd(
+            webhook_event.get_webhook_queue_name(),
+            {webhook_event.json(): time.time()},
+            only_if_not_exists=True,
+        )
+
     async def queue_for_merge() -> Optional[int]:
         raise NotImplementedError
 
@@ -128,6 +143,7 @@ async def process_repo_queue(
         repo=webhook_event.repo_name,
         number=webhook_event.pull_request_number,
         dequeue_callback=dequeue,
+        requeue_callback=requeue,
         merging=True,
         is_active_merging=False,
         queue_for_merge_callback=queue_for_merge,
