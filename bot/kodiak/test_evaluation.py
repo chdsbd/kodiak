@@ -688,42 +688,23 @@ async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_requires_commit_signatures_rebase(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_requires_commit_signatures_rebase() -> None:
     """
     requiresCommitSignatures doesn't work with Kodiak when rebase is configured
     
     https://github.com/chdsbd/kodiak/issues/89
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
+    config = create_config()
+
     branch_protection.requiresCommitSignatures = True
     config.merge.method = MergeMethod.rebase
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
         valid_merge_methods=[MergeMethod.rebase],
     )
     assert (
