@@ -24,6 +24,7 @@ async def get_pr(
     repo: str,
     number: int,
     dequeue_callback: Callable[[], Awaitable],
+    requeue_callback: Callable[[], Awaitable],
     queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
@@ -45,6 +46,7 @@ async def get_pr(
             repo=repo,
             number=number,
             dequeue_callback=dequeue_callback,
+            requeue_callback=requeue_callback,
             queue_for_merge_callback=queue_for_merge_callback,
         )
 
@@ -56,6 +58,7 @@ async def evaluate_pr(
     number: int,
     merging: bool,
     dequeue_callback: Callable[[], Awaitable],
+    requeue_callback: Callable[[], Awaitable],
     queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
     is_active_merging: bool,
 ) -> None:
@@ -71,6 +74,7 @@ async def evaluate_pr(
             repo=repo,
             number=number,
             dequeue_callback=dequeue_callback,
+            requeue_callback=requeue_callback,
             queue_for_merge_callback=queue_for_merge_callback,
         )
         if pr is None:
@@ -139,6 +143,7 @@ class PRV2:
         repo: str,
         number: int,
         dequeue_callback: Callable[[], Awaitable],
+        requeue_callback: Callable[[], Awaitable],
         queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
     ):
         self.install = install
@@ -147,12 +152,17 @@ class PRV2:
         self.number = number
         self.event = event
         self.dequeue_callback = dequeue_callback
+        self.requeue_callback = requeue_callback
         self.queue_for_merge_callback = queue_for_merge_callback
         self.log = logger.bind(install=install, owner=owner, repo=repo, number=number)
 
     async def dequeue(self) -> None:
         self.log.info("dequeue")
         await self.dequeue_callback()
+
+    async def requeue(self) -> None:
+        self.log.info("requeue")
+        await self.requeue_callback()
 
     async def set_status(
         self,
