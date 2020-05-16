@@ -642,45 +642,20 @@ async def test_mergeable_missing_push_allowance() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_push_allowance_correct(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_push_allowance_correct() -> None:
     """
     When restrictsPushes is enabled, but Kodiak is added as a push allowance, we
     should not raise a configuration error. We should let the merge continue
     unimpeded.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
     branch_protection.restrictsPushes = True
     branch_protection.pushAllowances = NodeListPushAllowance(
         nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=534524))]
     )
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, branch_protection=branch_protection)
     assert api.queue_for_merge.called is True
 
     assert api.dequeue.call_count == 0
@@ -689,42 +664,19 @@ async def test_mergeable_missing_push_allowance_correct(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_push_allowance_merge_do_not_merge(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
     """
     When merge.do_not_merge is enabled, we should ignore any issues with restrictPushes because Kodiak isn't pushing.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
+    config = create_config()
+
     branch_protection.restrictsPushes = True
     config.merge.do_not_merge = True
     branch_protection.pushAllowances = NodeListPushAllowance(nodes=[])
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, branch_protection=branch_protection)
 
     assert api.set_status.call_count == 1
     assert api.set_status.calls[0]["msg"] == "✅ okay to merge"
@@ -736,42 +688,23 @@ async def test_mergeable_missing_push_allowance_merge_do_not_merge(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_requires_commit_signatures_rebase(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_requires_commit_signatures_rebase() -> None:
     """
     requiresCommitSignatures doesn't work with Kodiak when rebase is configured
     
     https://github.com/chdsbd/kodiak/issues/89
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
+    config = create_config()
+
     branch_protection.requiresCommitSignatures = True
     config.merge.method = MergeMethod.rebase
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
         valid_merge_methods=[MergeMethod.rebase],
     )
     assert (
@@ -788,22 +721,17 @@ async def test_mergeable_requires_commit_signatures_rebase(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_requires_commit_signatures_squash_and_merge(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
     """
     requiresCommitSignatures works with merge commits and squash
     
     https://github.com/chdsbd/kodiak/issues/89
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    branch_protection = create_branch_protection()
+
     branch_protection.requiresCommitSignatures = True
     api.queue_for_merge.return_value = 3
     for index, method in enumerate((MergeMethod.squash, MergeMethod.merge)):
@@ -811,21 +739,7 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
-            pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            contexts=[context],
-            check_runs=[check_run],
-            valid_signature=False,
-            merging=False,
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             valid_merge_methods=[method],
         )
         assert api.set_status.call_count == index + 1
@@ -839,41 +753,18 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_automerge_label(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_automerge_label() -> None:
     """
     If we're missing an automerge label we should not merge the PR.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     config.merge.require_automerge_label = True
     pull_request.labels = []
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -885,41 +776,18 @@ async def test_mergeable_missing_automerge_label(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_automerge_label_require_automerge_label(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_automerge_label_require_automerge_label() -> None:
     """
     We can work on a PR if we're missing labels and we have require_automerge_label disabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     config.merge.require_automerge_label = False
     pull_request.labels = []
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.queue_for_merge.call_count == 1
@@ -930,42 +798,19 @@ async def test_mergeable_missing_automerge_label_require_automerge_label(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_has_blacklist_labels(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_has_blacklist_labels() -> None:
     """
     blacklist labels should prevent merge
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     config.merge.blacklist_labels = ["dont merge!"]
     pull_request.labels = ["bug", "dont merge!", "needs review"]
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -977,42 +822,19 @@ async def test_mergeable_has_blacklist_labels(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_blacklist_title_regex(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_blacklist_title_regex() -> None:
     """
     block merge if title regex matches pull request
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     pull_request.title = "WIP: add new feature"
     config.merge.blacklist_title_regex = "^WIP.*"
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
