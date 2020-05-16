@@ -500,12 +500,15 @@ async def mergeable(
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
 
+        # queue the PR for evaluation again in case GitHub doesn't send another
+        # webhook for the commit test.
+        await api.requeue()
+
         # we don't want to abort the merge if we encounter this status check.
         # Just keep polling!
         if merging:
             raise PollForever
 
-        await api.requeue()
         return
 
     wait_for_checks = False
