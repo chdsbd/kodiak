@@ -1071,45 +1071,23 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr() -> No
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled() -> None:
     """
     If the repository has delete_branch_on_merge enabled we shouldn't bother
     trying to delete the branch.
     """
-    pull_request.state = PullRequestState.MERGED
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
     repository = create_repo_info()
+
+    pull_request.state = PullRequestState.MERGED
     repository.delete_branch_on_merge = True
     config.merge.delete_branch_on_merge = True
 
     await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        repository=repository,
+        api=api, config=config, pull_request=pull_request, repository=repository
     )
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
