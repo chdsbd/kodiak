@@ -5,6 +5,7 @@ from typing import Any, List, Mapping, Optional, Tuple, Union
 import pydantic
 import pytest
 from toml import TomlDecodeError
+from typing_extensions import Protocol
 
 from kodiak.config import (
     V1,
@@ -379,7 +380,7 @@ def create_repo_info() -> RepoInfo:
     )
 
 
-def create_api() -> PRAPI:
+def create_api() -> MockPrApi:
     return MockPrApi()
 
 
@@ -391,8 +392,41 @@ def create_config() -> V1:
     return cfg
 
 
-def create_mergeable():
+class MergeableType(Protocol):
+    """
+    A type we define so our create_mergeable() can be typed.
+    """
+
+    async def __call__(
+        self,
+        *,
+        api: PRAPI = ...,
+        config: Union[V1, pydantic.ValidationError, TomlDecodeError] = ...,
+        config_str: str = ...,
+        config_path: str = ...,
+        pull_request: PullRequest = ...,
+        branch_protection: Optional[BranchProtectionRule] = ...,
+        review_requests: List[PRReviewRequest] = ...,
+        reviews: List[PRReview] = ...,
+        contexts: List[StatusContext] = ...,
+        check_runs: List[CheckRun] = ...,
+        valid_signature: bool = ...,
+        valid_merge_methods: List[MergeMethod] = ...,
+        merging: bool = ...,
+        is_active_merge: bool = ...,
+        skippable_check_timeout: int = ...,
+        api_call_retry_timeout: int = ...,
+        api_call_retry_method_name: Optional[str] = ...,
+        repository: RepoInfo = ...,
+        subscription: Optional[Subscription] = ...,
+        app_id: Optional[str] = ...,
+    ) -> None:
+        ...
+
+
+def create_mergeable() -> MergeableType:
     async def mergeable(
+        *,
         api: PRAPI = create_api(),
         config: Union[V1, pydantic.ValidationError, TomlDecodeError] = create_config(),
         config_str: str = create_config_str(),
@@ -500,45 +534,21 @@ async def mergeable(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_abort_is_active_merge(
-    api: MockPrApi,
-    config: V1,
-    config_str: str,
-    config_path: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_abort_is_active_merge() -> None:
     """
     If we set is_active_merge, that means that in the merge queue the current PR
     is being updated/merged, so in the frontend we don't want to act on the PR
     because the PR is being handled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
     api.queue_for_merge.return_value = 4
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        is_active_merge=True,
-    )
+    await mergeable(api=api, is_active_merge=True)
     assert api.queue_for_merge.called is True
 
+    assert (
+        api.set_status.call_count == 0
+    ), "we don't want to set a status message from the frontend when the PR is being merged"
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
