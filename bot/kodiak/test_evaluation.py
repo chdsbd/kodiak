@@ -1485,20 +1485,16 @@ async def test_mergeable_missing_requires_status_checks_failing_status_context()
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_requires_status_checks_failing_check_run(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_requires_status_checks_failing_check_run() -> None:
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
@@ -1518,22 +1514,9 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
         check_run.conclusion = check_run_conclusion
         await mergeable(
             api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
             check_runs=[check_run],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            merging=False,
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             contexts=[],
         )
         assert api.set_status.call_count == 1 + index
