@@ -847,18 +847,7 @@ async def test_mergeable_blacklist_title_regex() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_blacklist_title_match_with_exp_regex(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-    mocker: Any,
-) -> None:
+async def test_mergeable_blacklist_title_match_with_exp_regex(mocker: Any) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
 
@@ -866,6 +855,11 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     """
     # a ReDos regex and accompanying string
     # via: https://en.wikipedia.org/wiki/ReDoS#Vulnerable_regexes_in_online_repositories
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     from kodiak.evaluation import re
 
     kodiak_evaluation_re_search = mocker.spy(re, "search")
@@ -873,66 +867,24 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(
     config.merge.blacklist_title_regex = "^(a+)+$"
     pull_request.title = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     # we don't really care about the result for this so long as this test
     # doesn't hang the entire suite.
     assert kodiak_evaluation_re_search.called, "we should hit our regex search"
 
 
 @pytest.mark.asyncio
-async def test_mergeable_draft_pull_request(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_draft_pull_request() -> None:
     """
     block merge if pull request is in draft state
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
     pull_request.mergeStateStatus = MergeStateStatus.DRAFT
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -945,42 +897,17 @@ async def test_mergeable_draft_pull_request(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_invalid_merge_method(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_invalid_merge_method() -> None:
     """
     block merge if configured merge method is not enabled
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
     config.merge.method = MergeMethod.squash
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        valid_merge_methods=[MergeMethod.merge],
-    )
+    await mergeable(api=api, config=config, valid_merge_methods=[MergeMethod.merge])
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "config error" in api.set_status.calls[0]["msg"]
@@ -995,43 +922,19 @@ async def test_mergeable_invalid_merge_method(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_block_on_reviews_requested(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-    review_request: PRReviewRequest,
-) -> None:
+async def test_mergeable_block_on_reviews_requested() -> None:
     """
     block merge if reviews are requested and merge.block_on_reviews_requested is
     enabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    review_request = create_review_request()
+
     config.merge.block_on_reviews_requested = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[review_request],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, review_requests=[review_request])
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -1044,45 +947,22 @@ async def test_mergeable_block_on_reviews_requested(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_no_delete_branch(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_no_delete_branch() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
     deleting the branch if configured.
 
     Here we test with the delete_branch_on_merge config disabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.MERGED
     config.merge.delete_branch_on_merge = False
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
     assert api.delete_branch.call_count == 0
@@ -1094,45 +974,22 @@ async def test_mergeable_pull_request_merged_no_delete_branch(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_delete_branch(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_delete_branch() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
     deleting the branch if configured.
 
     Here we test with the delete_branch_on_merge config enabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.MERGED
     config.merge.delete_branch_on_merge = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
     assert api.delete_branch.call_count == 1
@@ -1145,46 +1002,23 @@ async def test_mergeable_pull_request_merged_delete_branch(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependencies(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependencies() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
     deleting the branch if configured.
 
     Here we test with the delete_branch_on_merge config enabled, but with other PR dependencies on a branch. If there are open PRs that depend on a branch, we should _not_ delete the branch.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.MERGED
     config.merge.delete_branch_on_merge = True
     api.pull_requests_for_ref.return_value = 1
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
     assert api.delete_branch.call_count == 0
@@ -1196,17 +1030,7 @@ async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependenc
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
     deleting the branch if configured.
@@ -1215,29 +1039,16 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
     cross repository (fork) pull request, which we aren't able to delete. We
     shouldn't try to delete the branch.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.MERGED
     pull_request.isCrossRepository = True
     config.merge.delete_branch_on_merge = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
     assert api.delete_branch.call_count == 0
@@ -1249,45 +1060,23 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled() -> None:
     """
     If the repository has delete_branch_on_merge enabled we shouldn't bother
     trying to delete the branch.
     """
-    pull_request.state = PullRequestState.MERGED
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
     repository = create_repo_info()
+
+    pull_request.state = PullRequestState.MERGED
     repository.delete_branch_on_merge = True
     config.merge.delete_branch_on_merge = True
 
     await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        repository=repository,
+        api=api, config=config, pull_request=pull_request, repository=repository
     )
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
@@ -1300,41 +1089,17 @@ async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_closed(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_closed() -> None:
     """
     if a PR is closed we don't want to act on it.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
     pull_request.state = PullRequestState.CLOSED
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 1
 
@@ -1345,44 +1110,21 @@ async def test_mergeable_pull_request_closed(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merge_conflict() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
     a comment and remove the automerge label.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
     config.merge.notify_on_conflict = False
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -1397,45 +1139,22 @@ async def test_mergeable_pull_request_merge_conflict(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
     a comment and remove the automerge label.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
     config.merge.notify_on_conflict = True
     config.merge.require_automerge_label = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -1450,22 +1169,17 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex() -> None:
     """
     if a PR has a merge conflict we can't merge. If the title matches the
     blacklist_title_regex we should still leave a comment and remove the
     automerge label.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
     config.merge.notify_on_conflict = True
@@ -1473,25 +1187,7 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklis
     config.merge.blacklist_title_regex = "WIP.*"
     pull_request.title = "WIP: add csv download to reports view"
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -1506,46 +1202,23 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklis
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_label(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_label() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
     a comment and remove the automerge label. If the automerge label is missing we shouldn't create a comment.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
     config.merge.notify_on_conflict = True
     config.merge.require_automerge_label = True
     pull_request.labels = []
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.create_comment.call_count == 0
 
     # verify we haven't tried to update/merge the PR
@@ -1555,44 +1228,21 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label() -> None:
     """
     if a PR has a merge conflict we can't merge. If require_automerge_label is set then we shouldn't notify even if notify_on_conflict is configured. This allows prevents infinite commenting.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.DIRTY
     pull_request.mergeable = MergeableState.CONFLICTING
     config.merge.notify_on_conflict = True
     config.merge.require_automerge_label = False
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
@@ -1607,43 +1257,19 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_need_test_commit(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_need_test_commit() -> None:
     """
     When you view a PR on GitHub, GitHub makes a test commit to see if a PR can
     be merged cleanly, but calling through the api doesn't trigger this test
     commit unless we explictly call the GET endpoint for a pull request.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
     pull_request.mergeable = MergeableState.UNKNOWN
 
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-    )
+    await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.trigger_test_commit.call_count == 1
@@ -1656,44 +1282,19 @@ async def test_mergeable_pull_request_need_test_commit(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_pull_request_need_test_commit_merging(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_pull_request_need_test_commit_merging() -> None:
     """
     If we're merging a PR we should raise the PollForever exception instead of
     returning. This way we stay in the merge loop.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
     pull_request.mergeable = MergeableState.UNKNOWN
 
     with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            contexts=[context],
-            check_runs=[check_run],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
-            merging=True,
-        )
+        await mergeable(api=api, pull_request=pull_request, merging=True)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.trigger_test_commit.call_count == 1
@@ -1706,43 +1307,25 @@ async def test_mergeable_pull_request_need_test_commit_merging(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't
     have enought approving reviews.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
         reviews=[],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
@@ -1755,20 +1338,16 @@ async def test_mergeable_missing_required_approving_reviews(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews_has_review_with_missing_perms() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't have enough reviews. If a reviewer doesn't have permissions we should ignore their review.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    review = create_review()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
@@ -1777,22 +1356,9 @@ async def test_mergeable_missing_required_approving_reviews_has_review_with_miss
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
         reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
@@ -1805,20 +1371,16 @@ async def test_mergeable_missing_required_approving_reviews_has_review_with_miss
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews_changes_requested(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews_changes_requested() -> None:
     """
     Don't merge when branch protection requires approving reviews and a user requested changes.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    review = create_review()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
@@ -1827,22 +1389,9 @@ async def test_mergeable_missing_required_approving_reviews_changes_requested(
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
         reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
@@ -1855,20 +1404,16 @@ async def test_mergeable_missing_required_approving_reviews_changes_requested(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews_missing_approving_review_count(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_required_approving_reviews_missing_approving_review_count() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't have enough.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    review = create_review()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 2
@@ -1877,22 +1422,9 @@ async def test_mergeable_missing_required_approving_reviews_missing_approving_re
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
         reviews=[review],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
@@ -1905,20 +1437,16 @@ async def test_mergeable_missing_required_approving_reviews_missing_approving_re
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_requires_status_checks_failing_status_context(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_requires_status_checks_failing_status_context() -> None:
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    context = create_context()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
@@ -1927,22 +1455,9 @@ async def test_mergeable_missing_requires_status_checks_failing_status_context(
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
         check_runs=[],
     )
     assert api.set_status.call_count == 1
@@ -1959,20 +1474,16 @@ async def test_mergeable_missing_requires_status_checks_failing_status_context(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_requires_status_checks_failing_check_run(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_missing_requires_status_checks_failing_check_run() -> None:
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
@@ -1992,22 +1503,9 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
         check_run.conclusion = check_run_conclusion
         await mergeable(
             api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
             check_runs=[check_run],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            merging=False,
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             contexts=[],
         )
         assert api.set_status.call_count == 1 + index
@@ -2024,20 +1522,16 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_travis_ci_checks(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_travis_ci_checks() -> None:
     """
     GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,push}" become "continuous-integration/travis-ci" in requiredStatusChecks.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    context = create_context()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
@@ -2046,22 +1540,9 @@ async def test_mergeable_travis_ci_checks(
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
         check_runs=[],
     )
     assert api.set_status.call_count == 1
@@ -2078,20 +1559,16 @@ async def test_mergeable_travis_ci_checks(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_travis_ci_checks_success(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_travis_ci_checks_success() -> None:
     """
     If continuous-integration/travis-ci/pr passes we shouldn't say we're waiting for continuous-integration/travis-ci.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    context = create_context()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = [
@@ -2104,21 +1581,9 @@ async def test_mergeable_travis_ci_checks_success(
     with pytest.raises(PollForever):
         await mergeable(
             api=api,
-            config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
             contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             merging=True,
             check_runs=[],
         )
@@ -2136,20 +1601,18 @@ async def test_mergeable_travis_ci_checks_success(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_skippable_contexts_with_status_check(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_skippable_contexts_with_status_check() -> None:
     """
     If a skippable check hasn't finished, we shouldn't do anything.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
@@ -2162,21 +1625,10 @@ async def test_mergeable_skippable_contexts_with_status_check(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         check_runs=[check_run],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
@@ -2192,20 +1644,18 @@ async def test_mergeable_skippable_contexts_with_status_check(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_skippable_contexts_with_check_run(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_skippable_contexts_with_check_run() -> None:
     """
     If a skippable check hasn't finished, we shouldn't do anything.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
@@ -2218,21 +1668,10 @@ async def test_mergeable_skippable_contexts_with_check_run(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         check_runs=[check_run],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
@@ -2248,20 +1687,18 @@ async def test_mergeable_skippable_contexts_with_check_run(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_skippable_contexts_passing(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_skippable_contexts_passing() -> None:
     """
     If a skippable check is passing we should queue the PR for merging
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
@@ -2275,21 +1712,10 @@ async def test_mergeable_skippable_contexts_passing(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         check_runs=[check_run],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
@@ -2302,20 +1728,18 @@ async def test_mergeable_skippable_contexts_passing(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_skippable_contexts_merging_pull_request(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_skippable_contexts_merging_pull_request() -> None:
     """
     If a skippable check hasn't finished but we're merging, we need to raise an exception to retry for a short period of time to allow the check to finish. We won't retry forever because skippable checks will likely never finish.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+    check_run = create_check_run()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["WIP", "ci/test-api"]
@@ -2329,21 +1753,10 @@ async def test_mergeable_skippable_contexts_merging_pull_request(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
             check_runs=[check_run],
             contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             merging=True,
         )
     assert api.set_status.call_count == 1
@@ -2360,20 +1773,16 @@ async def test_mergeable_skippable_contexts_merging_pull_request(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_update_branch_immediately(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_update_branch_immediately() -> None:
     """
     update branch immediately if configured
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
     config.merge.update_branch_immediately = True
@@ -2381,21 +1790,8 @@ async def test_mergeable_update_branch_immediately(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
-        contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
@@ -2409,20 +1805,16 @@ async def test_mergeable_update_branch_immediately(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_update_branch_immediately_mode_merging(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_update_branch_immediately_mode_merging() -> None:
     """
     update branch immediately if configured. When we are merging we should raise the PollForever exception to keep the merge loop going instead of returning.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
     config.merge.update_branch_immediately = True
@@ -2431,21 +1823,8 @@ async def test_mergeable_update_branch_immediately_mode_merging(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            check_runs=[check_run],
-            contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             merging=True,
         )
     assert api.set_status.call_count == 1
@@ -2460,20 +1839,17 @@ async def test_mergeable_update_branch_immediately_mode_merging(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_optimistic_update_need_branch_update(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_optimistic_update_need_branch_update() -> None:
     """
     prioritize branch update over waiting for checks when merging if merge.optimistic_updates enabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+
     config.merge.optimistic_updates = True
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
@@ -2486,21 +1862,9 @@ async def test_mergeable_optimistic_update_need_branch_update(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            check_runs=[check_run],
             contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             merging=True,
         )
     assert api.set_status.call_count == 1
@@ -2514,20 +1878,17 @@ async def test_mergeable_optimistic_update_need_branch_update(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_need_branch_update(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_need_branch_update() -> None:
     """
     prioritize waiting for checks over branch updates when merging if merge.optimistic_updates is disabled.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+
     config.merge.optimistic_updates = False
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
@@ -2540,21 +1901,9 @@ async def test_mergeable_need_branch_update(
         await mergeable(
             api=api,
             config=config,
-            config_str=config_str,
-            config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
-            review_requests=[],
-            reviews=[review],
-            check_runs=[check_run],
             contexts=[context],
-            valid_signature=False,
-            valid_merge_methods=[MergeMethod.squash],
-            is_active_merge=False,
-            skippable_check_timeout=5,
-            api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
-            #
             merging=True,
         )
     assert api.set_status.call_count == 1
@@ -2571,20 +1920,17 @@ async def test_mergeable_need_branch_update(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_queue_in_progress(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_queue_in_progress() -> None:
     """
     If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+
     config.merge.optimistic_updates = False
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
@@ -2597,21 +1943,9 @@ async def test_mergeable_queue_in_progress(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge" in api.set_status.calls[0]["msg"]
@@ -2624,17 +1958,7 @@ async def test_mergeable_queue_in_progress(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_queue_in_progress_with_ready_to_merge(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_queue_in_progress_with_ready_to_merge() -> None:
     """
     If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
 
@@ -2644,6 +1968,13 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge(
     it's not good to be merged directly, but it can be queued for the merge
     queue.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    config = create_config()
+    context = create_context()
+
     config.merge.optimistic_updates = False
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStrictStatusChecks = True
@@ -2657,21 +1988,9 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge(
     await mergeable(
         api=api,
         config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
-        check_runs=[check_run],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge" in api.set_status.calls[0]["msg"]
