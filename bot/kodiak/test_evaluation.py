@@ -847,18 +847,7 @@ async def test_mergeable_blacklist_title_regex() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_blacklist_title_match_with_exp_regex(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-    mocker: Any,
-) -> None:
+async def test_mergeable_blacklist_title_match_with_exp_regex(mocker: Any) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
 
