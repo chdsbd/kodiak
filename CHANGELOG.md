@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.22.0 - 2020-05-15
+
+### Added
+- add link to billing history in dashboard. (#365)
+- add alert to dashboard for subscription overages and trial expirations. (#373)
+- add configuration error when "Restrict Pushes" branch protection setting is misconfigured. Kodiak needs to be added as an exception. (#379)
+
+### Changed
+- Kodiak is now free for personal GitHub accounts (#367, #368)
+- merge conflict notifications now takes priority over [`merge.blacklist_title_regex`](https://kodiakhq.com/docs/config-reference#mergeblacklist_title_regex). (#371)
+- skip branch deletion if GitHub branch deletion is enabled on the repository (#382)
+- 
+
+### Fixed
+- fix trial/subscription expiration timezone to show correct timezone. Previously it was just saying "UTC". (#363)
+- fix start subscription form to default to the current seat usage. Also display warning when user selects fewer seats than current usage. (#367)
+- fixed dashboard oauth login flow not handling organization collaborators. (#375)
+- fixed logic to queue pull request for reevaluation when UNKNOWN mergeability status check is received. (#380)
+- fixed `merge.update_branch_immediately` logic causing merge loop to return unintentionally. (#381)
+
+### Removed
+- removed invalid "quickstart" link from navbar (#370)
+
 ## 0.21.0 - 2020-05-05
 
 ### Added
