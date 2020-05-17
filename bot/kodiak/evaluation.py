@@ -425,7 +425,7 @@ async def mergeable(
     if (
         pull_request.mergeStateStatus == MergeStateStatus.DIRTY
         or pull_request.mergeable == MergeableState.CONFLICTING
-    ):
+    ) and pull_request.state == PullRequestState.OPEN:
         await block_merge(api, pull_request, "merge conflict")
         # remove label if configured and send message
         if config.merge.notify_on_conflict and config.merge.require_automerge_label:
