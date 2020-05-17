@@ -34,7 +34,7 @@ from kodiak.queries import (
     PullRequestAuthor,
     PullRequestState,
     PushAllowance,
-    PushAllowanceActorApp,
+    PushAllowanceActor,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -653,7 +653,30 @@ async def test_mergeable_missing_push_allowance_correct() -> None:
     branch_protection = create_branch_protection()
     branch_protection.restrictsPushes = True
     branch_protection.pushAllowances = NodeListPushAllowance(
-        nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=534524))]
+        nodes=[PushAllowance(actor=PushAllowanceActor(databaseId=534524))]
+    )
+    await mergeable(api=api, branch_protection=branch_protection)
+    assert api.queue_for_merge.called is True
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_push_allowance_correct_null_database_id() -> None:
+    """
+    Verify we can handle a null databaseId for the PushAllowanceActor
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
+    branch_protection.restrictsPushes = True
+    branch_protection.pushAllowances = NodeListPushAllowance(
+        nodes=[
+            PushAllowance(actor=PushAllowanceActor(databaseId=None)),
+            PushAllowance(actor=PushAllowanceActor(databaseId=534524)),
+        ]
     )
     await mergeable(api=api, branch_protection=branch_protection)
     assert api.queue_for_merge.called is True

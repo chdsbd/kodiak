@@ -29,7 +29,7 @@ from kodiak.queries import (
     PullRequestAuthor,
     PullRequestState,
     PushAllowance,
-    PushAllowanceActorApp,
+    PushAllowanceActor,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -133,7 +133,10 @@ def block_event() -> EventInfoResponse:
         requiresCommitSignatures=False,
         restrictsPushes=True,
         pushAllowances=NodeListPushAllowance(
-            nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=53453))]
+            nodes=[
+                PushAllowance(actor=PushAllowanceActor(databaseId=None)),
+                PushAllowance(actor=PushAllowanceActor(databaseId=53453)),
+            ]
         ),
     )
 
