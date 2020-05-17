@@ -1257,6 +1257,43 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
 
 
 @pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_pull_request_merged() -> None:
+    """
+    If the pull request is merged we shouldn't error on merge conflict.
+
+
+    On merge we will get the following values when we fetch pull request information:
+
+        "mergeStateStatus": "DIRTY"
+        "state": "MERGED"
+        "mergeable": "CONFLICTING"
+
+    Although the PR is said to be dirty or conflicting, we don't want to leave a
+    comment because the pull request is already merged.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+    pull_request.state = PullRequestState.MERGED
+    config.merge.notify_on_conflict = True
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.dequeue.call_count == 1
+
+    assert api.set_status.call_count == 0
+    assert api.remove_label.call_count == 0
+    assert api.create_comment.call_count == 0
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_pull_request_need_test_commit() -> None:
     """
     When you view a PR on GitHub, GitHub makes a test commit to see if a PR can
