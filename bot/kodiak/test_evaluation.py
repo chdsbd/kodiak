@@ -1533,20 +1533,16 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run() -> N
 
 
 @pytest.mark.asyncio
-async def test_mergeable_travis_ci_checks(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_travis_ci_checks() -> None:
     """
     GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,push}" become "continuous-integration/travis-ci" in requiredStatusChecks.
     """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    context = create_context()
+
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["continuous-integration/travis-ci"]
@@ -1555,22 +1551,9 @@ async def test_mergeable_travis_ci_checks(
 
     await mergeable(
         api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
         pull_request=pull_request,
         branch_protection=branch_protection,
-        review_requests=[],
-        reviews=[review],
         contexts=[context],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
         check_runs=[],
     )
     assert api.set_status.call_count == 1
