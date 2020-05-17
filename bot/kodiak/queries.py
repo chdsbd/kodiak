@@ -294,12 +294,13 @@ mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
 """
 
 
-class PushAllowanceActorApp(BaseModel):
+class PushAllowanceActor(BaseModel):
     """
     https://developer.github.com/v4/object/app/
     """
 
-    databaseId: int
+    # databaseId will be None for non github apps (users, organizations, teams).
+    databaseId: Optional[int]
 
 
 class PushAllowance(BaseModel):
@@ -307,7 +308,7 @@ class PushAllowance(BaseModel):
     https://developer.github.com/v4/object/pushallowance/
     """
 
-    actor: PushAllowanceActorApp
+    actor: PushAllowanceActor
 
 
 class NodeListPushAllowance(BaseModel):

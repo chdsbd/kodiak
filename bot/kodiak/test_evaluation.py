@@ -34,7 +34,7 @@ from kodiak.queries import (
     PullRequestAuthor,
     PullRequestState,
     PushAllowance,
-    PushAllowanceActorApp,
+    PushAllowanceActor,
     RepoInfo,
     StatusContext,
     StatusState,
@@ -653,7 +653,7 @@ async def test_mergeable_missing_push_allowance_correct() -> None:
     branch_protection = create_branch_protection()
     branch_protection.restrictsPushes = True
     branch_protection.pushAllowances = NodeListPushAllowance(
-        nodes=[PushAllowance(actor=PushAllowanceActorApp(databaseId=534524))]
+        nodes=[PushAllowance(actor=PushAllowanceActor(databaseId=534524))]
     )
     await mergeable(api=api, branch_protection=branch_protection)
     assert api.queue_for_merge.called is True

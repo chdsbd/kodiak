@@ -212,6 +212,9 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
 
 def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
     for push_allowance in push_allowances:
+        # a null databaseId indicates this is not a GitHub App.
+        if push_allowance.actor.databaseId is None:
+            continue
         if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
             return False
     return True
