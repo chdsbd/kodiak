@@ -6,14 +6,13 @@
 
 [install app](https://github.com/marketplace/kodiakhq) | [documentation](https://kodiakhq.com/docs/quickstart) | [web dashboard](https://app.kodiakhq.com)
 
-Kodiak automates your GitHub workflow:
+Automate your GitHub Pull Requests
 
-- Simple & Configurable — a simple configuration file with smart defaults will get you started in minutes
-- Update — update your branches automatically
-- Merge — use Kodiak's simple configuration with GitHub Branch Protection to merge pull requests automatically
-- Delete — remove your old branches automatically
+- Auto Update – Keep your PRs up to date with `master` automatically
+- Auto Merge – Add the `automerge` label to auto merge once CI and Approvals pass.
+- Bot Collaboration – Combine Kodiak with a dependency bot (dependabot, snyk, greenskeeper.io) to automate updating of dependencies
 
-Configure Kodiak to automate your workflow in minutes!
+And more! Checkout [the Kodiak docs](https://kodiakhq.com/docs/quickstart) to get started automating your GitHub PRs.
 
 ## Installation
 
@@ -24,6 +23,12 @@ Kodiak is available through the GitHub Marketplace.
 _If you'd rather run Kodiak yourself, check out the [self hosting page](https://kodiakhq.com/docs/self-hosting) in our docs._
 
 View activity via the dashboard at <https://app.kodiakhq.com>.
+
+
+## Example
+[![kodiak pull request flow](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/marketplace+listing+image.svg)](https://github.com/marketplace/kodiakhq)
+
+Kodiak automatically updates branches, merges PRs and more!
 
 ## [Documentation](https://kodiakhq.com)
 
