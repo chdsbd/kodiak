@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from json import JSONDecodeError
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Optional, Type
 
 import structlog
 from requests_async import HTTPError, Response

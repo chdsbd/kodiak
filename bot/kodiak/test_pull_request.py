@@ -1,7 +1,9 @@
+from __future__ import annotations
 from typing import Any, Type, cast
 
 import pytest
 import requests
+from typing_extensions import Protocol
 
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.errors import ApiCallException
@@ -88,9 +90,29 @@ async def noop() -> None:
     return None
 
 
-def create_client() -> Client:
+class FakeClientProtocol(Protocol):
+    merge_pull_request_response: requests.Response
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        ...
+
+    async def __aenter__(self) -> FakeClientProtocol:
+        ...
+
+    async def __aexit__(
+        self, exc_type: object, exc_value: object, traceback: object
+    ) -> None:
+        ...
+
+    async def merge_pull_request(
+        self, number: int, merge_method: str, commit_title: str, commit_message: str
+    ) -> requests.Response:
+        ...
+
+
+def create_client() -> Type[FakeClientProtocol]:
     class FakeClient:
-        merge_pull_request_response = requests.Response()
+        merge_pull_request_response: requests.Response = requests.Response()
 
         def __init__(self, *args: object, **kwargs: object) -> None:
             pass
@@ -111,19 +133,24 @@ def create_client() -> Client:
     return FakeClient
 
 
+def create_response(content: bytes, status_code: int) -> requests.Response:
+    res = requests.Response()
+    cast(Any, res)._content = content
+    res.status_code = status_code
+    return res
+
+
 @pytest.mark.asyncio
 async def test_pr_v2_merge() -> None:
     client = create_client()
-    success_response = requests.Response()
-    cast(
-        Any, success_response
-    )._content = b"""{
+    client.merge_pull_request_response = create_response(
+        content=b"""{
       "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e",
       "merged": true,
       "message": "Pull Request successfully merged"
-    }"""
-    success_response.status_code = 200
-    client.merge_pull_request_response = success_response
+    }""",
+        status_code=200,
+    )
 
     pr_v2 = PRV2(
         event=create_event(),
@@ -142,12 +169,10 @@ async def test_pr_v2_merge() -> None:
 @pytest.mark.asyncio
 async def test_pr_v2_merge_rebase_error() -> None:
     client = create_client()
-    success_response = requests.Response()
-    cast(
-        Any, success_response
-    )._content = b"""{"message":"This branch can't be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}"""
-    success_response.status_code = 405
-    client.merge_pull_request_response = success_response
+    client.merge_pull_request_response = create_response(
+        content=b"""{"message":"This branch can't be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}""",
+        status_code=405,
+    )
 
     pr_v2 = PRV2(
         event=create_event(),
@@ -169,10 +194,9 @@ async def test_pr_v2_merge_rebase_error() -> None:
 @pytest.mark.asyncio
 async def test_pr_v2_merge_service_unavailable() -> None:
     client = create_client()
-    success_response = requests.Response()
-    cast(Any, success_response)._content = b"""<html>Service Unavailable</html>"""
-    success_response.status_code = 503
-    client.merge_pull_request_response = success_response
+    client.merge_pull_request_response = create_response(
+        content=b"""<html>Service Unavailable</html>""", status_code=503
+    )
 
     pr_v2 = PRV2(
         event=create_event(),
