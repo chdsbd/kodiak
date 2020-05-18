@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Any, Type, cast
+
+from typing import Any, Awaitable, Callable, Optional, Type, cast
 
 import pytest
 import requests
@@ -140,6 +141,30 @@ def create_response(content: bytes, status_code: int) -> requests.Response:
     return res
 
 
+def create_prv2(
+    event: Optional[EventInfoResponse] = None,
+    install: str = "88443234",
+    owner: str = "delos",
+    repo: str = "incite",
+    number: int = 8634,
+    dequeue_callback: Callable[[], Awaitable] = noop,
+    queue_for_merge_callback: Callable[[], Awaitable] = noop,
+    requeue_callback: Callable[[], Awaitable] = noop,
+    client: Optional[Type[FakeClientProtocol]] = None,
+) -> PRV2:
+    return PRV2(
+        event=event if event is not None else create_event(),
+        install=install,
+        owner=owner,
+        repo=repo,
+        number=number,
+        dequeue_callback=dequeue_callback,
+        queue_for_merge_callback=queue_for_merge_callback,
+        requeue_callback=requeue_callback,
+        client=cast(Type[Client], client if client is not None else create_client()),
+    )
+
+
 @pytest.mark.asyncio
 async def test_pr_v2_merge() -> None:
     client = create_client()
@@ -152,17 +177,7 @@ async def test_pr_v2_merge() -> None:
         status_code=200,
     )
 
-    pr_v2 = PRV2(
-        event=create_event(),
-        install="88443234",
-        owner="delos",
-        repo="incite",
-        number=8534,
-        dequeue_callback=noop,
-        queue_for_merge_callback=noop,
-        client=cast(Type[Client], client),
-        requeue_callback=noop,
-    )
+    pr_v2 = create_prv2(client=client)
     await pr_v2.merge("squash", commit_title="", commit_message="")
 
 
@@ -174,17 +189,7 @@ async def test_pr_v2_merge_rebase_error() -> None:
         status_code=405,
     )
 
-    pr_v2 = PRV2(
-        event=create_event(),
-        install="88443234",
-        owner="delos",
-        repo="incite",
-        number=8534,
-        dequeue_callback=noop,
-        queue_for_merge_callback=noop,
-        client=cast(Type[Client], client),
-        requeue_callback=noop,
-    )
+    pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
         await pr_v2.merge("squash", commit_title="", commit_message="")
     assert e.value.method == "merge"
@@ -198,17 +203,7 @@ async def test_pr_v2_merge_service_unavailable() -> None:
         content=b"""<html>Service Unavailable</html>""", status_code=503
     )
 
-    pr_v2 = PRV2(
-        event=create_event(),
-        install="88443234",
-        owner="delos",
-        repo="incite",
-        number=8534,
-        dequeue_callback=noop,
-        queue_for_merge_callback=noop,
-        client=cast(Type[Client], client),
-        requeue_callback=noop,
-    )
+    pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
         await pr_v2.merge("squash", commit_title="", commit_message="")
     assert e.value.method == "merge"
