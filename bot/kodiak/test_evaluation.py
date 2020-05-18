@@ -16,7 +16,7 @@ from kodiak.config import (
     MergeTitleStyle,
 )
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.evaluation import PRAPI, MergeBody, get_merge_body
+from kodiak.evaluation import PRAPI, ApiErrorMessage, MergeBody, get_merge_body
 from kodiak.evaluation import mergeable as mergeable_func
 from kodiak.queries import (
     BranchProtectionRule,
@@ -423,7 +423,7 @@ class MergeableType(Protocol):
         is_active_merge: bool = ...,
         skippable_check_timeout: int = ...,
         api_call_retry_timeout: int = ...,
-        api_call_retry_method_name: Optional[str] = ...,
+        api_call_retry_message: Optional[ApiErrorMessage] = ...,
         repository: RepoInfo = ...,
         subscription: Optional[Subscription] = ...,
         app_id: Optional[str] = ...,
@@ -450,7 +450,7 @@ def create_mergeable() -> MergeableType:
         is_active_merge: bool = False,
         skippable_check_timeout: int = 5,
         api_call_retry_timeout: int = 5,
-        api_call_retry_method_name: Optional[str] = None,
+        api_call_retry_message: Optional[ApiErrorMessage] = None,
         repository: RepoInfo = create_repo_info(),
         subscription: Optional[Subscription] = None,
         app_id: Optional[str] = None,
@@ -477,7 +477,7 @@ def create_mergeable() -> MergeableType:
             is_active_merge=is_active_merge,
             skippable_check_timeout=skippable_check_timeout,
             api_call_retry_timeout=api_call_retry_timeout,
-            api_call_retry_method_name=api_call_retry_method_name,
+            api_call_retry_message=api_call_retry_message,
             subscription=subscription,
             app_id=app_id,
         )
@@ -502,7 +502,7 @@ async def mergeable(
     is_active_merge: bool,
     skippable_check_timeout: int,
     api_call_retry_timeout: int,
-    api_call_retry_method_name: Optional[str],
+    api_call_retry_message: Optional[ApiErrorMessage],
     repository: RepoInfo = create_repo_info(),
     subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
@@ -529,7 +529,7 @@ async def mergeable(
         is_active_merge=is_active_merge,
         skippable_check_timeout=skippable_check_timeout,
         api_call_retry_timeout=api_call_retry_timeout,
-        api_call_retry_method_name=api_call_retry_method_name,
+        api_call_retry_message=api_call_retry_message,
         subscription=subscription,
         app_id=app_id,
     )
@@ -2102,7 +2102,7 @@ async def test_mergeable_optimistic_update_wait_for_checks(
             is_active_merge=False,
             skippable_check_timeout=5,
             api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
+            api_call_retry_message=None,
             #
             merging=True,
         )
@@ -2155,7 +2155,7 @@ async def test_mergeable_wait_for_checks(
             is_active_merge=False,
             skippable_check_timeout=5,
             api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
+            api_call_retry_message=None,
             #
             merging=True,
         )
@@ -2203,7 +2203,7 @@ async def test_mergeable_unknown_merge_blockage(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
 
     assert api.set_status.call_count == 1
@@ -2249,7 +2249,7 @@ async def test_mergeable_prioritize_ready_to_merge(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
 
     assert api.set_status.call_count == 1
@@ -2294,7 +2294,7 @@ async def test_mergeable_merge(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         #
         merging=True,
     )
@@ -2340,7 +2340,7 @@ async def test_mergeable_queue_for_merge_no_position(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
 
     assert api.set_status.call_count == 0
@@ -2383,7 +2383,7 @@ async def test_mergeable_passing(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -2425,7 +2425,7 @@ async def test_mergeable_need_update(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -2490,7 +2490,7 @@ async def test_regression_mishandling_multiple_reviews_failing_reviews(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "changes requested" in api.set_status.calls[0]["msg"]
@@ -2561,7 +2561,7 @@ async def test_regression_mishandling_multiple_reviews_okay_reviews(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
@@ -2626,7 +2626,7 @@ async def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
@@ -2686,7 +2686,7 @@ async def test_regression_mishandling_multiple_reviews_okay_non_member_reviews(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
@@ -2731,7 +2731,7 @@ async def test_mergeable_do_not_merge(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.called is True
     assert "okay to merge" in api.set_status.calls[0]["msg"]
@@ -2779,7 +2779,7 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.called is True
     assert (
@@ -2829,7 +2829,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.called is True
     assert "okay to merge" in api.set_status.calls[0]["msg"]
@@ -2881,7 +2881,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.called is True
     assert (
@@ -2931,7 +2931,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
 
     assert api.update_branch.called is True
@@ -2974,7 +2974,7 @@ async def test_mergeable_api_call_retry_timeout(
         skippable_check_timeout=5,
         #
         api_call_retry_timeout=0,
-        api_call_retry_method_name="update branch",
+        api_call_retry_message=ApiErrorMessage(method="update branch"),
     )
 
     assert api.set_status.called is True
@@ -3023,7 +3023,7 @@ async def test_mergeable_api_call_retry_timeout_missing_method(
         skippable_check_timeout=5,
         #
         api_call_retry_timeout=0,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
 
     assert api.set_status.called is True
@@ -3073,7 +3073,7 @@ async def test_mergeable_skippable_check_timeout(
         valid_merge_methods=[MergeMethod.squash],
         is_active_merge=False,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         #
         merging=True,
         skippable_check_timeout=0,
@@ -3337,7 +3337,7 @@ async def test_mergeable_update_username_blacklist(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.update_branch.call_count == 0
     assert api.set_status.call_count == 1
@@ -3394,7 +3394,7 @@ async def test_mergeable_update_username_blacklist_merging(
             is_active_merge=False,
             skippable_check_timeout=5,
             api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
+            api_call_retry_message=None,
             #
             merging=True,
         )
@@ -3448,7 +3448,7 @@ async def test_mergeable_update_always(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.update_branch.call_count == 1
     assert api.set_status.call_count == 1
@@ -3503,7 +3503,7 @@ async def test_mergeable_update_always_require_automerge_label_missing_label(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.update_branch.call_count == 0
 
@@ -3558,7 +3558,7 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.update_branch.call_count == 1
     assert api.set_status.call_count == 1
@@ -3605,7 +3605,7 @@ async def test_mergeable_passing_update_always_enabled(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -3653,7 +3653,7 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request(
             is_active_merge=False,
             skippable_check_timeout=5,
             api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
+            api_call_retry_message=None,
             #
             merging=True,
         )
@@ -3699,7 +3699,7 @@ async def test_mergeable_auto_approve(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         #
         reviews=[],
     )
@@ -3751,7 +3751,7 @@ async def test_mergeable_auto_approve_existing_approval(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.approve_pull_request.call_count == 0
     assert api.set_status.call_count == 1
@@ -3801,7 +3801,7 @@ async def test_mergeable_auto_approve_old_approval(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
     )
     assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
@@ -3852,7 +3852,7 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         #
         reviews=[],
     )
@@ -3902,7 +3902,7 @@ async def test_mergeable_auto_approve_ignore_draft_pr(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         #
         reviews=[],
     )
@@ -3951,7 +3951,7 @@ async def test_mergeable_paywall_missing_subscription(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         repository=RepoInfo(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
@@ -4002,7 +4002,7 @@ async def test_mergeable_paywall_subscription_blocker(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         repository=RepoInfo(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
@@ -4069,7 +4069,7 @@ async def test_mergeable_paywall_public_repository(
             is_active_merge=False,
             skippable_check_timeout=5,
             api_call_retry_timeout=5,
-            api_call_retry_method_name=None,
+            api_call_retry_message=None,
             repository=RepoInfo(
                 merge_commit_allowed=True,
                 rebase_merge_allowed=True,
@@ -4121,7 +4121,7 @@ async def test_mergeable_paywall_missing_env(
         is_active_merge=False,
         skippable_check_timeout=5,
         api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
+        api_call_retry_message=None,
         repository=RepoInfo(
             merge_commit_allowed=True,
             rebase_merge_allowed=True,
