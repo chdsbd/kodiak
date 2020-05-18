@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Optional, Type
 
 import structlog
 from requests_async import HTTPError
@@ -145,6 +145,7 @@ class PRV2:
         dequeue_callback: Callable[[], Awaitable],
         requeue_callback: Callable[[], Awaitable],
         queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+        client: Optional[Type[Client]] = None,
     ):
         self.install = install
         self.owner = owner
@@ -155,6 +156,7 @@ class PRV2:
         self.requeue_callback = requeue_callback
         self.queue_for_merge_callback = queue_for_merge_callback
         self.log = logger.bind(install=install, owner=owner, repo=repo, number=number)
+        self.client = client or Client
 
     async def dequeue(self) -> None:
         self.log.info("dequeue")
@@ -179,7 +181,7 @@ class PRV2:
         alongside the summary/detail content.
         """
         self.log.info("set_status", message=msg, markdown_content=markdown_content)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.create_notification(
@@ -195,7 +197,7 @@ class PRV2:
     async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
         log = self.log.bind(ref=ref)
         log.info("pull_requests_for_ref", ref=ref)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             prs = await api_client.get_open_pull_requests(base=ref)
@@ -207,7 +209,7 @@ class PRV2:
 
     async def delete_branch(self, branch_name: str) -> None:
         self.log.info("delete_branch", branch_name=branch_name)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.delete_branch(branch=branch_name)
@@ -221,7 +223,7 @@ class PRV2:
 
     async def update_branch(self) -> None:
         self.log.info("update_branch")
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.update_branch(pull_number=self.number)
@@ -234,7 +236,7 @@ class PRV2:
 
     async def approve_pull_request(self) -> None:
         self.log.info("approve_pull_request")
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.approve_pull_request(pull_number=self.number)
@@ -245,7 +247,7 @@ class PRV2:
 
     async def trigger_test_commit(self) -> None:
         self.log.info("trigger_test_commit")
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.get_pull_request(number=self.number)
@@ -263,7 +265,7 @@ class PRV2:
         commit_message: Optional[str],
     ) -> None:
         self.log.info("merge", method=merge_method)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.merge_pull_request(
@@ -293,7 +295,7 @@ class PRV2:
         remove the PR label specified by `label_id` for a given `pr_number`
         """
         self.log.info("remove_label", label=label)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.delete_label(label, pull_number=self.number)
@@ -309,7 +311,7 @@ class PRV2:
        create a comment on the specified `pr_number` with the given `body` as text.
         """
         self.log.info("create_comment", body=body)
-        async with Client(
+        async with self.client(
             installation_id=self.install, owner=self.owner, repo=self.repo
         ) as api_client:
             res = await api_client.create_comment(body=body, pull_number=self.number)
