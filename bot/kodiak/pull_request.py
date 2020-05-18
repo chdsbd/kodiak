@@ -119,7 +119,9 @@ async def evaluate_pr(
             # if we have some api exception, it's likely a temporary error that
             # can be resolved by calling GitHub again.
             if api_call_retry_timeout:
-                api_call_retry_message = ApiErrorMessage(method=e.method)
+                api_call_retry_message = ApiErrorMessage(
+                    method=e.method, description=e.description
+                )
                 api_call_retry_timeout -= 1
                 log.info("problem contacting remote api. retrying")
                 continue

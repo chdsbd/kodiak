@@ -142,7 +142,7 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
 @dataclass
 class ApiErrorMessage:
     method: str
-    description: Optional[str] = None
+    description: Optional[str]
 
 
 class PRAPI(Protocol):

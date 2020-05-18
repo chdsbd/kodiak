@@ -2974,7 +2974,9 @@ async def test_mergeable_api_call_retry_timeout(
         skippable_check_timeout=5,
         #
         api_call_retry_timeout=0,
-        api_call_retry_message=ApiErrorMessage(method="update branch"),
+        api_call_retry_message=ApiErrorMessage(
+            method="update branch", description=None
+        ),
     )
 
     assert api.set_status.called is True
