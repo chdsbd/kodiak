@@ -992,7 +992,7 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels",
                 json=dict(labels=[label]),
                 headers=headers,
             )
