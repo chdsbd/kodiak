@@ -350,10 +350,10 @@ async def mergeable(
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
 
-    if config.merge.merge_failure_label in pull_request.labels:
+    if config.disable_bot_label in pull_request.labels:
         await api.dequeue()
         await api.set_status(
-            f"🚨 kodiak disabled by merge.merge_failure_label ({config.merge.merge_failure_label}). Remove label to re-enable Kodiak.",
+            f"🚨 kodiak disabled by disable_bot_label ({config.disable_bot_label}). Remove label to re-enable Kodiak.",
             latest_commit_sha=pull_request.latest_sha,
         )
         return
@@ -777,15 +777,15 @@ branch protection requirements.
         except GitHubApiInternalServerError:
             # if require_automerge_label is enabled, we'll remove that to
             # disable Kodiak for the pull request. If disabled, we'll add a new
-            # label (merge.merge_failure_label) to disable Kodiak.
+            # label (disable_bot_label) to disable Kodiak.
             if config.merge.require_automerge_label:
                 automerge_label = config.merge.automerge_label
                 error_message = f"please re-add the `{automerge_label}` label"
                 await api.remove_label(automerge_label)
             else:
-                merge_failure_label = config.merge.merge_failure_label
+                merge_failure_label = config.disable_bot_label
                 error_message = f"please remove the `{merge_failure_label}` label"
-                await api.add_label(config.merge.merge_failure_label)
+                await api.add_label(config.disable_bot_label)
 
             await block_merge(
                 api, pull_request, "Cannot merge due to GitHub API failure."

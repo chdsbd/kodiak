@@ -33,7 +33,6 @@
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
-        "merge_failure_label": "kodiak:merge-failed",
         "prioritize_ready_to_merge": false,
         "do_not_merge": false
       },
@@ -66,6 +65,11 @@
           "$ref": "#/definitions/Approve"
         }
       ]
+    },
+    "disable_bot_label": {
+      "title": "Disable Bot Label",
+      "default": "kodiak:disabled",
+      "type": "string"
     }
   },
   "required": [
@@ -211,11 +215,6 @@
           "title": "Update Branch Immediately",
           "default": false,
           "type": "boolean"
-        },
-        "merge_failure_label": {
-          "title": "Merge Failure Label",
-          "default": "kodiak:merge-failed",
-          "type": "string"
         },
         "prioritize_ready_to_merge": {
           "title": "Prioritize Ready To Merge",

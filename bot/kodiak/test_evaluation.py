@@ -4195,7 +4195,7 @@ async def test_mergeable_merge_pull_request_api_exception() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_merge_pull_request_api_exception_require_automerge_label_disabled() -> None:
     """
-    When merge.require_automerge_label is disabled we cannot use the merge.automerge_label to disable merging. Instead we add merge.merge_failure_label and leave a similar comment.
+    When merge.require_automerge_label is disabled we cannot use the merge.automerge_label to disable merging. Instead we add disable_bot_label and leave a similar comment.
     """
     api = create_api()
     mergeable = create_mergeable()
@@ -4212,14 +4212,14 @@ async def test_mergeable_merge_pull_request_api_exception_require_automerge_labe
     assert api.dequeue.call_count == 1
     assert api.remove_label.call_count == 0
     assert api.add_label.call_count == 1
-    assert api.add_label.calls[0]["label"] == config.merge.merge_failure_label
+    assert api.add_label.calls[0]["label"] == config.disable_bot_label
     assert api.create_comment.call_count == 1
     assert (
         "This PR could not be merged because the GitHub API returned an internal server"
         in api.create_comment.calls[0]["body"]
     )
     assert (
-        f"remove the `{config.merge.merge_failure_label}` label"
+        f"remove the `{config.disable_bot_label}` label"
         in api.create_comment.calls[0]["body"]
     )
 
@@ -4231,7 +4231,7 @@ async def test_mergeable_merge_pull_request_api_exception_require_automerge_labe
 async def test_mergeable_merge_failure_label() -> None:
     """
     Kodiak should take no action on a pull request when
-    merge.merge_failure_label is applied. This is similar to missing an
+    disable_bot_label is applied. This is similar to missing an
     automerge label when require_automerge_label is enabled.
     """
     api = create_api()
@@ -4240,13 +4240,11 @@ async def test_mergeable_merge_failure_label() -> None:
     pull_request = create_pull_request()
 
     config.merge.require_automerge_label = False
-    pull_request.labels = [config.merge.merge_failure_label]
+    pull_request.labels = [config.disable_bot_label]
 
     await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
     assert api.set_status.call_count == 1
-    assert (
-        "kodiak disabled by merge.merge_failure_label" in api.set_status.calls[0]["msg"]
-    )
+    assert "kodiak disabled by disable_bot_label" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
 
     assert api.update_branch.call_count == 0
