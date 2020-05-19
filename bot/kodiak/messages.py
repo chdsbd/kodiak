@@ -8,11 +8,12 @@ FOOTER = """
 If you need help, you can open a GitHub issue, check the docs, or reach us privately at support@kodiakhq.com.
 
 [docs](https://kodiakhq.com/docs/troubleshooting) | [dashboard](https://app.kodiakhq.com) | [support](https://kodiakhq.com/help)
+
 """
 
 
 def format(msg: str) -> str:
-    return msg + "\n\n" + FOOTER
+    return msg + "\n" + FOOTER
 
 
 def get_markdown_for_config(
