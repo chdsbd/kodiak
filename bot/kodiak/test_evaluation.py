@@ -4225,3 +4225,34 @@ async def test_mergeable_merge_pull_request_api_exception_require_automerge_labe
 
     assert api.queue_for_merge.call_count == 0
     assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_merge_failure_label() -> None:
+    """
+    Kodiak should take no action on a pull request when
+    merge.merge_failure_label is applied. This is similar to missing an
+    automerge label when require_automerge_label is enabled.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.require_automerge_label = False
+    pull_request.labels = [config.merge.merge_failure_label]
+
+    await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
+    assert api.set_status.call_count == 1
+    assert (
+        "kodiak disabled by merge.merge_failure_label" in api.set_status.calls[0]["msg"]
+    )
+    assert api.dequeue.call_count == 1
+
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.remove_label.call_count == 0
+    assert api.add_label.call_count == 0
+    assert api.create_comment.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.update_branch.call_count == 0

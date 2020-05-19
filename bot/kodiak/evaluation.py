@@ -350,6 +350,14 @@ async def mergeable(
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
 
+    if config.merge.merge_failure_label in pull_request.labels:
+        await api.dequeue()
+        await api.set_status(
+            f"🚨 kodiak disabled by merge.merge_failure_label ({config.merge.merge_failure_label}). Remove label to re-enable Kodiak.",
+            latest_commit_sha=pull_request.latest_sha,
+        )
+        return
+
     if (
         app_config.SUBSCRIPTIONS_ENABLED
         and repository.is_private
