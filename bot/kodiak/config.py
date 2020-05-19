@@ -83,6 +83,7 @@ class Merge(BaseModel):
     #
     # immediately update a PR whenever the target updates
     update_branch_immediately: bool = False
+    merge_failure_label: str = "kodiak:merge-failed"
     # if a PR is passing all checks and is able to be merged, merge it without
     # placing it in the queue. This will introduce some unfairness where those
     # waiting in the queue the longest will not be served first.

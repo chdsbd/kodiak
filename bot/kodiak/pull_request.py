@@ -283,6 +283,8 @@ class PRV2:
                     )
                 else:
                     self.log.exception("failed to merge pull request", res=res)
+                if e.response is not None and e.response.status_code == 500:
+                    raise GitHubApiInternalServerError
                 # we raise an exception to retry this request.
                 raise ApiCallException("merge")
 
