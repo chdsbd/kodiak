@@ -4175,6 +4175,7 @@ async def test_mergeable_merge_pull_request_api_exception() -> None:
     assert "Cannot merge due to GitHub API failure" in api.set_status.calls[1]["msg"]
     assert api.merge.call_count == 1
     assert api.dequeue.call_count == 1
+    assert api.add_label.call_count == 0
     assert api.remove_label.call_count == 1
     assert api.remove_label.calls[0]["label"] == config.merge.automerge_label
     assert api.create_comment.call_count == 1
@@ -4184,6 +4185,41 @@ async def test_mergeable_merge_pull_request_api_exception() -> None:
     )
     assert (
         f"re-add the `{config.merge.automerge_label}` label"
+        in api.create_comment.calls[0]["body"]
+    )
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_merge_pull_request_api_exception_require_automerge_label_disabled() -> None:
+    """
+    When merge.require_automerge_label is disabled we cannot use the merge.automerge_label to disable merging. Instead we add merge.merge_failure_label and leave a similar comment.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    api.merge.raises = GitHubApiInternalServerError
+    config.merge.require_automerge_label = False
+
+    await mergeable(api=api, config=config, merging=True)
+    assert api.set_status.call_count == 2
+    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+    assert "Cannot merge due to GitHub API failure" in api.set_status.calls[1]["msg"]
+    assert api.merge.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert api.remove_label.call_count == 0
+    assert api.add_label.call_count == 1
+    assert api.add_label.calls[0]["label"] == config.merge.merge_failure_label
+    assert api.create_comment.call_count == 1
+    assert (
+        "This PR could not be merged because the GitHub API returned an internal server"
+        in api.create_comment.calls[0]["body"]
+    )
+    assert (
+        f"remove the `{config.merge.merge_failure_label}` label"
         in api.create_comment.calls[0]["body"]
     )
 
