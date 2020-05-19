@@ -12,7 +12,11 @@ from typing_extensions import Protocol
 
 from kodiak import app_config, config, messages
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
-from kodiak.errors import PollForever, RetryForSkippableChecks
+from kodiak.errors import (
+    GitHubApiInternalServerError,
+    PollForever,
+    RetryForSkippableChecks,
+)
 from kodiak.messages import (
     get_markdown_for_config,
     get_markdown_for_paywall,
@@ -776,7 +780,7 @@ branch protection requirements.
                 await api.add_label(config.merge.merge_failure_label)
 
             await block_merge(
-                api, pull_request, f"Cannot merge due to GitHub API failure."
+                api, pull_request, "Cannot merge due to GitHub API failure."
             )
             body = messages.format(
                 textwrap.dedent(

@@ -7,7 +7,12 @@ import structlog
 from requests_async import HTTPError
 
 import kodiak.app_config as conf
-from kodiak.errors import ApiCallException, PollForever, RetryForSkippableChecks
+from kodiak.errors import (
+    ApiCallException,
+    GitHubApiInternalServerError,
+    PollForever,
+    RetryForSkippableChecks,
+)
 from kodiak.evaluation import mergeable
 from kodiak.queries import Client, EventInfoResponse
 
@@ -291,6 +296,21 @@ class PRV2:
     async def queue_for_merge(self) -> Optional[int]:
         self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback()
+
+    async def add_label(self, label: str) -> None:
+        """
+        add label to pull request
+        """
+        self.log.info("add_label", label=label)
+        async with self.client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.add_label(label, pull_number=self.number)
+            try:
+                res.raise_for_status()
+            except HTTPError:
+                self.log.exception("failed to delete label", label=label, res=res)
+                raise ApiCallException("add label")
 
     async def remove_label(self, label: str) -> None:
         """

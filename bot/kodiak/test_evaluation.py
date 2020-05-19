@@ -108,6 +108,11 @@ class MockRemoveLabel(BaseMockFunc):
         self.log_call(dict(label=label))
 
 
+class MockAddLabel(BaseMockFunc):
+    async def __call__(self, label: str) -> None:
+        self.log_call(dict(label=label))
+
+
 class MockCreateComment(BaseMockFunc):
     async def __call__(self, body: str) -> None:
         self.log_call(dict(body=body))
@@ -165,6 +170,7 @@ class MockPrApi:
         self.pull_requests_for_ref = MockPullRequestsForRef()
         self.delete_branch = MockDeleteBranch()
         self.remove_label = MockRemoveLabel()
+        self.add_label = MockAddLabel()
         self.create_comment = MockCreateComment()
         self.trigger_test_commit = MockTriggerTestCommit()
         self.merge = MockMerge()
