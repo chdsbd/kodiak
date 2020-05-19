@@ -309,7 +309,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to delete label", label=label, res=res)
+                self.log.exception("failed to add label", label=label, res=res)
                 raise ApiCallException("add label")
 
     async def remove_label(self, label: str) -> None:
