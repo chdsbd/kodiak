@@ -83,6 +83,9 @@ class Merge(BaseModel):
     #
     # immediately update a PR whenever the target updates
     update_branch_immediately: bool = False
+    # label to apply to pull request when Kodiak encounters a 500 error merging
+    # a pull request. This is only used when merge.require_automerge_label is
+    # disabled.
     merge_failure_label: str = "kodiak:merge-failed"
     # if a PR is passing all checks and is able to be merged, merge it without
     # placing it in the queue. This will introduce some unfairness where those
