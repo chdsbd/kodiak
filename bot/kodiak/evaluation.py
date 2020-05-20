@@ -10,9 +10,13 @@ import structlog
 import toml
 from typing_extensions import Protocol
 
-from kodiak import app_config, config
+from kodiak import app_config, config, messages
 from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
-from kodiak.errors import PollForever, RetryForSkippableChecks
+from kodiak.errors import (
+    GitHubApiInternalServerError,
+    PollForever,
+    RetryForSkippableChecks,
+)
 from kodiak.messages import (
     get_markdown_for_config,
     get_markdown_for_paywall,
@@ -162,6 +166,9 @@ class PRAPI(Protocol):
         ...
 
     async def remove_label(self, label: str) -> None:
+        ...
+
+    async def add_label(self, label: str) -> None:
         ...
 
     async def create_comment(self, body: str) -> None:
@@ -342,6 +349,14 @@ async def mergeable(
 
     # we keep the configuration errors before the rest of the application logic
     # so configuration issues are surfaced as early as possible.
+
+    if config.disable_bot_label in pull_request.labels:
+        await api.dequeue()
+        await api.set_status(
+            f"🚨 kodiak disabled by disable_bot_label ({config.disable_bot_label}). Remove label to re-enable Kodiak.",
+            latest_commit_sha=pull_request.latest_sha,
+        )
+        return
 
     if (
         app_config.SUBSCRIPTIONS_ENABLED
@@ -750,11 +765,41 @@ branch protection requirements.
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
         merge_args = get_merge_body(config, pull_request)
         await set_status("⛴ attempting to merge PR (merging)")
-        await api.merge(
-            merge_method=merge_args.merge_method,
-            commit_title=merge_args.commit_title,
-            commit_message=merge_args.commit_message,
-        )
+        try:
+            await api.merge(
+                merge_method=merge_args.merge_method,
+                commit_title=merge_args.commit_title,
+                commit_message=merge_args.commit_message,
+            )
+        # if we encounter an internal server error (status code 500), it is
+        # _not_ safe to retry. Instead we mark the pull request as unmergable
+        # and require a user to re-enable Kodiak on the pull request.
+        except GitHubApiInternalServerError:
+            logger.warning(
+                "kodiak encountered GitHub API error merging pull request",
+                exc_info=True,
+            )
+            # We add the disable_bot_label to disable Kodiak from taking any
+            # action to update, approve, comment, label, or merge.
+            disable_bot_label = config.disable_bot_label
+            await api.add_label(disable_bot_label)
+
+            await block_merge(
+                api, pull_request, "Cannot merge due to GitHub API failure."
+            )
+            body = messages.format(
+                textwrap.dedent(
+                    f"""
+            This PR could not be merged because the GitHub API returned an internal server error. To enable Kodiak on this pull request please remove the `{disable_bot_label}` label.
+
+            When the GitHub API returns an internal server error (HTTP status code 500), it is not safe for Kodiak to retry merging.
+
+            For more information please see https://kodiakhq.com/docs/troubleshooting#merge-errors
+            """
+                )
+            )
+            await api.create_comment(body)
+
     else:
         position_in_queue = await api.queue_for_merge()
         if position_in_queue is None:

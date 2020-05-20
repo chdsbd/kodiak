@@ -124,6 +124,11 @@ class V1(BaseModel):
     merge: Merge = Merge()
     update: Update = Update()
     approve: Approve = Approve()
+    # when added to a Pull Request Kodiak will be prevented from taking any action
+    # (approvals, updates, merges, comments, labels). Kodiak will still set
+    # status checks. A user should generally not need to change this label as it
+    # should rarely be applied.
+    disable_bot_label: str = "kodiak:disabled"
 
     @validator("version", pre=True, always=True)
     def correct_version(cls, v: int) -> int:

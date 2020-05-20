@@ -9,3 +9,7 @@ class PollForever(Exception):
 class ApiCallException(Exception):
     def __init__(self, method: str) -> None:
         self.method = method
+
+
+class GitHubApiInternalServerError(Exception):
+    pass
