@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, List, Mapping, Optional, Tuple, Union
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union
 
 import pydantic
 import pytest
@@ -16,9 +16,9 @@ from kodiak.config import (
     MergeTitleStyle,
 )
 from kodiak.errors import (
+    GitHubApiInternalServerError,
     PollForever,
     RetryForSkippableChecks,
-    GitHubApiInternalServerError,
 )
 from kodiak.evaluation import PRAPI, MergeBody, get_merge_body
 from kodiak.evaluation import mergeable as mergeable_func
@@ -128,7 +128,7 @@ class MockTriggerTestCommit(BaseMockFunc):
 
 
 class MockMerge(BaseMockFunc):
-    raises: Optional[Exception] = None
+    raises: Optional[Union[Type[Exception], Exception]] = None
 
     async def __call__(
         self,
