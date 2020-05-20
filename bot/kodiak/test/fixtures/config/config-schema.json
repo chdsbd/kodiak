@@ -65,6 +65,11 @@
           "$ref": "#/definitions/Approve"
         }
       ]
+    },
+    "disable_bot_label": {
+      "title": "Disable Bot Label",
+      "default": "kodiak:disabled",
+      "type": "string"
     }
   },
   "required": [

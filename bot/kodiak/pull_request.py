@@ -8,7 +8,12 @@ import structlog
 from requests_async import HTTPError, Response
 
 import kodiak.app_config as conf
-from kodiak.errors import ApiCallException, PollForever, RetryForSkippableChecks
+from kodiak.errors import (
+    ApiCallException,
+    GitHubApiInternalServerError,
+    PollForever,
+    RetryForSkippableChecks,
+)
 from kodiak.evaluation import ApiErrorMessage, mergeable
 from kodiak.queries import Client, EventInfoResponse
 
@@ -301,6 +306,8 @@ class PRV2:
                     )
                 else:
                     self.log.exception("failed to merge pull request", res=res)
+                if e.response is not None and e.response.status_code == 500:
+                    raise GitHubApiInternalServerError
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     "merge", description=get_key_from_response(res, "message")
@@ -309,6 +316,21 @@ class PRV2:
     async def queue_for_merge(self) -> Optional[int]:
         self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback()
+
+    async def add_label(self, label: str) -> None:
+        """
+        add label to pull request
+        """
+        self.log.info("add_label", label=label)
+        async with self.client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.add_label(label, pull_number=self.number)
+            try:
+                res.raise_for_status()
+            except HTTPError:
+                self.log.exception("failed to add label", label=label, res=res)
+                raise ApiCallException("add label")
 
     async def remove_label(self, label: str) -> None:
         """
