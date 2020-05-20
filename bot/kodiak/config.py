@@ -124,7 +124,7 @@ class V1(BaseModel):
     merge: Merge = Merge()
     update: Update = Update()
     approve: Approve = Approve()
-    # label to apply to pull request to disable Kodiak from taking any action
+    # when added to a Pull Request Kodiak will be prevented from taking any action
     # (approvals, updates, merges, comments, labels). Kodiak will still set
     # status checks. A user should generally not need to change this label as it
     # should rarely be applied.
