@@ -4160,42 +4160,9 @@ async def test_mergeable_paywall_missing_env(
 async def test_mergeable_merge_pull_request_api_exception() -> None:
     """
     If we attempt to merge a pull request but get an internal server error from
-    GitHub we should remove the automerge label to disable the bot and leave a
-    comment.
-    """
-    api = create_api()
-    mergeable = create_mergeable()
-    config = create_config()
-
-    api.merge.raises = GitHubApiInternalServerError
-
-    await mergeable(api=api, config=config, merging=True)
-    assert api.set_status.call_count == 2
-    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
-    assert "Cannot merge due to GitHub API failure" in api.set_status.calls[1]["msg"]
-    assert api.merge.call_count == 1
-    assert api.dequeue.call_count == 1
-    assert api.add_label.call_count == 0
-    assert api.remove_label.call_count == 1
-    assert api.remove_label.calls[0]["label"] == config.merge.automerge_label
-    assert api.create_comment.call_count == 1
-    assert (
-        "This PR could not be merged because the GitHub API returned an internal server"
-        in api.create_comment.calls[0]["body"]
-    )
-    assert (
-        f"re-add the `{config.merge.automerge_label}` label"
-        in api.create_comment.calls[0]["body"]
-    )
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.update_branch.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_merge_pull_request_api_exception_require_automerge_label_disabled() -> None:
-    """
-    When merge.require_automerge_label is disabled we cannot use the merge.automerge_label to disable merging. Instead we add disable_bot_label and leave a similar comment.
+    GitHub we should leave a comment and disable the bot via the
+    `disable_bot_label` label. This will help prevent the bot from running out
+    of control.
     """
     api = create_api()
     mergeable = create_mergeable()

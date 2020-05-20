@@ -775,17 +775,10 @@ branch protection requirements.
         # _not_ safe to retry. Instead we mark the pull request as unmergable
         # and require a user to re-enable Kodiak on the pull request.
         except GitHubApiInternalServerError:
-            # if require_automerge_label is enabled, we'll remove that to
-            # disable Kodiak for the pull request. If disabled, we'll add a new
-            # label (disable_bot_label) to disable Kodiak.
-            if config.merge.require_automerge_label:
-                automerge_label = config.merge.automerge_label
-                error_message = f"please re-add the `{automerge_label}` label"
-                await api.remove_label(automerge_label)
-            else:
-                merge_failure_label = config.disable_bot_label
-                error_message = f"please remove the `{merge_failure_label}` label"
-                await api.add_label(config.disable_bot_label)
+            # We add the disable_bot_label to disable Kodiak from taking any
+            # action to update, approve, comment, label, or merge.
+            disable_bot_label = config.disable_bot_label
+            await api.add_label(disable_bot_label)
 
             await block_merge(
                 api, pull_request, "Cannot merge due to GitHub API failure."
@@ -793,7 +786,7 @@ branch protection requirements.
             body = messages.format(
                 textwrap.dedent(
                     f"""
-            This PR could not be merged because the GitHub API returned an internal server error. To enable Kodiak on this pull request {error_message}.
+            This PR could not be merged because the GitHub API returned an internal server error. To enable Kodiak on this pull request please remove the `{disable_bot_label}` label.
 
             When the GitHub API returns an internal server error (HTTP status code 500), it is not safe for Kodiak to retry merging.
 
