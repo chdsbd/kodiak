@@ -775,6 +775,10 @@ branch protection requirements.
         # _not_ safe to retry. Instead we mark the pull request as unmergable
         # and require a user to re-enable Kodiak on the pull request.
         except GitHubApiInternalServerError:
+            logger.warning(
+                "kodiak encountered GitHub API error merging pull request",
+                exc_info=True,
+            )
             # We add the disable_bot_label to disable Kodiak from taking any
             # action to update, approve, comment, label, or merge.
             disable_bot_label = config.disable_bot_label
