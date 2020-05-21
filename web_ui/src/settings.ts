@@ -15,6 +15,8 @@ function getApiRoot(): string {
   return "https://api.kodiakhq.com"
 }
 export const API_ROOT = getApiRoot() || "https://api.kodiakhq.com"
+export const RELEASE = process.env.REACT_APP_KODIAK_RELEASE
+export const SENTRY_DSN = 'https://0012ad6693d042d1b57ac5f00918b3bd@o64108.ingest.sentry.io/3352104'
 export const installUrl = "https://github.com/marketplace/kodiakhq"
 export const docsUrl = "https://kodiakhq.com/docs/quickstart"
 export const helpUrl = "https://kodiakhq.com/help"
