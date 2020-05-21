@@ -4,8 +4,8 @@ import "./custom.scss"
 import App from "./components/App"
 import * as settings from "./settings"
 
-import * as Sentry from '@sentry/browser';
+import * as Sentry from "@sentry/browser"
 
-Sentry.init({ dsn: settings.SENTRY_DSN, release: settings.RELEASE });
+Sentry.init({ dsn: settings.SENTRY_DSN, release: settings.RELEASE })
 
 ReactDOM.render(<App />, document.getElementById("root"))
