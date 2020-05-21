@@ -65,13 +65,13 @@ interface IUsageBillingData {
     readonly endDate: string
     readonly expired: boolean
     readonly startedBy: {
-      readonly id: number
+      readonly id: string
       readonly name: string
       readonly profileImgUrl: string
     }
   } | null
   readonly activeUsers: ReadonlyArray<{
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
     readonly interactions: number
