@@ -13,7 +13,7 @@ export class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    Sentry.withScope(function(scope) {
+    Sentry.withScope(scope => {
       scope.setExtra("errorInfo", errorInfo)
       Sentry.captureException(error)
     })
