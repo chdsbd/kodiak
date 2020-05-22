@@ -40,4 +40,6 @@ It is dangerous to retry merging a pull request when GitHub returns an internal 
 
 This state where the branch has been merged but the pull request remains open would trigger Kodiak to erroneously merge in the pull request multiple times, as we've seen in [#397](https://github.com/chdsbd/kodiak/issues/397). To prevent this behavior Kodiak will disable itself on a pull request if it encounters an internal server error when merging a pull request.
 
+If Kodiak set the `disable_bot_label` label (default "kodiak:disabled") on your pull request you can remove the label to re-enable Kodiak. GitHub API instability is usually brief.
+
 Related issues: [#398](https://github.com/chdsbd/kodiak/pull/398), [#397](https://github.com/chdsbd/kodiak/issues/397)
