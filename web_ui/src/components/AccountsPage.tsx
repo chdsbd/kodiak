@@ -15,7 +15,7 @@ export function AccountsPage() {
 }
 
 interface IAccount {
-  readonly id: number
+  readonly id: string
   readonly name: string
   readonly profileImgUrl: string
 }

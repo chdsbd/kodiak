@@ -17,6 +17,7 @@ import { docsUrl, helpUrl } from "../settings"
 import { WebData } from "../webdata"
 import { useTeamApi } from "../useApi"
 import { Current } from "../world"
+import * as Sentry from "@sentry/browser"
 
 interface IDropdownToggleProps<T> {
   readonly id: string
@@ -99,6 +100,14 @@ function SideBarNavLink({
 
 export function SideBarNav() {
   const data = useTeamApi(Current.api.getCurrentAccount)
+  if (data.status === "success") {
+    Sentry.setUser({
+      id: data.data.user.id,
+      username: data.data.user.name,
+      account_id: data.data.org.id,
+      account_username: data.data.org.name,
+    })
+  }
   return <SideBarNavInner accounts={data} />
 }
 
@@ -254,17 +263,17 @@ function SideBarNavContainer({
 interface ISideBarNavInnerProps {
   readonly accounts: WebData<{
     readonly accounts: ReadonlyArray<{
-      readonly id: number
+      readonly id: string
       readonly name: string
       readonly profileImgUrl: string
     }>
     readonly org: {
-      readonly id: number
+      readonly id: string
       readonly name: string
       readonly profileImgUrl: string
     }
     readonly user: {
-      readonly id: number
+      readonly id: string
       readonly name: string
       readonly profileImgUrl: string
     }

@@ -1,4 +1,5 @@
 import React from "react"
+import * as Sentry from "@sentry/browser"
 
 export class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
   constructor(props: {}) {
@@ -11,8 +12,11 @@ export class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
     return { hasError: true }
   }
 
-  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
-    // TODO: Report to sentry.
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    Sentry.withScope(scope => {
+      scope.setExtra("errorInfo", errorInfo)
+      Sentry.captureException(error)
+    })
   }
 
   render() {

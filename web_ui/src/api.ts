@@ -50,13 +50,13 @@ export interface IUsageBillingPageApiResponse {
     readonly endDate: string
     readonly expired: boolean
     readonly startedBy: {
-      readonly id: number
+      readonly id: string
       readonly name: string
       readonly profileImgUrl: string
     }
   } | null
   readonly activeUsers: ReadonlyArray<{
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
     readonly interactions: number
@@ -94,24 +94,24 @@ export interface IActivityApiResponse {
 
 export interface IAccountsApiResponse
   extends ReadonlyArray<{
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
   }> {}
 
 export interface ICurrentAccountApiResponse {
   readonly org: {
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
   }
   readonly user: {
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
   }
   readonly accounts: ReadonlyArray<{
-    readonly id: number
+    readonly id: string
     readonly name: string
     readonly profileImgUrl: string
   }>
