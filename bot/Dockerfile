@@ -21,7 +21,4 @@ RUN rm -rf /var/app/pip-wheel-metadata/
 # install cli
 RUN poetry install
 
-# track release in sentry
-ARG SENTRY_RELEASE
-
 CMD poetry run uvicorn kodiak.main:app --host 0.0.0.0 --port $PORT

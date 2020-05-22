@@ -10,8 +10,6 @@ RUN yarn install
 
 COPY . /var/app
 
-ARG REACT_APP_KODIAK_RELEASE
-
 RUN node /var/app/scripts/build.js
 
 

@@ -11,5 +11,5 @@ if [ ! -z "$CIRCLE_TAG" ]; then
     LABEL="$CIRCLE_TAG"
 fi
 
-docker build --tag "$DOCKER_HUB_REPO:$LABEL" --build-arg SENTRY_RELEASE="$LABEL" .
+docker build --tag "$DOCKER_HUB_REPO:$LABEL" .
 docker push "$DOCKER_HUB_REPO:$LABEL"
