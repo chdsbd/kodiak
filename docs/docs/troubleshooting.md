@@ -34,8 +34,8 @@ If you use the "Restrict who can push to matching branches" branch protection se
 
 If you see Kodiak providing a status check of "Merging blocked by GitHub requirements", this likely means there is a branch protection setting that conflicts with Kodiak. If you see this issue persistently please contact us at support@kodiakhq.com.
 
-
 ### Merge Errors
+
 It is dangerous to retry merging a pull request when GitHub returns an internal server error (HTTP status code 500) because the merge can partially succeed in a way that will leave the pull request open, but the branch merged.
 
 This state where the branch has been merged but the pull request remains open would trigger Kodiak to erroneously merge in the pull request multiple times, as we've seen in [#397](https://github.com/chdsbd/kodiak/issues/397). To prevent this behavior Kodiak will disable itself on a pull request if it encounters an internal server error when merging a pull request.
