@@ -103,8 +103,16 @@ async def webhook_event_consumer(
     1. process mergeability information and update github check status for pr
     2. enqueue pr into repo queue for merging, if mergeability passed
     """
-    with sentry_sdk.Hub(sentry_sdk.Hub.current):
-        with sentry_sdk.configure_scope() as scope:
+
+    # We need to define a custom Hub so that we can set the scope correctly.
+    # Without creating a new hub we end up overwriting the scopes of other
+    # consumers.
+    # 
+    # https://github.com/getsentry/sentry-python/issues/147#issuecomment-432959196
+    # https://github.com/getsentry/sentry-python/blob/0da369f839ee2c383659c91ea8858abcac04b869/sentry_sdk/integrations/aiohttp.py#L80-L83
+    # https://github.com/getsentry/sentry-python/blob/464ca8dda09155fcc43dfbb6fa09cf00313bf5b8/sentry_sdk/integrations/asgi.py#L90-L113
+    with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
+        with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
         log = logger.bind(queue=queue_name)
         log.info("start webhook event consumer")
@@ -163,8 +171,8 @@ async def repo_queue_consumer(
     We only run one of these per repo as we can only merge one PR at a time
     to be efficient. This also alleviates the need of locks.
     """
-    with sentry_sdk.Hub(sentry_sdk.Hub.current):
-        with sentry_sdk.configure_scope() as scope:
+    with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
+        with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
         log = logger.bind(queue=queue_name)
         log.info("start repo_consumer")
