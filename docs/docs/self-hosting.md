@@ -22,6 +22,8 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     | pull request                |
     | pull request review         |
     | pull request review comment |
+    | push                        |
+    | status                      |
 
     - For the homepage URL any link should work.
     - A GitHub App secret is required for Kodiak to run.
