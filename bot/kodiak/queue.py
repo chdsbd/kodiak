@@ -103,11 +103,13 @@ async def webhook_event_consumer(
     1. process mergeability information and update github check status for pr
     2. enqueue pr into repo queue for merging, if mergeability passed
     """
-    log = logger.bind(queue=queue_name)
-    log.info("start webhook event consumer")
-
-    while True:
-        await process_webhook_event(connection, webhook_queue, queue_name, log)
+    with sentry_sdk.Hub(sentry_sdk.Hub.current):
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag("queue", queue_name)
+        log = logger.bind(queue=queue_name)
+        log.info("start webhook event consumer")
+        while True:
+            await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
 async def process_repo_queue(
@@ -161,12 +163,13 @@ async def repo_queue_consumer(
     We only run one of these per repo as we can only merge one PR at a time
     to be efficient. This also alleviates the need of locks.
     """
-    with sentry_sdk.configure_scope() as scope:
-        scope.set_tag("queue", queue_name)
-    log = logger.bind(queue=queue_name)
-    log.info("start repo_consumer")
-    while True:
-        await process_repo_queue(log, connection, queue_name)
+    with sentry_sdk.Hub(sentry_sdk.Hub.current):
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag("queue", queue_name)
+        log = logger.bind(queue=queue_name)
+        log.info("start repo_consumer")
+        while True:
+            await process_repo_queue(log, connection, queue_name)
 
 
 T = typing.TypeVar("T")
