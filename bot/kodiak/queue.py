@@ -107,7 +107,7 @@ async def webhook_event_consumer(
     # We need to define a custom Hub so that we can set the scope correctly.
     # Without creating a new hub we end up overwriting the scopes of other
     # consumers.
-    # 
+    #
     # https://github.com/getsentry/sentry-python/issues/147#issuecomment-432959196
     # https://github.com/getsentry/sentry-python/blob/0da369f839ee2c383659c91ea8858abcac04b869/sentry_sdk/integrations/aiohttp.py#L80-L83
     # https://github.com/getsentry/sentry-python/blob/464ca8dda09155fcc43dfbb6fa09cf00313bf5b8/sentry_sdk/integrations/asgi.py#L90-L113
