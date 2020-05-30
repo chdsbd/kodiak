@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional, cast
+from typing import Callable, List, Optional, Union, cast
 
 import pydantic
 import redis
@@ -15,6 +16,7 @@ from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 from django.utils import timezone
+from mypy_extensions import TypedDict
 from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
@@ -222,6 +224,24 @@ class AccountType(models.TextChoices):
     organization = "Organization"
 
 
+class SubscriptionExpired(TypedDict):
+    kind: Literal["subscription_expired"]
+
+
+class TrialExpired(TypedDict):
+    kind: Literal[
+        "trial_expired",
+    ]
+
+
+class SeatsExceeded(TypedDict):
+    kind: Literal["seats_exceeded"]
+    # a list of github account user ids that occupy seats. These users will
+    # be allowed to use Kodiak while any new users will be blocked by the
+    # paywall.
+    allowed_user_ids: List[int]
+
+
 class Account(BaseModel):
     """
     An GitHub Kodiak App installation for a GitHub organization or user.
@@ -315,14 +335,9 @@ class Account(BaseModel):
             bool, (self.trial_expiration - timezone.now()).total_seconds() > 0
         )
 
-    def get_active_user_count(self) -> int:
-        return len(
-            UserPullRequestActivity.get_active_users_in_last_30_days(account=self)
-        )
-
     def get_subscription_blocker(
         self,
-    ) -> Optional[Literal["subscription_expired", "trial_expired", "seats_exceeded"]]:
+    ) -> Optional[Union[SubscriptionExpired, TrialExpired, SeatsExceeded]]:
         """
         If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
 
@@ -342,17 +357,25 @@ class Account(BaseModel):
         subscription_quantity = (
             customer_info.subscription_quantity if customer_info else 0
         )
-        if subscription_quantity < self.get_active_user_count():
-            return "seats_exceeded"
+        active_users = UserPullRequestActivity.get_active_users_in_last_30_days(
+            account=self
+        )
+        if subscription_quantity < len(active_users):
+            allowed_user_ids = [
+                user.github_id for user in active_users[:subscription_quantity]
+            ]
+            return SeatsExceeded(
+                kind="seats_exceeded", allowed_user_ids=allowed_user_ids
+            )
 
         if customer_info:
             if customer_info.expired:
-                return "subscription_expired"
+                return SubscriptionExpired(kind="subscription_expired")
             # active subscription within active user limits.
             return None
 
         if self.trial_expired():
-            return "trial_expired"
+            return TrialExpired(kind="trial_expired")
 
         # the user has never signed up for a trial or subscription and has 0
         # active users.
@@ -368,9 +391,18 @@ class Account(BaseModel):
         """
         key = f"kodiak:subscription:{self.github_installation_id}".encode()
 
+        subscription_blocker = self.get_subscription_blocker()
         r.hset(key, b"account_id", str(self.id))  # type: ignore
-        subscription_blocker = self.get_subscription_blocker() or ""
-        r.hset(key, b"subscription_blocker", subscription_blocker.encode())  # type: ignore
+        subscription_blocker_kind: str = subscription_blocker[
+            "kind"
+        ] if subscription_blocker else ""
+        r.hset(key, b"subscription_blocker", subscription_blocker_kind.encode())  # type: ignore
+        if subscription_blocker is not None:
+            if subscription_blocker["kind"] == "seats_exceeded":
+                allowed_user_ids: str = json.dumps(
+                    subscription_blocker["allowed_user_ids"]
+                )
+                r.hset(key, b"allowed_user_ids", allowed_user_ids.encode())  # type: ignore
 
         # Trigger bot to reevaluate pull request mergeability.
         # We can use this to trigger the bot to remove the paywall status message on upgrades.
@@ -626,6 +658,7 @@ class ActiveUser:
     github_login: str
     github_id: int
     days_active: int
+    first_active_at: datetime.date
     last_active_at: datetime.date
 
     def profile_image(self) -> str:
@@ -672,6 +705,7 @@ class UserPullRequestActivity(BaseModel):
                 max(a.github_user_login) github_user_login,
                 a.github_user_id,
                 count(distinct a.activity_date) days_active,
+                min(a.activity_date) first_active_at,
                 max(a.activity_date) last_active_at
             FROM
                 user_pull_request_activity a
@@ -691,7 +725,9 @@ class UserPullRequestActivity(BaseModel):
                 AND b.is_private_repository = TRUE
                 AND a.github_installation_id = %s
             GROUP BY
-                a.github_user_id;
+                a.github_user_id
+            ORDER BY
+                min(a.activity_date) ASC;
             """,
                 [account.github_installation_id],
             )
@@ -701,9 +737,10 @@ class UserPullRequestActivity(BaseModel):
                 github_login=github_login,
                 github_id=github_id,
                 days_active=days_active,
+                first_active_at=first_active_at,
                 last_active_at=last_active_at,
             )
-            for github_login, github_id, days_active, last_active_at in results
+            for github_login, github_id, days_active, first_active_at, last_active_at in results
         ]
 
     @staticmethod

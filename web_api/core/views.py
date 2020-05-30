@@ -316,24 +316,30 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
 
     subscription_status = account.get_subscription_blocker()
 
-    if subscription_status == "trial_expired":
-        return JsonResponse({"type": "TRIAL_EXPIRED"})
+    if subscription_status is not None:
+        if subscription_status["kind"] == "trial_expired":
+            return JsonResponse({"type": "TRIAL_EXPIRED"})
 
-    if subscription_status == "seats_exceeded":
-        stripe_info = account.stripe_customer_info()
-        license_count = 0
-        if stripe_info and stripe_info.subscription_quantity:
-            license_count = stripe_info.subscription_quantity
-        return JsonResponse(
-            {
-                "type": "SUBSCRIPTION_OVERAGE",
-                "activeUserCount": account.get_active_user_count(),
-                "licenseCount": license_count,
-            }
-        )
+        if subscription_status["kind"] == "seats_exceeded":
+            stripe_info = account.stripe_customer_info()
+            license_count = 0
+            if stripe_info and stripe_info.subscription_quantity:
+                license_count = stripe_info.subscription_quantity
+            active_user_count: int = len(
+                UserPullRequestActivity.get_active_users_in_last_30_days(
+                    account=account
+                )
+            )
+            return JsonResponse(
+                {
+                    "type": "SUBSCRIPTION_OVERAGE",
+                    "activeUserCount": active_user_count,
+                    "licenseCount": license_count,
+                }
+            )
 
-    if subscription_status == "subscription_expired":
-        return JsonResponse({"type": "SUBSCRIPTION_EXPIRED"})
+        if subscription_status["kind"] == "subscription_expired":
+            return JsonResponse({"type": "SUBSCRIPTION_EXPIRED"})
 
     return JsonResponse({"type": "VALID_SUBSCRIPTION"})
 
