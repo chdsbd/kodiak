@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -917,7 +918,7 @@ class Client:
         delete a branch by name
         """
         headers = await get_headers(installation_id=self.installation_id)
-        ref = f"heads/{branch}"
+        ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
                 f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
@@ -999,9 +1000,10 @@ class Client:
 
     async def delete_label(self, label: str, pull_number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
+        escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{label}",
+                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}",
                 headers=headers,
             )
 
