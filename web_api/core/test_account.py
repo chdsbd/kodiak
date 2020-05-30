@@ -98,9 +98,9 @@ def test_get_subscription_blocker_trial_expired() -> None:
     assert account.get_subscription_blocker()["kind"] == "trial_expired"
 
 
-@pytest.mark.django_db
-def test_get_subscription_blocker_seats_exceeded(mocker: Any) -> None:
-    get_active_users_in_last_30_days = mocker.patch(
+@pytest.fixture
+def patched_get_active_users_in_last_30_days(mocker: Any) -> Any:
+    return mocker.patch(
         "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
         return_value=[
             ActiveUser(
@@ -140,6 +140,12 @@ def test_get_subscription_blocker_seats_exceeded(mocker: Any) -> None:
             ),
         ],
     )
+
+
+@pytest.mark.django_db
+def test_get_subscription_blocker_seats_exceeded(
+    patched_get_active_users_in_last_30_days: Any,
+) -> None:
     account = Account.objects.create(
         github_installation_id=1066615,
         github_account_login="acme-corp",
@@ -167,62 +173,24 @@ def test_get_subscription_blocker_seats_exceeded(mocker: Any) -> None:
         subscription_current_period_end=1987081359,
     )
     assert stripe_customer_information.expired is False
-    assert get_active_users_in_last_30_days.call_count == 0
+    assert patched_get_active_users_in_last_30_days.call_count == 0
     assert (
         len(UserPullRequestActivity.get_active_users_in_last_30_days(account=account))
         == 5
     )
-    assert get_active_users_in_last_30_days.call_count == 1
+    assert patched_get_active_users_in_last_30_days.call_count == 1
     assert account.get_subscription_blocker()["kind"] == "seats_exceeded"
-    assert get_active_users_in_last_30_days.call_count == 2
+    assert patched_get_active_users_in_last_30_days.call_count == 2
 
 
 @pytest.mark.django_db
-def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(mocker: Any) -> None:
+def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(
+    patched_get_active_users_in_last_30_days: Any,
+) -> None:
     """
     If an account has active users but no trial or subscription, that should
     trigger the paywall when the active user count has been exceeded.
     """
-    get_active_users_in_last_30_days = mocker.patch(
-        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
-        return_value=[
-            ActiveUser(
-                github_login="alpha",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="bravo",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="charlie",
-                github_id=2,
-                days_active=2,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="delta",
-                github_id=3,
-                days_active=3,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="echo",
-                github_id=4,
-                days_active=4,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-        ],
-    )
     account = Account.objects.create(
         github_installation_id=1066615,
         github_account_login="acme-corp",
@@ -231,9 +199,9 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(mocker: Any) ->
         stripe_customer_id="cus_H2pvQ2kt7nk0JY",
     )
     assert account.github_account_type == AccountType.organization
-    assert get_active_users_in_last_30_days.call_count == 0
+    assert patched_get_active_users_in_last_30_days.call_count == 0
     assert account.get_subscription_blocker()["kind"] == "seats_exceeded"
-    assert get_active_users_in_last_30_days.call_count == 1
+    assert patched_get_active_users_in_last_30_days.call_count == 1
     assert (
         len(UserPullRequestActivity.get_active_users_in_last_30_days(account=account))
         == 5
@@ -271,51 +239,13 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial_no_activity(
 
 
 @pytest.mark.django_db
-def test_get_subscription_blocker_seats_exceeded_with_trial(mocker: Any) -> None:
+def test_get_subscription_blocker_seats_exceeded_with_trial(
+    patched_get_active_users_in_last_30_days: Any,
+) -> None:
     """
     If an account has active users but is on the trial we should allow them full
     access.
     """
-    mocker.patch(
-        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
-        return_value=[
-            ActiveUser(
-                github_login="alpha",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="bravo",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="charlie",
-                github_id=2,
-                days_active=2,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="delta",
-                github_id=3,
-                days_active=3,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="echo",
-                github_id=4,
-                days_active=4,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-        ],
-    )
     account = Account.objects.create(
         github_installation_id=1066615,
         github_account_login="acme-corp",
@@ -333,51 +263,13 @@ def test_get_subscription_blocker_seats_exceeded_with_trial(mocker: Any) -> None
 
 
 @pytest.mark.django_db
-def test_get_subscription_blocker_expired_trial_subscription_ok(mocker: Any) -> None:
+def test_get_subscription_blocker_expired_trial_subscription_ok(
+    patched_get_active_users_in_last_30_days: Any,
+) -> None:
     """
     If an account has a trial that is expired, but their subscription is valid,
     we should not raise the paywall.
     """
-    mocker.patch(
-        "core.models.UserPullRequestActivity.get_active_users_in_last_30_days",
-        return_value=[
-            ActiveUser(
-                github_login="alpha",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="bravo",
-                github_id=1,
-                days_active=1,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="charlie",
-                github_id=2,
-                days_active=2,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="delta",
-                github_id=3,
-                days_active=3,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-            ActiveUser(
-                github_login="echo",
-                github_id=4,
-                days_active=4,
-                first_active_at=datetime.date(2020, 4, 4),
-                last_active_at=datetime.date(2020, 4, 4),
-            ),
-        ],
-    )
     account = Account.objects.create(
         github_installation_id=1066615,
         github_account_login="acme-corp",
