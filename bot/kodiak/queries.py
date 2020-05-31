@@ -1056,7 +1056,7 @@ class Client:
         if subscription_blocker_kind == "seats_exceeded":
             try:
                 subscription_blocker = SeatsExceeded.parse_raw(
-                    real_response.get(b"data") or b""
+                    real_response.get(b"data")
                 )
             except pydantic.ValidationError:
                 subscription_blocker = SeatsExceeded(allowed_user_ids=[])
