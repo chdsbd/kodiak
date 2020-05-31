@@ -165,7 +165,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
             interactions=1,
             firstActiveDate="2020-12-01",
             lastActiveDate="2020-12-05",
-            hasSeatLicense=True,
+            hasSeatLicense=False,
         )
     ]
 
