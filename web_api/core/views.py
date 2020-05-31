@@ -80,21 +80,37 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             billingEmail=stripe_customer_info.customer_email,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
         )
+
+    subscription_quantity = (
+        stripe_customer_info.subscription_quantity if stripe_customer_info else 0
+    )
+    allowed_user_ids = set(
+        [
+            user.github_id
+            for user in sorted(active_users, key=lambda x: x.first_active_at)[
+                :subscription_quantity
+            ]
+        ]
+    )
+    active_user_with_license_info = [
+        dict(
+            id=active_user.github_id,
+            name=active_user.github_login,
+            profileImgUrl=active_user.profile_image(),
+            interactions=active_user.days_active,
+            lastActiveDate=active_user.last_active_at.isoformat(),
+            firstActiveDate=active_user.first_active_at.isoformat(),
+            hasSeatLicense=(active_user.github_id in allowed_user_ids),
+        )
+        for active_user in active_users
+    ]
+
     return JsonResponse(
         dict(
             accountCanSubscribe=account.github_account_type != AccountType.user,
             subscription=subscription,
             trial=trial,
-            activeUsers=[
-                dict(
-                    id=active_user.github_id,
-                    name=active_user.github_login,
-                    profileImgUrl=active_user.profile_image(),
-                    interactions=active_user.days_active,
-                    lastActiveDate=active_user.last_active_at.isoformat(),
-                )
-                for active_user in active_users
-            ],
+            activeUsers=active_user_with_license_info,
         )
     )
 
@@ -317,10 +333,10 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
     subscription_status = account.get_subscription_blocker()
 
     if subscription_status is not None:
-        if subscription_status["kind"] == "trial_expired":
+        if subscription_status.kind == "trial_expired":
             return JsonResponse({"type": "TRIAL_EXPIRED"})
 
-        if subscription_status["kind"] == "seats_exceeded":
+        if subscription_status.kind == "seats_exceeded":
             stripe_info = account.stripe_customer_info()
             license_count = 0
             if stripe_info and stripe_info.subscription_quantity:
@@ -338,7 +354,7 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
                 }
             )
 
-        if subscription_status["kind"] == "subscription_expired":
+        if subscription_status.kind == "subscription_expired":
             return JsonResponse({"type": "SUBSCRIPTION_EXPIRED"})
 
     return JsonResponse({"type": "VALID_SUBSCRIPTION"})

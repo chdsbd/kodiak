@@ -82,7 +82,7 @@ def test_get_subscription_blocker_subscription_expired() -> None:
     )
 
     assert stripe_customer_information.expired is True
-    assert account.get_subscription_blocker()["kind"] == "subscription_expired"
+    assert account.get_subscription_blocker().kind == "subscription_expired"
 
 
 @pytest.mark.django_db
@@ -95,7 +95,7 @@ def test_get_subscription_blocker_trial_expired() -> None:
         trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),
     )
     assert account.trial_expired() is True
-    assert account.get_subscription_blocker()["kind"] == "trial_expired"
+    assert account.get_subscription_blocker().kind == "trial_expired"
 
 
 @pytest.fixture
@@ -179,7 +179,7 @@ def test_get_subscription_blocker_seats_exceeded(
         == 5
     )
     assert patched_get_active_users_in_last_30_days.call_count == 1
-    assert account.get_subscription_blocker()["kind"] == "seats_exceeded"
+    assert account.get_subscription_blocker().kind == "seats_exceeded"
     assert patched_get_active_users_in_last_30_days.call_count == 2
 
 
@@ -200,7 +200,7 @@ def test_get_subscription_blocker_seats_exceeded_no_sub_or_trial(
     )
     assert account.github_account_type == AccountType.organization
     assert patched_get_active_users_in_last_30_days.call_count == 0
-    assert account.get_subscription_blocker()["kind"] == "seats_exceeded"
+    assert account.get_subscription_blocker().kind == "seats_exceeded"
     assert patched_get_active_users_in_last_30_days.call_count == 1
     assert (
         len(UserPullRequestActivity.get_active_users_in_last_30_days(account=account))

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
 import time
 import uuid
@@ -16,7 +15,6 @@ from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
 from django.utils import timezone
-from mypy_extensions import TypedDict
 from typing_extensions import Literal
 
 logger = logging.getLogger(__name__)
@@ -224,18 +222,16 @@ class AccountType(models.TextChoices):
     organization = "Organization"
 
 
-class SubscriptionExpired(TypedDict):
-    kind: Literal["subscription_expired"]
+class SubscriptionExpired(pydantic.BaseModel):
+    kind: Literal["subscription_expired"] = "subscription_expired"
 
 
-class TrialExpired(TypedDict):
-    kind: Literal[
-        "trial_expired",
-    ]
+class TrialExpired(pydantic.BaseModel):
+    kind: Literal["trial_expired",] = "trial_expired"
 
 
-class SeatsExceeded(TypedDict):
-    kind: Literal["seats_exceeded"]
+class SeatsExceeded(pydantic.BaseModel):
+    kind: Literal["seats_exceeded"] = "seats_exceeded"
     # a list of github account user ids that occupy seats. These users will
     # be allowed to use Kodiak while any new users will be blocked by the
     # paywall.
@@ -364,18 +360,16 @@ class Account(BaseModel):
             allowed_user_ids = [
                 user.github_id for user in active_users[:subscription_quantity]
             ]
-            return SeatsExceeded(
-                kind="seats_exceeded", allowed_user_ids=allowed_user_ids
-            )
+            return SeatsExceeded(allowed_user_ids=allowed_user_ids)
 
         if customer_info:
             if customer_info.expired:
-                return SubscriptionExpired(kind="subscription_expired")
+                return SubscriptionExpired()
             # active subscription within active user limits.
             return None
 
         if self.trial_expired():
-            return TrialExpired(kind="trial_expired")
+            return TrialExpired()
 
         # the user has never signed up for a trial or subscription and has 0
         # active users.
@@ -391,18 +385,15 @@ class Account(BaseModel):
         """
         key = f"kodiak:subscription:{self.github_installation_id}".encode()
 
-        subscription_blocker = self.get_subscription_blocker()
         r.hset(key, b"account_id", str(self.id))  # type: ignore
-        subscription_blocker_kind: str = subscription_blocker[
-            "kind"
-        ] if subscription_blocker else ""
-        r.hset(key, b"subscription_blocker", subscription_blocker_kind.encode())  # type: ignore
-        if subscription_blocker is not None:
-            if subscription_blocker["kind"] == "seats_exceeded":
-                allowed_user_ids: str = json.dumps(
-                    subscription_blocker["allowed_user_ids"]
-                )
-                r.hset(key, b"allowed_user_ids", allowed_user_ids.encode())  # type: ignore
+
+        subscription_blocker = self.get_subscription_blocker()
+        if subscription_blocker:
+            r.hset(key, b"subscription_blocker", subscription_blocker.kind.encode())  # type: ignore
+            r.hset(key, b"data", subscription_blocker.json())  # type: ignore
+        else:
+            r.hset(key, b"subscription_blocker", b"")  # type: ignore
+            r.hset(key, b"data", b"")  # type: ignore
 
         # Trigger bot to reevaluate pull request mergeability.
         # We can use this to trigger the bot to remove the paywall status message on upgrades.
