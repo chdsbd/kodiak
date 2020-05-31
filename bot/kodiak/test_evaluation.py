@@ -4160,6 +4160,108 @@ async def test_mergeable_paywall_missing_env(
 
 
 @pytest.mark.asyncio
+async def test_mergeable_paywall_subscription_expired() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SubscriptionExpired(),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "subscription expired" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_trial_expired() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=TrialExpired(),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "trial ended" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_seats_exceeded() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "exceeded licensed seats" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    repository = create_repo_info()
+    pull_request.author.databaseId = 234234234
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SeatsExceeded(
+                allowed_user_ids=[pull_request.author.databaseId]
+            ),
+        ),
+    )
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 1
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_mergeable_merge_pull_request_api_exception() -> None:
     """
     If we attempt to merge a pull request but get an internal server error from
