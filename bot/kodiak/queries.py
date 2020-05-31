@@ -1054,11 +1054,13 @@ class Client:
             Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
         ] = None
         if subscription_blocker_kind == "seats_exceeded":
+            # to be backwards compatible we must handle the case of `data` missing.
             try:
                 subscription_blocker = SeatsExceeded.parse_raw(
                     real_response.get(b"data")
                 )
             except pydantic.ValidationError:
+                logger.warning("failed to parse seats_exceeded data", exc_info=True)
                 subscription_blocker = SeatsExceeded(allowed_user_ids=[])
         if subscription_blocker_kind == "trial_expired":
             subscription_blocker = TrialExpired()

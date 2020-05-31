@@ -353,10 +353,37 @@ def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
 async def test_get_subscription_missing_blocker(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    We set subscription_blocker to empty string from the web_api. This should be
+    consider equivalent to a missing subscription blocker.
+    """
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
             b"subscription_blocker": b"",
+        }
+    )
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15", subscription_blocker=None
+    )
+
+@pytest.mark.asyncio
+async def test_get_subscription_missing_blocker_and_data(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    """
+    Check with empty string for data
+    """
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"",
+            b"data": b"",
         }
     )
     mocker.patch(
@@ -373,6 +400,10 @@ async def test_get_subscription_missing_blocker(
 async def test_get_subscription_missing_blocker_fully(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    If a user is new to Kodiak we will not have set subscription information in
+    Redis. We should handle this case by returning an empty subscription.
+    """
     fake_redis = create_fake_redis_reply({})
     mocker.patch(
         "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
@@ -386,6 +417,10 @@ async def test_get_subscription_missing_blocker_fully(
 async def test_get_subscription_seats_exceeded(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    When a user exceeds their seat we will specify allowed users for those users
+    that occupy a seat.
+    """
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
@@ -403,11 +438,39 @@ async def test_get_subscription_seats_exceeded(
         subscription_blocker=SeatsExceeded(allowed_user_ids=[5234234]),
     )
 
+@pytest.mark.asyncio
+async def test_get_subscription_seats_exceeded_no_seats(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    """
+    When an account has 0 seats we will not have any allowed_user_ids.
+    """
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"seats_exceeded",
+            b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": []}',
+        }
+    )
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+    )
+
 
 @pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded_missing_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    For backwards compatibility we cannot guarantee that "seats_exceeded" will
+    have the data parameter.
+    """
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
@@ -430,6 +493,9 @@ async def test_get_subscription_seats_exceeded_missing_data(
 async def test_get_subscription_seats_exceeded_invalid_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    Handle invalid data gracefully.
+    """
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
@@ -453,6 +519,10 @@ async def test_get_subscription_seats_exceeded_invalid_data(
 async def test_get_subscription_seats_exceeded_invalid_kind(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
+    """
+    Handle mismatch in subscription_blocker types between data parameter and
+    subscription_blocker.
+    """
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
@@ -469,4 +539,29 @@ async def test_get_subscription_seats_exceeded_invalid_kind(
     assert res == Subscription(
         account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
         subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_unknown_blocker(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    """
+    Handle unknown blocker by allowing user access.
+    """
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"invalid_subscription_blocker",
+        }
+    )
+
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=None,
     )

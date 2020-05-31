@@ -4161,6 +4161,12 @@ async def test_mergeable_paywall_missing_env(
 
 @pytest.mark.asyncio
 async def test_mergeable_paywall_subscription_expired() -> None:
+    """
+    When a subscription is expired we should not merge a pull request.
+
+    This only applies to private repositories because Kodiak is free on public
+    repositories.
+    """
     api = create_api()
     mergeable = create_mergeable()
     repository = create_repo_info()
@@ -4186,6 +4192,9 @@ async def test_mergeable_paywall_subscription_expired() -> None:
 
 @pytest.mark.asyncio
 async def test_mergeable_paywall_trial_expired() -> None:
+    """
+    When a trial has expired we should not act on a pull request.
+    """
     api = create_api()
     mergeable = create_mergeable()
     repository = create_repo_info()
@@ -4211,6 +4220,9 @@ async def test_mergeable_paywall_trial_expired() -> None:
 
 @pytest.mark.asyncio
 async def test_mergeable_paywall_seats_exceeded() -> None:
+    """
+    When an account has exceeded their seat usage they should hit the paywall.
+    """
     api = create_api()
     mergeable = create_mergeable()
     repository = create_repo_info()
@@ -4236,6 +4248,15 @@ async def test_mergeable_paywall_seats_exceeded() -> None:
 
 @pytest.mark.asyncio
 async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
+    """
+    Users that have a seat should be allowed to continue using Kodiak even if
+    the subscription has exceeded limits.
+
+    When an account exceeds it's seat limit we raise the "seats_exceeded"
+    paywall. However we also record the user ids that occupy a seat and should
+    be allowed to continue using Kodiak. Any user on this list will be able to
+    use Kodiak while any others will hit a paywall.
+    """
     api = create_api()
     mergeable = create_mergeable()
     pull_request = create_pull_request()

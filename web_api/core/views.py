@@ -84,6 +84,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     subscription_quantity = (
         stripe_customer_info.subscription_quantity if stripe_customer_info else 0
     )
+    # we assign seats to users in order of first active for the last 30 days.
     allowed_user_ids = set(
         (
             user.github_id
