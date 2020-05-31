@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, Dict, cast
 
 import arrow
 import asyncio_redis
@@ -31,6 +31,7 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
@@ -332,3 +333,85 @@ async def test_get_permissions_for_username_read(
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("ghost")
     assert res == Permission.READ
+
+
+def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
+    class FakeDictReply:
+        @staticmethod
+        async def asdict() -> Any:
+            return res
+
+    class FakeRedis:
+        @staticmethod
+        async def hgetall(key: bytes) -> Any:
+            return FakeDictReply
+
+    return FakeRedis
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_seats_exceeded(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"seats_exceeded",
+            b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": [5234234]}',
+        }
+    )
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=SeatsExceeded(allowed_user_ids=[5234234]),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_seats_exceeded_missing_data(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"seats_exceeded",
+        }
+    )
+
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_seats_exceeded_invalid_data(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"seats_exceeded",
+            b"data": b"*(invalid-data4#",
+        }
+    )
+
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+    )

@@ -1054,9 +1054,12 @@ class Client:
             Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
         ] = None
         if subscription_blocker_kind == "seats_exceeded":
-            subscription_blocker = SeatsExceeded.parse_raw(
-                real_response.get(b"data") or b""
-            )
+            try:
+                subscription_blocker = SeatsExceeded.parse_raw(
+                    real_response.get(b"data") or b""
+                )
+            except pydantic.ValidationError:
+                subscription_blocker = SeatsExceeded(allowed_user_ids=[])
         if subscription_blocker_kind == "trial_expired":
             subscription_blocker = TrialExpired()
         if subscription_blocker_kind == "subscription_expired":
