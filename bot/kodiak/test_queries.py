@@ -430,12 +430,34 @@ async def test_get_subscription_seats_exceeded_missing_data(
 async def test_get_subscription_seats_exceeded_invalid_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-
     fake_redis = create_fake_redis_reply(
         {
             b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
             b"subscription_blocker": b"seats_exceeded",
             b"data": b"*(invalid-data4#",
+        }
+    )
+
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15",
+        subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_seats_exceeded_invalid_kind(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"seats_exceeded",
+            b"data": b'{"kind":"trial_expired", "allowed_user_ids": [5234234]}',
         }
     )
 
