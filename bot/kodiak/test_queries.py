@@ -350,6 +350,39 @@ def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
 
 
 @pytest.mark.asyncio
+async def test_get_subscription_missing_blocker(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"DF5C23EB-585B-4031-B082-7FF951B4DE15",
+            b"subscription_blocker": b"",
+        }
+    )
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res == Subscription(
+        account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15", subscription_blocker=None
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_missing_blocker_fully(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    fake_redis = create_fake_redis_reply({})
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
+    async with api_client as api_client:
+        res = await api_client.get_subscription()
+    assert res is None
+
+
+@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
