@@ -371,7 +371,7 @@ async def mergeable(
         # We also ignore missing subscriptions. The web api will set
         # subscription blockers if usage exceeds limits.
         status_message = get_paywall_status_for_blocker(
-            subscription.subscription_blocker
+            subscription.subscription_blocker.kind
         )
         if status_message is not None:
             await set_status(

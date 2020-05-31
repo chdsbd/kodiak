@@ -40,9 +40,12 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
+    SubscriptionExpired,
+    TrialExpired,
 )
 
 log = logging.getLogger(__name__)
@@ -4026,7 +4029,7 @@ async def test_mergeable_paywall_subscription_blocker(
         ),
         subscription=Subscription(
             account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-            subscription_blocker="seats_exceeded",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
         ),
     )
     assert api.set_status.call_count == 1
@@ -4062,7 +4065,7 @@ async def test_mergeable_paywall_public_repository(
             None,
             Subscription(
                 account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-                subscription_blocker="seats_exceeded",
+                subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
             ),
         )
     ):
@@ -4145,7 +4148,7 @@ async def test_mergeable_paywall_missing_env(
         ),
         subscription=Subscription(
             account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-            subscription_blocker="seats_exceeded",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
         ),
     )
     assert api.queue_for_merge.call_count == 1
