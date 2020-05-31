@@ -76,6 +76,8 @@ interface IUsageBillingData {
     readonly profileImgUrl: string
     readonly interactions: number
     readonly lastActiveDate: string
+    readonly firstActiveDate?: string
+    readonly hasSeatLicense?: boolean
   }>
 }
 
@@ -966,7 +968,13 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                     }
                   />
                 </th>
+                <th>First Active Date</th>
                 <th>Last Active Date</th>
+                <th>Has Seat <Question
+                    content={
+                      "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
+                    }
+                  /></th>
               </tr>
             </thead>
             <tbody>
@@ -982,7 +990,9 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                     {u.name}
                   </td>
                   <td>{u.interactions}</td>
+                  <td>{u.firstActiveDate}</td>
                   <td>{u.lastActiveDate}</td>
+                  <td>{u.hasSeatLicense ? "Yes" : "No"}</td>
                 </tr>
               ))}
             </tbody>
