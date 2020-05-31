@@ -33,6 +33,7 @@ def test_update_bot() -> None:
     account.update_bot()
     assert r.hgetall(f"kodiak:subscription:{account.github_installation_id}") == {  # type: ignore
         b"account_id": str(account.id).encode(),
+        b"data": b"",
         b"subscription_blocker": b"",
     }
     assert r.exists("kodiak:refresh_pull_requests_for_installation") == 1
