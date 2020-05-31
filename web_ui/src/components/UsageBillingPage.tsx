@@ -970,11 +970,14 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                 </th>
                 <th>First Active Date</th>
                 <th>Last Active Date</th>
-                <th>Has Seat <Question
+                <th>
+                  Has Seat{" "}
+                  <Question
                     content={
                       "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
                     }
-                  /></th>
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
