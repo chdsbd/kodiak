@@ -61,6 +61,8 @@ export interface IUsageBillingPageApiResponse {
     readonly profileImgUrl: string
     readonly interactions: number
     readonly lastActiveDate: string
+    readonly firstActiveDate?: string
+    readonly hasSeatLicense?: boolean
   }>
 }
 

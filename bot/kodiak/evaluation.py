@@ -36,9 +36,12 @@ from kodiak.queries import (
     PullRequestState,
     PushAllowance,
     RepoInfo,
+    SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
+    SubscriptionExpired,
+    TrialExpired,
 )
 from kodiak.text import strip_html_comments_from_markdown
 
@@ -227,12 +230,17 @@ def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
     return True
 
 
-def get_paywall_status_for_blocker(subscription_blocker: str) -> Optional[str]:
-    if subscription_blocker == "seats_exceeded":
+def get_paywall_status_for_blocker(
+    pull_request: PullRequest,
+    subscription_blocker: Union[SubscriptionExpired, TrialExpired, SeatsExceeded],
+) -> Optional[str]:
+    if isinstance(subscription_blocker, SeatsExceeded):
+        if pull_request.author.databaseId in subscription_blocker.allowed_user_ids:
+            return None
         return "usage has exceeded licensed seats"
-    if subscription_blocker == "trial_expired":
+    if isinstance(subscription_blocker, TrialExpired):
         return "trial ended"
-    if subscription_blocker == "subscription_expired":
+    if isinstance(subscription_blocker, SubscriptionExpired):
         return "subscription expired"
     return None
 
@@ -371,7 +379,7 @@ async def mergeable(
         # We also ignore missing subscriptions. The web api will set
         # subscription blockers if usage exceeds limits.
         status_message = get_paywall_status_for_blocker(
-            subscription.subscription_blocker
+            pull_request, subscription.subscription_blocker
         )
         if status_message is not None:
             await set_status(

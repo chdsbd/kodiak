@@ -40,9 +40,12 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
+    SubscriptionExpired,
+    TrialExpired,
 )
 
 log = logging.getLogger(__name__)
@@ -4026,7 +4029,7 @@ async def test_mergeable_paywall_subscription_blocker(
         ),
         subscription=Subscription(
             account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-            subscription_blocker="seats_exceeded",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
         ),
     )
     assert api.set_status.call_count == 1
@@ -4062,7 +4065,7 @@ async def test_mergeable_paywall_public_repository(
             None,
             Subscription(
                 account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-                subscription_blocker="seats_exceeded",
+                subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
             ),
         )
     ):
@@ -4145,13 +4148,136 @@ async def test_mergeable_paywall_missing_env(
         ),
         subscription=Subscription(
             account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
-            subscription_blocker="seats_exceeded",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
         ),
     )
     assert api.queue_for_merge.call_count == 1
 
     assert api.approve_pull_request.call_count == 0
     assert api.dequeue.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_subscription_expired() -> None:
+    """
+    When a subscription is expired we should not merge a pull request.
+
+    This only applies to private repositories because Kodiak is free on public
+    repositories.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SubscriptionExpired(),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "subscription expired" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_trial_expired() -> None:
+    """
+    When a trial has expired we should not act on a pull request.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=TrialExpired(),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "trial ended" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_seats_exceeded() -> None:
+    """
+    When an account has exceeded their seat usage they should hit the paywall.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    repository = create_repo_info()
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SeatsExceeded(allowed_user_ids=[]),
+        ),
+    )
+
+    assert api.set_status.call_count == 1
+    assert "exceeded licensed seats" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
+    """
+    Users that have a seat should be allowed to continue using Kodiak even if
+    the subscription has exceeded limits.
+
+    When an account exceeds it's seat limit we raise the "seats_exceeded"
+    paywall. However we also record the user ids that occupy a seat and should
+    be allowed to continue using Kodiak. Any user on this list will be able to
+    use Kodiak while any others will hit a paywall.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    repository = create_repo_info()
+    pull_request.author.databaseId = 234234234
+    repository.is_private = True
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        repository=repository,
+        subscription=Subscription(
+            account_id="cc5674b3-b53c-4c4e-855d-7b3c52b8325f",
+            subscription_blocker=SeatsExceeded(
+                allowed_user_ids=[pull_request.author.databaseId]
+            ),
+        ),
+    )
+
+    assert api.dequeue.call_count == 0
+    assert api.approve_pull_request.call_count == 0
+    assert api.queue_for_merge.call_count == 1
     assert api.merge.call_count == 0
     assert api.update_branch.call_count == 0
 

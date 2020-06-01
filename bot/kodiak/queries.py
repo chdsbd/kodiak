@@ -636,11 +636,27 @@ class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
 
 
+class SubscriptionExpired(pydantic.BaseModel):
+    kind: Literal["subscription_expired"] = "subscription_expired"
+
+
+class TrialExpired(pydantic.BaseModel):
+    kind: Literal["trial_expired"] = "trial_expired"
+
+
+class SeatsExceeded(pydantic.BaseModel):
+    kind: Literal["seats_exceeded"] = "seats_exceeded"
+    # a list of github account user ids that occupy seats. These users will
+    # be allowed to use Kodiak while any new users will be blocked by the
+    # paywall.
+    allowed_user_ids: List[int]
+
+
 @dataclass
 class Subscription:
     account_id: str
     subscription_blocker: Optional[
-        Literal["seats_exceeded", "trial_expired", "subscription_expired"]
+        Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
     ]
 
 
@@ -1031,12 +1047,25 @@ class Client:
         real_response = await res.asdict()
         if not real_response:
             return None
-        subscription_blocker = cast(
-            Optional[
-                Literal["seats_exceeded", "trial_expired", "subscription_expired"]
-            ],
-            (real_response.get(b"subscription_blocker") or b"").decode() or None,
-        )
+        subscription_blocker_kind = (
+            real_response.get(b"subscription_blocker") or b""
+        ).decode()
+        subscription_blocker: Optional[
+            Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
+        ] = None
+        if subscription_blocker_kind == "seats_exceeded":
+            # to be backwards compatible we must handle the case of `data` missing.
+            try:
+                subscription_blocker = SeatsExceeded.parse_raw(
+                    real_response.get(b"data")
+                )
+            except pydantic.ValidationError:
+                logger.warning("failed to parse seats_exceeded data", exc_info=True)
+                subscription_blocker = SeatsExceeded(allowed_user_ids=[])
+        if subscription_blocker_kind == "trial_expired":
+            subscription_blocker = TrialExpired()
+        if subscription_blocker_kind == "subscription_expired":
+            subscription_blocker = SubscriptionExpired()
         return Subscription(
             account_id=real_response[b"account_id"].decode(),
             subscription_blocker=subscription_blocker,

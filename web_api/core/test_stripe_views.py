@@ -254,7 +254,9 @@ def test_get_subscription_info_view_subscription_overage(mocker: MockFixture) ->
     assert account.active_trial() is False
     stripe_customer_info = account.stripe_customer_info()
     assert stripe_customer_info is not None
-    assert stripe_customer_info.subscription_quantity < account.get_active_user_count()
+    assert stripe_customer_info.subscription_quantity < len(
+        UserPullRequestActivity.get_active_users_in_last_30_days(account=account)
+    )
 
     client = Client()
     client.login(user)

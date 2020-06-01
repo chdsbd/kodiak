@@ -3,9 +3,11 @@ import json
 from pathlib import Path
 
 import pytest
+from django.utils import timezone
 from django.utils.timezone import make_aware
 
 from core.models import (
+    Account,
     GitHubEvent,
     UserPullRequestActivity,
     UserPullRequestActivityProgress,
@@ -125,3 +127,58 @@ def test_generate_min_progress(
     generate_user_activity()
     assert UserPullRequestActivityProgress.objects.count() == 2
     assert UserPullRequestActivity.objects.count() == 0
+
+
+def create_user_activity(
+    *, account: Account, user_id: int, pr_number: int, date: datetime.date
+) -> None:
+    repo_name = "acme_web"
+    UserPullRequestActivity.objects.create(
+        github_installation_id=account.github_installation_id,
+        github_repository_name=repo_name,
+        github_pull_request_number=pr_number,
+        github_user_login=f"acme-user-{user_id}",
+        github_user_id=user_id,
+        is_private_repository=True,
+        activity_date=date,
+        opened_pull_request=True,
+    )
+    UserPullRequestActivity.objects.create(
+        github_installation_id=account.github_installation_id,
+        github_repository_name=repo_name,
+        github_pull_request_number=pr_number,
+        github_user_login="kodiak[bot]",
+        github_user_id=0,
+        is_private_repository=True,
+        activity_date=date,
+        opened_pull_request=True,
+    )
+
+
+@pytest.mark.django_db
+def test_get_active_users_in_last_30_days() -> None:
+    account = Account(github_installation_id=52324234)
+    create_user_activity(
+        account=account,
+        user_id=333777,
+        pr_number=953,
+        date=timezone.now() - datetime.timedelta(days=5),
+    )
+    create_user_activity(
+        account=account, user_id=333777, pr_number=953, date=timezone.now()
+    )
+
+    create_user_activity(
+        account=account,
+        user_id=90322322,
+        pr_number=883,
+        date=timezone.now() - datetime.timedelta(days=10),
+    )
+    create_user_activity(
+        account=account, user_id=90322322, pr_number=883, date=timezone.now()
+    )
+
+    active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
+    assert len(active_users) == 2
+    assert active_users[0].github_id == 90322322
+    assert active_users[1].github_id == 333777
