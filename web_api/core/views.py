@@ -86,10 +86,10 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     )
     # we assign seats to users in order of first active for the last 30 days.
     allowed_user_ids = {
-            user.github_id
-            for user in sorted(active_users, key=lambda x: x.first_active_at)[
-                :subscription_quantity
-            ]
+        user.github_id
+        for user in sorted(active_users, key=lambda x: x.first_active_at)[
+            :subscription_quantity
+        ]
     }
     active_user_with_license_info = [
         dict(
