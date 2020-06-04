@@ -385,15 +385,15 @@ class Account(BaseModel):
         """
         key = f"kodiak:subscription:{self.github_installation_id}".encode()
 
-        r.hset(key, b"account_id", str(self.id))  # type: ignore
+        r.hset(key, b"account_id", str(self.id))
 
         subscription_blocker = self.get_subscription_blocker()
         if subscription_blocker:
-            r.hset(key, b"subscription_blocker", subscription_blocker.kind.encode())  # type: ignore
-            r.hset(key, b"data", subscription_blocker.json())  # type: ignore
+            r.hset(key, b"subscription_blocker", subscription_blocker.kind.encode())
+            r.hset(key, b"data", subscription_blocker.json())
         else:
-            r.hset(key, b"subscription_blocker", b"")  # type: ignore
-            r.hset(key, b"data", b"")  # type: ignore
+            r.hset(key, b"subscription_blocker", b"")
+            r.hset(key, b"data", b"")
 
         # Trigger bot to reevaluate pull request mergeability.
         # We can use this to trigger the bot to remove the paywall status message on upgrades.

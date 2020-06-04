@@ -28,16 +28,16 @@ def test_update_bot() -> None:
         github_account_id=523412234,
         github_account_type="Organization",
     )
-    assert r.hgetall(f"kodiak:subscription:{account.github_installation_id}") == {}  # type: ignore
+    assert r.hgetall(f"kodiak:subscription:{account.github_installation_id}") == {}
     assert r.exists("kodiak:refresh_pull_requests_for_installation") == 0
     account.update_bot()
-    assert r.hgetall(f"kodiak:subscription:{account.github_installation_id}") == {  # type: ignore
+    assert r.hgetall(f"kodiak:subscription:{account.github_installation_id}") == {
         b"account_id": str(account.id).encode(),
         b"data": b"",
         b"subscription_blocker": b"",
     }
     assert r.exists("kodiak:refresh_pull_requests_for_installation") == 1
-    assert r.lrange("kodiak:refresh_pull_requests_for_installation", 0, -1) == [  # type: ignore
+    assert r.lrange("kodiak:refresh_pull_requests_for_installation", 0, -1) == [
         ('{"installation_id": "%s"}' % account.github_installation_id).encode()
     ]
 
