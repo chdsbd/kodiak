@@ -242,6 +242,9 @@ def get_paywall_status_for_blocker(
         return "trial ended"
     if isinstance(subscription_blocker, SubscriptionExpired):
         return "subscription expired"
+    log.warning(
+        "unexpected subscription_blocker %s ", subscription_blocker
+    )
     return None
 
 
@@ -387,9 +390,6 @@ async def mergeable(
                 markdown_content=get_markdown_for_paywall(),
             )
             return
-        log.warning(
-            "unexpected subscription_blocker %s ", subscription.subscription_blocker
-        )
 
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
