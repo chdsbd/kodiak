@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.23.0 - 2020-06-06
+
+### Added
+- disable Kodiak for a pull request when we encounter an internal server error from the GitHub API merge endpoint. (#398, #402)
+
+### Changed
+- updated self-hosting documentation to include updated list of GitHub Events (#405)
+- improved seat usage tracking to assign users to seats. Subscribers will be able to access their seats even if they have an overage. (#410)
+
+### Fixed
+- fix URL escaping of branch names and label names in API calls (#408)
+
 ## 0.22.0 - 2020-05-15
 
 ### Added
