@@ -233,6 +233,7 @@ def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
 def get_paywall_status_for_blocker(
     pull_request: PullRequest,
     subscription_blocker: Union[SubscriptionExpired, TrialExpired, SeatsExceeded],
+    log: structlog.BoundLogger,
 ) -> Optional[str]:
     if isinstance(subscription_blocker, SeatsExceeded):
         if pull_request.author.databaseId in subscription_blocker.allowed_user_ids:
@@ -242,6 +243,7 @@ def get_paywall_status_for_blocker(
         return "trial ended"
     if isinstance(subscription_blocker, SubscriptionExpired):
         return "subscription expired"
+    log.warning("unexpected subscription_blocker %s ", subscription_blocker)
     return None
 
 
@@ -379,7 +381,7 @@ async def mergeable(
         # We also ignore missing subscriptions. The web api will set
         # subscription blockers if usage exceeds limits.
         status_message = get_paywall_status_for_blocker(
-            pull_request, subscription.subscription_blocker
+            pull_request, subscription.subscription_blocker, log
         )
         if status_message is not None:
             await set_status(
@@ -387,9 +389,6 @@ async def mergeable(
                 markdown_content=get_markdown_for_paywall(),
             )
             return
-        log.warning(
-            "unexpected subscription_blocker %s ", subscription.subscription_blocker
-        )
 
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
