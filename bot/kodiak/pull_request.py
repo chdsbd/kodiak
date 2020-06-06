@@ -73,40 +73,46 @@ async def evaluate_pr(
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     while True:
         log.info("get_pr")
-        pr = await get_pr(
-            install=install,
-            owner=owner,
-            repo=repo,
-            number=number,
-            dequeue_callback=dequeue_callback,
-            requeue_callback=requeue_callback,
-            queue_for_merge_callback=queue_for_merge_callback,
+        pr = await asyncio.wait_for(
+            get_pr(
+                install=install,
+                owner=owner,
+                repo=repo,
+                number=number,
+                dequeue_callback=dequeue_callback,
+                requeue_callback=requeue_callback,
+                queue_for_merge_callback=queue_for_merge_callback,
+            ),
+            timeout=10,
         )
         if pr is None:
             log.info("failed to get_pr")
             return
         try:
-            await mergeable(
-                api=pr,
-                subscription=pr.event.subscription,
-                config=pr.event.config,
-                config_str=pr.event.config_str,
-                config_path=pr.event.config_file_expression,
-                app_id=conf.GITHUB_APP_ID,
-                repository=pr.event.repository,
-                pull_request=pr.event.pull_request,
-                branch_protection=pr.event.branch_protection,
-                review_requests=pr.event.review_requests,
-                reviews=pr.event.reviews,
-                contexts=pr.event.status_contexts,
-                check_runs=pr.event.check_runs,
-                valid_signature=pr.event.valid_signature,
-                valid_merge_methods=pr.event.valid_merge_methods,
-                merging=merging,
-                is_active_merge=is_active_merging,
-                skippable_check_timeout=skippable_check_timeout,
-                api_call_retry_timeout=api_call_retry_timeout,
-                api_call_retry_method_name=api_call_retry_method_name,
+            await asyncio.wait_for(
+                mergeable(
+                    api=pr,
+                    subscription=pr.event.subscription,
+                    config=pr.event.config,
+                    config_str=pr.event.config_str,
+                    config_path=pr.event.config_file_expression,
+                    app_id=conf.GITHUB_APP_ID,
+                    repository=pr.event.repository,
+                    pull_request=pr.event.pull_request,
+                    branch_protection=pr.event.branch_protection,
+                    review_requests=pr.event.review_requests,
+                    reviews=pr.event.reviews,
+                    contexts=pr.event.status_contexts,
+                    check_runs=pr.event.check_runs,
+                    valid_signature=pr.event.valid_signature,
+                    valid_merge_methods=pr.event.valid_merge_methods,
+                    merging=merging,
+                    is_active_merge=is_active_merging,
+                    skippable_check_timeout=skippable_check_timeout,
+                    api_call_retry_timeout=api_call_retry_timeout,
+                    api_call_retry_method_name=api_call_retry_method_name,
+                ),
+                timeout=10,
             )
             log.info("evaluate_pr successful")
         except RetryForSkippableChecks:
