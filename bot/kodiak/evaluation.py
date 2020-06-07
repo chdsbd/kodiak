@@ -71,13 +71,40 @@ EMPTY_STRING = ""
 
 
 @dataclass
+class CoAuthor:
+    name: str
+    login: str
+
+
+def get_pr_author_name(pull_request: PullRequest) -> CoAuthor:
+    author_name = pull_request.author.login
+    author_login = pull_request.author.login
+    if pull_request.author.type == "Bot":
+        author_name += "[bot]"
+        author_login += "[bot]"
+    if pull_request.author.name:
+        author_name = pull_request.author.name
+    return CoAuthor(name=author_name, login=author_login)
+
+
+def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
+    # GitHub does not allow our GitHub App to view the email addresses of
+    # pull request authors, so we generate a noreply GitHub email address
+    # instead which works the same for the GitHub UI.
+    author_email = f"{user_id}+{login}@users.noreply.github.com"
+    return f"Co-authored-by: {name} <{author_email}>"
+
+
+@dataclass
 class MergeBody:
     merge_method: str
     commit_title: Optional[str] = None
     commit_message: Optional[str] = None
 
 
-def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
+def get_merge_body(
+    config: V1, pull_request: PullRequest, commit_authors: List[CommitAuthor]
+) -> MergeBody:
     merge_body = MergeBody(merge_method=config.merge.method.value)
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(
@@ -268,6 +295,7 @@ async def mergeable(
     reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
+    commit_authors: List[CommitAuthor],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
@@ -780,7 +808,7 @@ branch protection requirements.
     # okay to merge if we reach this point.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
-        merge_args = get_merge_body(config, pull_request)
+        merge_args = get_merge_body(config, pull_request, commit_authors)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
             await api.merge(
