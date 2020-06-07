@@ -78,10 +78,14 @@ class CommitAuthorName:
 
 def get_commit_author_info(
     *, login: str, databaseId: int, name: Optional[str], type_: str
-) -> Optional[CommitAuthorName]:
+) -> CommitAuthorName:
+    """
+    Generate a name and github login for a user.
+    """
     author_name = login
     author_login = login
     if type_ == "Bot":
+        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
         author_name += "[bot]"
         author_login += "[bot]"
     if name:
@@ -90,6 +94,9 @@ def get_commit_author_info(
 
 
 def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
+    """
+    Build a coauthor trailer given user information.
+    """
     # GitHub does not allow our GitHub App to view the email addresses of
     # pull request authors, so we generate a noreply GitHub email address
     # instead which works the same for the GitHub UI.
@@ -107,6 +114,9 @@ class MergeBody:
 def get_merge_body(
     config: V1, pull_request: PullRequest, commit_authors: List[CommitAuthor]
 ) -> MergeBody:
+    """
+    Get merge options for a pull request to call GitHub API.
+    """
     merge_body = MergeBody(merge_method=config.merge.method.value)
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(
@@ -135,19 +145,19 @@ def get_merge_body(
             name=pull_request.author.name,
             type_=pull_request.author.type,
         )
-        if author is not None:
-            co_author_trailers.append(
-                get_coauthor_trailer(
-                    user_id=pull_request.author.databaseId,
-                    login=author.login,
-                    name=author.name,
-                )
+        co_author_trailers.append(
+            get_coauthor_trailer(
+                user_id=pull_request.author.databaseId,
+                login=author.login,
+                name=author.name,
             )
+        )
     if config.merge.message.include_coauthors:
         for commit_author in commit_authors:
             if (
                 commit_author.databaseId is None
-                or commit_author.login is None
+                # don't add trailers for pull request author.
+                # TODO(chdsbd): Should we remove this?
                 or commit_author.databaseId == pull_request.author.databaseId
             ):
                 continue
@@ -158,14 +168,13 @@ def get_merge_body(
                 type_=commit_author.type,
             )
 
-            if author is not None:
-                co_author_trailers.append(
-                    get_coauthor_trailer(
-                        user_id=commit_author.databaseId,
-                        login=author.login,
-                        name=author.name,
-                    )
+            co_author_trailers.append(
+                get_coauthor_trailer(
+                    user_id=commit_author.databaseId,
+                    login=author.login,
+                    name=author.name,
                 )
+            )
 
     if co_author_trailers and config.merge.message.body not in (
         MergeBodyStyle.empty,
