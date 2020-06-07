@@ -26,6 +26,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommitAuthor,
     MergeableState,
     MergeStateStatus,
     Permission,
@@ -96,27 +97,36 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
             merge_body.commit_message = pull_request.url
         else:
             merge_body.commit_message += "\n\n" + pull_request.url
-    if config.merge.message.include_pull_request_author:
-        commit_message = (
-            merge_body.commit_message if merge_body.commit_message is not None else ""
-        )
-        author_name = pull_request.author.login
-        author_login = pull_request.author.login
-        if pull_request.author.type == "Bot":
-            author_name += "[bot]"
-            author_login += "[bot]"
-        if pull_request.author.name:
-            author_name = pull_request.author.name
 
-        # GitHub does not allow our GitHub App to view the email addresses of
-        # pull request authors, so we generate a noreply GitHub email address
-        # instead which works the same for the GitHub UI.
-        author_email = (
-            f"{pull_request.author.databaseId}+{author_login}@users.noreply.github.com"
+    co_author_trailers = []
+    if config.merge.message.include_pull_request_author:
+        author = get_pr_author_name(pull_request)
+        co_author_trailers.append(
+            get_coauthor_trailer(
+                user_id=pull_request.author.databaseId,
+                login=author.login,
+                name=author.name,
+            )
         )
-        merge_body.commit_message = (
-            commit_message + f"\n\nCo-authored-by: {author_name} <{author_email}>"
-        )
+    if config.merge.message.include_coauthors:
+        for commit_author in commit_authors:
+            if (
+                commit_author.databaseId is None
+                or commit_author.login is None
+                or commit_author.databaseId == pull_request.author.databaseId
+            ):
+                continue
+            co_author_trailers.append(
+                get_coauthor_trailer(
+                    user_id=commit_author.databaseId,
+                    login=commit_author.login,
+                    name=commit_author.name or commit_author.login,
+                )
+            )
+
+    if co_author_trailers and config.merge.message.body not in (MergeBodyStyle.empty, MergeBodyStyle.github_default):
+        merge_body.commit_message += "\n\n" + "\n".join(co_author_trailers)
+
     return merge_body
 
 

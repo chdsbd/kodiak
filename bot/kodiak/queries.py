@@ -145,6 +145,19 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       headRef {
         id
       }
+      commitHistory: commits(last: 100) {
+        nodes {
+          commit {
+            author {
+              user {
+                databaseId
+                login
+              }
+              name
+            }
+          }
+        }
+      }
       commits(last: 1) {
         nodes {
           commit {
@@ -283,6 +296,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
+    commit_authors: List[CommitAuthor] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -429,6 +443,13 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
+@dataclass(frozen=True)
+class CommitAuthor:
+    databaseId: Optional[int]
+    login: Optional[str]
+    name: Optional[str]
+
+
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
@@ -477,6 +498,23 @@ def get_sha(*, pr: dict) -> Optional[str]:
         return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
+
+
+def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
+    commit_authors = set()
+    try:
+        for node in pr["commitHistory"]["nodes"]:
+            commit_author = node['commit']["author"]
+            github_user = commit_author["user"]
+            databaseId: Optional[int] = github_user["databaseId"]
+            login: Optional[str] = github_user["login"]
+            name: Optional[str] = commit_author["name"]
+            commit_authors.add(
+                CommitAuthor(databaseId=databaseId, login=login, name=name)
+            )
+        return list(commit_authors)
+    except (IndexError, KeyError, TypeError):
+        return []
 
 
 def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
@@ -897,6 +935,7 @@ class Client:
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
+            commit_authors=get_commit_authors(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),
