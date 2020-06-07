@@ -79,8 +79,6 @@ class CommitAuthorName:
 def get_commit_author_info(
     *, login: str, databaseId: int, name: Optional[str], type_: str
 ) -> Optional[CommitAuthorName]:
-    if databaseId is None:
-        return None
     author_name = login
     author_login = login
     if type_ == "Bot":
