@@ -71,20 +71,24 @@ EMPTY_STRING = ""
 
 
 @dataclass
-class CoAuthor:
+class CommitAuthorName:
     name: str
     login: str
 
 
-def get_pr_author_name(pull_request: PullRequest) -> CoAuthor:
-    author_name = pull_request.author.login
-    author_login = pull_request.author.login
-    if pull_request.author.type == "Bot":
+def get_commit_author_info(
+    *, login: str, databaseId: int, name: Optional[str], type_: str
+) -> Optional[CommitAuthorName]:
+    if databaseId is None:
+        return None
+    author_name = login
+    author_login = login
+    if type_ == "Bot":
         author_name += "[bot]"
         author_login += "[bot]"
-    if pull_request.author.name:
-        author_name = pull_request.author.name
-    return CoAuthor(name=author_name, login=author_login)
+    if name:
+        author_name = name
+    return CommitAuthorName(name=author_name, login=author_login)
 
 
 def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
@@ -127,14 +131,20 @@ def get_merge_body(
 
     co_author_trailers = []
     if config.merge.message.include_pull_request_author:
-        author = get_pr_author_name(pull_request)
-        co_author_trailers.append(
-            get_coauthor_trailer(
-                user_id=pull_request.author.databaseId,
-                login=author.login,
-                name=author.name,
-            )
+        author = get_commit_author_info(
+            login=pull_request.author.login,
+            databaseId=pull_request.author.databaseId,
+            name=pull_request.author.name,
+            type_=pull_request.author.type,
         )
+        if author is not None:
+            co_author_trailers.append(
+                get_coauthor_trailer(
+                    user_id=pull_request.author.databaseId,
+                    login=author.login,
+                    name=author.name,
+                )
+            )
     if config.merge.message.include_coauthors:
         for commit_author in commit_authors:
             if (
@@ -143,13 +153,21 @@ def get_merge_body(
                 or commit_author.databaseId == pull_request.author.databaseId
             ):
                 continue
-            co_author_trailers.append(
-                get_coauthor_trailer(
-                    user_id=commit_author.databaseId,
-                    login=commit_author.login,
-                    name=commit_author.name or commit_author.login,
-                )
+            author = get_commit_author_info(
+                login=commit_author.login,
+                databaseId=commit_author.databaseId,
+                name=commit_author.name,
+                type_=commit_author.type,
             )
+
+            if author is not None:
+                co_author_trailers.append(
+                    get_coauthor_trailer(
+                        user_id=commit_author.databaseId,
+                        login=author.login,
+                        name=author.name,
+                    )
+                )
 
     if co_author_trailers and config.merge.message.body not in (
         MergeBodyStyle.empty,

@@ -153,6 +153,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
                 databaseId
                 name
                 login
+                type: __typename
               }
             }
           }
@@ -445,8 +446,9 @@ class TokenResponse(BaseModel):
 
 class CommitAuthor(BaseModel):
     databaseId: Optional[int]
-    login: Optional[str]
+    login: str
     name: Optional[str]
+    type: str
 
     def __hash__(self) -> int:
         return hash(self.databaseId) + hash(self.login) + hash(self.name)
@@ -512,9 +514,11 @@ def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
                     CommitAuthor.parse_obj(node["commit"]["author"]["user"])
                 ] = True
             except (pydantic.ValidationError, IndexError, KeyError, TypeError):
+                logger.warning("problem parsing commit author", exc_info=True)
                 continue
         return list(commit_authors.keys())
     except (IndexError, KeyError, TypeError):
+        logger.warning("problem parsing commit authors", exc_info=True)
         return []
 
 

@@ -1,5 +1,4 @@
 import logging
-import random
 from datetime import datetime, timedelta
 from typing import Any, List, Mapping, Optional, Tuple, Type, Union
 
@@ -272,15 +271,6 @@ def config_path() -> str:
 
 def create_config_path() -> str:
     return "master:.kodiak.toml"
-
-
-def create_commit_author() -> CommitAuthor:
-    database_id = random.randint(1, 10000)
-    return CommitAuthor(
-        databaseId=database_id,
-        login=f"j-doe-{database_id}",
-        name=f"J Doe {database_id}",
-    )
 
 
 @pytest.fixture
@@ -3367,13 +3357,17 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
         config=config,
         pull_request=pull_request,
         commit_authors=[
-            CommitAuthor(databaseId=9023904, name="b-lowe", login="Bernard Lowe"),
-            CommitAuthor(databaseId=590434, name="Maeve Millay", login="maeve-m"),
+            CommitAuthor(
+                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            CommitAuthor(
+                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            ),
         ],
     )
     expected = MergeBody(
         merge_method="squash",
-        commit_message="hello world\n\nCo-authored-by: b-lowe <9023904+Bernard Lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m@users.noreply.github.com>",
+        commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>",
     )
     assert actual == expected
 
@@ -3394,8 +3388,10 @@ def test_get_merge_body_include_coauthors_invalid_body_style(
             config=config,
             pull_request=pull_request,
             commit_authors=[
-                CommitAuthor(databaseId=9023904, name="b-lowe", login="Bernard Lowe"),
-                CommitAuthor(databaseId=590434, name="Maeve Millay", login="maeve-m"),
+                CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
+                CommitAuthor(
+                    databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+                ),
             ],
         )
         expected = MergeBody(merge_method="squash", commit_message=commit_message)
