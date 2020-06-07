@@ -3363,11 +3363,14 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
             CommitAuthor(
                 databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
+            CommitAuthor(
+                databaseId=771233, name=None, login="d-abernathy", type="Bot"
+            ),
         ],
     )
     expected = MergeBody(
         merge_method="squash",
-        commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>",
+        commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>\nCo-authored-by: d-abernathy[bot] <771233+d-abernathy[bot]@users.noreply.github.com>",
     )
     assert actual == expected
 
