@@ -435,6 +435,7 @@ class MergeableType(Protocol):
         reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
+        commit_authors: List[CommitAuthor] = ...,
         valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
@@ -3363,7 +3364,10 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
             CommitAuthor(
                 databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
+            # we default to the login when name is None.
             CommitAuthor(databaseId=771233, name=None, login="d-abernathy", type="Bot"),
+            # without a databaseID the commit author will be ignored.
+            CommitAuthor(databaseId=None, name=None, login="william", type="User"),
         ],
     )
     expected = MergeBody(
@@ -3397,6 +3401,41 @@ def test_get_merge_body_include_coauthors_invalid_body_style(
         )
         expected = MergeBody(merge_method="squash", commit_message=commit_message)
         assert actual == expected
+
+
+@pytest.mark.asyncio
+async def test_mergeable_include_coauthors() -> None:
+    """
+    Include coauthors should attach coauthor when `merge.message.body = "pull_request_body"`
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    config.merge.message.include_coauthors = True
+    config.merge.message.body = MergeBodyStyle.pull_request_body
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        commit_authors=[
+            CommitAuthor(
+                databaseId=73213123, name="Barry Block", login="b-block", type="User"
+            )
+        ],
+        merging=True,
+    )
+    assert api.set_status.call_count == 1
+    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+
+    assert api.merge.call_count == 1
+    assert (
+        "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
+        in api.merge.calls[0]["commit_message"]
+    )
+    assert api.update_branch.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio

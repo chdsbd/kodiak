@@ -15,6 +15,7 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Client,
+    CommitAuthor,
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
@@ -35,6 +36,7 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
     Subscription,
+    get_commit_authors,
 )
 from kodiak.test_utils import wrap_future
 
@@ -566,3 +568,152 @@ async def test_get_subscription_unknown_blocker(
     assert res == Subscription(
         account_id="DF5C23EB-585B-4031-B082-7FF951B4DE15", subscription_blocker=None
     )
+
+
+def test_get_commit_authors() -> None:
+    """
+    Verify we parse commit authors correctly. We should handle the nullability
+    of name and databaseId.
+    """
+    pull_request_data = {
+        "commitHistory": {
+            "nodes": [
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": "Christopher Dignam",
+                                "databaseId": 1929960,
+                                "login": "chdsbd",
+                                "type": "User",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": "b-lowe",
+                                "databaseId": 5345234,
+                                "login": "b-lowe",
+                                "type": "User",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": None,
+                                "databaseId": 435453,
+                                "login": "kodiakhq",
+                                "type": "Bot",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": "Christopher Dignam",
+                                "databaseId": 1929960,
+                                "login": "chdsbd",
+                                "type": "User",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": None,
+                                "databaseId": None,
+                                "login": "j-doe",
+                                "type": "SomeGitActor",
+                            }
+                        }
+                    }
+                },
+            ]
+        }
+    }
+    res = get_commit_authors(pr=pull_request_data)
+    assert res == [
+        CommitAuthor(
+            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        ),
+        CommitAuthor(name="b-lowe", databaseId=5345234, login="b-lowe", type="User"),
+        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
+        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+    ]
+
+
+def test_get_commit_authors_error_handling() -> None:
+    """
+    We should handle parsing errors without raising an exception.
+    """
+    pull_request_data = {
+        "commitHistory": {
+            "nodes": [
+                {"commit": {"author": {"user": {}}}},
+                {"commit": {"author": {}}},
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": None,
+                                "databaseId": 435453,
+                                "login": "kodiakhq",
+                                "type": "Bot",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": "Christopher Dignam",
+                                "databaseId": 1929960,
+                                "login": "chdsbd",
+                                "type": "User",
+                            }
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
+                            "user": {
+                                "name": None,
+                                "databaseId": None,
+                                "login": "j-doe",
+                                "type": "SomeGitActor",
+                            }
+                        }
+                    }
+                },
+            ]
+        }
+    }
+    res = get_commit_authors(pr=pull_request_data)
+    assert res == [
+        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
+        CommitAuthor(
+            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        ),
+        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+    ]
+
+
+def test_get_commit_authors_error_handling_missing_response() -> None:
+    """
+    We should handle parsing errors without raising an exception.
+    """
+    pull_request_data = {"commitHistory": None}
+    res = get_commit_authors(pr=pull_request_data)
+    assert res == []
