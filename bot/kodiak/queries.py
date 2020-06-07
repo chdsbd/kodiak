@@ -151,9 +151,9 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
             author {
               user {
                 databaseId
+                name
                 login
               }
-              name
             }
           }
         }
@@ -443,11 +443,13 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-@dataclass(frozen=True)
-class CommitAuthor:
+class CommitAuthor(BaseModel):
     databaseId: Optional[int]
     login: Optional[str]
     name: Optional[str]
+
+    def __hash__(self) -> int:
+        return hash(self.databaseId) + hash(self.login) + hash(self.name)
 
 
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
@@ -501,18 +503,17 @@ def get_sha(*, pr: dict) -> Optional[str]:
 
 
 def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
-    commit_authors = set()
+    # we use a dict as an ordered set.
+    commit_authors = {}
     try:
         for node in pr["commitHistory"]["nodes"]:
-            commit_author = node["commit"]["author"]
-            github_user = commit_author["user"]
-            databaseId: Optional[int] = github_user["databaseId"]
-            login: Optional[str] = github_user["login"]
-            name: Optional[str] = commit_author["name"]
-            commit_authors.add(
-                CommitAuthor(databaseId=databaseId, login=login, name=name)
-            )
-        return list(commit_authors)
+            try:
+                commit_authors[
+                    CommitAuthor.parse_obj(node["commit"]["author"]["user"])
+                ] = True
+            except (pydantic.ValidationError, IndexError, KeyError, TypeError):
+                continue
+        return list(commit_authors.keys())
     except (IndexError, KeyError, TypeError):
         return []
 
