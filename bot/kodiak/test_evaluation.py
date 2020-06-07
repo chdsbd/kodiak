@@ -3363,9 +3363,7 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
             CommitAuthor(
                 databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
-            CommitAuthor(
-                databaseId=771233, name=None, login="d-abernathy", type="Bot"
-            ),
+            CommitAuthor(databaseId=771233, name=None, login="d-abernathy", type="Bot"),
         ],
     )
     expected = MergeBody(
