@@ -151,8 +151,14 @@ def get_merge_body(
                 )
             )
 
-    if co_author_trailers and config.merge.message.body not in (MergeBodyStyle.empty, MergeBodyStyle.github_default):
-        merge_body.commit_message += "\n\n" + "\n".join(co_author_trailers)
+    if co_author_trailers and config.merge.message.body not in (
+        MergeBodyStyle.empty,
+        MergeBodyStyle.github_default,
+    ):
+        commit_message = merge_body.commit_message or ""
+        merge_body.commit_message = (
+            commit_message + "\n\n" + "\n".join(co_author_trailers)
+        )
 
     return merge_body
 

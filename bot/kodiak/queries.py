@@ -504,7 +504,7 @@ def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
     commit_authors = set()
     try:
         for node in pr["commitHistory"]["nodes"]:
-            commit_author = node['commit']["author"]
+            commit_author = node["commit"]["author"]
             github_user = commit_author["user"]
             databaseId: Optional[int] = github_user["databaseId"]
             login: Optional[str] = github_user["login"]
