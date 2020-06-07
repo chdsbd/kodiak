@@ -451,6 +451,7 @@ class CommitAuthor(BaseModel):
     type: str
 
     def __hash__(self) -> int:
+        # defining a hash method allows us to deduplicate CommitAuthors easily.
         return hash(self.databaseId) + hash(self.login) + hash(self.name)
 
 
@@ -505,6 +506,9 @@ def get_sha(*, pr: dict) -> Optional[str]:
 
 
 def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
+    """
+    Extract the commit authors from the pull request commits.
+    """
     # we use a dict as an ordered set.
     commit_authors = {}
     try:

@@ -180,6 +180,8 @@ def get_merge_body(
         MergeBodyStyle.empty,
         MergeBodyStyle.github_default,
     ):
+        # comment_message should never be None when using
+        # MergeBodyStyle.pull_request_body, but I'm not going to assert on that!
         commit_message = merge_body.commit_message or ""
         merge_body.commit_message = (
             commit_message + "\n\n" + "\n".join(co_author_trailers)
