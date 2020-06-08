@@ -3332,6 +3332,10 @@ def test_get_merge_body_include_pull_request_author_mannequin(
 def test_get_merge_body_include_pull_request_author_invalid_body_style(
     pull_request: PullRequest
 ) -> None:
+    """
+    We only include trailers MergeBodyStyle.pull_request_body. Verify we don't
+    include trailers for MergeBodyStyle.github_default or MergeBodyStyle.empty.
+    """
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_pull_request_author = True
@@ -3349,6 +3353,9 @@ def test_get_merge_body_include_pull_request_author_invalid_body_style(
 
 
 def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
+    """
+    Verify we include coauthor trailers for MergeBodyStyle.pull_request_body.
+    """
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.body = MergeBodyStyle.pull_request_body
@@ -3380,6 +3387,11 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
 def test_get_merge_body_include_coauthors_invalid_body_style(
     pull_request: PullRequest
 ) -> None:
+    """
+    We only include trailers for MergeBodyStyle.pull_request_body. Verify we
+    don't add coauthor trailers for MergeBodyStyle.github_default or
+    MergeBodyStyle.empty.
+    """
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_coauthors = True
