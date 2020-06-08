@@ -137,7 +137,9 @@ def get_merge_body(
         else:
             merge_body.commit_message += "\n\n" + pull_request.url
 
-    co_author_trailers = []
+    # we share coauthor logic between include_pull_request_author and
+    # include_coauthors.
+    coauthor_trailers = []
     if config.merge.message.include_pull_request_author:
         author = get_commit_author_info(
             login=pull_request.author.login,
@@ -145,7 +147,7 @@ def get_merge_body(
             name=pull_request.author.name,
             type_=pull_request.author.type,
         )
-        co_author_trailers.append(
+        coauthor_trailers.append(
             get_coauthor_trailer(
                 user_id=pull_request.author.databaseId,
                 login=author.login,
@@ -168,7 +170,7 @@ def get_merge_body(
                 type_=commit_author.type,
             )
 
-            co_author_trailers.append(
+            coauthor_trailers.append(
                 get_coauthor_trailer(
                     user_id=commit_author.databaseId,
                     login=author.login,
@@ -176,7 +178,7 @@ def get_merge_body(
                 )
             )
 
-    if co_author_trailers and config.merge.message.body not in (
+    if coauthor_trailers and config.merge.message.body not in (
         MergeBodyStyle.empty,
         MergeBodyStyle.github_default,
     ):
@@ -184,7 +186,7 @@ def get_merge_body(
         # MergeBodyStyle.pull_request_body, but I'm not going to assert on that!
         commit_message = merge_body.commit_message or ""
         merge_body.commit_message = (
-            commit_message + "\n\n" + "\n".join(co_author_trailers)
+            commit_message + "\n\n" + "\n".join(coauthor_trailers)
         )
 
     return merge_body
