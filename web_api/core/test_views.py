@@ -947,6 +947,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             email="j.doe@example.com",
             balance=5000,
             created=1643455402,
+            currency="gbp"
         ),
         "fake-key",
     )
@@ -1068,6 +1069,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert stripe_customer_info_updated.customer_email == fake_customer.email
     assert stripe_customer_info_updated.customer_balance == fake_customer.balance
     assert stripe_customer_info_updated.customer_created == fake_customer.created
+    assert stripe_customer_info_updated.customer_currency == fake_customer.currency
 
     assert (
         stripe_customer_info_updated.payment_method_card_brand

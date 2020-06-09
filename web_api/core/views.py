@@ -249,6 +249,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
     customer_id = account.stripe_customer_id or None
+    stripe_plan_id = account.stripe_plan_id or settings.STRIPE_PLAN_ID
 
     # https://stripe.com/docs/api/checkout/sessions/create
     session = stripe.checkout.Session.create(
@@ -259,7 +260,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
         # (payment_method_card_{brand,exp_month,exp_year,last4}).
         payment_method_types=["card"],
         subscription_data={
-            "items": [{"plan": settings.STRIPE_PLAN_ID, "quantity": seat_count}],
+            "items": [{"plan": stripe_plan_id, "quantity": seat_count}],
         },
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
