@@ -917,6 +917,7 @@ class StripeCustomerInformation(models.Model):
         self.customer_email = customer.email
         self.customer_balance = customer.balance
         self.customer_created = customer.created
+        self.customer_currency = customer.currency
 
         self.payment_method_card_brand = payment_method.card.brand
         self.payment_method_card_exp_month = payment_method.card.exp_month

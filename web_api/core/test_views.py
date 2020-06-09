@@ -947,7 +947,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             email="j.doe@example.com",
             balance=5000,
             created=1643455402,
-            currency="gbp"
+            currency="gbp",
         ),
         "fake-key",
     )
@@ -1131,6 +1131,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             email="j.doe@example.com",
             balance=5000,
             created=1643455402,
+            currency="brl",
         ),
         "fake-key",
     )
