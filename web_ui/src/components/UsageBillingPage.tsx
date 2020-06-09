@@ -662,9 +662,9 @@ function ActiveSubscription({
   modifySubscription,
   teamId,
 }: IActiveSubscriptionProps) {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'brl',
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "brl",
   })
   return (
     <Col>
@@ -695,7 +695,9 @@ function ActiveSubscription({
           <b>Cost</b>
         </Col>
         <Col>
-          <span className="mr-4">{formatter.format(cost.perSeatCents / 100)} / month</span>
+          <span className="mr-4">
+            {formatter.format(cost.perSeatCents / 100)} / month
+          </span>
           <span>
             ({formatter.format(cost.perSeatCents / 100)} / seat ⨉ {seats} seats)
           </span>
