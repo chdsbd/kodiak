@@ -145,6 +145,20 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       headRef {
         id
       }
+      commitHistory: commits(last: 100) {
+        nodes {
+          commit {
+            author {
+              user {
+                databaseId
+                name
+                login
+                type: __typename
+              }
+            }
+          }
+        }
+      }
       commits(last: 1) {
         nodes {
           commit {
@@ -283,6 +297,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
+    commit_authors: List[CommitAuthor] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -429,6 +444,17 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
+class CommitAuthor(BaseModel):
+    databaseId: Optional[int]
+    login: str
+    name: Optional[str]
+    type: str
+
+    def __hash__(self) -> int:
+        # defining a hash method allows us to deduplicate CommitAuthors easily.
+        return hash(self.databaseId) + hash(self.login) + hash(self.name)
+
+
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
@@ -477,6 +503,27 @@ def get_sha(*, pr: dict) -> Optional[str]:
         return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
+
+
+def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
+    """
+    Extract the commit authors from the pull request commits.
+    """
+    # we use a dict as an ordered set.
+    commit_authors = {}
+    try:
+        for node in pr["commitHistory"]["nodes"]:
+            try:
+                commit_authors[
+                    CommitAuthor.parse_obj(node["commit"]["author"]["user"])
+                ] = True
+            except (pydantic.ValidationError, IndexError, KeyError, TypeError):
+                logger.warning("problem parsing commit author", exc_info=True)
+                continue
+        return list(commit_authors.keys())
+    except (IndexError, KeyError, TypeError):
+        logger.warning("problem parsing commit authors", exc_info=True)
+        return []
 
 
 def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
@@ -897,6 +944,7 @@ class Client:
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
+            commit_authors=get_commit_authors(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),

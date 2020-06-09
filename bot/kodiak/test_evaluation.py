@@ -26,6 +26,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommitAuthor,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -434,6 +435,7 @@ class MergeableType(Protocol):
         reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
+        commit_authors: List[CommitAuthor] = ...,
         valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
@@ -461,6 +463,7 @@ def create_mergeable() -> MergeableType:
         reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
+        commit_authors: List[CommitAuthor] = [],
         valid_signature: bool = False,
         valid_merge_methods: List[MergeMethod] = [MergeMethod.squash],
         merging: bool = False,
@@ -487,6 +490,7 @@ def create_mergeable() -> MergeableType:
             reviews=reviews,
             contexts=contexts,
             check_runs=check_runs,
+            commit_authors=commit_authors,
             valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
             repository=repository,
@@ -521,6 +525,7 @@ async def mergeable(
     api_call_retry_timeout: int,
     api_call_retry_method_name: Optional[str],
     repository: RepoInfo = create_repo_info(),
+    commit_authors: Optional[List[CommitAuthor]] = None,
     subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
 ) -> None:
@@ -544,6 +549,7 @@ async def mergeable(
         repository=repository,
         merging=merging,
         is_active_merge=is_active_merge,
+        commit_authors=commit_authors or [],
         skippable_check_timeout=skippable_check_timeout,
         api_call_retry_timeout=api_call_retry_timeout,
         api_call_retry_method_name=api_call_retry_method_name,
@@ -3121,6 +3127,7 @@ def test_pr_get_merge_body_full(pull_request: PullRequest) -> None:
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3132,7 +3139,9 @@ def test_pr_get_merge_body_full(pull_request: PullRequest) -> None:
 
 def test_pr_get_merge_body_empty(pull_request: PullRequest) -> None:
     actual = get_merge_body(
-        V1(version=1, merge=Merge(method=MergeMethod.squash)), pull_request
+        V1(version=1, merge=Merge(method=MergeMethod.squash)),
+        pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(merge_method="squash")
     assert actual == expected
@@ -3151,6 +3160,7 @@ def test_get_merge_body_strip_html_comments(pull_request: PullRequest) -> None:
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="hello world")
     assert actual == expected
@@ -3167,6 +3177,7 @@ def test_get_merge_body_empty(pull_request: PullRequest) -> None:
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="")
     assert actual == expected
@@ -3188,6 +3199,7 @@ def test_get_merge_body_includes_pull_request_url(pull_request: PullRequest) -> 
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3218,6 +3230,7 @@ def test_get_merge_body_includes_pull_request_url_with_coauthor(
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3242,15 +3255,17 @@ def test_get_merge_body_include_pull_request_author_user(
             merge=Merge(
                 method=MergeMethod.squash,
                 message=MergeMessage(
-                    body=MergeBodyStyle.empty, include_pull_request_author=True
+                    body=MergeBodyStyle.pull_request_body,
+                    include_pull_request_author=True,
                 ),
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
-        commit_message="\n\nCo-authored-by: Barry Berkman <828352+barry@users.noreply.github.com>",
+        commit_message="hello world\n\nCo-authored-by: Barry Berkman <828352+barry@users.noreply.github.com>",
     )
     assert actual == expected
 
@@ -3274,6 +3289,7 @@ def test_get_merge_body_include_pull_request_author_bot(
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3304,12 +3320,134 @@ def test_get_merge_body_include_pull_request_author_mannequin(
             ),
         ),
         pull_request,
+        commit_authors=[],
     )
     expected = MergeBody(
         merge_method="squash",
         commit_message="hello world\n\nCo-authored-by: barry <828352+barry@users.noreply.github.com>",
     )
     assert actual == expected
+
+
+def test_get_merge_body_include_pull_request_author_invalid_body_style(
+    pull_request: PullRequest
+) -> None:
+    """
+    We only include trailers MergeBodyStyle.pull_request_body. Verify we don't
+    include trailers for MergeBodyStyle.github_default or MergeBodyStyle.empty.
+    """
+    pull_request.body = "hello world"
+    config = create_config()
+    config.merge.message.include_pull_request_author = True
+
+    for body_style, commit_message in (
+        (MergeBodyStyle.github_default, None),
+        (MergeBodyStyle.empty, ""),
+    ):
+        config.merge.message.body = body_style
+        actual = get_merge_body(
+            config=config, pull_request=pull_request, commit_authors=[]
+        )
+        expected = MergeBody(merge_method="squash", commit_message=commit_message)
+        assert actual == expected
+
+
+def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
+    """
+    Verify we include coauthor trailers for MergeBodyStyle.pull_request_body.
+    """
+    pull_request.body = "hello world"
+    config = create_config()
+    config.merge.message.body = MergeBodyStyle.pull_request_body
+    config.merge.message.include_coauthors = True
+
+    actual = get_merge_body(
+        config=config,
+        pull_request=pull_request,
+        commit_authors=[
+            CommitAuthor(
+                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            CommitAuthor(
+                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            ),
+            # we default to the login when name is None.
+            CommitAuthor(databaseId=771233, name=None, login="d-abernathy", type="Bot"),
+            # without a databaseID the commit author will be ignored.
+            CommitAuthor(databaseId=None, name=None, login="william", type="User"),
+        ],
+    )
+    expected = MergeBody(
+        merge_method="squash",
+        commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>\nCo-authored-by: d-abernathy[bot] <771233+d-abernathy[bot]@users.noreply.github.com>",
+    )
+    assert actual == expected
+
+
+def test_get_merge_body_include_coauthors_invalid_body_style(
+    pull_request: PullRequest
+) -> None:
+    """
+    We only include trailers for MergeBodyStyle.pull_request_body. Verify we
+    don't add coauthor trailers for MergeBodyStyle.github_default or
+    MergeBodyStyle.empty.
+    """
+    pull_request.body = "hello world"
+    config = create_config()
+    config.merge.message.include_coauthors = True
+
+    for (body_style, commit_message) in (
+        (MergeBodyStyle.github_default, None),
+        (MergeBodyStyle.empty, ""),
+    ):
+        config.merge.message.body = body_style
+        actual = get_merge_body(
+            config=config,
+            pull_request=pull_request,
+            commit_authors=[
+                CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
+                CommitAuthor(
+                    databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+                ),
+            ],
+        )
+        expected = MergeBody(merge_method="squash", commit_message=commit_message)
+        assert actual == expected
+
+
+@pytest.mark.asyncio
+async def test_mergeable_include_coauthors() -> None:
+    """
+    Include coauthors should attach coauthor when `merge.message.body = "pull_request_body"`
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    config.merge.message.include_coauthors = True
+    config.merge.message.body = MergeBodyStyle.pull_request_body
+    api.queue_for_merge.return_value = 3
+
+    await mergeable(
+        api=api,
+        config=config,
+        commit_authors=[
+            CommitAuthor(
+                databaseId=73213123, name="Barry Block", login="b-block", type="User"
+            )
+        ],
+        merging=True,
+    )
+    assert api.set_status.call_count == 1
+    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+
+    assert api.merge.call_count == 1
+    assert (
+        "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
+        in api.merge.calls[0]["commit_message"]
+    )
+    assert api.update_branch.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio

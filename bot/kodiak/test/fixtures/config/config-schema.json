@@ -29,6 +29,7 @@
           "body_type": "markdown",
           "strip_html_comments": false,
           "include_pull_request_author": false,
+          "include_coauthors": false,
           "include_pull_request_url": false
         },
         "dont_wait_on_status_checks": [],
@@ -122,6 +123,11 @@
           "default": false,
           "type": "boolean"
         },
+        "include_coauthors": {
+          "title": "Include Coauthors",
+          "default": false,
+          "type": "boolean"
+        },
         "include_pull_request_url": {
           "title": "Include Pull Request Url",
           "default": false,
@@ -195,6 +201,7 @@
             "body_type": "markdown",
             "strip_html_comments": false,
             "include_pull_request_author": false,
+            "include_coauthors": false,
             "include_pull_request_url": false
           },
           "allOf": [

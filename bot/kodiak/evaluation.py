@@ -26,6 +26,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CommitAuthor,
     MergeableState,
     MergeStateStatus,
     Permission,
@@ -70,13 +71,52 @@ EMPTY_STRING = ""
 
 
 @dataclass
+class CommitAuthorName:
+    name: str
+    login: str
+
+
+def get_commit_author_info(
+    *, login: str, databaseId: int, name: Optional[str], type_: str
+) -> CommitAuthorName:
+    """
+    Generate a name and github login for a user.
+    """
+    author_name = login
+    author_login = login
+    if type_ == "Bot":
+        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
+        author_name += "[bot]"
+        author_login += "[bot]"
+    if name:
+        author_name = name
+    return CommitAuthorName(name=author_name, login=author_login)
+
+
+def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
+    """
+    Build a coauthor trailer given user information.
+    """
+    # GitHub does not allow our GitHub App to view the email addresses of
+    # pull request authors, so we generate a noreply GitHub email address
+    # instead which works the same for the GitHub UI.
+    author_email = f"{user_id}+{login}@users.noreply.github.com"
+    return f"Co-authored-by: {name} <{author_email}>"
+
+
+@dataclass
 class MergeBody:
     merge_method: str
     commit_title: Optional[str] = None
     commit_message: Optional[str] = None
 
 
-def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
+def get_merge_body(
+    config: V1, pull_request: PullRequest, commit_authors: List[CommitAuthor]
+) -> MergeBody:
+    """
+    Get merge options for a pull request to call GitHub API.
+    """
     merge_body = MergeBody(merge_method=config.merge.method.value)
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(
@@ -96,27 +136,59 @@ def get_merge_body(config: V1, pull_request: PullRequest) -> MergeBody:
             merge_body.commit_message = pull_request.url
         else:
             merge_body.commit_message += "\n\n" + pull_request.url
-    if config.merge.message.include_pull_request_author:
-        commit_message = (
-            merge_body.commit_message if merge_body.commit_message is not None else ""
-        )
-        author_name = pull_request.author.login
-        author_login = pull_request.author.login
-        if pull_request.author.type == "Bot":
-            author_name += "[bot]"
-            author_login += "[bot]"
-        if pull_request.author.name:
-            author_name = pull_request.author.name
 
-        # GitHub does not allow our GitHub App to view the email addresses of
-        # pull request authors, so we generate a noreply GitHub email address
-        # instead which works the same for the GitHub UI.
-        author_email = (
-            f"{pull_request.author.databaseId}+{author_login}@users.noreply.github.com"
+    # we share coauthor logic between include_pull_request_author and
+    # include_coauthors.
+    coauthor_trailers = []
+    if config.merge.message.include_pull_request_author:
+        author = get_commit_author_info(
+            login=pull_request.author.login,
+            databaseId=pull_request.author.databaseId,
+            name=pull_request.author.name,
+            type_=pull_request.author.type,
         )
+        coauthor_trailers.append(
+            get_coauthor_trailer(
+                user_id=pull_request.author.databaseId,
+                login=author.login,
+                name=author.name,
+            )
+        )
+    if config.merge.message.include_coauthors:
+        for commit_author in commit_authors:
+            if (
+                commit_author.databaseId is None
+                # don't add trailers for pull request author.
+                # TODO(chdsbd): Should we remove this?
+                or commit_author.databaseId == pull_request.author.databaseId
+            ):
+                continue
+            author = get_commit_author_info(
+                login=commit_author.login,
+                databaseId=commit_author.databaseId,
+                name=commit_author.name,
+                type_=commit_author.type,
+            )
+
+            coauthor_trailers.append(
+                get_coauthor_trailer(
+                    user_id=commit_author.databaseId,
+                    login=author.login,
+                    name=author.name,
+                )
+            )
+
+    if (
+        coauthor_trailers
+        and config.merge.message.body == MergeBodyStyle.pull_request_body
+    ):
+        # comment_message should never be None when using
+        # MergeBodyStyle.pull_request_body, but I'm not going to assert on that!
+        commit_message = merge_body.commit_message or ""
         merge_body.commit_message = (
-            commit_message + f"\n\nCo-authored-by: {author_name} <{author_email}>"
+            commit_message + "\n\n" + "\n".join(coauthor_trailers)
         )
+
     return merge_body
 
 
@@ -258,6 +330,7 @@ async def mergeable(
     reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
+    commit_authors: List[CommitAuthor],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
@@ -770,7 +843,7 @@ branch protection requirements.
     # okay to merge if we reach this point.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
-        merge_args = get_merge_body(config, pull_request)
+        merge_args = get_merge_body(config, pull_request, commit_authors)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
             await api.merge(
