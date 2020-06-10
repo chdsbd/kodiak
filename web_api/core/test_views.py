@@ -279,7 +279,7 @@ def test_usage_billing_subscription_started(
         stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
-    StripeCustomerInformation.objects.create(
+    stripe_customer_information = StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
@@ -287,6 +287,7 @@ def test_usage_billing_subscription_started(
         customer_email="accounting@acme-corp.com",
         customer_balance=0,
         customer_created=1585781308,
+        customer_currency="eur",
         payment_method_card_brand="mastercard",
         payment_method_card_exp_month="03",
         payment_method_card_exp_year="32",
@@ -308,8 +309,17 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
+    assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
+
+    stripe_customer_information.customer_currency = None
+    stripe_customer_information.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert (
+        res.json()["subscription"]["cost"]["currency"] == "usd"
+    ), "should default to usd if we cannot find a currency"
 
 
 @pytest.mark.django_db
@@ -610,8 +620,10 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     class FakeCheckoutSession:
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
 
-    mocker.patch(
-        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
+    checkout_session_create = mocker.patch(
+        "core.views.stripe.checkout.Session.create",
+        spec=stripe.checkout.Session.create,
+        return_value=FakeCheckoutSession,
     )
     res = authed_client.post(
         f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
@@ -619,6 +631,44 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+    _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["plan"] == settings.STRIPE_PLAN_ID
+
+
+@pytest.mark.django_db
+def test_start_checkout_custom_plan_id(
+    authed_client: Client, user: User, mocker: Any
+) -> None:
+    """
+    Start a Stripe checkout session with custom plan id
+    """
+    user_account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login=user.github_login,
+        github_account_type="User",
+        stripe_plan_id="price_1GsG85CoyKa1V9Y6B1x6uO3L",
+    )
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+
+    class FakeCheckoutSession:
+        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
+
+    checkout_session_create = mocker.patch(
+        "core.views.stripe.checkout.Session.create",
+        spec=stripe.checkout.Session.create,
+        return_value=FakeCheckoutSession,
+    )
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+    _args, kwargs = checkout_session_create.call_args
+    assert (
+        kwargs["subscription_data"]["items"][0]["plan"] == user_account.stripe_plan_id
+    )
 
 
 @pytest.mark.django_db
@@ -947,6 +997,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             email="j.doe@example.com",
             balance=5000,
             created=1643455402,
+            currency="gbp",
         ),
         "fake-key",
     )
@@ -1068,6 +1119,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert stripe_customer_info_updated.customer_email == fake_customer.email
     assert stripe_customer_info_updated.customer_balance == fake_customer.balance
     assert stripe_customer_info_updated.customer_created == fake_customer.created
+    assert stripe_customer_info_updated.customer_currency == fake_customer.currency
 
     assert (
         stripe_customer_info_updated.payment_method_card_brand
@@ -1129,6 +1181,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             email="j.doe@example.com",
             balance=5000,
             created=1643455402,
+            currency="brl",
         ),
         "fake-key",
     )

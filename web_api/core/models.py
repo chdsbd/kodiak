@@ -264,6 +264,12 @@ class Account(BaseModel):
     )
     trial_email = models.CharField(blank=True, max_length=255)
 
+    stripe_plan_id = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Stripe plan_id to use when creating subscription. Overrides settings.STRIPE_PLAN_ID if provided. We only need to set this when we provide a custom plan for a given user.",
+    )
+
     stripe_customer_id = models.CharField(
         blank=True,
         max_length=255,
@@ -850,6 +856,11 @@ class StripeCustomerInformation(models.Model):
     customer_created = models.IntegerField(
         help_text="Time at which the object was created. Measured in seconds since the Unix epoch."
     )
+    customer_currency = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
+    )
 
     # https://stripe.com/docs/api/payment_methods/object
     payment_method_card_brand = models.CharField(
@@ -907,6 +918,7 @@ class StripeCustomerInformation(models.Model):
         self.customer_email = customer.email
         self.customer_balance = customer.balance
         self.customer_created = customer.created
+        self.customer_currency = customer.currency
 
         self.payment_method_card_brand = payment_method.card.brand
         self.payment_method_card_exp_month = payment_method.card.exp_month

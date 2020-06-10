@@ -25,6 +25,8 @@ import * as settings from "../settings"
 import debounce from "lodash/debounce"
 import { GoLinkExternal } from "react-icons/go"
 
+const DEFAULT_CURRENCY = "usd"
+
 interface IQuestionProps {
   readonly content: string | React.ReactNode
 }
@@ -56,6 +58,7 @@ interface IUsageBillingData {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
+      readonly currency: string
     }
     readonly billingEmail: string
     readonly cardInfo: string
@@ -110,8 +113,12 @@ function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
   )
 }
 
-function formatCents(cents: number): string {
-  return `\$${(cents / 100).toFixed(2)}`
+function formatCents(cents: number, currency: string): string {
+  const formatter = new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+  })
+  return formatter.format(cents / 100)
 }
 
 function formatFromNow(dateString: string): string {
@@ -122,7 +129,7 @@ function FormatDate({ date }: { date: string }) {
   return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
 }
 
-const formattedMonthlyCost = formatCents(settings.monthlyCost)
+const formattedMonthlyCost = formatCents(settings.monthlyCost, DEFAULT_CURRENCY)
 
 interface IInstallCompleteModalProps {
   readonly show: boolean
@@ -256,7 +263,7 @@ function StartSubscriptionModal({
       }
     })
   }
-
+  const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
   const costCents = seats * settings.monthlyCost
   const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
@@ -298,11 +305,11 @@ function StartSubscriptionModal({
               type="text"
               required
               disabled
-              value={formatCents(costCents)}
+              value={formatCost(costCents)}
             />
             <Form.Text className="text-muted">
               Billed monthly. <b>{seats} seat(s) </b>
-              at <b>{formatCents(settings.monthlyCost)}/seat</b>.{" "}
+              at <b>{formatCost(settings.monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
           <Button
@@ -341,11 +348,17 @@ interface IManageSubscriptionModalProps {
   readonly currentSeats: number
   readonly billingEmail: string
   readonly cardInfo: string
+  readonly cost: {
+    readonly totalCents: number
+    readonly perSeatCents: number
+    readonly currency: string
+  }
 }
 function ManageSubscriptionModal({
   show,
   onClose,
   seatUsage,
+  cost,
   billingEmail,
   cardInfo,
   currentSeats,
@@ -358,6 +371,8 @@ function ManageSubscriptionModal({
   >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const seatsRef = React.useRef(0)
+
+  const formatCost = (cents: number) => formatCents(cents, cost.currency)
 
   React.useEffect(() => {
     seatsRef.current = seats
@@ -421,15 +436,16 @@ function ManageSubscriptionModal({
   React.useEffect(() => {
     fetchProrationDebounced()
   }, [fetchProrationDebounced, seats])
+
   function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
       return "--"
     }
     if (x.kind === "success") {
       if (x.cost > 0) {
-        return formatCents(x.cost)
+        return formatCost(x.cost)
       }
-      return `account credit of ${formatCents(-x.cost)}`
+      return `account credit of ${formatCost(-x.cost)}`
     }
     return "--"
   }
@@ -485,9 +501,9 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs <b>{formattedMonthlyCost}/month</b> for{" "}
-              <b>{currentSeats} seat(s)</b> at{" "}
-              <b>{formattedMonthlyCost}/seat</b>.
+              Your current plan costs <b>{formatCost(cost.totalCents)}/month</b>{" "}
+              for <b>{currentSeats} seat(s)</b> at{" "}
+              <b>{formatCost(cost.perSeatCents)}/seat</b>.
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -523,8 +539,8 @@ function ManageSubscriptionModal({
             {seats !== currentSeats && prorationAmount.kind === "success" ? (
               <Form.Text className="text-muted">
                 Includes prorations. Renews monthly at{" "}
-                <b>{formatCents(costCents)}</b> for <b>{seats} seat(s) </b>
-                at <b>{formatCents(settings.monthlyCost)}/seat</b>.{" "}
+                <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
+                at <b>{formatCost(cost.perSeatCents)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
           </Form.Group>
@@ -541,7 +557,7 @@ function ManageSubscriptionModal({
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
               ? prorationAmount.cost > 0
-                ? `Update Plan for ${formatCents(prorationAmount.cost)}`
+                ? `Update Plan for ${formatCost(prorationAmount.cost)}`
                 : "Update Plan"
               : "loading..."}
           </Button>
@@ -650,6 +666,7 @@ interface IActiveSubscriptionProps {
   readonly cost: {
     readonly totalCents: number
     readonly perSeatCents: number
+    readonly currency: string
   }
   readonly modifySubscription: () => void
   readonly teamId: string
@@ -662,6 +679,7 @@ function ActiveSubscription({
   modifySubscription,
   teamId,
 }: IActiveSubscriptionProps) {
+  const formatCost = (cents: number) => formatCents(cents, cost.currency)
   return (
     <Col>
       <Row>
@@ -691,9 +709,9 @@ function ActiveSubscription({
           <b>Cost</b>
         </Col>
         <Col>
-          <span className="mr-4">{formatCents(cost.totalCents)} / month</span>
+          <span className="mr-4">{formatCost(cost.perSeatCents)} / month</span>
           <span>
-            ({formatCents(cost.perSeatCents)} / seat ⨉ {seats} seats)
+            ({formatCost(cost.perSeatCents)} / seat ⨉ {seats} seats)
           </span>
         </Col>
       </Row>
@@ -740,6 +758,7 @@ interface ISubscriptionProps {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
+      readonly currency: string
     }
     readonly billingEmail: string
   } | null
@@ -907,6 +926,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
             seatUsage={data.activeUsers.length}
             billingEmail={data.subscription.billingEmail}
             cardInfo={data.subscription.cardInfo}
+            cost={data.subscription.cost}
             onClose={x => {
               if (x?.reload) {
                 location.search = ""
