@@ -470,7 +470,7 @@ function ManageSubscriptionModal({
     })
   }
 
-  const costCents = seats * settings.monthlyCost
+  const costCents = seats * cost.perSeatCents
   return (
     <Modal show={show} onHide={() => onClose()}>
       <Modal.Header closeButton>
