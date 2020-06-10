@@ -20,6 +20,7 @@ export const SENTRY_DSN =
 export const installUrl = "https://github.com/marketplace/kodiakhq"
 export const docsUrl = "https://kodiakhq.com/docs/quickstart"
 export const helpUrl = "https://kodiakhq.com/help"
+export const billingDocsUrl = "https://kodiakhq.com/docs/billing"
 export const loginUrl = `${API_ROOT}/v1/oauth_login`
 export const monthlyCost = 499
 

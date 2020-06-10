@@ -7,6 +7,7 @@ import {
   OverlayTrigger,
   Modal,
   Form,
+  Card,
   Button,
 } from "react-bootstrap"
 import { Image } from "./Image"
@@ -510,9 +511,7 @@ function ManageSubscriptionModal({
             <Form.Label>Billing Email </Form.Label>
             <Form.Control type="text" required disabled value={billingEmail} />
             <Form.Text className="text-muted">
-              <a href="#" onClick={updateBillingInfo}>
-                update
-              </a>
+              <a href="?modify_account_details=1">update</a>
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -571,6 +570,101 @@ function ManageSubscriptionModal({
           onClick={cancelSubscription}>
           Cancel Subscription
         </Button>
+      </Modal.Body>
+    </Modal>
+  )
+}
+
+type IManangeAccountModalProps = {
+  readonly show: boolean
+  readonly onClose: (props?: { reload?: boolean }) => void
+  readonly billingEmail: string
+}
+function ManangeAccountModal({
+  show,
+  onClose,
+  billingEmail: realBillingEmail,
+}: IManangeAccountModalProps) {
+  const [billingEmail, setBillingEmail] = React.useState(realBillingEmail)
+
+  return (
+    <Modal show={show} onHide={() => onClose()}>
+      <Modal.Header closeButton>
+        <Modal.Title>Manage Account</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault()
+          }}>
+          <Form.Group>
+            <Form.Label>Billing Email (required)</Form.Label>
+            <Form.Control
+              type="email"
+              required
+              value={billingEmail}
+              onChange={e => setBillingEmail(e.target.value)}
+            />
+            <Form.Text className="text-muted">
+              Email for receipts and account updates.
+            </Form.Text>
+          </Form.Group>
+          <hr />
+          <Form.Group>
+            <Form.Label>Name (optional)</Form.Label>
+            <Form.Control type="text" required />
+            <Form.Text className="text-muted">
+              Organization name. Added to receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Address line 1 (optional)</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="street, PO Box, or company name"
+            />
+            <Form.Text className="text-muted">
+              Will be added to receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>City (optional)</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="City, district, suburb, town, or village."
+            />
+            <Form.Text className="text-muted"></Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Country (optional)</Form.Label>
+            <Form.Control type="text" placeholder="Two-letter country code." />
+            <Form.Text className="text-muted"></Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Address line 2 (optional)</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="City, district, suburb, town, or village."
+            />
+            <Form.Text className="text-muted"></Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Postal Code (optional)</Form.Label>
+            <Form.Control type="text" placeholder="ZIP or postal code." />
+            <Form.Text className="text-muted"></Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>State (optional)</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="State, county, province, or region."
+            />
+            <Form.Text className="text-muted"></Form.Text>
+          </Form.Group>
+          <Button variant="primary" type="submit" block>
+            Save
+          </Button>
+        </Form>
       </Modal.Body>
     </Modal>
   )
@@ -659,98 +753,11 @@ function SubscriptionUpsellPrompt({
   )
 }
 
-interface IActiveSubscriptionProps {
-  readonly seats: number
-  readonly nextBillingDate: string
-  readonly billingEmail: string
-  readonly cost: {
-    readonly totalCents: number
-    readonly perSeatCents: number
-    readonly currency: string
-  }
-  readonly modifySubscription: () => void
-  readonly teamId: string
-}
-function ActiveSubscription({
-  seats,
-  cost,
-  billingEmail,
-  nextBillingDate,
-  modifySubscription,
+function Subcription({
+  subscription,
   teamId,
-}: IActiveSubscriptionProps) {
-  const formatCost = (cents: number) => formatCents(cents, cost.currency)
-  return (
-    <Col>
-      <Row>
-        <Col md={3}>
-          <b>Seats</b>
-        </Col>
-        <Col>{seats}</Col>
-
-        <Col sm={12}>
-          <p className="small mb-0">
-            An active user consumes one per billing period seat. If your usage
-            exceeds your purchased seats you will need to add more seats to your
-            subscription.
-          </p>
-        </Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Next Billing Date</b>
-        </Col>
-        <Col>
-          <FormatDate date={nextBillingDate} />
-        </Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Cost</b>
-        </Col>
-        <Col>
-          <span className="mr-4">{formatCost(cost.totalCents)} / month</span>
-          <span>
-            ({formatCost(cost.perSeatCents)} / seat ⨉ {seats} seats)
-          </span>
-        </Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Billing Email</b>
-        </Col>
-        <Col>{billingEmail}</Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Billing History</b>
-        </Col>
-        <Col>
-          <a href={settings.getStripeSelfServeUrl(teamId)}>
-            view billing history
-            <GoLinkExternal className="pl-1" />
-          </a>
-        </Col>
-      </Row>
-      <Row className="mt-3">
-        <Col>
-          <Button variant="dark" size="sm" onClick={modifySubscription}>
-            Modify Subscription
-          </Button>
-        </Col>
-        <Col sm={12}>
-          <p className="small mb-0 mt-2">
-            Send us an email at{" "}
-            <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
-            you need any assistance.
-          </p>
-        </Col>
-      </Row>
-    </Col>
-  )
-}
-
-interface ISubscriptionProps {
+  modifySubscription,
+}: {
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
@@ -761,48 +768,194 @@ interface ISubscriptionProps {
       readonly currency: string
     }
     readonly billingEmail: string
-  } | null
-  readonly startSubscription: () => void
-  readonly startTrial: () => void
+  }
   readonly modifySubscription: () => void
-  readonly trial: ISubscriptionUpsellPromptProps["trial"]
   readonly teamId: string
+}) {
+  return (
+    <Row>
+      <Col lg={9}>
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title className="d-flex align-items-baseline justify-content-between">
+              <span>Subscription</span>
+              <small>
+                <a href={settings.billingDocsUrl}>billing docs</a>
+              </small>
+            </Card.Title>
+            <Form.Group>
+              <Form.Label>Seats</Form.Label>
+              <p className="mb-0">{subscription.seats} seats</p>
+              <Form.Text className="text-muted">
+                An active user consumes one per billing period seat. If your
+                usage exceeds your purchased seats you will need to add more
+                seats to your subscription.
+              </Form.Text>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Next Billing Date</Form.Label>
+              <p>
+                <FormatDate date={subscription.nextBillingDate} />
+              </p>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Cost</Form.Label>
+              <p>
+                {subscription.seats} seats ⨉{" "}
+                {formatCents(
+                  subscription.cost.perSeatCents,
+                  subscription.cost.currency,
+                )}{" "}
+                / seat ={" "}
+                {formatCents(
+                  subscription.cost.totalCents,
+                  subscription.cost.currency,
+                )}
+              </p>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Billing History</Form.Label>
+              <p>
+                <a href={settings.getStripeSelfServeUrl(teamId)}>
+                  view billing history
+                  <GoLinkExternal className="pl-1" />
+                </a>
+              </p>
+            </Form.Group>
+            <Button variant="dark" size="sm" onClick={modifySubscription}>
+              Modify Subscription
+            </Button>
+            <p className="small mb-0 mt-2">
+              Send us an email at{" "}
+              <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
+              you need any assistance.
+            </p>
+
+            <hr />
+            <BillingDocumentation
+              subscriptionInfo
+              trialInfo={false}
+              pricingInfo
+            />
+          </Card.Body>
+        </Card>
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title>Billing Email</Card.Title>
+            <Form.Group>
+              <Form.Control type="text" required />
+              <Form.Text className="text-muted">
+                Required. Address to send billing receipts.
+              </Form.Text>
+            </Form.Group>
+            <Button variant="dark" size="sm">
+              Save
+            </Button>
+          </Card.Body>
+        </Card>
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title>Company Name</Card.Title>
+            <Form.Group>
+              <Form.Control type="text" required />
+              <Form.Text className="text-muted">
+                Added to billing receipts if provided.
+              </Form.Text>
+            </Form.Group>
+            <Button variant="dark" size="sm">
+              Save
+            </Button>
+          </Card.Body>
+        </Card>
+
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title>Billing Address</Card.Title>
+            <Form.Group>
+              <Form.Control type="text" placeholder="Address line 1" />
+            </Form.Group>
+            <Form.Group>
+              <Form.Control type="text" placeholder="Address line 2" />
+            </Form.Group>
+            <Form.Group>
+              <Form.Control type="text" placeholder="City" />
+            </Form.Group>
+            <Form.Group>
+              <Form.Row>
+                <Col>
+                  <Form.Control
+                    type="text"
+                    placeholder="State / Province / Region"
+                  />
+                </Col>
+                <Col>
+                  <Form.Control type="text" placeholder="ZIP / Postal Code" />
+                </Col>
+              </Form.Row>
+            </Form.Group>
+            <Form.Group>
+              <Form.Control type="text" placeholder="Country" />
+              <Form.Text className="text-muted">
+                Added to billing receipts if provided.
+              </Form.Text>
+            </Form.Group>
+            <Button variant="dark" size="sm">
+              Save
+            </Button>
+          </Card.Body>
+        </Card>
+      </Col>
+    </Row>
+  )
 }
-function Subscription({
-  subscription,
+
+function SubscriptionTrialStarter({
   startSubscription,
   startTrial,
-  modifySubscription,
   trial,
-  teamId,
-}: ISubscriptionProps) {
+}: {
+  readonly startSubscription: () => void
+  readonly startTrial: () => void
+  readonly trial: ISubscriptionUpsellPromptProps["trial"]
+}) {
   return (
-    <>
-      <h3 className="h5">Subscription</h3>
-      <div className="border border-primary rounded p-2 mb-4">
-        <Row>
-          {subscription != null && !subscription.expired ? (
-            <ActiveSubscription
-              cost={subscription.cost}
-              seats={subscription.seats}
-              nextBillingDate={subscription.nextBillingDate}
-              billingEmail={subscription.billingEmail}
-              modifySubscription={modifySubscription}
-              teamId={teamId}
-            />
-          ) : (
+    <Row>
+      <Col className="mx-auto">
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title className="d-flex align-items-baseline justify-content-between">
+              <span>Subscription</span>
+              <small>
+                <a href={settings.billingDocsUrl}>billing docs</a>
+              </small>
+            </Card.Title>
             <SubscriptionUpsellPrompt
               trial={trial}
               startSubscription={startSubscription}
               startTrial={startTrial}
             />
-          )}
-        </Row>
-        <Row>
-          <Col>
+
             <hr />
-          </Col>
-        </Row>
+            <BillingDocumentation pricingInfo subscriptionInfo trialInfo />
+          </Card.Body>
+        </Card>
+      </Col>
+    </Row>
+  )
+}
+
+function BillingDocumentation({
+  subscriptionInfo,
+  trialInfo,
+  pricingInfo,
+}: {
+  readonly subscriptionInfo: boolean
+  readonly trialInfo: boolean
+  readonly pricingInfo: boolean
+}) {
+  return (
+    <>
+      {subscriptionInfo && (
         <Row>
           <Col>
             <b>Subscription benefits</b>
@@ -817,6 +970,8 @@ function Subscription({
             </ul>
           </Col>
         </Row>
+      )}
+      {trialInfo && (
         <Row>
           <Col>
             <b>Trial</b>
@@ -827,6 +982,8 @@ function Subscription({
             </p>
           </Col>
         </Row>
+      )}
+      {pricingInfo && (
         <Row>
           <Col>
             <b>Pricing</b>
@@ -837,20 +994,7 @@ function Subscription({
             </p>
           </Col>
         </Row>
-        <Row>
-          <Col>
-            <p>
-              For more information about billing visit{" "}
-              <a href="https://kodiakhq.com/docs/billing">
-                https://kodiakhq.com/docs/billing
-              </a>
-              . Send us an email at{" "}
-              <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
-              you need any assistance.
-            </p>
-          </Col>
-        </Row>
-      </div>
+      )}
     </>
   )
 }
@@ -868,6 +1012,9 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   )
   const showSubscriptionModifyModal = Boolean(
     queryParams.get("modify_subscription"),
+  )
+  const showAccountModifyModal = Boolean(
+    queryParams.get("modify_account_details"),
   )
   function clearQueryString() {
     history.push({ search: "" })
@@ -899,11 +1046,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
 
   return (
     <UsageAndBillingContainer>
-      <p>
-        <b> Period</b>
-        <br />
-        {oneMonthAgo} – {today}
-      </p>
       <div className="mb-4">
         <InstallCompleteModal
           show={showInstallCompleteModal}
@@ -920,31 +1062,45 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           seatUsage={data.activeUsers.length}
         />
         {data.subscription != null ? (
-          <ManageSubscriptionModal
-            show={showSubscriptionModifyModal}
-            currentSeats={data.subscription.seats}
-            seatUsage={data.activeUsers.length}
-            billingEmail={data.subscription.billingEmail}
-            cardInfo={data.subscription.cardInfo}
-            cost={data.subscription.cost}
-            onClose={x => {
-              if (x?.reload) {
-                location.search = ""
-              } else {
-                clearQueryString()
-              }
-            }}
-          />
+          <>
+            <ManageSubscriptionModal
+              show={showSubscriptionModifyModal}
+              currentSeats={data.subscription.seats}
+              seatUsage={data.activeUsers.length}
+              billingEmail={data.subscription.billingEmail}
+              cardInfo={data.subscription.cardInfo}
+              cost={data.subscription.cost}
+              onClose={x => {
+                if (x?.reload) {
+                  location.search = ""
+                } else {
+                  clearQueryString()
+                }
+              }}
+            />
+            <ManangeAccountModal
+              show={showAccountModifyModal}
+              billingEmail={data.subscription.billingEmail}
+              onClose={() => undefined}
+            />
+          </>
         ) : null}
         {data.accountCanSubscribe ? (
-          <Subscription
-            startSubscription={handleStartSubscription}
-            startTrial={handleStartTrial}
-            modifySubscription={modifySubscription}
-            subscription={data.subscription}
-            trial={data.trial}
-            teamId={teamId}
-          />
+          <>
+            {data.subscription == null ? (
+              <SubscriptionTrialStarter
+                startSubscription={handleStartSubscription}
+                startTrial={handleStartTrial}
+                trial={data.trial}
+              />
+            ) : (
+              <Subcription
+                subscription={data.subscription}
+                teamId={teamId}
+                modifySubscription={modifySubscription}
+              />
+            )}
+          </>
         ) : (
           <Row>
             <Col>
@@ -958,69 +1114,80 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           </Row>
         )}
 
-        <h3 className="h5">Usage</h3>
-        <div className="border border-primary rounded p-2">
-          <Row>
-            <Col md={3}>
-              <b>Active Users</b>
-            </Col>
-            <Col>
-              {data.activeUsers.length} / {data.subscription?.seats ?? 0} seats
-            </Col>
+        <Row>
+          <Col>
+            <Card className="mb-4">
+              <Card.Body>
+                <Card.Title className="d-flex align-items-baseline justify-content-between">
+                  <span>Usage</span>
+                  <small>
+                    {oneMonthAgo} – {today}
+                  </small>
+                </Card.Title>
 
-            <Col sm={12}>
-              <p className="small mb-0">
-                Active users are only counted for private repositories. Public
-                repositories are free.
-              </p>
-            </Col>
-          </Row>
+                <Form.Group>
+                  <Form.Label>Active Users</Form.Label>
+                  <p className="mb-0">
+                    {data.activeUsers.length} / {data.subscription?.seats ?? 0}{" "}
+                    seats
+                  </p>
 
-          <Table size="sm" className="mt-2">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>
-                  Days Active{" "}
-                  <Question
-                    content={
-                      "This user opened a GitHub pull request that Kodiak updated, approved, or merged."
-                    }
-                  />
-                </th>
-                <th>First Active Date</th>
-                <th>Last Active Date</th>
-                <th>
-                  Has Seat{" "}
-                  <Question
-                    content={
-                      "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
-                    }
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortBy(data.activeUsers, x => x.name.toLowerCase()).map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <Image
-                      url={u.profileImgUrl}
-                      alt="user profile"
-                      size={30}
-                      className="mr-3"
-                    />
-                    {u.name}
-                  </td>
-                  <td>{u.interactions}</td>
-                  <td>{u.firstActiveDate}</td>
-                  <td>{u.lastActiveDate}</td>
-                  <td>{u.hasSeatLicense ? "Yes" : "No"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+                  <Form.Text className="text-muted">
+                    Active users are only counted for private repositories.
+                    Public repositories are free.
+                  </Form.Text>
+                </Form.Group>
+
+                <Table size="sm" className="mt-2">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>
+                        Days Active{" "}
+                        <Question
+                          content={
+                            "This user opened a GitHub pull request that Kodiak updated, approved, or merged."
+                          }
+                        />
+                      </th>
+                      <th>First Active Date</th>
+                      <th>Last Active Date</th>
+                      <th>
+                        Has Seat{" "}
+                        <Question
+                          content={
+                            "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
+                          }
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortBy(data.activeUsers, x => x.name.toLowerCase()).map(
+                      u => (
+                        <tr key={u.id}>
+                          <td>
+                            <Image
+                              url={u.profileImgUrl}
+                              alt="user profile"
+                              size={30}
+                              className="mr-3"
+                            />
+                            {u.name}
+                          </td>
+                          <td>{u.interactions}</td>
+                          <td>{u.firstActiveDate}</td>
+                          <td>{u.lastActiveDate}</td>
+                          <td>{u.hasSeatLicense ? "Yes" : "No"}</td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </div>
     </UsageAndBillingContainer>
   )
