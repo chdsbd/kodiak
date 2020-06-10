@@ -41,6 +41,7 @@ export interface IUsageBillingPageApiResponse {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
+      readonly currency: string
     }
     readonly billingEmail: string
     readonly cardInfo: string

@@ -56,6 +56,7 @@ interface IUsageBillingData {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
+      readonly currency: string
     }
     readonly billingEmail: string
     readonly cardInfo: string
@@ -650,6 +651,7 @@ interface IActiveSubscriptionProps {
   readonly cost: {
     readonly totalCents: number
     readonly perSeatCents: number
+    readonly currency: string
   }
   readonly modifySubscription: () => void
   readonly teamId: string
@@ -664,7 +666,7 @@ function ActiveSubscription({
 }: IActiveSubscriptionProps) {
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "brl",
+    currency: cost.currency,
   })
   return (
     <Col>
@@ -746,6 +748,7 @@ interface ISubscriptionProps {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
+      readonly currency: string
     }
     readonly billingEmail: string
   } | null

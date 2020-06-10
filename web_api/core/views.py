@@ -49,6 +49,9 @@ def ping(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
 
 
+DEFAULT_CURRENCY = "usd"
+
+
 @auth.login_required
 def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(user=request.user, team_id=team_id)
@@ -76,6 +79,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 totalCents=stripe_customer_info.plan_amount
                 * stripe_customer_info.subscription_quantity,
                 perSeatCents=stripe_customer_info.plan_amount,
+                currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
             ),
             billingEmail=stripe_customer_info.customer_email,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
@@ -249,6 +253,8 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
     customer_id = account.stripe_customer_id or None
+    # use a custom plan if we've assigned the account one, otherwise use the
+    # global default plan.
     stripe_plan_id = account.stripe_plan_id or settings.STRIPE_PLAN_ID
 
     # https://stripe.com/docs/api/checkout/sessions/create

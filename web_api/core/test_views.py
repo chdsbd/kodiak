@@ -279,7 +279,7 @@ def test_usage_billing_subscription_started(
         stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
-    StripeCustomerInformation.objects.create(
+    stripe_customer_information = StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
@@ -287,6 +287,7 @@ def test_usage_billing_subscription_started(
         customer_email="accounting@acme-corp.com",
         customer_balance=0,
         customer_created=1585781308,
+        customer_currency="eur",
         payment_method_card_brand="mastercard",
         payment_method_card_exp_month="03",
         payment_method_card_exp_year="32",
@@ -308,8 +309,17 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
+    assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
+
+    stripe_customer_information.customer_currency = None
+    stripe_customer_information.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert (
+        res.json()["subscription"]["cost"]["currency"] == "usd"
+    ), "should default to usd if we cannot find a currency"
 
 
 @pytest.mark.django_db

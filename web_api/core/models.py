@@ -858,6 +858,7 @@ class StripeCustomerInformation(models.Model):
     )
     customer_currency = models.CharField(
         max_length=255,
+        null=True,
         help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
     )
 
