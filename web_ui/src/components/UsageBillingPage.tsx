@@ -709,7 +709,7 @@ function ActiveSubscription({
           <b>Cost</b>
         </Col>
         <Col>
-          <span className="mr-4">{formatCost(cost.perSeatCents)} / month</span>
+          <span className="mr-4">{formatCost(cost.totalCents)} / month</span>
           <span>
             ({formatCost(cost.perSeatCents)} / seat ⨉ {seats} seats)
           </span>
