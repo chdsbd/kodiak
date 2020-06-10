@@ -263,7 +263,7 @@ function StartSubscriptionModal({
       }
     })
   }
-
+  const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
   const costCents = seats * settings.monthlyCost
   const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
@@ -305,14 +305,11 @@ function StartSubscriptionModal({
               type="text"
               required
               disabled
-              value={formatCents(costCents, DEFAULT_CURRENCY)}
+              value={formatCost(costCents)}
             />
             <Form.Text className="text-muted">
               Billed monthly. <b>{seats} seat(s) </b>
-              at{" "}
-              <b>
-                {formatCents(settings.monthlyCost, DEFAULT_CURRENCY)}/seat
-              </b>.{" "}
+              at <b>{formatCost(settings.monthlyCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
           <Button
@@ -374,6 +371,8 @@ function ManageSubscriptionModal({
   >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
   const seatsRef = React.useRef(0)
+
+  const formatCost = (cents: number) => formatCents(cents, cost.currency)
 
   React.useEffect(() => {
     seatsRef.current = seats
@@ -437,15 +436,16 @@ function ManageSubscriptionModal({
   React.useEffect(() => {
     fetchProrationDebounced()
   }, [fetchProrationDebounced, seats])
+
   function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
       return "--"
     }
     if (x.kind === "success") {
       if (x.cost > 0) {
-        return formatCents(x.cost, cost.currency)
+        return formatCost(x.cost)
       }
-      return `account credit of ${formatCents(-x.cost, cost.currency)}`
+      return `account credit of ${formatCost(-x.cost)}`
     }
     return "--"
   }
@@ -501,10 +501,9 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs{" "}
-              <b>{formatCents(cost.totalCents, cost.currency)}/month</b> for{" "}
-              <b>{currentSeats} seat(s)</b> at{" "}
-              <b>{formatCents(cost.perSeatCents, cost.currency)}/seat</b>.
+              Your current plan costs <b>{formatCost(cost.totalCents)}/month</b>{" "}
+              for <b>{currentSeats} seat(s)</b> at{" "}
+              <b>{formatCost(cost.perSeatCents)}/seat</b>.
             </Form.Text>
           </Form.Group>
           <Form.Group>
@@ -540,11 +539,8 @@ function ManageSubscriptionModal({
             {seats !== currentSeats && prorationAmount.kind === "success" ? (
               <Form.Text className="text-muted">
                 Includes prorations. Renews monthly at{" "}
-                <b>{formatCents(costCents, cost.currency)}</b> for{" "}
-                <b>{seats} seat(s) </b>
-                at <b>
-                  {formatCents(cost.perSeatCents, cost.currency)}/seat
-                </b>.{" "}
+                <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
+                at <b>{formatCost(cost.perSeatCents)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
           </Form.Group>
@@ -561,10 +557,7 @@ function ManageSubscriptionModal({
               ? "first modify your seat count..."
               : prorationAmount.kind === "success"
               ? prorationAmount.cost > 0
-                ? `Update Plan for ${formatCents(
-                    prorationAmount.cost,
-                    cost.currency,
-                  )}`
+                ? `Update Plan for ${formatCost(prorationAmount.cost)}`
                 : "Update Plan"
               : "loading..."}
           </Button>
@@ -686,10 +679,7 @@ function ActiveSubscription({
   modifySubscription,
   teamId,
 }: IActiveSubscriptionProps) {
-  const formatter = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: cost.currency,
-  })
+  const formatCost = (cents: number) => formatCents(cents, cost.currency)
   return (
     <Col>
       <Row>
@@ -719,11 +709,9 @@ function ActiveSubscription({
           <b>Cost</b>
         </Col>
         <Col>
-          <span className="mr-4">
-            {formatter.format(cost.perSeatCents / 100)} / month
-          </span>
+          <span className="mr-4">{formatCost(cost.perSeatCents)} / month</span>
           <span>
-            ({formatter.format(cost.perSeatCents / 100)} / seat ⨉ {seats} seats)
+            ({formatCost(cost.perSeatCents)} / seat ⨉ {seats} seats)
           </span>
         </Col>
       </Row>
