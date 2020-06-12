@@ -908,6 +908,145 @@ function SubscriptionUpsellPrompt({
   )
 }
 
+function BillingEmailForm({
+  defaultValue,
+  className,
+}: {
+  defaultValue: string
+  className?: string
+}) {
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    // save
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Billing Email</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control type="text" required defaultValue={defaultValue} />
+            <Form.Text className="text-muted">
+              Required. Address to send billing receipts.
+            </Form.Text>
+          </Form.Group>
+          <Button variant="dark" size="sm">
+            Save
+          </Button>
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
+function CompanyNameForm({
+  defaultValue,
+  className,
+}: {
+  defaultValue: string
+  className?: string
+}) {
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    // save
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Company Name</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control type="text" defaultValue={defaultValue} />
+            <Form.Text className="text-muted">
+              Added to billing receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <Button variant="dark" size="sm">
+            Save
+          </Button>
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
+function PostalAddressForm({
+  defaultValue,
+  className,
+}: {
+  defaultValue: {
+    line1?: string
+    line2?: string
+    city?: string
+    state?: string
+    zip?: string
+    country?: string
+  }
+  className?: string
+}) {
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    // save
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Postal Address</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="Address line 1"
+              defaultValue={defaultValue.line1}
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="Address line 2"
+              defaultValue={defaultValue.line2}
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="City"
+              defaultValue={defaultValue.city}
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Row>
+              <Col>
+                <Form.Control
+                  type="text"
+                  placeholder="State / Province / Region"
+                  defaultValue={defaultValue.state}
+                />
+              </Col>
+              <Col>
+                <Form.Control
+                  type="text"
+                  placeholder="ZIP / Postal Code"
+                  defaultValue={defaultValue.zip}
+                />
+              </Col>
+            </Form.Row>
+          </Form.Group>
+          <Form.Group>
+            <Form.Control type="text" placeholder="Country" />
+            <Form.Text className="text-muted">
+              Added to billing receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <Button variant="dark" size="sm">
+            Save
+          </Button>
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
 function Subcription({
   subscription,
   teamId,
@@ -992,71 +1131,14 @@ function Subcription({
             />
           </Card.Body>
         </Card>
-        <Card className="mb-4">
-          <Card.Body>
-            <Card.Title>Billing Email</Card.Title>
-            <Form.Group>
-              <Form.Control type="text" required defaultValue={subscription.billingEmail}/>
-              <Form.Text className="text-muted">
-                Required. Address to send billing receipts.
-              </Form.Text>
-            </Form.Group>
-            <Button variant="dark" size="sm">
-              Save
-            </Button>
-          </Card.Body>
-        </Card>
-        <Card className="mb-4">
-          <Card.Body>
-            <Card.Title>Company Name</Card.Title>
-            <Form.Group>
-              <Form.Control type="text" required />
-              <Form.Text className="text-muted">
-                Added to billing receipts if provided.
-              </Form.Text>
-            </Form.Group>
-            <Button variant="dark" size="sm">
-              Save
-            </Button>
-          </Card.Body>
-        </Card>
+        <BillingEmailForm
+          className="mb-4"
+          defaultValue={subscription.billingEmail}
+        />
 
-        <Card className="mb-4">
-          <Card.Body>
-            <Card.Title>Billing Address</Card.Title>
-            <Form.Group>
-              <Form.Control type="text" placeholder="Address line 1" />
-            </Form.Group>
-            <Form.Group>
-              <Form.Control type="text" placeholder="Address line 2" />
-            </Form.Group>
-            <Form.Group>
-              <Form.Control type="text" placeholder="City" />
-            </Form.Group>
-            <Form.Group>
-              <Form.Row>
-                <Col>
-                  <Form.Control
-                    type="text"
-                    placeholder="State / Province / Region"
-                  />
-                </Col>
-                <Col>
-                  <Form.Control type="text" placeholder="ZIP / Postal Code" />
-                </Col>
-              </Form.Row>
-            </Form.Group>
-            <Form.Group>
-              <Form.Control type="text" placeholder="Country" />
-              <Form.Text className="text-muted">
-                Added to billing receipts if provided.
-              </Form.Text>
-            </Form.Group>
-            <Button variant="dark" size="sm">
-              Save
-            </Button>
-          </Card.Body>
-        </Card>
+        <CompanyNameForm className="mb-4" defaultValue={""} />
+
+        <PostalAddressForm className="mb-4" defaultValue={{}} />
       </Col>
     </Row>
   )
