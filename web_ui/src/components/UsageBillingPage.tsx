@@ -576,101 +576,6 @@ function ManageSubscriptionModal({
   )
 }
 
-type IManangeAccountModalProps = {
-  readonly show: boolean
-  readonly onClose: (props?: { reload?: boolean }) => void
-  readonly billingEmail: string
-}
-function ManangeAccountModal({
-  show,
-  onClose,
-  billingEmail: realBillingEmail,
-}: IManangeAccountModalProps) {
-  const [billingEmail, setBillingEmail] = React.useState(realBillingEmail)
-
-  return (
-    <Modal show={show} onHide={() => onClose()}>
-      <Modal.Header closeButton>
-        <Modal.Title>Manage Account</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form
-          onSubmit={(e: React.FormEvent) => {
-            e.preventDefault()
-          }}>
-          <Form.Group>
-            <Form.Label>Billing Email (required)</Form.Label>
-            <Form.Control
-              type="email"
-              required
-              value={billingEmail}
-              onChange={e => setBillingEmail(e.target.value)}
-            />
-            <Form.Text className="text-muted">
-              Email for receipts and account updates.
-            </Form.Text>
-          </Form.Group>
-          <hr />
-          <Form.Group>
-            <Form.Label>Name (optional)</Form.Label>
-            <Form.Control type="text" required />
-            <Form.Text className="text-muted">
-              Organization name. Added to receipts if provided.
-            </Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Address line 1 (optional)</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="street, PO Box, or company name"
-            />
-            <Form.Text className="text-muted">
-              Will be added to receipts if provided.
-            </Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>City (optional)</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="City, district, suburb, town, or village."
-            />
-            <Form.Text className="text-muted"></Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Country (optional)</Form.Label>
-            <Form.Control type="text" placeholder="Two-letter country code." />
-            <Form.Text className="text-muted"></Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Address line 2 (optional)</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="City, district, suburb, town, or village."
-            />
-            <Form.Text className="text-muted"></Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Postal Code (optional)</Form.Label>
-            <Form.Control type="text" placeholder="ZIP or postal code." />
-            <Form.Text className="text-muted"></Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>State (optional)</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="State, county, province, or region."
-            />
-            <Form.Text className="text-muted"></Form.Text>
-          </Form.Group>
-          <Button variant="primary" type="submit" block>
-            Save
-          </Button>
-        </Form>
-      </Modal.Body>
-    </Modal>
-  )
-}
-
 function Plan({
   className,
   name,
@@ -1248,9 +1153,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const showSubscriptionModifyModal = Boolean(
     queryParams.get("modify_subscription"),
   )
-  const showAccountModifyModal = Boolean(
-    queryParams.get("modify_account_details"),
-  )
   function clearQueryString() {
     history.push({ search: "" })
   }
@@ -1312,11 +1214,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                   clearQueryString()
                 }
               }}
-            />
-            <ManangeAccountModal
-              show={showAccountModifyModal}
-              billingEmail={data.subscription.billingEmail}
-              onClose={() => undefined}
             />
           </>
         ) : null}
