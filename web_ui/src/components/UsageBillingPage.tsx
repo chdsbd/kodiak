@@ -727,7 +727,7 @@ function SubscriptionUpsellPrompt({
           "No credit card required",
         ],
         startButton: (
-          <Button block variant="success">
+          <Button block variant="success" onClick={startTrial}>
             Start 30 Day Trial
           </Button>
         ),
@@ -745,7 +745,7 @@ function SubscriptionUpsellPrompt({
           "Support Kodiak's development",
         ],
         startButton: (
-          <Button block variant="dark">
+          <Button block variant="dark" onClick={startSubscription}>
             Subscribe
           </Button>
         ),
