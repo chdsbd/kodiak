@@ -9,6 +9,7 @@ import {
   Form,
   Card,
   Button,
+  Tooltip,
 } from "react-bootstrap"
 import { Image } from "./Image"
 import { WebData } from "../webdata"
@@ -676,15 +677,20 @@ function Plan({
   cost,
   features,
   startButton,
+  highlight,
 }: {
   className?: string
   name: React.ReactNode
   cost: React.ReactNode
   features: React.ReactNodeArray
   startButton: React.ReactNode
+  highlight?: boolean
 }) {
   return (
-    <Card className={"shadow-sm h-100 " + className}>
+    <Card
+      className={
+        "shadow-sm h-100 " + className + (highlight ? " shadow " : "")
+      }>
       <Card.Header>
         <h4 className="text-center">{name}</h4>
       </Card.Header>
@@ -703,6 +709,18 @@ function Plan({
   )
 }
 
+const KodiakTooltip = ({
+  children,
+  content,
+}: {
+  children: React.ReactNode
+  content: React.ReactNode
+}) => (
+  <OverlayTrigger overlay={props => <Tooltip {...props}>{content}</Tooltip>}>
+    {children}
+  </OverlayTrigger>
+)
+
 interface ISubscriptionUpsellPromptProps {
   readonly trial: {
     readonly endDate: string
@@ -716,78 +734,110 @@ function SubscriptionUpsellPrompt({
   startSubscription,
   startTrial,
 }: ISubscriptionUpsellPromptProps) {
-  if (trial == null) {
-    const plans = [
-      {
-        name: "30 Day Trial",
-        cost: "Free",
-        features: [
-          "Public & private repositories",
-          "Unlimited users for 30 days",
-          "No credit card required",
-        ],
-        startButton: (
+  const plans = [
+    {
+      name: "30 Day Trial",
+      cost: "Free",
+      highlight: trial == null,
+      features: [
+        "Public & private repositories",
+        "Unlimited users for 30 days",
+        "No credit card required",
+      ],
+      startButton:
+        trial == null ? (
           <Button block variant="success" onClick={startTrial}>
             Start 30 Day Trial
           </Button>
-        ),
-      },
-      {
-        name: "Professional",
-        cost: (
+        ) : trial.expired ? (
           <>
-            $4.99 <small className="text-muted">/ seat</small>
+            <p className="text-center">
+              Your active trial has <b>expired</b>.
+            </p>
+            <Button block variant="dark" disabled>
+              Trial Expired
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-center">
+              Your active trial expires in{" "}
+              <KodiakTooltip content={<FormatDate date={trial.endDate} />}>
+                <u>
+                  <b>{formatFromNow(trial.endDate)}</b>
+                </u>
+              </KodiakTooltip>
+              .
+            </p>
+            <Button block variant="dark" disabled>
+              Trial Started
+            </Button>
           </>
         ),
-        features: [
-          "Public & private repositories",
-          "Access priority support",
-          "Support Kodiak's development",
-        ],
-        startButton: (
-          <Button block variant="dark" onClick={startSubscription}>
-            Subscribe
-          </Button>
-        ),
-      },
-      {
-        name: "Enterprise",
-        cost: "Custom Pricing",
-        features: [
-          "Public & private repositories",
-          "Access priority support",
-          "Hands-on onboarding",
-          "Annual invoicing",
-        ],
-        startButton: (
-          <Button block variant="dark">
-            Contact Us
-          </Button>
-        ),
-      },
-    ]
-    return (
-      <>
-        <Row>
-          <Col>
-            <h3 className="text-center">Plans</h3>
+    },
+    {
+      name: "Professional",
+      highlight: trial != null,
+      cost: (
+        <>
+          $4.99 <small className="text-muted">/ seat</small>
+        </>
+      ),
+      features: [
+        "Public & private repositories",
+        "Access priority support",
+        "Support Kodiak's development",
+      ],
+      startButton: (
+        <Button
+          block
+          variant={trial != null ? "success" : "dark"}
+          onClick={startSubscription}>
+          Subscribe
+        </Button>
+      ),
+    },
+    {
+      name: "Enterprise",
+      highlight: false,
+      cost: "Custom Pricing",
+      features: [
+        "Public & private repositories",
+        "Access priority support",
+        "Hands-on onboarding",
+        "Annual invoicing",
+      ],
+      startButton: (
+        <a
+          className="btn btn-block btn-dark text-decoration-none"
+          href="mailto:support@kodiakhq.com?subject=enterprise%20plan">
+          Contact Us
+        </a>
+      ),
+    },
+  ]
+  return (
+    <>
+      <Row>
+        <Col>
+          <h3 className="text-center">Plans</h3>
+        </Col>
+      </Row>
+      <Row>
+        {plans.map(x => (
+          <Col lg={4} className="mx-auto mb-2">
+            <Plan
+              name={x.name}
+              highlight={x.highlight}
+              cost={x.cost}
+              features={x.features}
+              startButton={x.startButton}
+            />
           </Col>
-        </Row>
-        <Row>
-          {plans.map(x => (
-            <Col lg={4} className="mx-auto mb-2">
-              <Plan
-                name={x.name}
-                cost={x.cost}
-                features={x.features}
-                startButton={x.startButton}
-              />
-            </Col>
-          ))}
-        </Row>
-      </>
-    )
-  }
+        ))}
+      </Row>
+    </>
+  )
   return (
     <Col className="d-flex justify-content-center">
       <div className="m-auto">
@@ -892,9 +942,7 @@ function Subcription({
               <Form.Label>Seats</Form.Label>
               <p className="mb-0">{subscription.seats} seats</p>
               <Form.Text className="text-muted">
-                An active user consumes one per billing period seat. If your
-                usage exceeds your purchased seats you will need to add more
-                seats to your subscription.
+                An active user consumes one seat per billing period.
               </Form.Text>
             </Form.Group>
             <Form.Group>
@@ -948,7 +996,7 @@ function Subcription({
           <Card.Body>
             <Card.Title>Billing Email</Card.Title>
             <Form.Group>
-              <Form.Control type="text" required />
+              <Form.Control type="text" required defaultValue={subscription.billingEmail}/>
               <Form.Text className="text-muted">
                 Required. Address to send billing receipts.
               </Form.Text>

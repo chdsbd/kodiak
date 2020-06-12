@@ -15,13 +15,12 @@ export function Page({ children }: IPageProps) {
           <SideBarNav />
         </div>
         <ErrorBoundary>
-        <div className="w-100 overflow-sm-auto">
-          
-          <Container className="p-4">
-            <SubscriptionAlert />
-            {children}
-          </Container>
-        </div>
+          <div className="w-100 overflow-sm-auto">
+            <Container className="p-4">
+              <SubscriptionAlert />
+              {children}
+            </Container>
+          </div>
         </ErrorBoundary>
       </div>
     </div>
