@@ -670,6 +670,39 @@ function ManangeAccountModal({
   )
 }
 
+function Plan({
+  className,
+  name,
+  cost,
+  features,
+  startButton,
+}: {
+  className?: string
+  name: React.ReactNode
+  cost: React.ReactNode
+  features: React.ReactNodeArray
+  startButton: React.ReactNode
+}) {
+  return (
+    <Card className={"shadow-sm h-100 " + className}>
+      <Card.Header>
+        <h4 className="text-center">{name}</h4>
+      </Card.Header>
+      <Card.Body className="d-flex flex-column">
+        <h1 className="text-center">{cost}</h1>
+        <div className="flex-grow-1 d-flex flex-column">
+          <ul className="flex-grow-1 list-unstyled mt-3 mb-4 text-center">
+            {features.map(x => (
+              <li>{x}</li>
+            ))}
+          </ul>
+          {startButton}
+        </div>
+      </Card.Body>
+    </Card>
+  )
+}
+
 interface ISubscriptionUpsellPromptProps {
   readonly trial: {
     readonly endDate: string
@@ -683,6 +716,78 @@ function SubscriptionUpsellPrompt({
   startSubscription,
   startTrial,
 }: ISubscriptionUpsellPromptProps) {
+  if (trial == null) {
+    const plans = [
+      {
+        name: "30 Day Trial",
+        cost: "Free",
+        features: [
+          "Public & private repositories",
+          "Unlimited users for 30 days",
+          "No credit card required",
+        ],
+        startButton: (
+          <Button block variant="success">
+            Start 30 Day Trial
+          </Button>
+        ),
+      },
+      {
+        name: "Professional",
+        cost: (
+          <>
+            $4.99 <small className="text-muted">/ seat</small>
+          </>
+        ),
+        features: [
+          "Public & private repositories",
+          "Access priority support",
+          "Support Kodiak's development",
+        ],
+        startButton: (
+          <Button block variant="dark">
+            Subscribe
+          </Button>
+        ),
+      },
+      {
+        name: "Enterprise",
+        cost: "Custom Pricing",
+        features: [
+          "Public & private repositories",
+          "Access priority support",
+          "Hands-on onboarding",
+          "Annual invoicing",
+        ],
+        startButton: (
+          <Button block variant="dark">
+            Contact Us
+          </Button>
+        ),
+      },
+    ]
+    return (
+      <>
+        <Row>
+          <Col>
+            <h3 className="text-center">Plans</h3>
+          </Col>
+        </Row>
+        <Row>
+          {plans.map(x => (
+            <Col lg={4} className="mx-auto mb-2">
+              <Plan
+                name={x.name}
+                cost={x.cost}
+                features={x.features}
+                startButton={x.startButton}
+              />
+            </Col>
+          ))}
+        </Row>
+      </>
+    )
+  }
   return (
     <Col className="d-flex justify-content-center">
       <div className="m-auto">
