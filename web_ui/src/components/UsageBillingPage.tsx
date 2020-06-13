@@ -436,10 +436,8 @@ function ManageSubscriptionModal({
   )
 
   React.useEffect(() => {
-    if (show) {
-      fetchProrationDebounced()
-    }
-  }, [show, fetchProrationDebounced, seats])
+    fetchProrationDebounced()
+  }, [fetchProrationDebounced, seats])
 
   function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
