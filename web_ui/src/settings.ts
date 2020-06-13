@@ -4,7 +4,7 @@ export const installUrl = "https://github.com/marketplace/kodiakhq"
 export const docsUrl = "https://kodiakhq.com/docs/quickstart"
 export const helpUrl = "https://kodiakhq.com/help"
 export const billingDocsUrl = "https://kodiakhq.com/docs/billing"
-export const loginUrl = "/v1/oauth_login"
+export const loginPath = "/v1/oauth_login"
 export const monthlyCost = 499
 
 export const getStripeSelfServeUrl = (teamId: string) =>
