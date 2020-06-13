@@ -512,7 +512,9 @@ function ManageSubscriptionModal({
             <Form.Label>Billing Email </Form.Label>
             <Form.Control type="text" required disabled value={billingEmail} />
             <Form.Text className="text-muted">
-              <a href="?modify_account_details=1">update</a>
+              <a href="#" onClick={updateBillingInfo}>
+                update
+              </a>
             </Form.Text>
           </Form.Group>
           <Form.Group>
