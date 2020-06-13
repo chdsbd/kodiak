@@ -7,10 +7,12 @@ interface World {
 }
 
 const openRoute = axios.create({
+  baseURL: API_ROOT,
   withCredentials: true,
 })
 
 const authRoute = axios.create({
+  baseURL: API_ROOT,
   withCredentials: true,
 })
 
@@ -148,12 +150,5 @@ export const Current: World = {
           `/v1/t/${args.teamId}/subscription_info`,
         )
         .then(d => d.data),
-    updateBillingInfo: (args: api.UpdateBillingInfoArgs) => {
-      const {teamId, ...payload} = args
-      return authRoute.post<unknown>(
-        `/v1/t/${args.teamId}/update_billing_info`,
-        payload,
-      )
-    }
   },
 }
