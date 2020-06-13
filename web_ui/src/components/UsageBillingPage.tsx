@@ -17,7 +17,7 @@ import { Spinner } from "./Spinner"
 import { Current } from "../world"
 import { useTeamApi, teamApi } from "../useApi"
 import formatDate from "date-fns/format"
-import formatDistanceToNow from "date-fns/formatDistanceToNow"
+import formatDistanceToNowStrict from "date-fns/formatDistanceToNowStrict"
 import parseISO from "date-fns/parseISO"
 import sub from "date-fns/sub"
 import sortBy from "lodash/sortBy"
@@ -124,7 +124,7 @@ function formatCents(cents: number, currency: string): string {
 }
 
 function formatFromNow(dateString: string): string {
-  return formatDistanceToNow(parseISO(dateString))
+  return formatDistanceToNowStrict(parseISO(dateString))
 }
 
 function FormatDate({ date }: { date: string }) {
