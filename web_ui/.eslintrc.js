@@ -35,5 +35,13 @@ module.exports = {
     "react/jsx-fragments": "error",
     "no-lonely-if": "error",
     "object-shorthand": ["error", "always"],
+    "@typescript-eslint/consistent-type-assertions": [
+      "error",
+      {
+        assertionStyle: "never",
+      },
+    ],
+    "react/jsx-key": ["error", { checkFragmentShorthand: true }],
+    "react/no-danger": "error",
   },
 }
