@@ -436,8 +436,10 @@ function ManageSubscriptionModal({
   )
 
   React.useEffect(() => {
-    fetchProrationDebounced()
-  }, [fetchProrationDebounced, seats])
+    if (show) {
+      fetchProrationDebounced()
+    }
+  }, [show, fetchProrationDebounced, seats])
 
   function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
@@ -817,26 +819,38 @@ function BillingEmailForm({
   defaultValue,
   className,
 }: {
-  defaultValue: string
-  className?: string
+  readonly defaultValue: string
+  readonly className?: string
 }) {
+  const [billingEmail, setBillingEmail] = React.useState(defaultValue)
+  const [apiState, setApiState] = React.useState<
+    "initial" | "loading" | "failed" | "success"
+  >("initial")
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
-    // save
+    setApiState("loading")
+    teamApi(Current.api.updateBillingInfo, {billingEmail }).then(res => {
+      if (res.ok) {
+        setApiState("success")
+      } else {
+        setApiState("failed")
+      }
+    })
   }
+  const loading = apiState === "loading"
   return (
     <Card className={className}>
       <Card.Body>
         <Card.Title>Billing Email</Card.Title>
         <Form onSubmit={handleSubmit}>
           <Form.Group>
-            <Form.Control type="text" required defaultValue={defaultValue} />
+            <Form.Control type="text" required value={billingEmail}  onChange={e => setBillingEmail(e.target.value)}/>
             <Form.Text className="text-muted">
               Required. Address to send billing receipts.
             </Form.Text>
           </Form.Group>
-          <Button variant="dark" size="sm">
-            Save
+          <Button variant="dark" size="sm" disabled={loading} type="submit">
+            {loading ? "Loading..." : "Save"}
           </Button>
         </Form>
       </Card.Body>
@@ -848,8 +862,8 @@ function CompanyNameForm({
   defaultValue,
   className,
 }: {
-  defaultValue: string
-  className?: string
+  readonly defaultValue: string
+  readonly className?: string
 }) {
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -866,7 +880,7 @@ function CompanyNameForm({
               Added to billing receipts if provided.
             </Form.Text>
           </Form.Group>
-          <Button variant="dark" size="sm">
+          <Button variant="dark" size="sm" type="submit">
             Save
           </Button>
         </Form>
@@ -879,15 +893,15 @@ function PostalAddressForm({
   defaultValue,
   className,
 }: {
-  defaultValue: {
-    line1?: string
-    line2?: string
-    city?: string
-    state?: string
-    zip?: string
-    country?: string
+  readonly defaultValue: {
+    readonly line1?: string
+    readonly line2?: string
+    readonly city?: string
+    readonly state?: string
+    readonly zip?: string
+    readonly country?: string
   }
-  className?: string
+  readonly className?: string
 }) {
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -943,7 +957,7 @@ function PostalAddressForm({
               Added to billing receipts if provided.
             </Form.Text>
           </Form.Group>
-          <Button variant="dark" size="sm">
+          <Button variant="dark" size="sm" type="submit">
             Save
           </Button>
         </Form>

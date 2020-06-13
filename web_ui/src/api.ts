@@ -179,6 +179,20 @@ export type SubscriptionInfoResponse =
       readonly licenseCount: number
     }
 
+export type UpdateBillingInfoArgs = {
+  readonly teamId: string
+  readonly companyName?: string
+  readonly billingEmail?: string
+  readonly postalAddress?: {
+    readonly line1?: string
+    readonly line2?: string
+    readonly city?: string
+    readonly state?: string
+    readonly zip?: string
+    readonly country?: string
+  }
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -202,4 +216,5 @@ export interface Api {
   getSubscriptionInfo: (
     args: GetSubscriptionInfoArgs,
   ) => Promise<SubscriptionInfoResponse>
+  updateBillingInfo: (args: UpdateBillingInfoArgs) => Promise<unknown>
 }
