@@ -588,12 +588,12 @@ function Plan({
   startButton,
   highlight,
 }: {
-  className?: string
-  name: React.ReactNode
-  cost: React.ReactNode
-  features: React.ReactNodeArray
-  startButton: React.ReactNode
-  highlight?: boolean
+  readonly className?: string
+  readonly name: React.ReactNode
+  readonly cost: React.ReactNode
+  readonly features: React.ReactNodeArray
+  readonly startButton: React.ReactNode
+  readonly highlight?: boolean
 }) {
   return (
     <Card
@@ -622,8 +622,8 @@ const KodiakTooltip = ({
   children,
   content,
 }: {
-  children: React.ReactNode
-  content: React.ReactNode
+  readonly children: React.ReactNode
+  readonly content: React.ReactNode
 }) => (
   <OverlayTrigger overlay={<Tooltip id="kodiak-tooltip">{content}</Tooltip>}>
     {children}
