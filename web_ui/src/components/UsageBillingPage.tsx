@@ -7,7 +7,9 @@ import {
   OverlayTrigger,
   Modal,
   Form,
+  Card,
   Button,
+  Tooltip,
 } from "react-bootstrap"
 import { Image } from "./Image"
 import { WebData } from "../webdata"
@@ -15,7 +17,7 @@ import { Spinner } from "./Spinner"
 import { Current } from "../world"
 import { useTeamApi, teamApi } from "../useApi"
 import formatDate from "date-fns/format"
-import formatDistanceToNow from "date-fns/formatDistanceToNow"
+import formatDistanceToNowStrict from "date-fns/formatDistanceToNowStrict"
 import parseISO from "date-fns/parseISO"
 import sub from "date-fns/sub"
 import sortBy from "lodash/sortBy"
@@ -122,7 +124,7 @@ function formatCents(cents: number, currency: string): string {
 }
 
 function formatFromNow(dateString: string): string {
-  return formatDistanceToNow(parseISO(dateString))
+  return formatDistanceToNowStrict(parseISO(dateString))
 }
 
 function FormatDate({ date }: { date: string }) {
@@ -578,6 +580,56 @@ function ManageSubscriptionModal({
   )
 }
 
+function Plan({
+  className,
+  name,
+  cost,
+  features,
+  startButton,
+  highlight,
+}: {
+  readonly className?: string
+  readonly name: React.ReactNode
+  readonly cost: React.ReactNode
+  readonly features: React.ReactNodeArray
+  readonly startButton: React.ReactNode
+  readonly highlight?: boolean
+}) {
+  return (
+    <Card
+      className={
+        "shadow-sm h-100 " + className + (highlight ? " shadow " : "")
+      }>
+      <Card.Header>
+        <h4 className="text-center">{name}</h4>
+      </Card.Header>
+      <Card.Body className="d-flex flex-column">
+        <h1 className="text-center">{cost}</h1>
+        <div className="flex-grow-1 d-flex flex-column">
+          <ul className="flex-grow-1 list-unstyled mt-3 mb-4 text-center">
+            {features.map(x => (
+              <li>{x}</li>
+            ))}
+          </ul>
+          {startButton}
+        </div>
+      </Card.Body>
+    </Card>
+  )
+}
+
+const KodiakTooltip = ({
+  children,
+  content,
+}: {
+  readonly children: React.ReactNode
+  readonly content: React.ReactNode
+}) => (
+  <OverlayTrigger overlay={<Tooltip id="kodiak-tooltip">{content}</Tooltip>}>
+    {children}
+  </OverlayTrigger>
+)
+
 interface ISubscriptionUpsellPromptProps {
   readonly trial: {
     readonly endDate: string
@@ -591,168 +643,117 @@ function SubscriptionUpsellPrompt({
   startSubscription,
   startTrial,
 }: ISubscriptionUpsellPromptProps) {
-  return (
-    <Col className="d-flex justify-content-center">
-      <div className="m-auto">
-        {trial == null && (
-          <h4 className="h5">
-            Subscribe and use Kodiak on your private repositories!
-          </h4>
-        )}
-
-        {trial != null ? (
+  const plans = [
+    {
+      name: "30 Day Trial",
+      cost: "Free",
+      highlight: trial == null,
+      features: [
+        "Public & private repositories",
+        "Unlimited users for 30 days",
+        "No credit card required",
+      ],
+      startButton:
+        trial == null ? (
+          <Button block variant="success" onClick={startTrial}>
+            Start 30 Day Trial
+          </Button>
+        ) : trial.expired ? (
           <>
-            {!trial.expired ? (
-              <>
-                <h3 className="text-center">Trial Active</h3>
-                <p className="text-center">
-                  Your active trial expires in{" "}
-                  <b>{formatFromNow(trial.endDate)}</b> at{" "}
-                  <b>
-                    <FormatDate date={trial.endDate} />
-                  </b>
-                  .
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-center text-danger">Trial Inactive</h3>
-                <p className="text-center">
-                  Your trial expired at{" "}
-                  <b>
-                    <FormatDate date={trial.endDate} />
-                  </b>
-                  .
-                </p>
-              </>
-            )}
-
             <p className="text-center">
-              Subscribe to continue using Kodiak on your private repositories!
+              Your active trial has <b>expired</b>.
             </p>
-          </>
-        ) : null}
-        {trial == null ? (
-          <>
-            <div className="d-flex justify-content-center">
-              <Button variant="success" size="lg" onClick={startTrial}>
-                Start 30 Day Trial
-              </Button>
-            </div>
-            <p className="mb-0 text-center">or</p>
-            <div className="d-flex justify-content-center">
-              <Button variant="dark" onClick={startSubscription}>
-                Subscribe
-              </Button>
-            </div>
+            <Button block variant="dark" disabled>
+              Trial Expired
+            </Button>
           </>
         ) : (
-          <div className="d-flex justify-content-center">
-            <Button variant="dark" size="lg" onClick={startSubscription}>
-              Subscribe
+          <>
+            <p className="text-center">
+              Your active trial expires in{" "}
+              <KodiakTooltip content={<FormatDate date={trial.endDate} />}>
+                <u>
+                  <b>{formatFromNow(trial.endDate)}</b>
+                </u>
+              </KodiakTooltip>
+              .
+            </p>
+            <Button block variant="dark" disabled>
+              Trial Started
             </Button>
-          </div>
-        )}
-        <p className="text-center">
-          ({formattedMonthlyCost} per active user per month)
-        </p>
-      </div>
-    </Col>
-  )
-}
-
-interface IActiveSubscriptionProps {
-  readonly seats: number
-  readonly nextBillingDate: string
-  readonly billingEmail: string
-  readonly cost: {
-    readonly totalCents: number
-    readonly perSeatCents: number
-    readonly currency: string
-  }
-  readonly modifySubscription: () => void
-  readonly teamId: string
-}
-function ActiveSubscription({
-  seats,
-  cost,
-  billingEmail,
-  nextBillingDate,
-  modifySubscription,
-  teamId,
-}: IActiveSubscriptionProps) {
-  const formatCost = (cents: number) => formatCents(cents, cost.currency)
+          </>
+        ),
+    },
+    {
+      name: "Professional",
+      highlight: trial != null,
+      cost: (
+        <>
+          $4.99 <small className="text-muted">/ seat</small>
+        </>
+      ),
+      features: [
+        "Public & private repositories",
+        "Access priority support",
+        "Support Kodiak's development",
+      ],
+      startButton: (
+        <Button
+          block
+          variant={trial != null ? "success" : "dark"}
+          onClick={startSubscription}>
+          Subscribe
+        </Button>
+      ),
+    },
+    {
+      name: "Enterprise",
+      highlight: false,
+      cost: "Custom Pricing",
+      features: [
+        "Public & private repositories",
+        "Access priority support",
+        "Hands-on onboarding",
+        "Annual invoicing",
+      ],
+      startButton: (
+        <a
+          className="btn btn-block btn-dark text-decoration-none"
+          href="mailto:support@kodiakhq.com?subject=enterprise%20plan">
+          Contact Us
+        </a>
+      ),
+    },
+  ]
   return (
-    <Col>
+    <>
       <Row>
-        <Col md={3}>
-          <b>Seats</b>
-        </Col>
-        <Col>{seats}</Col>
-
-        <Col sm={12}>
-          <p className="small mb-0">
-            An active user consumes one per billing period seat. If your usage
-            exceeds your purchased seats you will need to add more seats to your
-            subscription.
-          </p>
-        </Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Next Billing Date</b>
-        </Col>
         <Col>
-          <FormatDate date={nextBillingDate} />
+          <h3 className="text-center">Plans</h3>
         </Col>
       </Row>
       <Row>
-        <Col md={3}>
-          <b>Cost</b>
-        </Col>
-        <Col>
-          <span className="mr-4">{formatCost(cost.totalCents)} / month</span>
-          <span>
-            ({formatCost(cost.perSeatCents)} / seat ⨉ {seats} seats)
-          </span>
-        </Col>
+        {plans.map(x => (
+          <Col key={x.name} lg={4} className="mx-auto mb-2">
+            <Plan
+              name={x.name}
+              highlight={x.highlight}
+              cost={x.cost}
+              features={x.features}
+              startButton={x.startButton}
+            />
+          </Col>
+        ))}
       </Row>
-      <Row>
-        <Col md={3}>
-          <b>Billing Email</b>
-        </Col>
-        <Col>{billingEmail}</Col>
-      </Row>
-      <Row>
-        <Col md={3}>
-          <b>Billing History</b>
-        </Col>
-        <Col>
-          <a href={settings.getStripeSelfServeUrl(teamId)}>
-            view billing history
-            <GoLinkExternal className="pl-1" />
-          </a>
-        </Col>
-      </Row>
-      <Row className="mt-3">
-        <Col>
-          <Button variant="dark" size="sm" onClick={modifySubscription}>
-            Modify Subscription
-          </Button>
-        </Col>
-        <Col sm={12}>
-          <p className="small mb-0 mt-2">
-            Send us an email at{" "}
-            <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
-            you need any assistance.
-          </p>
-        </Col>
-      </Row>
-    </Col>
+    </>
   )
 }
 
-interface ISubscriptionProps {
+function Subcription({
+  subscription,
+  teamId,
+  modifySubscription,
+}: {
   readonly subscription: {
     readonly seats: number
     readonly nextBillingDate: string
@@ -763,48 +764,127 @@ interface ISubscriptionProps {
       readonly currency: string
     }
     readonly billingEmail: string
-  } | null
-  readonly startSubscription: () => void
-  readonly startTrial: () => void
+  }
   readonly modifySubscription: () => void
-  readonly trial: ISubscriptionUpsellPromptProps["trial"]
   readonly teamId: string
+}) {
+  return (
+    <Row>
+      <Col lg={8}>
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title className="d-flex align-items-baseline justify-content-between">
+              <span>Subscription</span>
+              <small>
+                <a href={settings.billingDocsUrl}>billing docs</a>
+              </small>
+            </Card.Title>
+            <Form.Group>
+              <Form.Label>Seats</Form.Label>
+              <p className="mb-0">{subscription.seats} seats</p>
+              <Form.Text className="text-muted">
+                An active user consumes one seat per billing period.
+              </Form.Text>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Next Billing Date</Form.Label>
+              <p>
+                <FormatDate date={subscription.nextBillingDate} />
+              </p>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Cost</Form.Label>
+              <p>
+                {subscription.seats} seats ⨉{" "}
+                {formatCents(
+                  subscription.cost.perSeatCents,
+                  subscription.cost.currency,
+                )}{" "}
+                / seat ={" "}
+                {formatCents(
+                  subscription.cost.totalCents,
+                  subscription.cost.currency,
+                )}
+              </p>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Billing History</Form.Label>
+              <p>
+                <a href={settings.getStripeSelfServeUrl(teamId)}>
+                  view billing history
+                  <GoLinkExternal className="pl-1" />
+                </a>
+              </p>
+            </Form.Group>
+            <Button variant="dark" size="sm" onClick={modifySubscription}>
+              Modify Subscription
+            </Button>
+            <p className="small mb-0 mt-2">
+              Send us an email at{" "}
+              <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
+              you need any assistance.
+            </p>
+
+            <hr />
+            <BillingDocumentation
+              subscriptionInfo
+              trialInfo={false}
+              pricingInfo
+            />
+          </Card.Body>
+        </Card>
+      </Col>
+    </Row>
+  )
 }
-function Subscription({
-  subscription,
+
+function SubscriptionTrialStarter({
   startSubscription,
   startTrial,
-  modifySubscription,
   trial,
-  teamId,
-}: ISubscriptionProps) {
+}: {
+  readonly startSubscription: () => void
+  readonly startTrial: () => void
+  readonly trial: ISubscriptionUpsellPromptProps["trial"]
+}) {
   return (
-    <>
-      <h3 className="h5">Subscription</h3>
-      <div className="border border-primary rounded p-2 mb-4">
-        <Row>
-          {subscription != null && !subscription.expired ? (
-            <ActiveSubscription
-              cost={subscription.cost}
-              seats={subscription.seats}
-              nextBillingDate={subscription.nextBillingDate}
-              billingEmail={subscription.billingEmail}
-              modifySubscription={modifySubscription}
-              teamId={teamId}
-            />
-          ) : (
+    <Row>
+      <Col className="mx-auto">
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title className="d-flex align-items-baseline justify-content-between">
+              <span>Subscription</span>
+              <small>
+                <a href={settings.billingDocsUrl}>billing docs</a>
+              </small>
+            </Card.Title>
             <SubscriptionUpsellPrompt
               trial={trial}
               startSubscription={startSubscription}
               startTrial={startTrial}
             />
-          )}
-        </Row>
-        <Row>
-          <Col>
+
             <hr />
-          </Col>
-        </Row>
+            <BillingDocumentation pricingInfo subscriptionInfo trialInfo />
+          </Card.Body>
+        </Card>
+      </Col>
+    </Row>
+  )
+}
+
+function BillingDocumentation({
+  subscriptionInfo,
+  trialInfo,
+  pricingInfo,
+}: {
+  readonly subscriptionInfo: boolean
+  readonly trialInfo: boolean
+  readonly pricingInfo: boolean
+}) {
+  return (
+    <>
+      {subscriptionInfo && (
         <Row>
           <Col>
             <b>Subscription benefits</b>
@@ -819,6 +899,8 @@ function Subscription({
             </ul>
           </Col>
         </Row>
+      )}
+      {trialInfo && (
         <Row>
           <Col>
             <b>Trial</b>
@@ -829,6 +911,8 @@ function Subscription({
             </p>
           </Col>
         </Row>
+      )}
+      {pricingInfo && (
         <Row>
           <Col>
             <b>Pricing</b>
@@ -839,20 +923,7 @@ function Subscription({
             </p>
           </Col>
         </Row>
-        <Row>
-          <Col>
-            <p>
-              For more information about billing visit{" "}
-              <a href="https://kodiakhq.com/docs/billing">
-                https://kodiakhq.com/docs/billing
-              </a>
-              . Send us an email at{" "}
-              <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
-              you need any assistance.
-            </p>
-          </Col>
-        </Row>
-      </div>
+      )}
     </>
   )
 }
@@ -901,11 +972,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
 
   return (
     <UsageAndBillingContainer>
-      <p>
-        <b> Period</b>
-        <br />
-        {oneMonthAgo} – {today}
-      </p>
       <div className="mb-4">
         <InstallCompleteModal
           show={showInstallCompleteModal}
@@ -922,31 +988,40 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           seatUsage={data.activeUsers.length}
         />
         {data.subscription != null ? (
-          <ManageSubscriptionModal
-            show={showSubscriptionModifyModal}
-            currentSeats={data.subscription.seats}
-            seatUsage={data.activeUsers.length}
-            billingEmail={data.subscription.billingEmail}
-            cardInfo={data.subscription.cardInfo}
-            cost={data.subscription.cost}
-            onClose={x => {
-              if (x?.reload) {
-                location.search = ""
-              } else {
-                clearQueryString()
-              }
-            }}
-          />
+          <>
+            <ManageSubscriptionModal
+              show={showSubscriptionModifyModal}
+              currentSeats={data.subscription.seats}
+              seatUsage={data.activeUsers.length}
+              billingEmail={data.subscription.billingEmail}
+              cardInfo={data.subscription.cardInfo}
+              cost={data.subscription.cost}
+              onClose={x => {
+                if (x?.reload) {
+                  location.search = ""
+                } else {
+                  clearQueryString()
+                }
+              }}
+            />
+          </>
         ) : null}
         {data.accountCanSubscribe ? (
-          <Subscription
-            startSubscription={handleStartSubscription}
-            startTrial={handleStartTrial}
-            modifySubscription={modifySubscription}
-            subscription={data.subscription}
-            trial={data.trial}
-            teamId={teamId}
-          />
+          <>
+            {data.subscription == null ? (
+              <SubscriptionTrialStarter
+                startSubscription={handleStartSubscription}
+                startTrial={handleStartTrial}
+                trial={data.trial}
+              />
+            ) : (
+              <Subcription
+                subscription={data.subscription}
+                teamId={teamId}
+                modifySubscription={modifySubscription}
+              />
+            )}
+          </>
         ) : (
           <Row>
             <Col>
@@ -960,69 +1035,80 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           </Row>
         )}
 
-        <h3 className="h5">Usage</h3>
-        <div className="border border-primary rounded p-2">
-          <Row>
-            <Col md={3}>
-              <b>Active Users</b>
-            </Col>
-            <Col>
-              {data.activeUsers.length} / {data.subscription?.seats ?? 0} seats
-            </Col>
+        <Row>
+          <Col>
+            <Card className="mb-4">
+              <Card.Body>
+                <Card.Title className="d-flex align-items-baseline justify-content-between">
+                  <span>Usage</span>
+                  <small>
+                    {oneMonthAgo} – {today}
+                  </small>
+                </Card.Title>
 
-            <Col sm={12}>
-              <p className="small mb-0">
-                Active users are only counted for private repositories. Public
-                repositories are free.
-              </p>
-            </Col>
-          </Row>
+                <Form.Group>
+                  <Form.Label>Active Users</Form.Label>
+                  <p className="mb-0">
+                    {data.activeUsers.length} / {data.subscription?.seats ?? 0}{" "}
+                    seats
+                  </p>
 
-          <Table size="sm" className="mt-2">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>
-                  Days Active{" "}
-                  <Question
-                    content={
-                      "This user opened a GitHub pull request that Kodiak updated, approved, or merged."
-                    }
-                  />
-                </th>
-                <th>First Active Date</th>
-                <th>Last Active Date</th>
-                <th>
-                  Has Seat{" "}
-                  <Question
-                    content={
-                      "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
-                    }
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortBy(data.activeUsers, x => x.name.toLowerCase()).map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <Image
-                      url={u.profileImgUrl}
-                      alt="user profile"
-                      size={30}
-                      className="mr-3"
-                    />
-                    {u.name}
-                  </td>
-                  <td>{u.interactions}</td>
-                  <td>{u.firstActiveDate}</td>
-                  <td>{u.lastActiveDate}</td>
-                  <td>{u.hasSeatLicense ? "Yes" : "No"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+                  <Form.Text className="text-muted">
+                    Active users are only counted for private repositories.
+                    Public repositories are free.
+                  </Form.Text>
+                </Form.Group>
+
+                <Table size="sm" className="mt-2">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>
+                        Days Active{" "}
+                        <Question
+                          content={
+                            "This user opened a GitHub pull request that Kodiak updated, approved, or merged."
+                          }
+                        />
+                      </th>
+                      <th>First Active Date</th>
+                      <th>Last Active Date</th>
+                      <th>
+                        Has Seat{" "}
+                        <Question
+                          content={
+                            "An active user occupies a seat. If all seats are occupied, you must upgrade to add more users."
+                          }
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortBy(data.activeUsers, x => x.name.toLowerCase()).map(
+                      u => (
+                        <tr key={u.id}>
+                          <td>
+                            <Image
+                              url={u.profileImgUrl}
+                              alt="user profile"
+                              size={30}
+                              className="mr-3"
+                            />
+                            {u.name}
+                          </td>
+                          <td>{u.interactions}</td>
+                          <td>{u.firstActiveDate}</td>
+                          <td>{u.lastActiveDate}</td>
+                          <td>{u.hasSeatLicense ? "Yes" : "No"}</td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </div>
     </UsageAndBillingContainer>
   )
