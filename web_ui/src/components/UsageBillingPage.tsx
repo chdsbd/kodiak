@@ -591,7 +591,7 @@ function Plan({
   readonly className?: string
   readonly name: React.ReactNode
   readonly cost: React.ReactNode
-  readonly features: React.ReactNodeArray
+  readonly features: ReadonlyArray<string>
   readonly startButton: React.ReactNode
   readonly highlight?: boolean
 }) {
@@ -608,7 +608,7 @@ function Plan({
         <div className="flex-grow-1 d-flex flex-column">
           <ul className="flex-grow-1 list-unstyled mt-3 mb-4 text-center">
             {features.map(x => (
-              <li>{x}</li>
+              <li key={x}>{x}</li>
             ))}
           </ul>
           {startButton}
