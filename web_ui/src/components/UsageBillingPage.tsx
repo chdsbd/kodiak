@@ -770,7 +770,7 @@ function Subcription({
 }) {
   return (
     <Row>
-      <Col lg={9}>
+      <Col lg={8}>
         <Card className="mb-4">
           <Card.Body>
             <Card.Title className="d-flex align-items-baseline justify-content-between">
