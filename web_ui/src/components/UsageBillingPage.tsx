@@ -734,7 +734,7 @@ function SubscriptionUpsellPrompt({
       </Row>
       <Row>
         {plans.map(x => (
-          <Col lg={4} className="mx-auto mb-2">
+          <Col key={x.name} lg={4} className="mx-auto mb-2">
             <Plan
               name={x.name}
               highlight={x.highlight}
