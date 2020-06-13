@@ -1,5 +1,4 @@
 import * as api from "./api"
-import { API_ROOT } from "./settings"
 import axios from "axios"
 
 interface World {
@@ -7,12 +6,10 @@ interface World {
 }
 
 const openRoute = axios.create({
-  baseURL: API_ROOT,
   withCredentials: true,
 })
 
 const authRoute = axios.create({
-  baseURL: API_ROOT,
   withCredentials: true,
 })
 

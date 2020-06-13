@@ -115,7 +115,12 @@ checkBrowsers(paths.appPath, isInteractive)
       urls.lanUrlForConfig,
     )
     // @ts-ignore
-    const devServer = new WebpackDevServer(compiler, serverConfig)
+    const devServer = new WebpackDevServer(compiler, {
+      ...serverConfig,
+      proxy: {
+        "/v1": "http://localhost:8000",
+      },
+    })
     // Launch WebpackDevServer.
     // @ts-ignore
     devServer.listen(port, HOST, err => {
