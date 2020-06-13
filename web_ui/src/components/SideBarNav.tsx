@@ -31,8 +31,8 @@ function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
   /* eslint-disable @typescript-eslint/consistent-type-assertions */
   // tslint:disable-next-line no-any
   const BootstrapDropdownToggle = Dropdown.Toggle as any
-  // tslint:disable-next-line no-unsafe-any
   /* eslint-enable @typescript-eslint/consistent-type-assertions */
+  // tslint:disable-next-line no-unsafe-any
   return <BootstrapDropdownToggle {...props} />
 }
 
