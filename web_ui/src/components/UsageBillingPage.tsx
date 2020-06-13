@@ -623,7 +623,7 @@ const KodiakTooltip = ({
   children: React.ReactNode
   content: React.ReactNode
 }) => (
-  <OverlayTrigger overlay={props => <Tooltip {...props}>{content}</Tooltip>}>
+  <OverlayTrigger overlay={<Tooltip id="kodiak-tooltip">{content}</Tooltip>}>
     {children}
   </OverlayTrigger>
 )
@@ -744,74 +744,6 @@ function SubscriptionUpsellPrompt({
         ))}
       </Row>
     </>
-  )
-  return (
-    <Col className="d-flex justify-content-center">
-      <div className="m-auto">
-        {trial == null && (
-          <h4 className="h5">
-            Subscribe and use Kodiak on your private repositories!
-          </h4>
-        )}
-
-        {trial != null ? (
-          <>
-            {!trial.expired ? (
-              <>
-                <h3 className="text-center">Trial Active</h3>
-                <p className="text-center">
-                  Your active trial expires in{" "}
-                  <b>{formatFromNow(trial.endDate)}</b> at{" "}
-                  <b>
-                    <FormatDate date={trial.endDate} />
-                  </b>
-                  .
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-center text-danger">Trial Inactive</h3>
-                <p className="text-center">
-                  Your trial expired at{" "}
-                  <b>
-                    <FormatDate date={trial.endDate} />
-                  </b>
-                  .
-                </p>
-              </>
-            )}
-
-            <p className="text-center">
-              Subscribe to continue using Kodiak on your private repositories!
-            </p>
-          </>
-        ) : null}
-        {trial == null ? (
-          <>
-            <div className="d-flex justify-content-center">
-              <Button variant="success" size="lg" onClick={startTrial}>
-                Start 30 Day Trial
-              </Button>
-            </div>
-            <p className="mb-0 text-center">or</p>
-            <div className="d-flex justify-content-center">
-              <Button variant="dark" onClick={startSubscription}>
-                Subscribe
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="d-flex justify-content-center">
-            <Button variant="dark" size="lg" onClick={startSubscription}>
-              Subscribe
-            </Button>
-          </div>
-        )}
-        <p className="text-center">
-          ({formattedMonthlyCost} per active user per month)
-        </p>
-      </div>
-    </Col>
   )
 }
 
