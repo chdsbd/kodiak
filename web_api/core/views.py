@@ -3,7 +3,6 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Optional, Union, cast
 from urllib.parse import parse_qsl
-import datetime
 
 import requests
 import stripe
@@ -31,7 +30,6 @@ from core.models import (
     SyncAccountsError,
     User,
     UserPullRequestActivity,
-    ActiveUser
 )
 
 logger = logging.getLogger(__name__)
@@ -58,11 +56,6 @@ DEFAULT_CURRENCY = "usd"
 def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(user=request.user, team_id=team_id)
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
-    active_users = [
-    ActiveUser(github_login="chdsbd",github_id=4219034, days_active=2,first_active_at=datetime.date(2020,5,2),last_active_at=datetime.date(2020,5,20)),
-    ActiveUser(github_login="j-doe",github_id=34523452345, days_active=2,first_active_at=datetime.date(2020,5,2),last_active_at=datetime.date(2020,5,20)),
-    ActiveUser(github_login="b-low",github_id=45906254, days_active=2,first_active_at=datetime.date(2020,5,2),last_active_at=datetime.date(2020,5,20)),
-    ]
     subscription = None
     trial = None
     if account.trial_start and account.trial_expiration and account.trial_started_by:
@@ -250,32 +243,6 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     stripe_customer_info.save()
     account.update_bot()
 
-    return HttpResponse(status=204)
-
-
-import pydantic
-class UpdateBillingInfoAddressModel(pydantic.BaseModel):
-    line1: Optional[str]
-    line2: Optional[str]
-    city: Optional[str]
-    state: Optional[str]
-    zip: Optional[str]
-    country: Optional[str]
-class UpdateBillingInfoModel(pydantic.BaseModel):
-    billingEmail: Optional[str] = None
-    companyName: Optional[str] = None
-    postalAddress: Optional[str] = None
-
-
-@auth.login_required
-def update_billing_info(request: HttpRequest, team_id: str) -> HttpResponse:
-    payload = UpdateBillingInfoModel.parse_raw(request.body)
-    if payload.billingEmail:
-        pass
-    if payload.companyName:
-        pass
-    if payload.postalAddress:
-        pass
     return HttpResponse(status=204)
 
 

@@ -1,6 +1,7 @@
 import enum
 import logging
 from typing import Callable, Optional
+from urllib.parse import urlparse
 
 from django.http import HttpRequest, HttpResponse, HttpResponseServerError, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
@@ -23,6 +24,33 @@ class AuthenticationMiddleware(MiddlewareMixin):
 
     def process_request(self, request: HttpRequest) -> None:
         request.user = SimpleLazyObject(lambda: get_user(request))
+
+
+def get_allow_origin(request: HttpRequest) -> str:
+    try:
+        origin: str = request.headers["Origin"]
+    except KeyError:
+        return ""
+    hostname = urlparse(origin).hostname
+    if not hostname:
+        return ""
+    if hostname.endswith(".kodiakhq.com"):
+        return origin
+    return ""
+
+
+class CORSMiddleware:
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+
+        response["Access-Control-Allow-Origin"] = get_allow_origin(request)
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Allow-Headers"] = "content-type"
+
+        return response
 
 
 class ExceptionMiddleware(MiddlewareMixin):

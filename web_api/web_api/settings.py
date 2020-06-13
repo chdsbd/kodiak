@@ -39,7 +39,8 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "core.middleware.AuthenticationMiddleware"
+    "core.middleware.AuthenticationMiddleware",
+    "core.middleware.CORSMiddleware",
 ]
 
 ROOT_URLCONF = "web_api.urls"
