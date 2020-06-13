@@ -69,7 +69,7 @@ function AccountsPageInner({
             <p className="text-muted">0 Acccounts Available.</p>
           )}
           {accounts.data.map(a => (
-            <li className="d-flex align-items-center">
+            <li key={a.id} className="d-flex align-items-center">
               <NavLink
                 to={`/t/${a.id}/`}
                 className="d-flex align-items-center flex-grow-1 mb-2 px-4 py-2 border border-dark rounded text-decoration-none account-chooser-image">

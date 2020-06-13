@@ -53,9 +53,11 @@ export function useTeamApi<T>(
 
 export function teamApi<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   args: Omit<V, "teamId"> = {} as Omit<V, "teamId">,
 ): Promise<{ ok: true; data: T } | { ok: false }> {
   const teamId: string = location.pathname.split("/")[2]
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return func({ ...args, teamId } as V)
     .then(res => ({ ok: true, data: res }))
     .catch(() => ({ ok: false }))

@@ -28,9 +28,11 @@ interface IDropdownToggleProps<T> {
 function DropdownToggle<T>(props: IDropdownToggleProps<T>) {
   // TODO(sbdchd): types are broken for this component. Probably better to just
   // write the component ourselves.
+  /* eslint-disable @typescript-eslint/consistent-type-assertions */
   // tslint:disable-next-line no-any
   const BootstrapDropdownToggle = Dropdown.Toggle as any
   // tslint:disable-next-line no-unsafe-any
+  /* eslint-enable @typescript-eslint/consistent-type-assertions */
   return <BootstrapDropdownToggle {...props} />
 }
 
