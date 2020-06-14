@@ -894,7 +894,8 @@ function BillingDocumentation({
               </li>
               <li>priority support – get priority help configuring Kodiak</li>
               <li>
-                sustain Kodiak – help us cover server costs and feature development
+                sustain Kodiak – help us cover server costs and feature
+                development
               </li>
             </ul>
           </Col>
