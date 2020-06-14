@@ -81,6 +81,8 @@ export function useTeamApiMutation<T, V extends ITeamArgs>(
   return [state, callApi]
 }
 
+/** Call API method and insert current teamId from URL. Returns descriminated
+ * response. */
 export function teamApi<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
