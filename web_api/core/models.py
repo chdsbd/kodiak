@@ -240,7 +240,7 @@ class SeatsExceeded(pydantic.BaseModel):
 
 @dataclass
 class Address:
-    line1: str
+    line1: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
     line2: Optional[str] = None
