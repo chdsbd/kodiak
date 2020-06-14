@@ -55,10 +55,11 @@ export function useTeamApiMutation<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
 ): [WebData<T>, (args: Omit<V, "teamId">) => void] {
   const [state, setState] = React.useState<WebData<T>>({
-    status: "loading",
+    status: "initial",
   })
 
   function callApi(args: Omit<V, "teamId">) {
+    setState({ status: "loading" })
     teamApi(func, args).then(res => {
       if (res.ok) {
         setState({ status: "success", data: res.data })

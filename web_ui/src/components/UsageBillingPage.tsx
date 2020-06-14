@@ -1176,7 +1176,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   function clearQueryString() {
     history.push({ search: "" })
   }
-  if (props.data.status === "loading") {
+  if (props.data.status === "initial" || props.data.status === "loading") {
     return <Loading />
   }
 
