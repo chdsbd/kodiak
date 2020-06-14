@@ -51,12 +51,7 @@ export function useTeamApi<T>(
   return state
 }
 
-export function useTeamApiMutation<
-  T,
-  V extends {
-    readonly teamId: string
-  }
->(
+export function useTeamApiMutation<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
 ): [WebData<T>, (args: Omit<V, "teamId">) => void] {
   const [state, setState] = React.useState<WebData<T>>({
