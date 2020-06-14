@@ -558,8 +558,10 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         stripe_customer_info = StripeCustomerInformation.objects.filter(
             customer_id=customer.id
         ).first()
-        if stripe_customer_info is not None:
-            stripe_customer_info.update_from(customer=customer)
+        if stripe_customer_info is None:
+            logger.warning("customer.update event for unknown customer %s", event)
+            return
+        stripe_customer_info.update_from(customer=customer)
 
     else:
         # Unexpected event type
