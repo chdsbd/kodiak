@@ -247,7 +247,6 @@ This change adds the new GitHub social login flow. Steve provided some great UI 
 Co-authored-by: Steve Dignam <7340772+sbdchd@users.noreply.github.com>
 ```
 
-<!-- ![Coauthors example screenshot](/img/coauthors-example.png) -->
 <img height="80px" title="Coauthors example screenshot" src="/img/coauthors-example.png"/>
 
 ### `merge.message.include_pull_request_author`
