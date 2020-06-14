@@ -260,7 +260,7 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     return HttpResponse(status=204)
 
 
-class PostalAddressModel(pydantic.BaseModel):
+class AddressModel(pydantic.BaseModel):
     line1: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
@@ -270,28 +270,31 @@ class PostalAddressModel(pydantic.BaseModel):
 
 
 class UpdateBillingInfoModel(pydantic.BaseModel):
-    billingEmail: Optional[str] = None
-    companyName: Optional[str] = None
-    postalAddress: Optional[PostalAddressModel] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    address: Optional[AddressModel] = None
 
 
 @auth.login_required
-def update_billing_info(request: HttpRequest, team_id: str) -> HttpResponse:
+def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpResponse:
+    """
+    Endpoint to allow users to update Stripe customer info.
+    """
     account = get_account_or_404(team_id=team_id, user=request.user)
     payload = UpdateBillingInfoModel.parse_raw(request.body)
     account.update_billing_info(
-        email=payload.billingEmail,
-        name=payload.companyName,
+        email=payload.email,
+        name=payload.name,
         address=(
             Address(
-                line1=payload.postalAddress.line1,
-                city=payload.postalAddress.city,
-                country=payload.postalAddress.country,
-                line2=payload.postalAddress.line2,
-                postal_code=payload.postalAddress.postalCode,
-                state=payload.postalAddress.state,
+                line1=payload.address.line1,
+                city=payload.address.city,
+                country=payload.address.country,
+                line2=payload.address.line2,
+                postal_code=payload.address.postalCode,
+                state=payload.address.state,
             )
-            if payload.postalAddress is not None
+            if payload.address is not None
             else None
         ),
     )

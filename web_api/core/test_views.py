@@ -780,15 +780,15 @@ def test_update_billing_email(
     stripe_customer_info.customer_email = "invoices@acme-inc.corp"
     stripe_customer_info.save()
 
-    payload = dict(billingEmail="billing@kodiakhq.com")
+    payload = dict(email="billing@kodiakhq.com")
     res = authed_client.post(
-        f"/v1/t/{account.id}/update_billing_info",
+        f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
         content_type="application/json",
     )
     assert res.status_code == 204
     stripe_customer_info.refresh_from_db()
-    assert stripe_customer_info.customer_email == payload["billingEmail"]
+    assert stripe_customer_info.customer_email == payload["email"]
 
 
 @pytest.mark.django_db
@@ -806,15 +806,15 @@ def test_update_company_name(
     stripe_customer_info.customer_name = "Acme Corp Inc."
     stripe_customer_info.save()
 
-    payload = dict(companyName="Kodiak Bait & Tackle")
+    payload = dict(name="Kodiak Bait & Tackle")
     res = authed_client.post(
-        f"/v1/t/{account.id}/update_billing_info",
+        f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
         content_type="application/json",
     )
     assert res.status_code == 204
     stripe_customer_info.refresh_from_db()
-    assert stripe_customer_info.customer_name == payload["companyName"]
+    assert stripe_customer_info.customer_name == payload["name"]
 
 
 @pytest.mark.django_db
@@ -833,7 +833,7 @@ def test_update_address(
     stripe_customer_info.save()
 
     payload = dict(
-        postalAddress=dict(
+        address=dict(
             line1="123 Main St",
             line2="Apt 3B",
             city="Anytown",
@@ -843,32 +843,23 @@ def test_update_address(
         )
     )
     res = authed_client.post(
-        f"/v1/t/{account.id}/update_billing_info",
+        f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
         content_type="application/json",
     )
     assert res.status_code == 204
     stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_address_line1 == payload["address"]["line1"]
+    assert stripe_customer_info.customer_address_city == payload["address"]["city"]
     assert (
-        stripe_customer_info.customer_address_line1 == payload["postalAddress"]["line1"]
+        stripe_customer_info.customer_address_country == payload["address"]["country"]
     )
-    assert (
-        stripe_customer_info.customer_address_city == payload["postalAddress"]["city"]
-    )
-    assert (
-        stripe_customer_info.customer_address_country
-        == payload["postalAddress"]["country"]
-    )
-    assert (
-        stripe_customer_info.customer_address_line2 == payload["postalAddress"]["line2"]
-    )
+    assert stripe_customer_info.customer_address_line2 == payload["address"]["line2"]
     assert (
         stripe_customer_info.customer_address_postal_code
-        == payload["postalAddress"]["postalCode"]
+        == payload["address"]["postalCode"]
     )
-    assert (
-        stripe_customer_info.customer_address_state == payload["postalAddress"]["state"]
-    )
+    assert stripe_customer_info.customer_address_state == payload["address"]["state"]
 
 
 @pytest.mark.django_db

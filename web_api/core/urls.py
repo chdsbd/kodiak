@@ -16,7 +16,10 @@ urlpatterns = [
     path("t/<uuid:team_id>/cancel_subscription", views.cancel_subscription),
     path("t/<uuid:team_id>/start_checkout", views.start_checkout),
     path("t/<uuid:team_id>/modify_payment_details", views.modify_payment_details),
-    path("t/<uuid:team_id>/update_billing_info", views.update_billing_info),
+    path(
+        "t/<uuid:team_id>/update_stripe_customer_info",
+        views.update_stripe_customer_info,
+    ),
     path("t/<uuid:team_id>/subscription_info", views.get_subscription_info),
     path(
         "t/<uuid:team_id>/stripe_self_serve_redirect",
