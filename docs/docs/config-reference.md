@@ -224,6 +224,31 @@ This setting is useful for stripping HTML comments created by PR templates.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
+### `merge.message.include_coauthors`
+
+- **type:** `boolean`
+- **default:** `false`
+
+If a PR includes commits authored by other users, add those users as coauthors to the pull request.
+
+Coauthors are added using the [`Co-authored-by` trailer syntax](https://help.github.com/en/github/committing-changes-to-your-project/creating-a-commit-with-multiple-authors#creating-co-authored-commits-on-github).
+
+This setting only applies when `merge.message.body = "pull_request"` is set.
+
+#### Example commit
+
+Notice the `Co-authored-by` trailer added by this option.
+
+```text
+Add new github login flow (#17)
+
+This change adds the new GitHub social login flow. Steve provided some great UI tweaks.
+
+Co-authored-by: Steve Dignam <7340772+sbdchd@users.noreply.github.com>
+```
+
+<img height="80px" title="Coauthors example screenshot" src="/img/coauthors-example.png"/>
+
 ### `merge.message.include_pull_request_author`
 
 - **type:** `boolean`
@@ -231,7 +256,7 @@ This option only applies when `merge.message.body_type = "markdown"`.
 
 Add the pull request author as a coauthor of the merge commit using `Co-authored-by: jdoe <828352+jdoe@users.noreply.github.com>` syntax.
 
-This setting will override `merge.message.body = "github_default"` and `merge.message.body = "empty"`. In both cases, the commit message will only contain coauthor information.
+This setting only applies when `merge.message.body = "pull_request"` is set.
 
 This setting was added to mitigate the fallout of GitHub's change to the
 squash method on March 4th, 2020. GitHub reverted their change around
