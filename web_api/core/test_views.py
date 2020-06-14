@@ -720,8 +720,11 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
 
+PRIMARY_KEYS = range(1000, 100000)
+
+
 def create_pk() -> int:
-    return random.randint(1000, 100000)
+    return next(PRIMARY_KEYS)
 
 
 def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
