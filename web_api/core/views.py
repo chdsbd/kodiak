@@ -553,6 +553,14 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         logger.warning("more action required for payment %s", event)
     elif event.type == "invoice.payment_failed":
         logger.warning("invoice.payment_failed %s", event)
+    elif event.type in "customer.updated":
+        customer = stripe.Customer.retrieve(event.data.object.id)
+        stripe_customer_info = StripeCustomerInformation.objects.filter(
+            customer_id=customer.id
+        ).first()
+        if stripe_customer_info is not None:
+            stripe_customer_info.update_from(customer=customer)
+
     else:
         # Unexpected event type
         raise BadRequest

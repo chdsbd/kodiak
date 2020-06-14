@@ -986,31 +986,51 @@ class StripeCustomerInformation(models.Model):
 
     def update_from(
         self,
-        subscription: stripe.Subscription,
-        customer: stripe.Customer,
-        payment_method: stripe.PaymentMethod,
+        subscription: Optional[stripe.Subscription] = None,
+        customer: Optional[stripe.Customer] = None,
+        payment_method: Optional[stripe.PaymentMethod] = None,
     ) -> None:
+        if customer is not None:
+            self.customer_email = customer.email
+            self.customer_balance = customer.balance
+            self.customer_created = customer.created
+            self.customer_currency = customer.currency
+            self.customer_name = customer.name
+            self.customer_address_line1 = (
+                customer.address.line1 if customer.address else None
+            )
+            self.customer_address_city = (
+                customer.address.city if customer.address else None
+            )
+            self.customer_address_country = (
+                customer.address.country if customer.address else None
+            )
+            self.customer_address_line2 = (
+                customer.address.line2 if customer.address else None
+            )
+            self.customer_address_postal_code = (
+                customer.address.postal_code if customer.address else None
+            )
+            self.customer_address_state = (
+                customer.address.state if customer.address else None
+            )
 
-        self.subscription_id = subscription.id
-        self.plan_id = subscription.plan.id
-        self.payment_method_id = payment_method.id
+        if payment_method is not None:
+            self.payment_method_id = payment_method.id
+            self.payment_method_card_brand = payment_method.card.brand
+            self.payment_method_card_exp_month = payment_method.card.exp_month
+            self.payment_method_card_exp_year = payment_method.card.exp_year
+            self.payment_method_card_last4 = payment_method.card.last4
 
-        self.customer_email = customer.email
-        self.customer_balance = customer.balance
-        self.customer_created = customer.created
-        self.customer_currency = customer.currency
+        if subscription is not None:
+            self.plan_id = subscription.plan.id
+            self.plan_amount = subscription.plan.amount
 
-        self.payment_method_card_brand = payment_method.card.brand
-        self.payment_method_card_exp_month = payment_method.card.exp_month
-        self.payment_method_card_exp_year = payment_method.card.exp_year
-        self.payment_method_card_last4 = payment_method.card.last4
-
-        self.plan_amount = subscription.plan.amount
-
-        self.subscription_quantity = subscription.quantity
-        self.subscription_start_date = subscription.start_date
-        self.subscription_current_period_end = subscription.current_period_end
-        self.subscription_current_period_start = subscription.current_period_start
+            self.subscription_id = subscription.id
+            self.subscription_quantity = subscription.quantity
+            self.subscription_start_date = subscription.start_date
+            self.subscription_current_period_end = subscription.current_period_end
+            self.subscription_current_period_start = subscription.current_period_start
         self.save()
         self.get_account().update_bot()
 

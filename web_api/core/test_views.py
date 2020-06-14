@@ -1168,6 +1168,8 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             object="customer",
             id="cus_Gz7jQFKdh4KirU",
             email="j.doe@example.com",
+            name=None,
+            address=None,
             balance=5000,
             created=1643455402,
             currency="gbp",
@@ -1352,6 +1354,8 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             object="customer",
             id="cus_Gz7jQFKdh4KirU",
             email="j.doe@example.com",
+            name=None,
+            address=None,
             balance=5000,
             created=1643455402,
             currency="brl",
@@ -1764,6 +1768,320 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     )
     assert updated_stripe_customer_info.subscription_current_period_end == 1690982549
     assert updated_stripe_customer_info.subscription_current_period_start == 1688304149
+
+
+@pytest.mark.django_db
+def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
+    """
+    Verify our webhook handler updates our customer when we get a customer.updated event
+    """
+    update_bot = mocker.patch("core.models.Account.update_bot")
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="cus_523405923045",
+    )
+
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1590982549,
+        subscription_current_period_end=1588304149,
+    )
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id=account.stripe_customer_id,
+            address=None,
+            balance=0,
+            created=1592096376,
+            currency="usd",
+            email="accounting@acme.corp",
+            name="Acme Corp Inc",
+        ),
+        "fake-key",
+    )
+    patched_retrieve_customer = mocker.patch(
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    patched_update_bot = mocker.patch(
+        "core.models.Account.update_bot", spec=Account.update_bot
+    )
+    assert StripeCustomerInformation.objects.count() == 1
+    assert update_bot.call_count == 0
+    assert patched_retrieve_customer.call_count == 0
+    res = post_webhook(
+        """
+{
+  "created": 1326853478,
+  "livemode": false,
+  "id": "evt_00000000000000",
+  "type": "customer.updated",
+  "object": "event",
+  "request": null,
+  "pending_webhooks": 1,
+  "api_version": "2020-03-02",
+  "data": {
+    "object": {
+      "id": "%s",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1592097133,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "discount": null,
+      "email": null,
+      "invoice_prefix": "62BA0D0",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "name": null,
+      "next_invoice_sequence": 1,
+      "phone": null,
+      "preferred_locales": [
+      ],
+      "shipping": null,
+      "sources": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/sources"
+      },
+      "subscriptions": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/subscriptions"
+      },
+      "tax_exempt": "none",
+      "tax_ids": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/tax_ids"
+      }
+    },
+    "previous_attributes": {
+      "description": "Old description"
+    }
+  }
+}"""
+        % account.stripe_customer_id
+    )
+
+    assert res.status_code == 200
+    assert patched_update_bot.call_count == 1
+    assert patched_retrieve_customer.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 1
+    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
+    assert updated_stripe_customer_info.customer_email == fake_customer.email
+    assert updated_stripe_customer_info.customer_balance == fake_customer.balance
+    assert updated_stripe_customer_info.customer_created == fake_customer.created
+    assert updated_stripe_customer_info.customer_currency == fake_customer.currency
+    assert updated_stripe_customer_info.customer_name == fake_customer.name
+
+    assert fake_customer.address is None
+    assert updated_stripe_customer_info.customer_address_line1 is None
+    assert updated_stripe_customer_info.customer_address_city is None
+    assert updated_stripe_customer_info.customer_address_country is None
+    assert updated_stripe_customer_info.customer_address_line2 is None
+    assert updated_stripe_customer_info.customer_address_postal_code is None
+    assert updated_stripe_customer_info.customer_address_state is None
+
+
+@pytest.mark.django_db
+def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> None:
+    """
+    Verify our webhook handler updates our customer when we get a customer.updated event
+
+    This is basically the same as the previous test but with the address provided.
+    """
+    update_bot = mocker.patch("core.models.Account.update_bot")
+    account = Account.objects.create(
+        github_installation_id=377930,
+        github_account_id=900966,
+        github_account_login="acme-corp",
+        github_account_type="User",
+        stripe_customer_id="cus_523405923045",
+    )
+
+    StripeCustomerInformation.objects.create(
+        customer_id=account.stripe_customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1590982549,
+        subscription_current_period_end=1588304149,
+    )
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id=account.stripe_customer_id,
+            address=dict(
+                line1="123 Main St",
+                line2="Apt 2B",
+                city="Cambridge",
+                state="Massachusetts",
+                postal_code="02139",
+                country="United States",
+            ),
+            balance=0,
+            created=1592096376,
+            currency="usd",
+            email="accounting@acme.corp",
+            name="Acme Corp Inc",
+        ),
+        "fake-key",
+    )
+    patched_retrieve_customer = mocker.patch(
+        "core.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    patched_update_bot = mocker.patch(
+        "core.models.Account.update_bot", spec=Account.update_bot
+    )
+    assert StripeCustomerInformation.objects.count() == 1
+    assert update_bot.call_count == 0
+    assert patched_retrieve_customer.call_count == 0
+    res = post_webhook(
+        """
+{
+  "created": 1326853478,
+  "livemode": false,
+  "id": "evt_00000000000000",
+  "type": "customer.updated",
+  "object": "event",
+  "request": null,
+  "pending_webhooks": 1,
+  "api_version": "2020-03-02",
+  "data": {
+    "object": {
+      "id": "%s",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1592097133,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "discount": null,
+      "email": null,
+      "invoice_prefix": "62BA0D0",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "name": null,
+      "next_invoice_sequence": 1,
+      "phone": null,
+      "preferred_locales": [
+      ],
+      "shipping": null,
+      "sources": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/sources"
+      },
+      "subscriptions": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/subscriptions"
+      },
+      "tax_exempt": "none",
+      "tax_ids": {
+        "object": "list",
+        "data": [
+        ],
+        "has_more": false,
+        "url": "/v1/customers/cus_HSfjRanfIZeNYE/tax_ids"
+      }
+    },
+    "previous_attributes": {
+      "description": "Old description"
+    }
+  }
+}"""
+        % account.stripe_customer_id
+    )
+
+    assert res.status_code == 200
+    assert patched_update_bot.call_count == 1
+    assert patched_retrieve_customer.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 1
+    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
+    assert updated_stripe_customer_info.customer_email == fake_customer.email
+    assert updated_stripe_customer_info.customer_balance == fake_customer.balance
+    assert updated_stripe_customer_info.customer_created == fake_customer.created
+    assert updated_stripe_customer_info.customer_currency == fake_customer.currency
+    assert updated_stripe_customer_info.customer_name == fake_customer.name
+
+    assert fake_customer.address is not None
+    assert (
+        updated_stripe_customer_info.customer_address_line1
+        == fake_customer.address.line1
+    )
+    assert (
+        updated_stripe_customer_info.customer_address_city == fake_customer.address.city
+    )
+    assert (
+        updated_stripe_customer_info.customer_address_country
+        == fake_customer.address.country
+    )
+    assert (
+        updated_stripe_customer_info.customer_address_line2
+        == fake_customer.address.line2
+    )
+    assert (
+        updated_stripe_customer_info.customer_address_postal_code
+        == fake_customer.address.postal_code
+    )
+    assert (
+        updated_stripe_customer_info.customer_address_state
+        == fake_customer.address.state
+    )
 
 
 @pytest.mark.django_db
