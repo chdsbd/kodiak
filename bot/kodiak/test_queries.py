@@ -617,6 +617,13 @@ def test_get_commit_authors() -> None:
                 {
                     "commit": {
                         "author": {
+                            "user": None
+                        }
+                    }
+                },
+                {
+                    "commit": {
+                        "author": {
                             "user": {
                                 "name": "Christopher Dignam",
                                 "databaseId": 1929960,

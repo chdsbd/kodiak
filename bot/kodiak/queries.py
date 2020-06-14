@@ -514,8 +514,11 @@ def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
     try:
         for node in pr["commitHistory"]["nodes"]:
             try:
+                user = node["commit"]["author"]["user"]
+                if user is None:
+                    continue
                 commit_authors[
-                    CommitAuthor.parse_obj(node["commit"]["author"]["user"])
+                    CommitAuthor.parse_obj(user)
                 ] = True
             except (pydantic.ValidationError, IndexError, KeyError, TypeError):
                 logger.warning("problem parsing commit author", exc_info=True)
