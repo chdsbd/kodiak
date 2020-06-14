@@ -614,6 +614,7 @@ def test_get_commit_authors() -> None:
                         }
                     }
                 },
+                {"commit": {"author": {"user": None}}},
                 {
                     "commit": {
                         "author": {
