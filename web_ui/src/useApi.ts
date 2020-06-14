@@ -59,24 +59,18 @@ export function useTeamApiMutation<
 >(
   func: (args: V) => Promise<T>,
 ): [WebData<T>, (args: Omit<V, "teamId">) => void] {
-  const params = useParams<{ team_id: string }>()
-  const teamId = params.team_id
   const [state, setState] = React.useState<WebData<T>>({
     status: "loading",
   })
 
   function callApi(args: Omit<V, "teamId">) {
-    // We know better than TS. This is a safe assertion.
-    // https://github.com/microsoft/TypeScript/issues/35858
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const apiArgs: V = { ...args, teamId } as V
-    func(apiArgs)
-      .then(res => {
-        setState({ status: "success", data: res })
-      })
-      .catch(() => {
+    teamApi(func, args).then(res => {
+      if (res.ok) {
+        setState({ status: "success", data: res.data })
+      } else {
         setState({ status: "failure" })
-      })
+      }
+    })
   }
 
   return [state, callApi]
