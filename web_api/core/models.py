@@ -238,6 +238,16 @@ class SeatsExceeded(pydantic.BaseModel):
     allowed_user_ids: List[int]
 
 
+@dataclass
+class Address:
+    line1: str
+    city: Optional[str] = None
+    country: Optional[str] = None
+    line2: Optional[str] = None
+    postal_code: Optional[str] = None
+    state: Optional[str] = None
+
+
 class Account(BaseModel):
     """
     An GitHub Kodiak App installation for a GitHub organization or user.
@@ -384,6 +394,47 @@ class Account(BaseModel):
     def update_from(self, customer: stripe.Customer) -> None:
         self.stripe_customer_id = customer.id
         self.save()
+
+    def update_billing_info(
+        self,
+        email: Optional[str] = None,
+        name: Optional[str] = None,
+        address: Optional[Address] = None,
+    ) -> None:
+        if not self.stripe_customer_id:
+            return None
+        stripe.Customer.modify(
+            self.stripe_customer_id,
+            email=email,
+            name=name,
+            address=(
+                dict(
+                    line1=address.line1,
+                    city=address.city,
+                    country=address.country,
+                    line2=address.line2,
+                    postal_code=address.postal_code,
+                    state=address.state,
+                )
+                if address is not None
+                else None
+            ),
+        )
+        stripe_customer_info = self.stripe_customer_info()
+        if stripe_customer_info:
+            if email is not None:
+                stripe_customer_info.customer_email = email
+            if name is not None:
+                stripe_customer_info.customer_name = name
+            if address is not None:
+                stripe_customer_info.customer_address_line1 = address.line1
+                stripe_customer_info.customer_address_city = address.city
+                stripe_customer_info.customer_address_country = address.country
+                stripe_customer_info.customer_address_line2 = address.line2
+                stripe_customer_info.customer_address_postal_code = address.postal_code
+                stripe_customer_info.customer_address_state = address.state
+
+            stripe_customer_info.save()
 
     def update_bot(self) -> None:
         """
@@ -860,6 +911,35 @@ class StripeCustomerInformation(models.Model):
         max_length=255,
         null=True,
         help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
+    )
+    customer_name = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="The customer’s full name or business name.",
+    )
+    customer_address_line1 = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Address line 1 (e.g., street, PO Box, or company name).",
+    )
+    customer_address_city = models.CharField(
+        max_length=255, null=True, help_text="City, district, suburb, town, or village."
+    )
+    customer_address_country = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Two-letter country code (ISO 3166-1 alpha-2).",
+    )
+    customer_address_line2 = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Address line 2 (e.g., apartment, suite, unit, or building).",
+    )
+    customer_address_postal_code = models.CharField(
+        max_length=255, null=True, help_text="ZIP or postal code."
+    )
+    customer_address_state = models.CharField(
+        max_length=255, null=True, help_text="State, county, province, or region."
     )
 
     # https://stripe.com/docs/api/payment_methods/object

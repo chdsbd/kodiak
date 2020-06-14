@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Optional, Union, cast
 from urllib.parse import parse_qsl
 
+import pydantic
 import requests
 import stripe
 from django.conf import settings
@@ -24,6 +25,7 @@ from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
     AccountType,
+    Address,
     AnonymousUser,
     PullRequestActivity,
     StripeCustomerInformation,
@@ -71,6 +73,16 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info:
+        postal_address = None
+        if stripe_customer_info.customer_address_line1 is not None:
+            postal_address = dict(
+                line1=stripe_customer_info.customer_address_line1,
+                city=stripe_customer_info.customer_address_city,
+                country=stripe_customer_info.customer_address_country,
+                line2=stripe_customer_info.customer_address_line2,
+                postalCode=stripe_customer_info.customer_address_postal_code,
+                state=stripe_customer_info.customer_address_state,
+            )
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
@@ -82,6 +94,8 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
             ),
             billingEmail=stripe_customer_info.customer_email,
+            companyName=stripe_customer_info.customer_name,
+            postalAddress=postal_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
         )
 
@@ -243,6 +257,44 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     stripe_customer_info.save()
     account.update_bot()
 
+    return HttpResponse(status=204)
+
+
+class PostalAddressModel(pydantic.BaseModel):
+    line1: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    line2: Optional[str] = None
+    postalCode: Optional[str] = None
+    state: Optional[str] = None
+
+
+class UpdateBillingInfoModel(pydantic.BaseModel):
+    billingEmail: Optional[str] = None
+    companyName: Optional[str] = None
+    postalAddress: Optional[PostalAddressModel] = None
+
+
+@auth.login_required
+def update_billing_info(request: HttpRequest, team_id: str) -> HttpResponse:
+    account = get_account_or_404(team_id=team_id, user=request.user)
+    payload = UpdateBillingInfoModel.parse_raw(request.body)
+    account.update_billing_info(
+        email=payload.billingEmail,
+        name=payload.companyName,
+        address=(
+            Address(
+                line1=payload.postalAddress.line1,
+                city=payload.postalAddress.city,
+                country=payload.postalAddress.country,
+                line2=payload.postalAddress.line2,
+                postal_code=payload.postalAddress.postalCode,
+                state=payload.postalAddress.state,
+            )
+            if payload.postalAddress is not None
+            else None
+        ),
+    )
     return HttpResponse(status=204)
 
 

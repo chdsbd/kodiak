@@ -1,7 +1,8 @@
 import datetime
 import json
+import random
 import time
-from typing import Any, Union, cast
+from typing import Any, Tuple, Union, cast
 
 import pytest
 import responses
@@ -312,6 +313,8 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
+    assert res.json()["subscription"]["companyName"] == None
+    assert res.json()["subscription"]["postalAddress"] == None
 
     stripe_customer_information.customer_currency = None
     stripe_customer_information.save()
@@ -320,6 +323,26 @@ def test_usage_billing_subscription_started(
     assert (
         res.json()["subscription"]["cost"]["currency"] == "usd"
     ), "should default to usd if we cannot find a currency"
+
+    stripe_customer_information.customer_name = "Acme-corp"
+    stripe_customer_information.customer_address_line1 = "123 Main Street"
+    stripe_customer_information.customer_address_city = "Anytown"
+    stripe_customer_information.customer_address_country = "United States"
+    stripe_customer_information.customer_address_line2 = "Apt B"
+    stripe_customer_information.customer_address_postal_code = "02134"
+    stripe_customer_information.customer_address_state = "Massachusetts"
+    stripe_customer_information.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"]["companyName"] == "Acme-corp"
+    assert res.json()["subscription"]["postalAddress"] == dict(
+        line1=stripe_customer_information.customer_address_line1,
+        city=stripe_customer_information.customer_address_city,
+        country=stripe_customer_information.customer_address_country,
+        line2=stripe_customer_information.customer_address_line2,
+        postalCode=stripe_customer_information.customer_address_postal_code,
+        state=stripe_customer_information.customer_address_state,
+    )
 
 
 @pytest.mark.django_db
@@ -695,6 +718,157 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+
+
+def create_pk() -> int:
+    return random.randint(1000, 100000)
+
+
+def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
+    account_id = create_pk()
+    account = Account.objects.create(
+        github_installation_id=create_pk(),
+        github_account_id=account_id,
+        github_account_login=f"Acme-corp-{account_id}",
+        github_account_type="Organization",
+        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
+    )
+    membership = AccountMembership.objects.create(
+        account=account, user=user, role="member"
+    )
+    return (account, membership)
+
+
+def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
+    return StripeCustomerInformation.objects.create(
+        customer_id=customer_id,
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=1650581784,
+        subscription_current_period_end=1658357784,
+    )
+
+
+@pytest.fixture
+def patch_stripe_customer_modify(mocker: Any) -> None:
+    mocker.patch("core.models.stripe.Customer.modify", spec=stripe.Customer.modify)
+
+
+@pytest.mark.django_db
+def test_update_billing_email(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    A user should be able to modifying billing email.
+    """
+    account, _membership = create_org_account(user)
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    stripe_customer_info.customer_email = "invoices@acme-inc.corp"
+    stripe_customer_info.save()
+
+    payload = dict(billingEmail="billing@kodiakhq.com")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_billing_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_email == payload["billingEmail"]
+
+
+@pytest.mark.django_db
+def test_update_company_name(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    A user should be able to modify the company name.
+    """
+    account, _membership = create_org_account(user)
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    stripe_customer_info.customer_name = "Acme Corp Inc."
+    stripe_customer_info.save()
+
+    payload = dict(companyName="Kodiak Bait & Tackle")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_billing_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_name == payload["companyName"]
+
+
+@pytest.mark.django_db
+def test_update_address(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    A user should be able to modifying postal address.
+    """
+    account, _membership = create_org_account(user)
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    stripe_customer_info.customer_name = "Acme Corp Inc."
+    stripe_customer_info.save()
+
+    payload = dict(
+        postalAddress=dict(
+            line1="123 Main St",
+            line2="Apt 3B",
+            city="Anytown",
+            postalCode="12345",
+            state="Massachusetts",
+            country="United States",
+        )
+    )
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_billing_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    stripe_customer_info.refresh_from_db()
+    assert (
+        stripe_customer_info.customer_address_line1 == payload["postalAddress"]["line1"]
+    )
+    assert (
+        stripe_customer_info.customer_address_city == payload["postalAddress"]["city"]
+    )
+    assert (
+        stripe_customer_info.customer_address_country
+        == payload["postalAddress"]["country"]
+    )
+    assert (
+        stripe_customer_info.customer_address_line2 == payload["postalAddress"]["line2"]
+    )
+    assert (
+        stripe_customer_info.customer_address_postal_code
+        == payload["postalAddress"]["postalCode"]
+    )
+    assert (
+        stripe_customer_info.customer_address_state == payload["postalAddress"]["state"]
+    )
 
 
 @pytest.mark.django_db
