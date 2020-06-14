@@ -3,6 +3,7 @@ import logging
 from typing import Callable, Optional
 from urllib.parse import urlparse
 
+import pydantic
 from django.http import HttpRequest, HttpResponse, HttpResponseServerError, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import SimpleLazyObject
@@ -59,6 +60,9 @@ class ExceptionMiddleware(MiddlewareMixin):
     ) -> Optional[HttpResponse]:
         if isinstance(exception, ApiException):
             return JsonResponse(dict(message=exception.message), status=exception.code)
+        # return a 400 response if we encounter a pydantic validation error.
+        if isinstance(exception, pydantic.ValidationError):
+            return JsonResponse(dict(message=exception.errors()), status=400)
         return None
 
 

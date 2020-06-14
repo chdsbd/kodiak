@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Optional, Union, cast
 from urllib.parse import parse_qsl
 
+import pydantic
 import requests
 import stripe
 from django.conf import settings
@@ -24,6 +25,7 @@ from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
     AccountType,
+    Address,
     AnonymousUser,
     PullRequestActivity,
     StripeCustomerInformation,
@@ -71,6 +73,16 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info:
+        customer_address = None
+        if stripe_customer_info.customer_address_line1 is not None:
+            customer_address = dict(
+                line1=stripe_customer_info.customer_address_line1,
+                city=stripe_customer_info.customer_address_city,
+                country=stripe_customer_info.customer_address_country,
+                line2=stripe_customer_info.customer_address_line2,
+                postalCode=stripe_customer_info.customer_address_postal_code,
+                state=stripe_customer_info.customer_address_state,
+            )
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
@@ -82,6 +94,8 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
             ),
             billingEmail=stripe_customer_info.customer_email,
+            customerName=stripe_customer_info.customer_name,
+            customerAddress=customer_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
         )
 
@@ -243,6 +257,47 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     stripe_customer_info.save()
     account.update_bot()
 
+    return HttpResponse(status=204)
+
+
+class AddressModel(pydantic.BaseModel):
+    line1: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    line2: Optional[str] = None
+    postalCode: Optional[str] = None
+    state: Optional[str] = None
+
+
+class UpdateBillingInfoModel(pydantic.BaseModel):
+    email: Optional[pydantic.EmailStr] = None
+    name: Optional[str] = None
+    address: Optional[AddressModel] = None
+
+
+@auth.login_required
+def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpResponse:
+    """
+    Endpoint to allow users to update Stripe customer info.
+    """
+    account = get_account_or_404(team_id=team_id, user=request.user)
+    payload = UpdateBillingInfoModel.parse_raw(request.body)
+    account.update_billing_info(
+        email=payload.email,
+        name=payload.name,
+        address=(
+            Address(
+                line1=payload.address.line1,
+                city=payload.address.city,
+                country=payload.address.country,
+                line2=payload.address.line2,
+                postal_code=payload.address.postalCode,
+                state=payload.address.state,
+            )
+            if payload.address is not None
+            else None
+        ),
+    )
     return HttpResponse(status=204)
 
 
@@ -498,6 +553,16 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         logger.warning("more action required for payment %s", event)
     elif event.type == "invoice.payment_failed":
         logger.warning("invoice.payment_failed %s", event)
+    elif event.type == "customer.updated":
+        customer = stripe.Customer.retrieve(event.data.object.id)
+        stripe_customer_info = StripeCustomerInformation.objects.filter(
+            customer_id=customer.id
+        ).first()
+        if stripe_customer_info is None:
+            logger.warning("customer.update event for unknown customer %s", event)
+            raise BadRequest
+        stripe_customer_info.update_from(customer=customer)
+
     else:
         # Unexpected event type
         raise BadRequest
