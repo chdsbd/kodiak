@@ -270,7 +270,7 @@ class AddressModel(pydantic.BaseModel):
 
 
 class UpdateBillingInfoModel(pydantic.BaseModel):
-    email: Optional[str] = None
+    email: Optional[pydantic.EmailStr] = None
     name: Optional[str] = None
     address: Optional[AddressModel] = None
 

@@ -795,6 +795,33 @@ def test_update_billing_email(
 
 
 @pytest.mark.django_db
+def test_update_billing_email_empty(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    We should error if the user tries to update an email to empty string
+    """
+    account, _membership = create_org_account(user)
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    original_email = "invoices@acme-inc.corp"
+    stripe_customer_info.customer_email = original_email
+    stripe_customer_info.save()
+
+    payload = dict(email="")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 400
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_email == original_email
+
+
+@pytest.mark.django_db
 def test_update_company_name(
     authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
 ) -> None:
