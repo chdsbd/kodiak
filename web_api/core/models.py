@@ -435,6 +435,7 @@ class Account(BaseModel):
                 stripe_customer_info.customer_address_state = address.state
 
             stripe_customer_info.save()
+        return None
 
     def update_bot(self) -> None:
         """
