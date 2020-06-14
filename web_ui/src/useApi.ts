@@ -29,6 +29,10 @@ export function useApi<T>(
 interface ITeamArgs {
   readonly teamId: string
 }
+/** Call API method and return WebData for response
+ *
+ * The API function gets called on first load.
+ */
 export function useTeamApi<T>(
   func: (args: ITeamArgs) => Promise<T>,
 ): WebData<T> {
@@ -51,12 +55,42 @@ export function useTeamApi<T>(
   return state
 }
 
+/** Call API method and return WebData for response
+ *
+ * This is similar to useTeamApi but only makes a request when `callApi` is
+ * called.
+ */
+export function useTeamApiMutation<T, V extends ITeamArgs>(
+  func: (args: V) => Promise<T>,
+): [WebData<T>, (args: Omit<V, "teamId">) => void] {
+  const [state, setState] = React.useState<WebData<T>>({
+    status: "initial",
+  })
+
+  function callApi(args: Omit<V, "teamId">) {
+    setState({ status: "loading" })
+    teamApi(func, args).then(res => {
+      if (res.ok) {
+        setState({ status: "success", data: res.data })
+      } else {
+        setState({ status: "failure" })
+      }
+    })
+  }
+
+  return [state, callApi]
+}
+
+/** Call API method and insert current teamId from URL. Returns descriminated
+ * response. */
 export function teamApi<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   args: Omit<V, "teamId"> = {} as Omit<V, "teamId">,
 ): Promise<{ ok: true; data: T } | { ok: false }> {
   const teamId: string = location.pathname.split("/")[2]
+  // We know better than TS. This is a safe assertion.
+  // https://github.com/microsoft/TypeScript/issues/35858
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return func({ ...args, teamId } as V)
     .then(res => ({ ok: true, data: res }))
