@@ -73,9 +73,9 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info:
-        postal_address = None
+        customer_address = None
         if stripe_customer_info.customer_address_line1 is not None:
-            postal_address = dict(
+            customer_address = dict(
                 line1=stripe_customer_info.customer_address_line1,
                 city=stripe_customer_info.customer_address_city,
                 country=stripe_customer_info.customer_address_country,
@@ -94,8 +94,8 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
             ),
             billingEmail=stripe_customer_info.customer_email,
-            companyName=stripe_customer_info.customer_name,
-            postalAddress=postal_address,
+            customerName=stripe_customer_info.customer_name,
+            customerAddress=customer_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
         )
 

@@ -313,8 +313,8 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
-    assert res.json()["subscription"]["companyName"] is None
-    assert res.json()["subscription"]["postalAddress"] is None
+    assert res.json()["subscription"]["customerName"] is None
+    assert res.json()["subscription"]["customerAddress"] is None
 
     stripe_customer_information.customer_currency = None
     stripe_customer_information.save()
@@ -334,8 +334,8 @@ def test_usage_billing_subscription_started(
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
-    assert res.json()["subscription"]["companyName"] == "Acme-corp"
-    assert res.json()["subscription"]["postalAddress"] == dict(
+    assert res.json()["subscription"]["customerName"] == "Acme-corp"
+    assert res.json()["subscription"]["customerAddress"] == dict(
         line1=stripe_customer_information.customer_address_line1,
         city=stripe_customer_information.customer_address_city,
         country=stripe_customer_information.customer_address_country,
