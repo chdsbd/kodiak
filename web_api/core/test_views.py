@@ -313,8 +313,8 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
-    assert res.json()["subscription"]["companyName"] == None
-    assert res.json()["subscription"]["postalAddress"] == None
+    assert res.json()["subscription"]["companyName"] is None
+    assert res.json()["subscription"]["postalAddress"] is None
 
     stripe_customer_information.customer_currency = None
     stripe_customer_information.save()
