@@ -15,7 +15,7 @@ import { Image } from "./Image"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { Current } from "../world"
-import { useTeamApi, teamApi } from "../useApi"
+import { useTeamApi, teamApi, useTeamApiMutation } from "../useApi"
 import formatDate from "date-fns/format"
 import formatDistanceToNowStrict from "date-fns/formatDistanceToNowStrict"
 import parseISO from "date-fns/parseISO"
@@ -753,20 +753,14 @@ function SubscriptionUpsellPrompt({
   )
 }
 
-type ApiLoadingState = "initial" | "loading" | "failed" | "success"
-
-function KodiakSaveButton({ state }: { state: ApiLoadingState }) {
-  const loading = state === "loading"
+function KodiakSaveButton({ state }: { state: WebData<unknown> }) {
+  const loading = state.status === "loading"
   return (
     <>
-      <Button
-        variant="dark"
-        size="sm"
-        disabled={state === "loading"}
-        type="submit">
+      <Button variant="dark" size="sm" disabled={loading} type="submit">
         {loading ? "Loading..." : "Save"}
       </Button>
-      {state === "failed" && (
+      {state.status === "failure" && (
         <Form.Text className="text-danger">Save failed</Form.Text>
       )}
     </>
@@ -781,19 +775,12 @@ function BillingEmailForm({
   readonly className?: string
 }) {
   const [billingEmail, setBillingEmail] = React.useState(defaultValue)
-  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
-    setApiState("loading")
-    teamApi(Current.api.updateStripeCustomerInfo, { email: billingEmail }).then(
-      res => {
-        if (res.ok) {
-          setApiState("success")
-        } else {
-          setApiState("failed")
-        }
-      },
-    )
+    updateStripeCustomerInfo({ email: billingEmail })
   }
   return (
     <Card className={className}>
@@ -828,19 +815,12 @@ function CompanyNameForm({
   readonly className?: string
 }) {
   const [companyName, setCompanyName] = React.useState(defaultValue)
-  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
-    setApiState("loading")
-    teamApi(Current.api.updateStripeCustomerInfo, { name: companyName }).then(
-      res => {
-        if (res.ok) {
-          setApiState("success")
-        } else {
-          setApiState("failed")
-        }
-      },
-    )
+    updateStripeCustomerInfo({ name: companyName })
   }
   return (
     <Card className={className}>
@@ -889,18 +869,13 @@ function PostalAddressForm({
   )
   const [country, setCountry] = React.useState(defaultValue.country ?? "")
 
-  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
-    setApiState("loading")
-    teamApi(Current.api.updateStripeCustomerInfo, {
+    updateStripeCustomerInfo({
       address: { line1, line2, city, state, postalCode, country },
-    }).then(res => {
-      if (res.ok) {
-        setApiState("success")
-      } else {
-        setApiState("failed")
-      }
     })
   }
   return (
