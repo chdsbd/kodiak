@@ -829,8 +829,13 @@ def test_update_address(
         customer_id=account.stripe_customer_id
     )
 
-    stripe_customer_info.customer_name = "Acme Corp Inc."
-    stripe_customer_info.save()
+    stripe_customer_information.customer_address_line1 = None
+    stripe_customer_information.customer_address_city = None
+    stripe_customer_information.customer_address_country = None
+    stripe_customer_information.customer_address_line2 = None
+    stripe_customer_information.customer_address_postal_code = None
+    stripe_customer_information.customer_address_state = None
+    stripe_customer_information.save()
 
     payload = dict(
         address=dict(
