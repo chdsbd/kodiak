@@ -797,7 +797,7 @@ function BillingEmailForm({
               }
             />
             <Form.Text className="text-muted">
-              Required. Address to send billing receipts.
+              <b>Required</b>. Address to send billing receipts.
             </Form.Text>
           </Form.Group>
           <KodiakSaveButton state={apiState} />
