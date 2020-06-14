@@ -29,6 +29,10 @@ export function useApi<T>(
 interface ITeamArgs {
   readonly teamId: string
 }
+/** Call API method and return WebData for response
+ *
+ * The API function gets called on first load.
+ */
 export function useTeamApi<T>(
   func: (args: ITeamArgs) => Promise<T>,
 ): WebData<T> {
@@ -51,6 +55,11 @@ export function useTeamApi<T>(
   return state
 }
 
+/** Call API method and return WebData for response
+ *
+ * This is similar to useTeamApi but only makes a request when `callApi` is
+ * called.
+ */
 export function useTeamApiMutation<T, V extends ITeamArgs>(
   func: (args: V) => Promise<T>,
 ): [WebData<T>, (args: Omit<V, "teamId">) => void] {
