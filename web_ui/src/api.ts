@@ -44,6 +44,15 @@ export interface IUsageBillingPageApiResponse {
       readonly currency: string
     }
     readonly billingEmail: string
+    readonly customerName?: string
+    readonly customerAddress?: {
+      readonly line1?: string
+      readonly city?: string
+      readonly country?: string
+      readonly line2?: string
+      readonly postalCode?: string
+      readonly state?: string
+    }
     readonly cardInfo: string
   } | null
   readonly trial: {
@@ -179,6 +188,20 @@ export type SubscriptionInfoResponse =
       readonly licenseCount: number
     }
 
+export type UpdateStripeCustomerInfoArgs = {
+  readonly teamId: string
+  readonly email?: string
+  readonly name?: string
+  readonly address?: {
+    readonly line1?: string
+    readonly city?: string
+    readonly country?: string
+    readonly line2?: string
+    readonly postalCode?: string
+    readonly state?: string
+  }
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -202,4 +225,7 @@ export interface Api {
   getSubscriptionInfo: (
     args: GetSubscriptionInfoArgs,
   ) => Promise<SubscriptionInfoResponse>
+  updateStripeCustomerInfo: (
+    args: UpdateStripeCustomerInfoArgs,
+  ) => Promise<unknown>
 }

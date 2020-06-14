@@ -147,5 +147,12 @@ export const Current: World = {
           `/v1/t/${args.teamId}/subscription_info`,
         )
         .then(d => d.data),
+    updateStripeCustomerInfo: (args: api.UpdateStripeCustomerInfoArgs) => {
+      const { teamId, ...payload } = args
+      return authRoute.post<unknown>(
+        `/v1/t/${args.teamId}/update_stripe_customer_info`,
+        payload,
+      )
+    },
   },
 }

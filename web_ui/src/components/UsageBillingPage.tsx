@@ -63,6 +63,15 @@ interface IUsageBillingData {
       readonly currency: string
     }
     readonly billingEmail: string
+    readonly customerName?: string
+    readonly customerAddress?: {
+      readonly line1?: string
+      readonly city?: string
+      readonly country?: string
+      readonly line2?: string
+      readonly postalCode?: string
+      readonly state?: string
+    }
     readonly cardInfo: string
   } | null
   readonly trial: {
@@ -513,11 +522,6 @@ function ManageSubscriptionModal({
           <Form.Group>
             <Form.Label>Billing Email </Form.Label>
             <Form.Control type="text" required disabled value={billingEmail} />
-            <Form.Text className="text-muted">
-              <a href="#" onClick={updateBillingInfo}>
-                update
-              </a>
-            </Form.Text>
           </Form.Group>
           <Form.Group>
             <Form.Label>Payment Method </Form.Label>
@@ -749,6 +753,235 @@ function SubscriptionUpsellPrompt({
   )
 }
 
+type ApiLoadingState = "initial" | "loading" | "failed" | "success"
+
+function KodiakSaveButton({ state }: { state: ApiLoadingState }) {
+  const loading = state === "loading"
+  return (
+    <>
+      <Button
+        variant="dark"
+        size="sm"
+        disabled={state === "loading"}
+        type="submit">
+        {loading ? "Loading..." : "Save"}
+      </Button>
+      {state === "failed" && (
+        <Form.Text className="text-danger">Save failed</Form.Text>
+      )}
+    </>
+  )
+}
+
+function BillingEmailForm({
+  defaultValue,
+  className,
+}: {
+  readonly defaultValue: string
+  readonly className?: string
+}) {
+  const [billingEmail, setBillingEmail] = React.useState(defaultValue)
+  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setApiState("loading")
+    teamApi(Current.api.updateStripeCustomerInfo, { email: billingEmail }).then(
+      res => {
+        if (res.ok) {
+          setApiState("success")
+        } else {
+          setApiState("failed")
+        }
+      },
+    )
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Billing Email</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control
+              type="email"
+              required
+              value={billingEmail}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setBillingEmail(e.target.value)
+              }
+            />
+            <Form.Text className="text-muted">
+              Required. Address to send billing receipts.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} />
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
+function CompanyNameForm({
+  defaultValue,
+  className,
+}: {
+  readonly defaultValue: string
+  readonly className?: string
+}) {
+  const [companyName, setCompanyName] = React.useState(defaultValue)
+  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setApiState("loading")
+    teamApi(Current.api.updateStripeCustomerInfo, { name: companyName }).then(
+      res => {
+        if (res.ok) {
+          setApiState("success")
+        } else {
+          setApiState("failed")
+        }
+      },
+    )
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Company Name</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              value={companyName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setCompanyName(e.target.value)
+              }
+            />
+            <Form.Text className="text-muted">
+              Added to billing receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} />
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
+function PostalAddressForm({
+  defaultValue = {},
+  className,
+}: {
+  readonly defaultValue: {
+    readonly line1?: string
+    readonly line2?: string
+    readonly city?: string
+    readonly state?: string
+    readonly postalCode?: string
+    readonly country?: string
+  }
+  readonly className?: string
+}) {
+  const [line1, setLine1] = React.useState(defaultValue.line1 ?? "")
+  const [line2, setLine2] = React.useState(defaultValue.line2 ?? "")
+  const [city, setCity] = React.useState(defaultValue.city ?? "")
+  const [state, setState] = React.useState(defaultValue.state ?? "")
+  const [postalCode, setPostalCode] = React.useState(
+    defaultValue.postalCode ?? "",
+  )
+  const [country, setCountry] = React.useState(defaultValue.country ?? "")
+
+  const [apiState, setApiState] = React.useState<ApiLoadingState>("initial")
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setApiState("loading")
+    teamApi(Current.api.updateStripeCustomerInfo, {
+      address: { line1, line2, city, state, postalCode, country },
+    }).then(res => {
+      if (res.ok) {
+        setApiState("success")
+      } else {
+        setApiState("failed")
+      }
+    })
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Postal Address</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="Address line 1"
+              value={line1}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setLine1(e.target.value)
+              }
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="Address line 2"
+              value={line2}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setLine2(e.target.value)
+              }
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="City"
+              value={city}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setCity(e.target.value)
+              }
+            />
+          </Form.Group>
+          <Form.Group>
+            <Form.Row>
+              <Col>
+                <Form.Control
+                  type="text"
+                  placeholder="State / Province / Region"
+                  value={state}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setState(e.target.value)
+                  }
+                />
+              </Col>
+              <Col>
+                <Form.Control
+                  type="text"
+                  placeholder="ZIP / Postal Code"
+                  value={postalCode}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPostalCode(e.target.value)
+                  }
+                />
+              </Col>
+            </Form.Row>
+          </Form.Group>
+          <Form.Group>
+            <Form.Control
+              type="text"
+              placeholder="Country"
+              value={country}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setCountry(e.target.value)
+              }
+            />
+            <Form.Text className="text-muted">
+              Added to billing receipts if provided.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} />
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
 function Subcription({
   subscription,
   teamId,
@@ -764,6 +997,15 @@ function Subcription({
       readonly currency: string
     }
     readonly billingEmail: string
+    readonly customerName?: string
+    readonly customerAddress?: {
+      readonly line1?: string
+      readonly city?: string
+      readonly country?: string
+      readonly line2?: string
+      readonly postalCode?: string
+      readonly state?: string
+    }
   }
   readonly modifySubscription: () => void
   readonly teamId: string
@@ -833,6 +1075,20 @@ function Subcription({
             />
           </Card.Body>
         </Card>
+        <BillingEmailForm
+          className="mb-4"
+          defaultValue={subscription.billingEmail}
+        />
+
+        <CompanyNameForm
+          className="mb-4"
+          defaultValue={subscription.customerName ?? ""}
+        />
+
+        <PostalAddressForm
+          className="mb-4"
+          defaultValue={subscription.customerAddress ?? {}}
+        />
       </Col>
     </Row>
   )
