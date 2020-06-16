@@ -52,9 +52,11 @@ class Merge(BaseModel):
     require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to
     # disable check.
-    blacklist_title_regex: str = "^WIP:.*"
+    blacklist_title_regex: str = "^WIP:.*"  # deprecated
+    blocking_title_regex: str = "^WIP:.*"
     # labels to block merging of pull request
-    blacklist_labels: List[str] = []
+    blacklist_labels: List[str] = []  # deprecated
+    blocking_labels: List[str] = []
     # action to take when attempting to merge PR. An error will occur if method
     # is disabled for repository
     method: MergeMethod = MergeMethod.merge
@@ -102,7 +104,8 @@ class Update(BaseModel):
     always: bool = False
     require_automerge_label: bool = True
     # Do not update PRs created by a listed user.
-    blacklist_usernames: List[str] = []
+    blacklist_usernames: List[str] = []  # deprecated
+    ignored_usernames: List[str] = []
 
 
 class Approve(BaseModel):
