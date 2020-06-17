@@ -711,42 +711,6 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_start_checkout_custom_plan_id(
-    authed_client: Client, user: User, mocker: Any
-) -> None:
-    """
-    Start a Stripe checkout session with custom plan id
-    """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_plan_id="price_1GsG85CoyKa1V9Y6B1x6uO3L",
-    )
-    AccountMembership.objects.create(account=user_account, user=user, role="member")
-
-    class FakeCheckoutSession:
-        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
-
-    checkout_session_create = mocker.patch(
-        "core.views.stripe.checkout.Session.create",
-        spec=stripe.checkout.Session.create,
-        return_value=FakeCheckoutSession,
-    )
-    res = authed_client.post(
-        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
-    )
-    assert res.status_code == 200
-    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
-    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-    _args, kwargs = checkout_session_create.call_args
-    assert (
-        kwargs["subscription_data"]["items"][0]["plan"] == user_account.stripe_plan_id
-    )
-
-
-@pytest.mark.django_db
 def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Start a new checkout session in "setup" mode to update the payment information.

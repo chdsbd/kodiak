@@ -274,12 +274,6 @@ class Account(BaseModel):
     )
     trial_email = models.CharField(blank=True, max_length=255)
 
-    stripe_plan_id = models.CharField(
-        max_length=255,
-        null=True,
-        help_text="Stripe plan_id to use when creating subscription. Overrides settings.STRIPE_PLAN_ID if provided. We only need to set this when we provide a custom plan for a given user.",
-    )
-
     stripe_customer_id = models.CharField(
         blank=True,
         max_length=255,
