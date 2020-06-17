@@ -345,6 +345,59 @@ def test_usage_billing_subscription_started(
 
 
 @pytest.mark.django_db
+def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Verify that our proration endpoint correctly handles proration.
+    """
+    account, _membership = create_org_account(user)
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+        ),
+        "fake-key",
+    )
+    patched_stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve",
+        spec=stripe.Subscription.retrieve,
+        return_value=fake_subscription,
+    )
+    fake_invoice = stripe.Invoice.construct_from(
+        {
+            "id": "in_1GN9MwCoyKa1V9Y6Ox2tehjN",
+            "object": "invoice",
+            "lines": {
+                "data": [
+                    {
+                        "id": "il_tmp_aad05f08b40091",
+                        "object": "line_item",
+                        "amount": 4990,
+                        "period": {"end": 1623632393, "start": 1592096393},
+                    }
+                ],
+                "object": "list",
+            },
+        },
+        "fake-key",
+    )
+    patched_stripe_invoice_upcoming = mocker.patch(
+        "core.models.stripe.Invoice.upcoming",
+        spec=stripe.Invoice.upcoming,
+        return_value=fake_invoice,
+    )
+    res = authed_client.post(
+        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
+    )
+    assert res.status_code == 200
+    assert res.json()["proratedCost"] == 4990
+    assert isinstance(res.json()["prorationTime"], int)
+    assert patched_stripe_subscription_retrieve.call_count == 1
+    assert patched_stripe_invoice_upcoming.call_count == 1
+
+
+@pytest.mark.django_db
 def test_update_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
