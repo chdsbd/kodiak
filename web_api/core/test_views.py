@@ -1213,7 +1213,9 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             object="subscription",
             id="sub_Gu1xedsfo1",
             default_payment_method="pm_47xubd3i",
-            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            plan=dict(
+                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1
+            ),
             quantity=10,
             start_date=1443556775,
             current_period_start=1653173784,
@@ -1343,6 +1345,11 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     )
     assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
     assert (
+        stripe_customer_info_updated.plan_interval_count
+        == fake_subscription.plan.interval_count
+    )
+    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
+    assert (
         stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
     )
     assert (
@@ -1399,7 +1406,9 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             object="subscription",
             id="sub_Gu1xedsfo1",
             default_payment_method="pm_47xubd3i",
-            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            plan=dict(
+                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1,
+            ),
             quantity=10,
             start_date=1443556775,
             current_period_start=1653173784,
@@ -1572,6 +1581,11 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
     assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
     assert (
+        stripe_customer_info_updated.plan_interval_count
+        == fake_subscription.plan.interval_count
+    )
+    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
+    assert (
         stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
     )
     assert (
@@ -1629,7 +1643,13 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
             current_period_end=1690982549,
             current_period_start=1688304149,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ",
+                object="plan",
+                amount=499,
+                interval="month",
+                interval_count=1,
+            ),
             quantity=4,
             default_payment_method="pm_22dldxf3",
         ),
