@@ -1,8 +1,9 @@
-import { loginUrl } from "./settings"
+import { loginPath } from "./settings"
 import uuid from "uuid/v4"
 
 export function startLogin() {
-  const url = new URL(loginUrl)
+  const url = new URL(location.href)
+  url.pathname = loginPath
   const queryParams = new URLSearchParams(location.search)
   const redirectUri = queryParams.get("redirect")
   const state = JSON.stringify({ nonce: uuid(), redirect: redirectUri })

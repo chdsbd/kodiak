@@ -45,7 +45,11 @@ function SubscriptionExceededAlert({
 export function SubscriptionAlert() {
   const state = useTeamApi(Current.api.getSubscriptionInfo)
 
-  if (state.status === "loading" || state.status === "failure") {
+  if (
+    state.status === "initial" ||
+    state.status === "loading" ||
+    state.status === "failure"
+  ) {
     return null
   }
 

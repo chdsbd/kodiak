@@ -282,7 +282,7 @@ interface ISideBarNavInnerProps {
   }>
 }
 function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
-  if (accounts.status === "loading") {
+  if (accounts.status === "initial" || accounts.status === "loading") {
     return <Loading />
   }
   if (accounts.status === "failure") {

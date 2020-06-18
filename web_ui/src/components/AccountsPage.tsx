@@ -31,7 +31,7 @@ function AccountsPageInner({
   const [syncAccountStatus, setSyncAccountStatus] = React.useState<
     "initial" | "loading" | "failure" | "success"
   >("initial")
-  if (accounts.status === "loading") {
+  if (accounts.status === "initial" || accounts.status === "loading") {
     return <Spinner />
   }
   if (accounts.status === "failure") {
