@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -eux
+set -ex
 
-# test code
-poetry run pytest "$@"
+
+if [ "$CI" ]; then
+  poetry run pytest --cov=. --cov-report xml "$@"
+else
+  poetry run pytest "$@"
+fi
