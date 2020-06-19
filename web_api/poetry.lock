@@ -528,6 +528,18 @@ version = ">=0.12"
 
 [[package]]
 category = "dev"
+description = "Pytest plugin for measuring coverage."
+name = "pytest-cov"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+version = "2.10.0"
+
+[package.dependencies]
+coverage = ">=4.4"
+pytest = ">=4.6"
+
+[[package]]
+category = "dev"
 description = "A Django plugin for pytest."
 name = "pytest-django"
 optional = false
@@ -749,7 +761,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "b6993bc4123950efd9eb481d5e111862dc78e4b2a76113b677b74297542a8790"
+content-hash = "e0c4a03b82d24e9bfb2d14803f877610106f5b0f433afb70c8eedfea13deb423"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -805,6 +817,7 @@ pygments = ["2a3fe295e54a20164a9df49c75fa58526d3be48e14aceba6d6b1e8ac0bfd6f1b", 
 pylint = ["3db5468ad013380e987410a8d6956226963aed94ecb5f9d3a28acca6d9ac36cd", "886e6afc935ea2590b462664b161ca9a5e40168ea99e5300935f6591ad467df4"]
 pyparsing = ["4c830582a84fb022400b85429791bc551f1f4871c33f23e44f353119e92f969f", "c342dccb5250c08d45fd6f8b4a559613ca603b57498511740e65cd11a2e7dcec"]
 pytest = ["0d5fe9189a148acc3c3eb2ac8e1ac0742cb7618c084f3d228baaec0c254b318d", "ff615c761e25eb25df19edddc0b970302d2a9091fbce0e7213298d85fb61fef6"]
+pytest-cov = ["1a629dc9f48e53512fcbfda6b07de490c374b0c83c55ff7a1720b3fccff0ac87", "6e6d18092dce6fad667cd7020deed816f858ad3b49d5b5e2b1cc1c97a4dba65c"]
 pytest-django = ["456fa6854d04ee625d6bbb8b38ca2259e7040a6f93333bfe8bc8159b7e987203", "489b904f695f9fb880ce591cf5a4979880afb467763b1f180c07574554bdfd26"]
 pytest-env = ["7e94956aef7f2764f3c147d216ce066bf6c42948bb9e293169b1b1c880a580c2"]
 pytest-mock = ["b35eb281e93aafed138db25c8772b95d3756108b601947f89af503f8c629413f", "cb67402d87d5f53c579263d37971a164743dc33c159dfb4fb4a86f37c5552307"]
