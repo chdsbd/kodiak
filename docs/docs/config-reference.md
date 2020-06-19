@@ -126,9 +126,11 @@ This option only applies when `merge.require_automerge_label` is enabled.
 - **type:** `boolean`
 - **default:** `true`
 
-Don't wait for in-progress status checks on a PR to finish before updating the branch.
+If an out-of-date pull request has running status checks, update the pull request branch without waiting for the running status checks to finish.
 
-This setting can speed up merges but increases chance of running extra CI jobs.
+This setting can speed up merges by not waiting for status checks to finish on out-of-date pull requests.
+
+> **Note:** The "Require branches to be up to date before merging" GitHub Branch Protection setting must be enabled to trigger Kodiak to update branches.
 
 ### `merge.dont_wait_on_status_checks`
 
