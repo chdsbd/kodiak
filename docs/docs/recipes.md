@@ -19,15 +19,41 @@ require_automerge_label = false # default: true
 
 ## Automated dependency updates with Dependabot
 
-While Dependabot can [automerge dependency updates](https://dependabot.com/docs/config-file/#automerged_updates), this functionality will not work when "Required approving reviews" is configured via GitHub Branch Protection because the PR needs an approving review.
+Kodiak can automerge Dependabot PRs without human intervention by configuring Dependabot to open pull requests with our [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label.
 
-Kodiak can help us here by automatically adding an approval to all Dependabot PRs, which will allow Dependabot PRs to be automatically merged without human intervention.
+### Configuring Dependabot with the automerge label
 
-If you use Kodiak with `update.always` enabled, we recommend adding Dependabot to the `update.blacklist_usernames` list. If a PR by Dependabot gets updated by a different user, Dependabot will not update or close the PR when stale, so this setting prevents Kodiak from breaking Dependabot PRs.
+1. Install Kodiak following the [quick start guide](http://localhost:3001/docs/quickstart).
+
+2. Configure dependabot to open PRs with your [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label. See the [Dependabot labels documentation](https://help.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates#labels) for more information.
+
+```yaml
+# dependabot.yml
+# Specify labels for pull requests
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "dependencies"
+      # Add default Kodiak `merge.automerge_label`
+      - "automerge"
+```
+
+3. Success! Dependabot PRs will now include your automerge label, triggering Kodiak to automatically merge them. 🎉
+
+### Adding pull request approvals to Dependabot pull requests
+
+When "Required approving reviews" is configured via GitHub Branch Protection, every pull request needs an approving review before it can be merged.
+
+Kodiak can add an approval to pull requests via [`approve.auto_approve_usernames`](/docs/config-reference#approveauto_approve_usernames), enabling Dependabot PRs to be merged without human intervention.
 
 > **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`.
 
-```
+```toml
 # .kodiak.toml
 version = 1
 
@@ -41,6 +67,8 @@ auto_approve_usernames = ["dependabot"]
 [update]
 blacklist_usernames = ["dependabot"]
 ```
+
+If you use Kodiak with [`update.always`](/docs/config-reference#updatealways) enabled, add Dependabot to the [`update.blacklist_usernames`](/docs/config-reference#updateblacklist_usernames) list. If a PR by Dependabot is updated by another user, Dependabot will not update or close the PR when stale. This setting prevents Kodiak from breaking Dependabot PRs.
 
 ## The Favourite
 
