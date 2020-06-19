@@ -1,3 +1,5 @@
+require_ci_to_pass: false
+
 comment: false
 
 coverage:
