@@ -35,6 +35,7 @@ typing_extensions = "^3.7"
 pytest-env = "^0.6.2"
 pytest-mock = "^2.0"
 ipdb = "^0.12.3"
+codecov = "^2.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

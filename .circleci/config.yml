@@ -29,6 +29,10 @@ jobs:
           name: run tests
           working_directory: bot
           command: ./s/test
+      - run:
+          name: upload code coverage
+          working_directory: bot
+          command: ./s/code-cov-upload
 
   bot_lint:
     docker:
@@ -169,6 +173,10 @@ jobs:
           name: run tests
           working_directory: web_api
           command: ./s/test
+      - run:
+          name: upload code coverage
+          working_directory: web_api
+          command: ./s/code-cov-upload
 
   web_api_lint:
     docker:
