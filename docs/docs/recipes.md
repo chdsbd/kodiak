@@ -25,7 +25,7 @@ Kodiak can help us here by automatically adding an approval to all Dependabot PR
 
 If you use Kodiak with `update.always` enabled, we recommend adding Dependabot to the `update.blacklist_usernames` list. If a PR by Dependabot gets updated by a different user, Dependabot will not update or close the PR when stale, so this setting prevents Kodiak from breaking Dependabot PRs.
 
-> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot-preview[bot]"` use `"dependabot-preview"`.
+> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`.
 
 ```
 # .kodiak.toml
@@ -33,13 +33,13 @@ version = 1
 
 [approve]
 # note: remove the "[bot]" suffix from GitHub Bot usernames.
-# Instead of "dependabot-preview[bot]" use "dependabot-preview".
-auto_approve_usernames = ["dependabot-preview"]
+# Instead of "dependabot[bot]" use "dependabot".
+auto_approve_usernames = ["dependabot"]
 
-# if using `update.always`, add dependabot-preview to the blacklist to allow
+# if using `update.always`, add dependabot to the blacklist to allow
 # dependabot to update and close stale dependency upgrades.
 [update]
-blacklist_usernames = ["dependabot-preview"]
+blacklist_usernames = ["dependabot"]
 ```
 
 ## The Favourite
