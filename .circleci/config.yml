@@ -32,7 +32,7 @@ jobs:
       - run:
           name: upload code coverage
           working_directory: bot
-          command: ./s/code-cov-upload
+          command: ./s/upload-code-cov
 
   bot_lint:
     docker:
@@ -176,7 +176,7 @@ jobs:
       - run:
           name: upload code coverage
           working_directory: web_api
-          command: ./s/code-cov-upload
+          command: ./s/upload-code-cov
 
   web_api_lint:
     docker:
