@@ -214,15 +214,19 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     account.start_trial(request.user, billing_email=billing_email)
     return HttpResponse(status=204)
 
+class UpdateSubscriptionModel(pydantic.BaseModel):
+    seats: int
+    prorationTimestamp: int
+    planPeriod: Literal["month", "year"] = "month"
+
 
 @auth.login_required
 def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
+    payload = UpdateSubscriptionModel.parse_obj(request.POST.dict())
     account = get_account_or_404(team_id=team_id, user=request.user)
     # restrict updates to admins
     if not request.user.can_edit(account):
         raise PermissionDenied
-    seats = int(request.POST["seats"])
-    proration_timestamp = int(request.POST["prorationTimestamp"])
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info is None:
         raise UnprocessableEntity("Subscription does not exist to modify.")
@@ -233,11 +237,11 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
         items=[
             {
                 "id": subscription["items"]["data"][0].id,
-                "plan": stripe_customer_info.plan_id,
-                "quantity": seats,
+                "plan": plan_id_from_period(period=payload.planPeriod),
+                "quantity": payload.seats,
             }
         ],
-        proration_date=proration_timestamp,
+        proration_date=payload.prorationTimestamp,
     )
     # when we upgrade a users plan Stripe will charge them on their next billing
     # cycle. To make Stripe charge for the upgrade immediately we must create an
@@ -433,6 +437,11 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
 
     return JsonResponse({"type": "VALID_SUBSCRIPTION"})
 
+def plan_id_from_period(period: Literal["month", "year"]) -> str:
+    if period == "month":
+        return settings.STRIPE_PLAN_ID
+    if period == "year":
+        return settings.STRIPE_ANNUAL_PLAN_ID
 
 class FetchProrationModal(pydantic.BaseModel):
     subscriptionQuantity: int
@@ -444,13 +453,7 @@ def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
     payload = FetchProrationModal.parse_obj(request.POST.dict())
     account = get_account_or_404(user=request.user, team_id=team_id)
 
-    subscription_quantity = payload.subscriptionQuantity
-    subscription_period = payload.subscriptionPeriod
-
-    if subscription_period == "month":
-        stripe_plan_id = settings.STRIPE_PLAN_ID
-    elif subscription_period == "year":
-        stripe_plan_id = settings.STRIPE_ANNUAL_PLAN_ID
+    stripe_plan_id = plan_id_from_period(period=payload.subscriptionPeriod)
 
     customer_info = account.stripe_customer_info()
     if customer_info is not None:
@@ -459,7 +462,7 @@ def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
             dict(
                 proratedCost=customer_info.preview_proration(
                     timestamp=proration_date,
-                    subscription_quantity=subscription_quantity,
+                    subscription_quantity=payload.subscriptionQuantity,
                     plan_id=stripe_plan_id,
                 ),
                 prorationTime=proration_date,

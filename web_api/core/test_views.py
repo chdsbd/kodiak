@@ -525,8 +525,36 @@ def test_update_subscription(
     assert stripe_subscription_retrieve.call_count == 1
     assert update_bot.call_count == 1
     assert stripe_subscription_modify.call_count == 1
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs['items'][0]['plan'] == settings.STRIPE_PLAN_ID
     assert stripe_invoice_create.call_count == 1
     assert stripe_invoice_pay.call_count == 1
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=8, planPeriod="month"),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 2
+    assert update_bot.call_count == 2
+    assert stripe_subscription_modify.call_count == 2
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs['items'][0]['plan'] == settings.STRIPE_PLAN_ID
+    assert stripe_invoice_create.call_count == 2
+    assert stripe_invoice_pay.call_count == 2
+    
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=4, planPeriod="year"),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 3
+    assert update_bot.call_count == 3
+    assert stripe_subscription_modify.call_count == 3
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs['items'][0]['plan'] == settings.STRIPE_ANNUAL_PLAN_ID
+    assert stripe_invoice_create.call_count == 3
+    assert stripe_invoice_pay.call_count == 3
 
 
 @pytest.mark.django_db
