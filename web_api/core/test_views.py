@@ -310,18 +310,21 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
+    assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
     assert res.json()["subscription"]["customerName"] is None
     assert res.json()["subscription"]["customerAddress"] is None
 
     stripe_customer_information.customer_currency = None
+    stripe_customer_information.plan_interval = "year"
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert (
         res.json()["subscription"]["cost"]["currency"] == "usd"
     ), "should default to usd if we cannot find a currency"
+    assert res.json()["subscription"]["cost"]["planInterval"] == "year"
 
     stripe_customer_information.customer_name = "Acme-corp"
     stripe_customer_information.customer_address_line1 = "123 Main Street"
@@ -395,6 +398,56 @@ def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None
     assert isinstance(res.json()["prorationTime"], int)
     assert patched_stripe_subscription_retrieve.call_count == 1
     assert patched_stripe_invoice_upcoming.call_count == 1
+
+    for period in ("year", "month"):
+        res = authed_client.post(
+            f"/v1/t/{account.id}/fetch_proration",
+            {"subscriptionQuantity": 4, "subscriptionPeriod": period},
+        )
+        assert res.status_code == 200
+        assert res.json()["proratedCost"] == 4990
+
+
+@pytest.mark.django_db
+def test_fetch_proration_different_plans(
+    authed_client: Client, user: User, mocker: Any
+) -> None:
+    """
+    Check support for different plans.
+    """
+    patched_stripe_customer_information = mocker.patch(
+        "core.models.StripeCustomerInformation.preview_proration",
+        spec=StripeCustomerInformation.preview_proration,
+        return_value=4567,
+    )
+    account, _membership = create_org_account(user)
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
+    )
+    assert res.status_code == 200
+    assert res.json()["proratedCost"] == 4567
+    assert isinstance(res.json()["prorationTime"], int)
+    assert patched_stripe_customer_information.call_count == 1
+    _args, kwargs = patched_stripe_customer_information.call_args
+    assert kwargs["subscription_quantity"] == 4
+    assert kwargs["plan_id"] == settings.STRIPE_PLAN_ID
+
+    for index, period_plan in enumerate(
+        [("year", settings.STRIPE_ANNUAL_PLAN_ID), ("month", settings.STRIPE_PLAN_ID)]
+    ):
+        period, plan = period_plan
+        seats = index + 5
+        res = authed_client.post(
+            f"/v1/t/{account.id}/fetch_proration",
+            {"subscriptionQuantity": seats, "subscriptionPeriod": period},
+        )
+        assert res.status_code == 200
+        assert res.json()["proratedCost"] == 4567
+        _args, kwargs = patched_stripe_customer_information.call_args
+        assert kwargs["subscription_quantity"] == seats
+        assert kwargs["plan_id"] == plan
+        assert patched_stripe_customer_information.call_count == index + 2
 
 
 @pytest.mark.django_db
@@ -700,6 +753,9 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
         spec=stripe.checkout.Session.create,
         return_value=FakeCheckoutSession,
     )
+
+    # start checkout without a plan to check backwards compatibility. We should
+    # default to using the monthly plan.
     res = authed_client.post(
         f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
     )
@@ -707,7 +763,33 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
     _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 3
     assert kwargs["subscription_data"]["items"][0]["plan"] == settings.STRIPE_PLAN_ID
+
+    # start checkout with a monthly plan.
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=5, planPeriod="month")
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+    _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 5
+    assert kwargs["subscription_data"]["items"][0]["plan"] == settings.STRIPE_PLAN_ID
+
+    # start checkout with a yearly plan.
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=2, planPeriod="year")
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+    _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 2
+    assert (
+        kwargs["subscription_data"]["items"][0]["plan"]
+        == settings.STRIPE_ANNUAL_PLAN_ID
+    )
 
 
 @pytest.mark.django_db

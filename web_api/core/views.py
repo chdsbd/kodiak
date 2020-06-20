@@ -83,6 +83,9 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 postalCode=stripe_customer_info.customer_address_postal_code,
                 state=stripe_customer_info.customer_address_state,
             )
+        plan_interval = (
+            "year" if stripe_customer_info.plan_interval == "year" else "month"
+        )
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
@@ -92,6 +95,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 * stripe_customer_info.subscription_quantity,
                 perSeatCents=stripe_customer_info.plan_amount,
                 currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
+                planInterval=plan_interval,
             ),
             billingEmail=stripe_customer_info.customer_email,
             customerName=stripe_customer_info.customer_name,
@@ -301,14 +305,25 @@ def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpRespo
     return HttpResponse(status=204)
 
 
+class StartCheckoutModal(pydantic.BaseModel):
+    seatCount: int = 1
+    planPeriod: Optional[Literal["month", "year"]] = "month"
+
+
 @auth.login_required
 def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
-    seat_count = int(request.POST.get("seatCount", 1))
+    payload = StartCheckoutModal.parse_obj(request.POST.dict())
+    seat_count = payload.seatCount
+    plan_period = payload.planPeriod
     account = get_account_or_404(team_id=team_id, user=request.user)
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
     customer_id = account.stripe_customer_id or None
-    monthly_stripe_plan_id = settings.STRIPE_PLAN_ID
+
+    if plan_period == "month":
+        stripe_plan_id = settings.STRIPE_PLAN_ID
+    elif plan_period == "year":
+        stripe_plan_id = settings.STRIPE_ANNUAL_PLAN_ID
 
     # https://stripe.com/docs/api/checkout/sessions/create
     session = stripe.checkout.Session.create(
@@ -319,7 +334,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
         # (payment_method_card_{brand,exp_month,exp_year,last4}).
         payment_method_types=["card"],
         subscription_data={
-            "items": [{"plan": monthly_stripe_plan_id, "quantity": seat_count}],
+            "items": [{"plan": stripe_plan_id, "quantity": seat_count}],
         },
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
@@ -419,10 +434,23 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
     return JsonResponse({"type": "VALID_SUBSCRIPTION"})
 
 
+class FetchProrationModal(pydantic.BaseModel):
+    subscriptionQuantity: int
+    subscriptionPeriod: Optional[Literal["month", "year"]] = "month"
+
+
 @auth.login_required
 def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
+    payload = FetchProrationModal.parse_obj(request.POST.dict())
     account = get_account_or_404(user=request.user, team_id=team_id)
-    subscription_quantity = int(request.POST["subscriptionQuantity"])
+
+    subscription_quantity = payload.subscriptionQuantity
+    subscription_period = payload.subscriptionPeriod
+
+    if subscription_period == "month":
+        stripe_plan_id = settings.STRIPE_PLAN_ID
+    elif subscription_period == "year":
+        stripe_plan_id = settings.STRIPE_ANNUAL_PLAN_ID
 
     customer_info = account.stripe_customer_info()
     if customer_info is not None:
@@ -432,6 +460,7 @@ def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
                 proratedCost=customer_info.preview_proration(
                     timestamp=proration_date,
                     subscription_quantity=subscription_quantity,
+                    plan_id=stripe_plan_id,
                 ),
                 prorationTime=proration_date,
             )
