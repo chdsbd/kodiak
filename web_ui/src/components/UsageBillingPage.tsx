@@ -413,8 +413,6 @@ interface IManageSubscriptionModalProps {
   readonly cardInfo: string
   readonly cost: {
     readonly totalCents: number
-    readonly perSeatCents: number
-    readonly currency: string
     readonly planInterval: "month" | "year"
   }
 }
@@ -440,7 +438,7 @@ function ManageSubscriptionModal({
   const seatsRef = React.useRef(0)
   const subscriptionPeriodRef = React.useRef<"month" | "year">("month")
 
-  const formatCost = (cents: number) => formatCents(cents, cost.currency)
+  const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
 
   React.useEffect(() => {
     seatsRef.current = seats
@@ -455,6 +453,7 @@ function ManageSubscriptionModal({
     teamApi(Current.api.updateSubscription, {
       seats,
       prorationTimestamp,
+      planPeriod: subscriptionPeriod,
     }).then(res => {
       if (res.ok) {
         // trigger page refresh.
@@ -544,7 +543,10 @@ function ManageSubscriptionModal({
     })
   }
 
-  const costCents = seats * cost.perSeatCents
+  const perSeatCents =
+    subscriptionPeriod === "year" ? settings.annualCost : settings.monthlyCost
+
+  const costCents = seats * perSeatCents
   const subscriptionUnchanged =
     seats === currentSeats && subscriptionPeriod === cost.planInterval
   return (
@@ -635,7 +637,7 @@ function ManageSubscriptionModal({
               <Form.Text className="text-muted">
                 Includes prorations. Renews {formatPeriod(subscriptionPeriod)}{" "}
                 at <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
-                at <b>{formatCost(cost.perSeatCents)}/seat</b>.{" "}
+                at <b>{formatCost(perSeatCents)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
           </Form.Group>

@@ -138,6 +138,7 @@ export type IUpdateSubscriptionArgs = {
   readonly teamId: string
   readonly seats: number
   readonly prorationTimestamp: number
+  readonly planPeriod: "month" | "year"
 }
 export interface ICancelSubscriptionArgs {
   readonly teamId: string
