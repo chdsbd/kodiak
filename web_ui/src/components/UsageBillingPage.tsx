@@ -28,6 +28,8 @@ import debounce from "lodash/debounce"
 import { GoLinkExternal } from "react-icons/go"
 
 const DEFAULT_CURRENCY = "usd"
+const MONTHLY_COST = formatCents(settings.monthlyCost, DEFAULT_CURRENCY)
+const ANNUAL_COST = formatCents(settings.annualCost, DEFAULT_CURRENCY)
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -61,6 +63,7 @@ interface IUsageBillingData {
       readonly totalCents: number
       readonly perSeatCents: number
       readonly currency: string
+      readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
     readonly customerName?: string
@@ -132,6 +135,17 @@ function formatCents(cents: number, currency: string): string {
   return formatter.format(cents / 100)
 }
 
+function formatPeriod(period: "month" | "year"): "monthly" | "annually" {
+  switch (period) {
+    case "year": {
+      return "annually"
+    }
+    case "month": {
+      return "monthly"
+    }
+  }
+}
+
 function formatFromNow(dateString: string): string {
   return formatDistanceToNowStrict(parseISO(dateString))
 }
@@ -139,8 +153,6 @@ function formatFromNow(dateString: string): string {
 function FormatDate({ date }: { date: string }) {
   return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
 }
-
-const formattedMonthlyCost = formatCents(settings.monthlyCost, DEFAULT_CURRENCY)
 
 interface IInstallCompleteModalProps {
   readonly show: boolean
@@ -243,15 +255,33 @@ function StartSubscriptionModal({
   seatUsage,
 }: IStartSubscriptionModalProps) {
   const [seats, setSeats] = React.useState(seatUsage)
+  const [period, setPeriod] = React.useState<"month" | "year">("month")
   const [status, setStatus] = React.useState<
     { type: "initial" } | { type: "loading" } | { type: "error"; msg: string }
   >({ type: "initial" })
+
+  // fetch the selected subscription period from the url params and use that as
+  // the default period.
+  const location = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const subscriptionPeriod: "month" | "year" | string | null = queryParams.get(
+    "period",
+  )
+  React.useEffect(() => {
+    if (subscriptionPeriod === "month") {
+      setPeriod("month")
+    }
+    if (subscriptionPeriod === "year") {
+      setPeriod("year")
+    }
+  }, [show, subscriptionPeriod])
 
   function setSubscription() {
     setStatus({ type: "loading" })
 
     teamApi(Current.api.startCheckout, {
       seatCount: seats,
+      planPeriod: period,
     }).then(async res => {
       if (res.ok) {
         const stripe = await loadStripe(res.data.stripePublishableApiKey)
@@ -275,7 +305,9 @@ function StartSubscriptionModal({
     })
   }
   const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
-  const costCents = seats * settings.monthlyCost
+  const seatCost =
+    period === "year" ? settings.monthlyCost * 10 : settings.monthlyCost
+  const costCents = seats * seatCost
   const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
     <Modal show={show} onHide={onClose}>
@@ -311,6 +343,26 @@ function StartSubscriptionModal({
           </Form.Group>
 
           <Form.Group>
+            <Form.Label>Plan Period</Form.Label>
+
+            <Form.Check
+              type="radio"
+              id="monthly-plan-sub"
+              checked={period === "month"}
+              onChange={() => setPeriod("month")}
+              label={`Monthly – ${MONTHLY_COST} / seat`}
+            />
+
+            <Form.Check
+              type="radio"
+              id="annual-plan-sub"
+              checked={period === "year"}
+              onChange={() => setPeriod("year")}
+              label={`Annually – ${ANNUAL_COST} / seat`}
+            />
+          </Form.Group>
+
+          <Form.Group>
             <Form.Label>Due Today</Form.Label>
             <Form.Control
               type="text"
@@ -319,8 +371,8 @@ function StartSubscriptionModal({
               value={formatCost(costCents)}
             />
             <Form.Text className="text-muted">
-              Billed monthly. <b>{seats} seat(s) </b>
-              at <b>{formatCost(settings.monthlyCost)}/seat</b>.{" "}
+              Billed {formatPeriod(period)}. <b>{seats} seat(s) </b>
+              at <b>{formatCost(seatCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
           <Button
@@ -363,6 +415,7 @@ interface IManageSubscriptionModalProps {
     readonly totalCents: number
     readonly perSeatCents: number
     readonly currency: string
+    readonly planInterval: "month" | "year"
   }
 }
 function ManageSubscriptionModal({
@@ -375,22 +428,29 @@ function ManageSubscriptionModal({
   currentSeats,
 }: IManageSubscriptionModalProps) {
   const [seats, setSeats] = React.useState(currentSeats)
-  const [loading, setLoading] = React.useState(false)
+  const [creatingSubscription, setCreatingSubscription] = React.useState(false)
   const [error, setError] = React.useState("")
   const [prorationAmount, setProrationAmount] = React.useState<
     IProrationAmount
   >({ kind: "loading" })
   const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
+  const [subscriptionPeriod, setSubscriptionPeriod] = React.useState<
+    "month" | "year"
+  >(cost.planInterval)
   const seatsRef = React.useRef(0)
+  const subscriptionPeriodRef = React.useRef<"month" | "year">("month")
 
   const formatCost = (cents: number) => formatCents(cents, cost.currency)
 
   React.useEffect(() => {
     seatsRef.current = seats
   }, [seats])
+  React.useEffect(() => {
+    subscriptionPeriodRef.current = subscriptionPeriod
+  }, [subscriptionPeriod])
 
   function setSubscription() {
-    setLoading(true)
+    setCreatingSubscription(true)
     setError("")
     teamApi(Current.api.updateSubscription, {
       seats,
@@ -402,7 +462,7 @@ function ManageSubscriptionModal({
       } else {
         setError("failed to update plan")
       }
-      setLoading(false)
+      setCreatingSubscription(false)
     })
   }
 
@@ -432,6 +492,7 @@ function ManageSubscriptionModal({
       setProrationAmount({ kind: "loading" })
       teamApi(Current.api.fetchProration, {
         subscriptionQuantity: seatsRef.current,
+        subscriptionPeriod: subscriptionPeriodRef.current,
       }).then(res => {
         if (res.ok) {
           setProrationAmount({ kind: "success", cost: res.data.proratedCost })
@@ -448,7 +509,7 @@ function ManageSubscriptionModal({
     if (show) {
       fetchProrationDebounced()
     }
-  }, [show, fetchProrationDebounced, seats])
+  }, [show, fetchProrationDebounced, seats, subscriptionPeriod])
 
   function formatProration(x: IProrationAmount) {
     if (x.kind === "loading" || x.kind === "failed") {
@@ -484,6 +545,8 @@ function ManageSubscriptionModal({
   }
 
   const costCents = seats * cost.perSeatCents
+  const subscriptionUnchanged =
+    seats === currentSeats && subscriptionPeriod === cost.planInterval
   return (
     <Modal show={show} onHide={() => onClose()}>
       <Modal.Header closeButton>
@@ -493,6 +556,9 @@ function ManageSubscriptionModal({
         <Form
           onSubmit={(e: React.FormEvent) => {
             e.preventDefault()
+            if (creatingSubscription) {
+              return
+            }
             setSubscription()
           }}>
           <Form.Group controlId="formBasicEmail">
@@ -514,10 +580,31 @@ function ManageSubscriptionModal({
               </Form.Text>
             )}
             <Form.Text className="text-muted">
-              Your current plan costs <b>{formatCost(cost.totalCents)}/month</b>{" "}
+              Your current plan costs{" "}
+              <b>
+                {formatCost(cost.totalCents)}/{cost.planInterval}
+              </b>{" "}
               for <b>{currentSeats} seat(s)</b> at{" "}
               <b>{formatCost(cost.perSeatCents)}/seat</b>.
             </Form.Text>
+          </Form.Group>
+
+          <Form.Group controlId="formBasicEmail">
+            <Form.Label>Plan Period</Form.Label>
+            <Form.Check
+              type="radio"
+              id="monthly-sub-editor"
+              label="Monthly"
+              checked={subscriptionPeriod === "month"}
+              onChange={() => setSubscriptionPeriod("month")}
+            />
+            <Form.Check
+              type="radio"
+              id="annually-sub-editor"
+              label="Annually"
+              checked={subscriptionPeriod === "year"}
+              onChange={() => setSubscriptionPeriod("year")}
+            />
           </Form.Group>
           <Form.Group>
             <Form.Label>Billing Email </Form.Label>
@@ -539,15 +626,15 @@ function ManageSubscriptionModal({
               required
               disabled
               value={
-                seats === currentSeats || prorationAmount.kind !== "success"
+                subscriptionUnchanged || prorationAmount.kind !== "success"
                   ? "--"
                   : formatProration(prorationAmount)
               }
             />
-            {seats !== currentSeats && prorationAmount.kind === "success" ? (
+            {!subscriptionUnchanged && prorationAmount.kind === "success" ? (
               <Form.Text className="text-muted">
-                Includes prorations. Renews monthly at{" "}
-                <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
+                Includes prorations. Renews {formatPeriod(subscriptionPeriod)}{" "}
+                at <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
                 at <b>{formatCost(cost.perSeatCents)}/seat</b>.{" "}
               </Form.Text>
             ) : null}
@@ -557,12 +644,12 @@ function ManageSubscriptionModal({
             type="submit"
             block
             disabled={
-              loading ||
+              creatingSubscription ||
               prorationAmount.kind !== "success" ||
-              seats === currentSeats
+              subscriptionUnchanged
             }>
-            {seats === currentSeats
-              ? "first modify your seat count..."
+            {subscriptionUnchanged
+              ? "first modify your subscription..."
               : prorationAmount.kind === "success"
               ? prorationAmount.cost > 0
                 ? `Update Plan for ${formatCost(prorationAmount.cost)}`
@@ -600,17 +687,14 @@ function Plan({
   readonly highlight?: boolean
 }) {
   return (
-    <Card
-      className={
-        "shadow-sm h-100 " + className + (highlight ? " shadow " : "")
-      }>
+    <Card className={"shadow-sm  " + className + (highlight ? " shadow " : "")}>
       <Card.Header>
         <h4 className="text-center">{name}</h4>
       </Card.Header>
-      <Card.Body className="d-flex flex-column">
-        <h1 className="text-center">{cost}</h1>
-        <div className="flex-grow-1 d-flex flex-column">
-          <ul className="flex-grow-1 list-unstyled mt-3 mb-4 text-center">
+      <Card.Body>
+        {cost}
+        <div>
+          <ul className="list-unstyled mt-3 mb-4 text-center">
             {features.map(x => (
               <li key={x}>{x}</li>
             ))}
@@ -639,7 +723,7 @@ interface ISubscriptionUpsellPromptProps {
     readonly endDate: string
     readonly expired: boolean
   } | null
-  readonly startSubscription: () => void
+  readonly startSubscription: (params: { period: "month" | "year" }) => void
   readonly startTrial: () => void
 }
 function SubscriptionUpsellPrompt({
@@ -647,10 +731,12 @@ function SubscriptionUpsellPrompt({
   startSubscription,
   startTrial,
 }: ISubscriptionUpsellPromptProps) {
+  const [period, setPeriod] = React.useState<"month" | "year">("month")
+  const price = period === "year" ? ANNUAL_COST : MONTHLY_COST
   const plans = [
     {
       name: "30 Day Trial",
-      cost: "Free",
+      cost: <h1 className="text-center">Free</h1>,
       highlight: trial == null,
       features: [
         "Public & private repositories",
@@ -664,16 +750,19 @@ function SubscriptionUpsellPrompt({
           </Button>
         ) : trial.expired ? (
           <>
-            <p className="text-center">
-              Your active trial has <b>expired</b>.
-            </p>
             <Button block variant="dark" disabled>
               Trial Expired
             </Button>
+            <p className="text-center mt-2 mb-0">
+              Your active trial has <b>expired</b>.
+            </p>
           </>
         ) : (
           <>
-            <p className="text-center">
+            <Button block variant="dark" disabled>
+              Trial Started
+            </Button>
+            <p className="text-center mt-2 mb-0">
               Your active trial expires in{" "}
               <KodiakTooltip content={<FormatDate date={trial.endDate} />}>
                 <u>
@@ -682,9 +771,6 @@ function SubscriptionUpsellPrompt({
               </KodiakTooltip>
               .
             </p>
-            <Button block variant="dark" disabled>
-              Trial Started
-            </Button>
           </>
         ),
     },
@@ -692,20 +778,38 @@ function SubscriptionUpsellPrompt({
       name: "Professional",
       highlight: trial != null,
       cost: (
-        <>
-          $4.99 <small className="text-muted">/ seat</small>
-        </>
+        <div className="text-center">
+          <h1>
+            {price} <small className="text-muted">/ seat</small>
+          </h1>
+          <div>
+            <Form.Check
+              type="radio"
+              id="monthly-plan"
+              inline
+              checked={period === "month"}
+              onChange={() => setPeriod("month")}
+              label={"Monthly"}
+            />
+
+            <Form.Check
+              type="radio"
+              id="annual-plan"
+              inline
+              checked={period === "year"}
+              onChange={() => setPeriod("year")}
+              label={"Annually"}
+            />
+          </div>
+          <i>Two months free with annual plan</i>
+        </div>
       ),
-      features: [
-        "Public & private repositories",
-        "Access priority support",
-        "Support Kodiak's development",
-      ],
+      features: ["Public & private repositories", "Access priority support"],
       startButton: (
         <Button
           block
           variant={trial != null ? "success" : "dark"}
-          onClick={startSubscription}>
+          onClick={() => startSubscription({ period })}>
           Subscribe
         </Button>
       ),
@@ -713,7 +817,7 @@ function SubscriptionUpsellPrompt({
     {
       name: "Enterprise",
       highlight: false,
-      cost: "Custom Pricing",
+      cost: <h1 className="text-center">Custom Pricing</h1>,
       features: [
         "Public & private repositories",
         "Access priority support",
@@ -731,11 +835,6 @@ function SubscriptionUpsellPrompt({
   ]
   return (
     <>
-      <Row>
-        <Col>
-          <h3 className="text-center">Plans</h3>
-        </Col>
-      </Row>
       <Row>
         {plans.map(x => (
           <Col key={x.name} lg={4} className="mx-auto mb-2">
@@ -970,6 +1069,7 @@ function Subcription({
       readonly totalCents: number
       readonly perSeatCents: number
       readonly currency: string
+      readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
     readonly customerName?: string
@@ -997,20 +1097,22 @@ function Subcription({
               </small>
             </Card.Title>
             <Form.Group>
-              <Form.Label>Seats</Form.Label>
+              <Form.Label className="font-weight-bold">Seats</Form.Label>
               <p className="mb-0">{subscription.seats} seats</p>
               <Form.Text className="text-muted">
                 An active user consumes one seat per billing period.
               </Form.Text>
             </Form.Group>
             <Form.Group>
-              <Form.Label>Next Billing Date</Form.Label>
+              <Form.Label className="font-weight-bold">
+                Next Billing Date
+              </Form.Label>
               <p>
                 <FormatDate date={subscription.nextBillingDate} />
               </p>
             </Form.Group>
             <Form.Group>
-              <Form.Label>Cost</Form.Label>
+              <Form.Label className="font-weight-bold">Cost</Form.Label>
               <p>
                 {subscription.seats} seats ⨉{" "}
                 {formatCents(
@@ -1025,7 +1127,9 @@ function Subcription({
               </p>
             </Form.Group>
             <Form.Group>
-              <Form.Label>Billing History</Form.Label>
+              <Form.Label className="font-weight-bold">
+                Billing History
+              </Form.Label>
               <p>
                 <a href={settings.getStripeSelfServeUrl(teamId)}>
                   view billing history
@@ -1074,7 +1178,7 @@ function SubscriptionTrialStarter({
   startTrial,
   trial,
 }: {
-  readonly startSubscription: () => void
+  readonly startSubscription: (params: { period: "month" | "year" }) => void
   readonly startTrial: () => void
   readonly trial: ISubscriptionUpsellPromptProps["trial"]
 }) {
@@ -1084,7 +1188,7 @@ function SubscriptionTrialStarter({
         <Card className="mb-4">
           <Card.Body>
             <Card.Title className="d-flex align-items-baseline justify-content-between">
-              <span>Subscription</span>
+              <span>Subscription Plans</span>
               <small>
                 <a href={settings.billingDocsUrl}>billing docs</a>
               </small>
@@ -1096,7 +1200,11 @@ function SubscriptionTrialStarter({
             />
 
             <hr />
-            <BillingDocumentation pricingInfo subscriptionInfo trialInfo />
+            <BillingDocumentation
+              pricingInfo
+              subscriptionInfo={false}
+              trialInfo
+            />
           </Card.Body>
         </Card>
       </Col>
@@ -1147,11 +1255,10 @@ function BillingDocumentation({
       {pricingInfo && (
         <Row>
           <Col>
-            <b>Pricing</b>
+            <b>Active User</b>
             <p>
-              Kodiak is {formattedMonthlyCost} per active user per month. An
-              active user is anyone that opens a GitHub pull request that Kodiak
-              updates, approves, or merges.
+              A GitHub user that opens a pull request which Kodiak updates,
+              approves, or merges.
             </p>
           </Col>
         </Row>
@@ -1192,8 +1299,8 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const dateOneMonthAgo = sub(dateToday, { months: 1 })
   const oneMonthAgo = formatDate(dateOneMonthAgo, "MMM do")
 
-  function handleStartSubscription() {
-    history.push({ search: "start_subscription=1" })
+  function handleStartSubscription({ period }: { period: "month" | "year" }) {
+    history.push({ search: `start_subscription=1&period=${period}` })
   }
   function handleStartTrial() {
     history.push({ search: "start_trial=1" })
