@@ -214,9 +214,6 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
 @auth.login_required
 def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
-    # restrict updates to admins
-    if not request.user.can_edit(account):
-        raise PermissionDenied
     seats = int(request.POST["seats"])
     proration_timestamp = int(request.POST["prorationTimestamp"])
     stripe_customer_info = account.stripe_customer_info()

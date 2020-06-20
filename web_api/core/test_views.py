@@ -523,28 +523,6 @@ def test_update_subscription_missing_customer(
 
 
 @pytest.mark.django_db
-def test_update_subscription_not_admin(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    Only admins should be able to modify subscriptions.
-    """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
-    )
-    AccountMembership.objects.create(account=account, user=user, role="member")
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=1650581784, seats=24),
-    )
-    assert res.status_code == 403
-
-
-@pytest.mark.django_db
 def test_cancel_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
