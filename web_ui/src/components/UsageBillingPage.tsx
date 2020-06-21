@@ -264,9 +264,7 @@ function StartSubscriptionModal({
   // the default period.
   const location = useLocation()
   const queryParams = new URLSearchParams(location.search)
-  const subscriptionPeriod: "month" | "year" | string | null = queryParams.get(
-    "period",
-  )
+  const subscriptionPeriod: string | null = queryParams.get("period")
   React.useEffect(() => {
     if (subscriptionPeriod === "month") {
       setPeriod("month")
@@ -1125,7 +1123,8 @@ function Subcription({
                 {formatCents(
                   subscription.cost.totalCents,
                   subscription.cost.currency,
-                )} / {subscription.cost.planInterval}
+                )}{" "}
+                / {subscription.cost.planInterval}
               </p>
             </Form.Group>
             <Form.Group>

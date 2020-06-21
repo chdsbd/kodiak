@@ -141,7 +141,7 @@ export const Current: World = {
           `/v1/t/${args.teamId}/fetch_proration`,
           jsonToFormData({
             subscriptionQuantity: args.subscriptionQuantity,
-            subscriptionPeriod: args.subscriptionPeriod
+            subscriptionPeriod: args.subscriptionPeriod,
           }),
         )
       ).data,
