@@ -9,6 +9,7 @@ import stripe
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
+from typing_extensions import Literal
 
 from core.models import (
     Account,
@@ -468,7 +469,9 @@ def test_update_subscription(
             current_period_end=period_start,
             current_period_start=period_end,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ", object="plan", amount=499, interval="month"
+            ),
             quantity=4,
             default_payment_method="pm_22dldxf3",
         ),
@@ -526,35 +529,112 @@ def test_update_subscription(
     assert update_bot.call_count == 1
     assert stripe_subscription_modify.call_count == 1
     _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs['items'][0]['plan'] == settings.STRIPE_PLAN_ID
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
     assert stripe_invoice_create.call_count == 1
     assert stripe_invoice_pay.call_count == 1
 
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=8, planPeriod="month"),
+        dict(
+            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
+            seats=8,
+            planPeriod="month",
+        ),
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 2
     assert update_bot.call_count == 2
     assert stripe_subscription_modify.call_count == 2
     _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs['items'][0]['plan'] == settings.STRIPE_PLAN_ID
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
     assert stripe_invoice_create.call_count == 2
     assert stripe_invoice_pay.call_count == 2
-    
+
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=4, planPeriod="year"),
+        dict(
+            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
+            seats=4,
+            planPeriod="year",
+        ),
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 3
     assert update_bot.call_count == 3
     assert stripe_subscription_modify.call_count == 3
     _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs['items'][0]['plan'] == settings.STRIPE_ANNUAL_PLAN_ID
-    assert stripe_invoice_create.call_count == 3
-    assert stripe_invoice_pay.call_count == 3
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
+    assert stripe_invoice_create.call_count == 2, "not hit because we're changing plans"
+    assert stripe_invoice_pay.call_count == 2, "not hit because we're changing plans"
+
+
+def create_fake_subscription(
+    interval: Literal["month", "year"] = "month"
+) -> stripe.Subscription:
+    return stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=566789,
+            current_period_start=567890,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(
+                id=settings.STRIPE_ANNUAL_PLAN_ID,
+                object="plan",
+                amount=499,
+                interval=interval,
+            ),
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+
+
+@pytest.mark.django_db
+def test_update_subscription_switch_plans(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    update_bot = mocker.patch("core.models.Account.update_bot")
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve",
+        return_value=create_fake_subscription(interval="month"),
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify",
+        return_value=create_fake_subscription(interval="year"),
+    )
+    fake_invoice = stripe.Invoice.construct_from(
+        dict(object="invoice", id="in_00000000000000"), "fake-key",
+    )
+    stripe_invoice_create = mocker.patch(
+        "core.models.stripe.Invoice.create", return_value=fake_invoice
+    )
+    stripe_invoice_pay = mocker.patch("core.models.stripe.Invoice.pay")
+    account, _membership = create_org_account(user=user, role="admin")
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    assert update_bot.call_count == 0
+    assert stripe_customer_info.plan_interval == "month"
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=123456789, seats=4, planPeriod="year"),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 1
+    assert update_bot.call_count == 1
+    assert stripe_subscription_modify.call_count == 1
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
+    assert stripe_invoice_create.call_count == 0, "not hit because we're changing plans"
+    assert stripe_invoice_pay.call_count == 0, "not hit because we're changing plans"
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.plan_interval == "year"
 
 
 @pytest.mark.django_db
@@ -853,7 +933,9 @@ def create_pk() -> int:
     return next(PRIMARY_KEYS)
 
 
-def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
+def create_org_account(
+    user: User, role: Literal["member", "admin"] = "member"
+) -> Tuple[Account, AccountMembership]:
     account_id = create_pk()
     account = Account.objects.create(
         github_installation_id=create_pk(),
@@ -862,9 +944,7 @@ def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
         github_account_type="Organization",
         stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
     )
-    membership = AccountMembership.objects.create(
-        account=account, user=user, role="member"
-    )
+    membership = AccountMembership.objects.create(account=account, user=user, role=role)
     return (account, membership)
 
 
@@ -884,6 +964,7 @@ def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
             payment_method_card_exp_year="32",
             payment_method_card_last4="4242",
             plan_amount=499,
+            plan_interval="month",
             subscription_quantity=3,
             subscription_start_date=1585781784,
             subscription_current_period_start=1650581784,
