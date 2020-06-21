@@ -1027,6 +1027,70 @@ def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
 def patch_stripe_customer_modify(mocker: Any) -> None:
     mocker.patch("core.models.stripe.Customer.modify", spec=stripe.Customer.modify)
 
+@pytest.mark.django_db
+def test_update_stripe_customer_info_permission(authed_client: Client,user: User,patch_stripe_customer_modify: object) -> None:
+    account, membership = create_org_account(user, role="member")
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    assert account.limit_billing_access_to_owners is False
+    payload = dict(limitBillingAccessToOwners=True)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 403
+    account.refresh_from_db()
+    assert account.limit_billing_access_to_owners is False
+
+    membership.role = "admin"
+    membership.save()
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert account.limit_billing_access_to_owners is True
+
+@pytest.mark.django_db
+def test_update_stripe_customer_info_limit_billing_access_to_owners(authed_client: Client,user: User,patch_stripe_customer_modify: object) -> None:
+    account, membership = create_org_account(user, role="member")
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+
+    original_email = "invoices@acme-inc.corp"
+    stripe_customer_info.customer_email = original_email
+    stripe_customer_info.save()
+    account.limit_billing_access_to_owners =True
+    account.save()
+    
+    payload = dict(email="billing@kodiakhq.com")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 403
+    account.refresh_from_db()
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_email == original_email
+
+    membership.role = "admin"
+    membership.save()
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.customer_email == payload['email']
 
 @pytest.mark.django_db
 def test_update_billing_email(
