@@ -353,9 +353,7 @@ def test_usage_limit_billing_access_to_owners_member(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
     account, membership = create_org_account(user=user, role="member")
-    create_stripe_customer_info(
-        customer_id=account.stripe_customer_id
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
