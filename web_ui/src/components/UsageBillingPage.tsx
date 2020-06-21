@@ -1131,7 +1131,7 @@ function LimitBillingAccessForm({
         <Form onSubmit={handleSubmit}>
           <Form.Group>
             <Form.Check
-              label="Limit Billing Access to GitHub Organization Owners"
+              label="Limit billing access to GitHub Organization Owners"
               id="limit-billing-access-to-owners"
               disabled={formDisabled}
               checked={limitBillingAccessToOwners}
