@@ -411,6 +411,7 @@ interface IManageSubscriptionModalProps {
   readonly cardInfo: string
   readonly cost: {
     readonly totalCents: number
+    readonly perSeatCents: number
     readonly planInterval: "month" | "year"
   }
 }
