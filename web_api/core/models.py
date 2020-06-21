@@ -1076,7 +1076,9 @@ class StripeCustomerInformation(models.Model):
         self.delete()
         account.update_bot()
 
-    def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
+    def preview_proration(
+        self, *, timestamp: int, subscription_quantity: int, plan_id: str
+    ) -> int:
         proration_date = timestamp
 
         subscription = stripe.Subscription.retrieve(self.subscription_id)
@@ -1086,6 +1088,7 @@ class StripeCustomerInformation(models.Model):
         subscription_items = [
             {
                 "id": subscription["items"]["data"][0].id,
+                "plan": plan_id,
                 "quantity": subscription_quantity,
             }
         ]
