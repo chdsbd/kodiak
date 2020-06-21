@@ -400,14 +400,6 @@ def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None
     assert patched_stripe_subscription_retrieve.call_count == 1
     assert patched_stripe_invoice_upcoming.call_count == 1
 
-    for period in ("year", "month"):
-        res = authed_client.post(
-            f"/v1/t/{account.id}/fetch_proration",
-            {"subscriptionQuantity": 4, "subscriptionPeriod": period},
-        )
-        assert res.status_code == 200
-        assert res.json()["proratedCost"] == 4990
-
 
 @pytest.mark.django_db
 def test_fetch_proration_different_plans(
@@ -423,6 +415,8 @@ def test_fetch_proration_different_plans(
     )
     account, _membership = create_org_account(user)
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
+
+    # we should default to the "monthly" plan period.
     res = authed_client.post(
         f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
     )
@@ -434,6 +428,7 @@ def test_fetch_proration_different_plans(
     assert kwargs["subscription_quantity"] == 4
     assert kwargs["plan_id"] == settings.STRIPE_PLAN_ID
 
+    # verify we respect the `subscriptionPeriod` argument for proration.
     for index, period_plan in enumerate(
         [("year", settings.STRIPE_ANNUAL_PLAN_ID), ("month", settings.STRIPE_PLAN_ID)]
     ):

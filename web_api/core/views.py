@@ -318,7 +318,7 @@ def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpRespo
 
 class StartCheckoutModal(pydantic.BaseModel):
     seatCount: int = 1
-    planPeriod: Optional[Literal["month", "year"]] = "month"
+    planPeriod: Literal["month", "year"] = "month"
 
 
 @auth.login_required
