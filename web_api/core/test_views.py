@@ -699,28 +699,20 @@ def test_update_subscription_permissions(
     """
     account, membership = create_org_account(user=user, role="member")
     payload = dict(prorationTimestamp=1650581784, seats=24)
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        payload,
-    )
-    assert res.status_code == 422, "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
+    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
+    assert (
+        res.status_code == 422
+    ), "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
 
     account.limit_billing_access_to_owners = True
     account.save()
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        payload,
-    )
+    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
     assert res.status_code == 403, "we're a member so we shouldn't be allowed"
 
-    membership.role= "admin"
+    membership.role = "admin"
     membership.save()
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        payload,
-    )
+    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
     assert res.status_code == 422, "we're an admin so we should be okay"
-
 
 
 @pytest.mark.django_db
@@ -730,82 +722,86 @@ def test_cancel_subscription(
     """
     Canceling a subscription should immediately cancel the subscription in Stripe.
     """
-    ONE_DAY_SEC = 60 * 60 * 24
-    period_start = int(time.time())
-    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
-    patched = mocker.patch("core.models.stripe.Subscription.delete")
-    update_bot = mocker.patch("core.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    patched_stripe_subscription_delete = mocker.patch(
+        "core.models.stripe.Subscription.delete"
     )
-    AccountMembership.objects.create(account=account, user=user, role="admin")
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=period_start,
-        subscription_current_period_end=period_end,
-    )
-    assert patched.call_count == 0
+    patched_account_update_bot = mocker.patch("core.models.Account.update_bot")
+    account, membership = create_org_account(user=user, role="admin")
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    assert patched_stripe_subscription_delete.call_count == 0
     assert StripeCustomerInformation.objects.count() == 1
-    assert update_bot.call_count == 0
+    assert patched_account_update_bot.call_count == 0
     res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
     assert res.status_code == 204
-    assert update_bot.call_count == 1
-    assert patched.call_count == 1
+    assert patched_account_update_bot.call_count == 1
+    assert patched_stripe_subscription_delete.call_count == 1
+    assert StripeCustomerInformation.objects.count() == 0
+
+
+@pytest.fixture
+def patch_cancel_subscription(mocker: Any) -> None:
+    mocker.patch("core.models.stripe.Subscription.delete")
+    mocker.patch("core.models.Account.update_bot")
+
+
+@pytest.mark.django_db
+def test_cancel_subscription_member(
+    authed_client: Client,
+    user: User,
+    other_user: User,
+    patch_cancel_subscription: object,
+) -> None:
+    """
+    By default all members can cancel a subscription.
+    """
+    account, membership = create_org_account(user=user, role="member")
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    assert StripeCustomerInformation.objects.count() == 1
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 204
     assert StripeCustomerInformation.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_cancel_subscription_not_admin(
-    authed_client: Client, user: User, other_user: User, mocker: Any
+def test_cancel_subscription_member_limit_billing_access_to_owners(
+    authed_client: Client,
+    user: User,
+    other_user: User,
+    patch_cancel_subscription: object,
 ) -> None:
     """
-    Only admins should be able to cancel a subscription.
+    If limit_billing_access_to_owners is enabled members cannot cancel a
+    subscription.
     """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account, membership = create_org_account(
+        user=user, role="member", limit_billing_access_to_owners=True
     )
-    AccountMembership.objects.create(account=account, user=user, role="member")
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1658357784,
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    assert StripeCustomerInformation.objects.count() == 1
     res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
     assert res.status_code == 403
+    assert StripeCustomerInformation.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_cancel_subscription_admin_limit_billing_access_to_owners(
+    authed_client: Client,
+    user: User,
+    other_user: User,
+    patch_cancel_subscription: object,
+) -> None:
+    """
+    If limit_billing_access_to_owners is enabled admins can cancel a
+    subscription.
+    """
+    account, membership = create_org_account(
+        user=user, role="admin", limit_billing_access_to_owners=True
+    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    assert StripeCustomerInformation.objects.count() == 1
+    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
+    assert res.status_code == 204
+    assert StripeCustomerInformation.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -952,7 +948,9 @@ def create_pk() -> int:
 
 
 def create_org_account(
-    user: User, role: Literal["member", "admin"] = "member"
+    user: User,
+    role: Literal["member", "admin"] = "member",
+    limit_billing_access_to_owners: bool = False,
 ) -> Tuple[Account, AccountMembership]:
     account_id = create_pk()
     account = Account.objects.create(
@@ -961,6 +959,7 @@ def create_org_account(
         github_account_login=f"Acme-corp-{account_id}",
         github_account_type="Organization",
         stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
+        limit_billing_access_to_owners=limit_billing_access_to_owners,
     )
     membership = AccountMembership.objects.create(account=account, user=user, role=role)
     return (account, membership)
