@@ -1127,11 +1127,11 @@ function LimitBillingAccessForm({
   return (
     <Card className={className}>
       <Card.Body>
-        <Card.Title>Billing Access</Card.Title>
+        <Card.Title>Billing Permissions</Card.Title>
         <Form onSubmit={handleSubmit}>
           <Form.Group>
             <Form.Check
-              label="Limit billing access to GitHub Organization Owners"
+              label="Limit billing modifications to GitHub Organization Owners"
               id="limit-billing-access-to-owners"
               disabled={formDisabled}
               checked={limitBillingAccessToOwners}
