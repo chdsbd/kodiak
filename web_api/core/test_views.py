@@ -528,6 +528,8 @@ def test_update_subscription(
     assert stripe_invoice_create.call_count == 1
     assert stripe_invoice_pay.call_count == 1
 
+    # verify we can specify the monthly planPeriod and that the API calls Stripe
+    # with the correct plan id.
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
         dict(
@@ -545,6 +547,8 @@ def test_update_subscription(
     assert stripe_invoice_create.call_count == 2
     assert stripe_invoice_pay.call_count == 2
 
+    # verify we can specify the yearly planPeriod and that the API calls Stripe
+    # with the correct plan id.
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
         dict(
@@ -590,6 +594,12 @@ def create_fake_subscription(
 def test_update_subscription_switch_plans(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
+    """
+    When we switch between plans we do _not_ want to manually create an invoice
+    because Stripe already charges the user. If we attempt to invoice like we do
+    for intra-plan upgrades we'll get an API exception from Stripe saying
+    nothing to change.
+    """
     update_bot = mocker.patch("core.models.Account.update_bot")
 
     stripe_subscription_retrieve = mocker.patch(
