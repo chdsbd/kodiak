@@ -324,17 +324,10 @@ class StartCheckoutModal(pydantic.BaseModel):
 @auth.login_required
 def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
     payload = StartCheckoutModal.parse_obj(request.POST.dict())
-    seat_count = payload.seatCount
-    plan_period = payload.planPeriod
     account = get_account_or_404(team_id=team_id, user=request.user)
     # if available, using the existing customer_id allows us to pre-fill the
     # checkout form with their email.
     customer_id = account.stripe_customer_id or None
-
-    if plan_period == "month":
-        stripe_plan_id = settings.STRIPE_PLAN_ID
-    elif plan_period == "year":
-        stripe_plan_id = settings.STRIPE_ANNUAL_PLAN_ID
 
     # https://stripe.com/docs/api/checkout/sessions/create
     session = stripe.checkout.Session.create(
@@ -345,7 +338,12 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
         # (payment_method_card_{brand,exp_month,exp_year,last4}).
         payment_method_types=["card"],
         subscription_data={
-            "items": [{"plan": stripe_plan_id, "quantity": seat_count}],
+            "items": [
+                {
+                    "plan": plan_id_from_period(period=payload.planPeriod),
+                    "quantity": payload.seatCount,
+                }
+            ],
         },
         success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
