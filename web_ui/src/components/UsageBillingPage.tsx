@@ -304,7 +304,7 @@ function StartSubscriptionModal({
   }
   const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
   const seatCost =
-    period === "year" ? settings.monthlyCost * 10 : settings.monthlyCost
+    period === "year" ? settings.annualCost : settings.monthlyCost
   const costCents = seats * seatCost
   const notEnoughSeats = seats < seatUsage && seatUsage > 0
   return (
