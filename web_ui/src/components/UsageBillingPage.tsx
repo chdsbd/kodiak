@@ -1125,7 +1125,7 @@ function Subcription({
                 {formatCents(
                   subscription.cost.totalCents,
                   subscription.cost.currency,
-                )}
+                )} / {subscription.cost.planInterval}
               </p>
             </Form.Group>
             <Form.Group>
