@@ -753,11 +753,21 @@ function SubscriptionUpsellPrompt({
   )
 }
 
-function KodiakSaveButton({ state }: { state: WebData<unknown> }) {
+function KodiakSaveButton({
+  state,
+  disabled,
+}: {
+  state: WebData<unknown>
+  disabled?: boolean
+}) {
   const loading = state.status === "loading"
   return (
     <>
-      <Button variant="dark" size="sm" disabled={loading} type="submit">
+      <Button
+        variant="dark"
+        size="sm"
+        disabled={loading || disabled}
+        type="submit">
         {loading ? "Loading..." : "Save"}
       </Button>
       {state.status === "failure" && (
@@ -957,6 +967,68 @@ function PostalAddressForm({
   )
 }
 
+function LimitBillingAccessForm({
+  defaultValue = false,
+  className,
+  isOrgOwner,
+}: {
+  readonly defaultValue: boolean
+  readonly className?: string
+  readonly isOrgOwner?: boolean
+}) {
+  const [
+    limitBillingAccessToOwners,
+    setLimitBillingAccessToOwners,
+  ] = React.useState(defaultValue)
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
+  const formDisabled = !isOrgOwner
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!isOrgOwner) {
+      return
+    }
+    updateStripeCustomerInfo({
+      limitBillingAccessToOwners,
+    })
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Billing Access</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Check
+              label="Limit Billing Access to GitHub Organization Owners"
+              id="limit-billing-access-to-owners"
+              disabled={formDisabled}
+              checked={limitBillingAccessToOwners}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setLimitBillingAccessToOwners(e.target.checked)
+              }
+            />
+            <Form.Text className="text-muted">
+              When enabled, only{" "}
+              <a href="https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/permission-levels-for-an-organization#permission-levels-for-an-organization">
+                GitHub Organization Owners
+              </a>{" "}
+              can modify the subscription or update billing information.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} disabled={formDisabled} />
+
+          {formDisabled && (
+            <Form.Text className="text-muted">
+              You must be an organization owner to modify this field.
+            </Form.Text>
+          )}
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
 function Subcription({
   subscription,
   teamId,
@@ -1063,6 +1135,10 @@ function Subcription({
         <PostalAddressForm
           className="mb-4"
           defaultValue={subscription.customerAddress ?? {}}
+        />
+        <LimitBillingAccessForm
+          className="mb-4"
+          defaultValue={subscription.limitBillingAccessToOwners ?? false}
         />
       </Col>
     </Row>

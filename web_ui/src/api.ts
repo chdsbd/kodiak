@@ -200,6 +200,7 @@ export type UpdateStripeCustomerInfoArgs = {
     readonly postalCode?: string
     readonly state?: string
   }
+  readonly limitBillingAccessToOwners?: boolean
 }
 
 export interface Api {

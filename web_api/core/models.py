@@ -92,7 +92,10 @@ class User(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
 
-    def can_edit(self, account: Account) -> bool:
+    def can_edit_subscription(self, account: Account) -> bool:
+        return account.limit_billing_access_to_owners or self.is_admin(account=account)
+
+    def is_admin(self, account: Account) -> bool:
         return cast(
             bool,
             AccountMembership.objects.filter(
@@ -280,6 +283,7 @@ class Account(BaseModel):
         db_index=True,
         help_text="ID of the Stripe Customer associated with this account. This will have a corresponding object in StripeCustomerInformation if the user has created a subscription.",
     )
+    limit_billing_access_to_owners = models.BooleanField(default=False)
 
     class Meta:
         db_table = "account"

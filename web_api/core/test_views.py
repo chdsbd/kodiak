@@ -9,6 +9,7 @@ import stripe
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
+from typing_extensions import Literal
 
 from core.models import (
     Account,
@@ -721,7 +722,9 @@ def create_pk() -> int:
     return next(PRIMARY_KEYS)
 
 
-def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
+def create_org_account(
+    user: User, role: Literal["member", "admin"] = "member"
+) -> Tuple[Account, AccountMembership]:
     account_id = create_pk()
     account = Account.objects.create(
         github_installation_id=create_pk(),
@@ -730,9 +733,7 @@ def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
         github_account_type="Organization",
         stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
     )
-    membership = AccountMembership.objects.create(
-        account=account, user=user, role="member"
-    )
+    membership = AccountMembership.objects.create(account=account, user=user, role=role)
     return (account, membership)
 
 
@@ -892,6 +893,36 @@ def test_update_address(
         == payload["address"]["postalCode"]
     )
     assert stripe_customer_info.customer_address_state == payload["address"]["state"]
+
+
+@pytest.mark.django_db
+def test_update_limit_billing_access_to_owners(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    Only GitHub organization Owners should be able to modify this field
+    """
+    account, membership = create_org_account(user, role="member")
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+
+    payload = dict(limitBillingAccessToOwners=True)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 403
+
+    membership.role = "admin"
+    membership.save()
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert account.limit_billing_access_to_owners == True
 
 
 @pytest.mark.django_db
