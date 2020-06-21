@@ -214,6 +214,7 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     account.start_trial(request.user, billing_email=billing_email)
     return HttpResponse(status=204)
 
+
 class UpdateSubscriptionModel(pydantic.BaseModel):
     seats: int
     prorationTimestamp: int
@@ -243,17 +244,23 @@ def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
         ],
         proration_date=payload.prorationTimestamp,
     )
-    # when we upgrade a users plan Stripe will charge them on their next billing
-    # cycle. To make Stripe charge for the upgrade immediately we must create an
-    # invoice and pay it. If we don't pay the invoice Stripe will wait 1 hour
-    # before attempting to charge user.
-    invoice = stripe.Invoice.create(
-        customer=stripe_customer_info.customer_id, auto_advance=True
-    )
-    # we must specify the payment method because our Stripe customers don't have
-    # a default payment method, so the default invoicing will fail.
-    stripe.Invoice.pay(invoice.id, payment_method=subscription.default_payment_method)
+    # we only need to manually created invoices when a user modifies their
+    # subscription within the same billing period.
+    if payload.planPeriod == subscription.plan.interval:
+        # when we upgrade a users plan Stripe will charge them on their next billing
+        # cycle. To make Stripe charge for the upgrade immediately we must create an
+        # invoice and pay it. If we don't pay the invoice Stripe will wait 1 hour
+        # before attempting to charge user.
+        invoice = stripe.Invoice.create(
+            customer=stripe_customer_info.customer_id, auto_advance=True
+        )
+        # we must specify the payment method because our Stripe customers don't have
+        # a default payment method, so the default invoicing will fail.
+        stripe.Invoice.pay(
+            invoice.id, payment_method=subscription.default_payment_method
+        )
     stripe_customer_info.plan_amount = updated_subscription.plan.amount
+    stripe_customer_info.plan_interval = updated_subscription.plan.interval
 
     stripe_customer_info.subscription_quantity = updated_subscription.quantity
     stripe_customer_info.subscription_current_period_end = (
@@ -437,15 +444,18 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
 
     return JsonResponse({"type": "VALID_SUBSCRIPTION"})
 
+
 def plan_id_from_period(period: Literal["month", "year"]) -> str:
     if period == "month":
-        return settings.STRIPE_PLAN_ID
+        return cast(str, settings.STRIPE_PLAN_ID)
     if period == "year":
-        return settings.STRIPE_ANNUAL_PLAN_ID
+        return cast(str, settings.STRIPE_ANNUAL_PLAN_ID)
+    return None
+
 
 class FetchProrationModal(pydantic.BaseModel):
     subscriptionQuantity: int
-    subscriptionPeriod: Optional[Literal["month", "year"]] = "month"
+    subscriptionPeriod: Literal["month", "year"] = "month"
 
 
 @auth.login_required
