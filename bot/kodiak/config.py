@@ -45,6 +45,11 @@ class MergeMessage(BaseModel):
     include_pull_request_url: bool = False
 
 
+# this pattern indicates that the user has the field unset.
+UNSET_TITLE_REGEX = ":::|||kodiak|||internal|||reserved|||:::"
+DEFAULT_TITLE_REGEX = "^WIP:.*"
+
+
 class Merge(BaseModel):
     # label to enable merging of pull request.
     automerge_label: str = "automerge"
@@ -52,8 +57,8 @@ class Merge(BaseModel):
     require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to
     # disable check.
-    blacklist_title_regex: str = "^WIP:.*"  # deprecated for blocking_title_regex
-    blocking_title_regex: str = "^WIP:.*"
+    blacklist_title_regex: str = UNSET_TITLE_REGEX  # deprecated for blocking_title_regex
+    blocking_title_regex: str = UNSET_TITLE_REGEX
     # labels to block merging of pull request
     blacklist_labels: List[str] = []  # deprecated for blocking_labels
     blocking_labels: List[str] = []

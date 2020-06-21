@@ -884,7 +884,7 @@ async def test_mergeable_blacklist_title_regex() -> None:
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
-    assert "matches blacklist_title_regex" in api.set_status.calls[0]["msg"]
+    assert "matches merge.blacklist_title_regex" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
