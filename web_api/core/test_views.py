@@ -972,6 +972,27 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
+@pytest.mark.django_db
+def test_modify_payment_details_limit_billing_access_to_owners(authed_client: Client, user: User, mocker: Any) -> None:
+    account, membership = create_org_account(user=user,role="member", limit_billing_access_to_owners=True)
+
+    class FakeCheckoutSession:
+        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
+
+    mocker.patch(
+        "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
+    )
+    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
+    assert res.status_code == 403
+
+    membership.role="admin"
+    membership.save()
+    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+
+
 
 PRIMARY_KEYS = iter(range(1000, 100000))
 
