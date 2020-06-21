@@ -689,6 +689,41 @@ def test_update_subscription_missing_customer(
 
 
 @pytest.mark.django_db
+def test_update_subscription_permissions(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    By default any member can edit a subscription, but if
+    `limit_billing_access_to_owners` is enabled on an account, only admins a.k.a
+    owners can modify a subscription.
+    """
+    account, membership = create_org_account(user=user, role="member")
+    payload = dict(prorationTimestamp=1650581784, seats=24)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
+    assert res.status_code == 422, "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
+
+    account.limit_billing_access_to_owners = True
+    account.save()
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
+    assert res.status_code == 403, "we're a member so we shouldn't be allowed"
+
+    membership.role= "admin"
+    membership.save()
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
+    assert res.status_code == 422, "we're an admin so we should be okay"
+
+
+
+@pytest.mark.django_db
 def test_cancel_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
