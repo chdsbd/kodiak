@@ -922,7 +922,7 @@ def test_update_limit_billing_access_to_owners(
     )
     assert res.status_code == 204
     account.refresh_from_db()
-    assert account.limit_billing_access_to_owners == True
+    assert account.limit_billing_access_to_owners is True
 
 
 @pytest.mark.django_db
