@@ -42,6 +42,7 @@ export interface IUsageBillingPageApiResponse {
       readonly totalCents: number
       readonly perSeatCents: number
       readonly currency: string
+      readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
     readonly customerName?: string
@@ -137,6 +138,7 @@ export type IUpdateSubscriptionArgs = {
   readonly teamId: string
   readonly seats: number
   readonly prorationTimestamp: number
+  readonly planPeriod: "month" | "year"
 }
 export interface ICancelSubscriptionArgs {
   readonly teamId: string
@@ -148,6 +150,7 @@ export interface IFetchSubscriptionInfoArgs {
 export interface IStartCheckoutArgs {
   readonly teamId: string
   readonly seatCount: number
+  readonly planPeriod: "month" | "year"
 }
 export interface IStartCheckoutResponse {
   readonly stripeCheckoutSessionId: string
@@ -164,6 +167,7 @@ export interface ModifyBillingResponse {
 export interface IFetchProrationArgs {
   readonly teamId: string
   readonly subscriptionQuantity: number
+  readonly subscriptionPeriod: "month" | "year"
 }
 export interface IFetchProrationResponse {
   readonly proratedCost: number

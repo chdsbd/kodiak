@@ -274,12 +274,6 @@ class Account(BaseModel):
     )
     trial_email = models.CharField(blank=True, max_length=255)
 
-    stripe_plan_id = models.CharField(
-        max_length=255,
-        null=True,
-        help_text="Stripe plan_id to use when creating subscription. Overrides settings.STRIPE_PLAN_ID if provided. We only need to set this when we provide a custom plan for a given user.",
-    )
-
     stripe_customer_id = models.CharField(
         blank=True,
         max_length=255,
@@ -967,6 +961,15 @@ class StripeCustomerInformation(models.Model):
     plan_amount = models.IntegerField(
         help_text="The amount in cents to be charged on the interval specified."
     )
+    plan_interval = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="The frequency at which a subscription is billed. One of `day`, `week`, `month` or `year`.",
+    )
+    plan_interval_count = models.IntegerField(
+        null=True,
+        help_text="The number of intervals (specified in the `interval` attribute) between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months.",
+    )
 
     # https://stripe.com/docs/api/subscriptions/object
     subscription_quantity = models.IntegerField(
@@ -1026,6 +1029,8 @@ class StripeCustomerInformation(models.Model):
         if subscription is not None:
             self.plan_id = subscription.plan.id
             self.plan_amount = subscription.plan.amount
+            self.plan_interval = subscription.plan.interval
+            self.plan_interval_count = subscription.plan.interval_count
 
             self.subscription_id = subscription.id
             self.subscription_quantity = subscription.quantity
@@ -1067,7 +1072,9 @@ class StripeCustomerInformation(models.Model):
         self.delete()
         account.update_bot()
 
-    def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
+    def preview_proration(
+        self, *, timestamp: int, subscription_quantity: int, plan_id: str
+    ) -> int:
         proration_date = timestamp
 
         subscription = stripe.Subscription.retrieve(self.subscription_id)
@@ -1077,6 +1084,7 @@ class StripeCustomerInformation(models.Model):
         subscription_items = [
             {
                 "id": subscription["items"]["data"][0].id,
+                "plan": plan_id,
                 "quantity": subscription_quantity,
             }
         ]

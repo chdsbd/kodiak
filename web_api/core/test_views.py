@@ -9,6 +9,7 @@ import stripe
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
+from typing_extensions import Literal
 
 from core.models import (
     Account,
@@ -310,18 +311,21 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
+    assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
     assert res.json()["subscription"]["customerName"] is None
     assert res.json()["subscription"]["customerAddress"] is None
 
     stripe_customer_information.customer_currency = None
+    stripe_customer_information.plan_interval = "year"
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert (
         res.json()["subscription"]["cost"]["currency"] == "usd"
     ), "should default to usd if we cannot find a currency"
+    assert res.json()["subscription"]["cost"]["planInterval"] == "year"
 
     stripe_customer_information.customer_name = "Acme-corp"
     stripe_customer_information.customer_address_line1 = "123 Main Street"
@@ -345,6 +349,104 @@ def test_usage_billing_subscription_started(
 
 
 @pytest.mark.django_db
+def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None:
+    """
+    Verify that our proration endpoint correctly handles proration.
+    """
+    account, _membership = create_org_account(user)
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+        ),
+        "fake-key",
+    )
+    patched_stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve",
+        spec=stripe.Subscription.retrieve,
+        return_value=fake_subscription,
+    )
+    fake_invoice = stripe.Invoice.construct_from(
+        {
+            "id": "in_1GN9MwCoyKa1V9Y6Ox2tehjN",
+            "object": "invoice",
+            "lines": {
+                "data": [
+                    {
+                        "id": "il_tmp_aad05f08b40091",
+                        "object": "line_item",
+                        "amount": 4990,
+                        "period": {"end": 1623632393, "start": 1592096393},
+                    }
+                ],
+                "object": "list",
+            },
+        },
+        "fake-key",
+    )
+    patched_stripe_invoice_upcoming = mocker.patch(
+        "core.models.stripe.Invoice.upcoming",
+        spec=stripe.Invoice.upcoming,
+        return_value=fake_invoice,
+    )
+    res = authed_client.post(
+        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
+    )
+    assert res.status_code == 200
+    assert res.json()["proratedCost"] == 4990
+    assert isinstance(res.json()["prorationTime"], int)
+    assert patched_stripe_subscription_retrieve.call_count == 1
+    assert patched_stripe_invoice_upcoming.call_count == 1
+
+
+@pytest.mark.django_db
+def test_fetch_proration_different_plans(
+    authed_client: Client, user: User, mocker: Any
+) -> None:
+    """
+    Check support for different plans.
+    """
+    patched_stripe_customer_information = mocker.patch(
+        "core.models.StripeCustomerInformation.preview_proration",
+        spec=StripeCustomerInformation.preview_proration,
+        return_value=4567,
+    )
+    account, _membership = create_org_account(user)
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+
+    # we should default to the "monthly" plan period.
+    res = authed_client.post(
+        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
+    )
+    assert res.status_code == 200
+    assert res.json()["proratedCost"] == 4567
+    assert isinstance(res.json()["prorationTime"], int)
+    assert patched_stripe_customer_information.call_count == 1
+    _args, kwargs = patched_stripe_customer_information.call_args
+    assert kwargs["subscription_quantity"] == 4
+    assert kwargs["plan_id"] == settings.STRIPE_PLAN_ID
+
+    # verify we respect the `subscriptionPeriod` argument for proration.
+    for index, period_plan in enumerate(
+        [("year", settings.STRIPE_ANNUAL_PLAN_ID), ("month", settings.STRIPE_PLAN_ID)]
+    ):
+        period, plan = period_plan
+        seats = index + 5
+        res = authed_client.post(
+            f"/v1/t/{account.id}/fetch_proration",
+            {"subscriptionQuantity": seats, "subscriptionPeriod": period},
+        )
+        assert res.status_code == 200
+        assert res.json()["proratedCost"] == 4567
+        _args, kwargs = patched_stripe_customer_information.call_args
+        assert kwargs["subscription_quantity"] == seats
+        assert kwargs["plan_id"] == plan
+        assert patched_stripe_customer_information.call_count == index + 2
+
+
+@pytest.mark.django_db
 def test_update_subscription(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
@@ -362,7 +464,9 @@ def test_update_subscription(
             current_period_end=period_start,
             current_period_start=period_end,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ", object="plan", amount=499, interval="month"
+            ),
             quantity=4,
             default_payment_method="pm_22dldxf3",
         ),
@@ -419,8 +523,123 @@ def test_update_subscription(
     assert stripe_subscription_retrieve.call_count == 1
     assert update_bot.call_count == 1
     assert stripe_subscription_modify.call_count == 1
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
     assert stripe_invoice_create.call_count == 1
     assert stripe_invoice_pay.call_count == 1
+
+    # verify we can specify the monthly planPeriod and that the API calls Stripe
+    # with the correct plan id.
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(
+            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
+            seats=8,
+            planPeriod="month",
+        ),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 2
+    assert update_bot.call_count == 2
+    assert stripe_subscription_modify.call_count == 2
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
+    assert stripe_invoice_create.call_count == 2
+    assert stripe_invoice_pay.call_count == 2
+
+    # verify we can specify the yearly planPeriod and that the API calls Stripe
+    # with the correct plan id.
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(
+            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
+            seats=4,
+            planPeriod="year",
+        ),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 3
+    assert update_bot.call_count == 3
+    assert stripe_subscription_modify.call_count == 3
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
+    assert stripe_invoice_create.call_count == 2, "not hit because we're changing plans"
+    assert stripe_invoice_pay.call_count == 2, "not hit because we're changing plans"
+
+
+def create_fake_subscription(
+    interval: Literal["month", "year"] = "month"
+) -> stripe.Subscription:
+    return stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=566789,
+            current_period_start=567890,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(
+                id=settings.STRIPE_ANNUAL_PLAN_ID,
+                object="plan",
+                amount=499,
+                interval=interval,
+            ),
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+
+
+@pytest.mark.django_db
+def test_update_subscription_switch_plans(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    """
+    When we switch between plans we do _not_ want to manually create an invoice
+    because Stripe already charges the user. If we attempt to invoice like we do
+    for intra-plan upgrades we'll get an API exception from Stripe saying
+    nothing to change.
+    """
+    update_bot = mocker.patch("core.models.Account.update_bot")
+
+    stripe_subscription_retrieve = mocker.patch(
+        "core.models.stripe.Subscription.retrieve",
+        return_value=create_fake_subscription(interval="month"),
+    )
+    stripe_subscription_modify = mocker.patch(
+        "core.models.stripe.Subscription.modify",
+        return_value=create_fake_subscription(interval="year"),
+    )
+    fake_invoice = stripe.Invoice.construct_from(
+        dict(object="invoice", id="in_00000000000000"), "fake-key",
+    )
+    stripe_invoice_create = mocker.patch(
+        "core.models.stripe.Invoice.create", return_value=fake_invoice
+    )
+    stripe_invoice_pay = mocker.patch("core.models.stripe.Invoice.pay")
+    account, _membership = create_org_account(user=user, role="admin")
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
+    assert stripe_subscription_retrieve.call_count == 0
+    assert stripe_subscription_modify.call_count == 0
+    assert update_bot.call_count == 0
+    assert stripe_customer_info.plan_interval == "month"
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        dict(prorationTimestamp=123456789, seats=4, planPeriod="year"),
+    )
+    assert res.status_code == 204
+    assert stripe_subscription_retrieve.call_count == 1
+    assert update_bot.call_count == 1
+    assert stripe_subscription_modify.call_count == 1
+    _args, kwargs = stripe_subscription_modify.call_args
+    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
+    assert stripe_invoice_create.call_count == 0, "not hit because we're changing plans"
+    assert stripe_invoice_pay.call_count == 0, "not hit because we're changing plans"
+    stripe_customer_info.refresh_from_db()
+    assert stripe_customer_info.plan_interval == "year"
 
 
 @pytest.mark.django_db
@@ -647,6 +866,9 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
         spec=stripe.checkout.Session.create,
         return_value=FakeCheckoutSession,
     )
+
+    # start checkout without a plan to check backwards compatibility. We should
+    # default to using the monthly plan.
     res = authed_client.post(
         f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
     )
@@ -654,42 +876,32 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
     _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 3
     assert kwargs["subscription_data"]["items"][0]["plan"] == settings.STRIPE_PLAN_ID
 
-
-@pytest.mark.django_db
-def test_start_checkout_custom_plan_id(
-    authed_client: Client, user: User, mocker: Any
-) -> None:
-    """
-    Start a Stripe checkout session with custom plan id
-    """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_plan_id="price_1GsG85CoyKa1V9Y6B1x6uO3L",
-    )
-    AccountMembership.objects.create(account=user_account, user=user, role="member")
-
-    class FakeCheckoutSession:
-        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
-
-    checkout_session_create = mocker.patch(
-        "core.views.stripe.checkout.Session.create",
-        spec=stripe.checkout.Session.create,
-        return_value=FakeCheckoutSession,
-    )
+    # start checkout with a monthly plan.
     res = authed_client.post(
-        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=5, planPeriod="month")
     )
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
     _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 5
+    assert kwargs["subscription_data"]["items"][0]["plan"] == settings.STRIPE_PLAN_ID
+
+    # start checkout with a yearly plan.
+    res = authed_client.post(
+        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=2, planPeriod="year")
+    )
+    assert res.status_code == 200
+    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
+    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
+    _args, kwargs = checkout_session_create.call_args
+    assert kwargs["subscription_data"]["items"][0]["quantity"] == 2
     assert (
-        kwargs["subscription_data"]["items"][0]["plan"] == user_account.stripe_plan_id
+        kwargs["subscription_data"]["items"][0]["plan"]
+        == settings.STRIPE_ANNUAL_PLAN_ID
     )
 
 
@@ -726,7 +938,9 @@ def create_pk() -> int:
     return next(PRIMARY_KEYS)
 
 
-def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
+def create_org_account(
+    user: User, role: Literal["member", "admin"] = "member"
+) -> Tuple[Account, AccountMembership]:
     account_id = create_pk()
     account = Account.objects.create(
         github_installation_id=create_pk(),
@@ -735,9 +949,7 @@ def create_org_account(user: User) -> Tuple[Account, AccountMembership]:
         github_account_type="Organization",
         stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
     )
-    membership = AccountMembership.objects.create(
-        account=account, user=user, role="member"
-    )
+    membership = AccountMembership.objects.create(account=account, user=user, role=role)
     return (account, membership)
 
 
@@ -757,6 +969,7 @@ def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
             payment_method_card_exp_year="32",
             payment_method_card_last4="4242",
             plan_amount=499,
+            plan_interval="month",
             subscription_quantity=3,
             subscription_start_date=1585781784,
             subscription_current_period_start=1650581784,
@@ -1213,7 +1426,9 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             object="subscription",
             id="sub_Gu1xedsfo1",
             default_payment_method="pm_47xubd3i",
-            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            plan=dict(
+                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1
+            ),
             quantity=10,
             start_date=1443556775,
             current_period_start=1653173784,
@@ -1343,6 +1558,11 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     )
     assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
     assert (
+        stripe_customer_info_updated.plan_interval_count
+        == fake_subscription.plan.interval_count
+    )
+    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
+    assert (
         stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
     )
     assert (
@@ -1399,7 +1619,9 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             object="subscription",
             id="sub_Gu1xedsfo1",
             default_payment_method="pm_47xubd3i",
-            plan=dict(id="plan_Gz345gdsdf", amount=499),
+            plan=dict(
+                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1,
+            ),
             quantity=10,
             start_date=1443556775,
             current_period_start=1653173784,
@@ -1572,6 +1794,11 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
     assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
     assert (
+        stripe_customer_info_updated.plan_interval_count
+        == fake_subscription.plan.interval_count
+    )
+    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
+    assert (
         stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
     )
     assert (
@@ -1629,7 +1856,13 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
             current_period_end=1690982549,
             current_period_start=1688304149,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(id="plan_G2df31A4G5JzQ", object="plan", amount=499,),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ",
+                object="plan",
+                amount=499,
+                interval="month",
+                interval_count=1,
+            ),
             quantity=4,
             default_payment_method="pm_22dldxf3",
         ),

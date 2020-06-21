@@ -31,6 +31,10 @@ module.exports = {
     "import/no-duplicates": "error",
     "no-unneeded-ternary": ["error", { defaultAssignment: false }],
     "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/no-for-in-array": "error",
+    "@typescript-eslint/prefer-as-const": "error",
+    "@typescript-eslint/prefer-reduce-type-parameter": "error",
     "init-declarations": ["error", "always"],
     "react/jsx-fragments": "error",
     "no-lonely-if": "error",
@@ -43,5 +47,6 @@ module.exports = {
     ],
     "react/jsx-key": ["error", { checkFragmentShorthand: true }],
     "react/no-danger": "error",
+    eqeqeq: ["error", "smart"],
   },
 }
