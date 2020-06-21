@@ -97,6 +97,9 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             customerName=stripe_customer_info.customer_name,
             customerAddress=customer_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
+            viewerIsOrgOwner=request.user.is_admin(account),
+            viewerCanModify=request.user.can_edit_subscription(account),
+            limitBillingAccessToOwners=account.limit_billing_access_to_owners
         )
 
     subscription_quantity = (

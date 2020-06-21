@@ -54,6 +54,8 @@ export interface IUsageBillingPageApiResponse {
       readonly state?: string
     }
     readonly cardInfo: string
+    readonly viewerCanModify: boolean
+    readonly limitBillingAccessToOwners: boolean
   } | null
   readonly trial: {
     readonly startDate: string
