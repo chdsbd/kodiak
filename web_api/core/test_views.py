@@ -347,6 +347,39 @@ def test_usage_billing_subscription_started(
         state=stripe_customer_information.customer_address_state,
     )
 
+@pytest.mark.django_db
+def test_usage_limit_billing_access_to_owners_member(
+    authed_client: Client, user: User, other_user: User, mocker: Any
+) -> None:
+    account, membership = create_org_account(user=user, role="member")
+    stripe_customer_information = create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"] is not None
+    assert res.json()["subscription"]['viewerIsOrgOwner'] is False
+    assert res.json()["subscription"]['viewerCanModify'] is True
+    assert res.json()["subscription"]['limitBillingAccessToOwners'] is False
+
+    account.limit_billing_access_to_owners = True
+    account.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"] is not None
+    assert res.json()["subscription"]['viewerIsOrgOwner'] is False
+    assert res.json()["subscription"]['viewerCanModify'] is False
+    assert res.json()["subscription"]['limitBillingAccessToOwners'] is True
+
+    membership.role = "admin"
+    membership.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscription"] is not None
+    assert res.json()["subscription"]['viewerIsOrgOwner'] is True
+    assert res.json()["subscription"]['viewerCanModify'] is True
+    assert res.json()["subscription"]['limitBillingAccessToOwners'] is True
+
+
+
 
 @pytest.mark.django_db
 def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None:
