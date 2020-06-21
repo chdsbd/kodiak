@@ -93,7 +93,9 @@ class User(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
 
     def can_edit_subscription(self, account: Account) -> bool:
-        return not account.limit_billing_access_to_owners or self.is_admin(account=account)
+        return not account.limit_billing_access_to_owners or self.is_admin(
+            account=account
+        )
 
     def is_admin(self, account: Account) -> bool:
         return cast(
