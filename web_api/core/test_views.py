@@ -1050,9 +1050,7 @@ def test_update_stripe_customer_info_permission(
     authed_client: Client, user: User, patch_stripe_customer_modify: object
 ) -> None:
     account, membership = create_org_account(user, role="member")
-    create_stripe_customer_info(
-        customer_id=account.stripe_customer_id
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
 
     assert account.limit_billing_access_to_owners is False
     payload = dict(limitBillingAccessToOwners=True)
