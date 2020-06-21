@@ -123,7 +123,10 @@ export const Current: World = {
       (
         await authRoute.post<api.IStartCheckoutResponse>(
           `/v1/t/${args.teamId}/start_checkout`,
-          jsonToFormData({ seatCount: args.seatCount }),
+          jsonToFormData({
+            seatCount: args.seatCount,
+            planPeriod: args.planPeriod,
+          }),
         )
       ).data,
     modifyBilling: async (args: api.IModifyBillingArgs) =>
@@ -138,6 +141,7 @@ export const Current: World = {
           `/v1/t/${args.teamId}/fetch_proration`,
           jsonToFormData({
             subscriptionQuantity: args.subscriptionQuantity,
+            subscriptionPeriod: args.subscriptionPeriod,
           }),
         )
       ).data,
