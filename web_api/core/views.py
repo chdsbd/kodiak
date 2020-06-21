@@ -101,6 +101,9 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             customerName=stripe_customer_info.customer_name,
             customerAddress=customer_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
+            viewerIsOrgOwner=request.user.is_admin(account),
+            viewerCanModify=request.user.can_edit_subscription(account),
+            limitBillingAccessToOwners=account.limit_billing_access_to_owners,
         )
 
     subscription_quantity = (
@@ -225,8 +228,7 @@ class UpdateSubscriptionModel(pydantic.BaseModel):
 def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     payload = UpdateSubscriptionModel.parse_obj(request.POST.dict())
     account = get_account_or_404(team_id=team_id, user=request.user)
-    # restrict updates to admins
-    if not request.user.can_edit(account):
+    if not request.user.can_edit_subscription(account):
         raise PermissionDenied
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info is None:
@@ -288,6 +290,7 @@ class UpdateBillingInfoModel(pydantic.BaseModel):
     email: Optional[pydantic.EmailStr] = None
     name: Optional[str] = None
     address: Optional[AddressModel] = None
+    limitBillingAccessToOwners: Optional[bool] = None
 
 
 @auth.login_required
@@ -297,22 +300,35 @@ def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpRespo
     """
     account = get_account_or_404(team_id=team_id, user=request.user)
     payload = UpdateBillingInfoModel.parse_raw(request.body)
-    account.update_billing_info(
-        email=payload.email,
-        name=payload.name,
-        address=(
-            Address(
-                line1=payload.address.line1,
-                city=payload.address.city,
-                country=payload.address.country,
-                line2=payload.address.line2,
-                postal_code=payload.address.postalCode,
-                state=payload.address.state,
-            )
-            if payload.address is not None
-            else None
-        ),
-    )
+    if payload.limitBillingAccessToOwners is not None:
+        if not request.user.is_admin(account):
+            raise PermissionDenied
+        account.limit_billing_access_to_owners = payload.limitBillingAccessToOwners
+        account.save()
+
+    if (
+        payload.email is not None
+        or payload.name is not None
+        or payload.address is not None
+    ):
+        if not request.user.can_edit_subscription(account):
+            raise PermissionDenied
+        account.update_billing_info(
+            email=payload.email,
+            name=payload.name,
+            address=(
+                Address(
+                    line1=payload.address.line1,
+                    city=payload.address.city,
+                    country=payload.address.country,
+                    line2=payload.address.line2,
+                    postal_code=payload.address.postalCode,
+                    state=payload.address.state,
+                )
+                if payload.address is not None
+                else None
+            ),
+        )
     return HttpResponse(status=204)
 
 
@@ -380,6 +396,8 @@ def redirect_to_stripe_self_serve_portal(
 @auth.login_required
 def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
+    if not request.user.can_edit_subscription(account):
+        raise PermissionDenied
     session = stripe.checkout.Session.create(
         client_reference_id=account.id,
         customer=account.stripe_customer_id or None,
@@ -399,7 +417,7 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
 @auth.login_required
 def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
-    if not request.user.can_edit(account):
+    if not request.user.can_edit_subscription(account):
         raise PermissionDenied
 
     customer_info = account.stripe_customer_info()

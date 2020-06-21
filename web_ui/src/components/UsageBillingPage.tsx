@@ -76,6 +76,9 @@ interface IUsageBillingData {
       readonly state?: string
     }
     readonly cardInfo: string
+    readonly viewerIsOrgOwner: boolean
+    readonly viewerCanModify: boolean
+    readonly limitBillingAccessToOwners: boolean
   } | null
   readonly trial: {
     readonly startDate: string
@@ -853,15 +856,30 @@ function SubscriptionUpsellPrompt({
   )
 }
 
-function KodiakSaveButton({ state }: { state: WebData<unknown> }) {
+function KodiakSaveButton({
+  state,
+  disabled,
+}: {
+  state: WebData<unknown>
+  disabled?: boolean
+}) {
   const loading = state.status === "loading"
   return (
     <>
-      <Button variant="dark" size="sm" disabled={loading} type="submit">
+      <Button
+        variant="dark"
+        size="sm"
+        disabled={loading || disabled}
+        type="submit">
         {loading ? "Loading..." : "Save"}
       </Button>
       {state.status === "failure" && (
         <Form.Text className="text-danger">Save failed</Form.Text>
+      )}
+      {disabled && (
+        <Form.Text className="text-muted">
+          You must be an organization owner to modify this field.
+        </Form.Text>
       )}
     </>
   )
@@ -870,9 +888,11 @@ function KodiakSaveButton({ state }: { state: WebData<unknown> }) {
 function BillingEmailForm({
   defaultValue,
   className,
+  disabled,
 }: {
   readonly defaultValue: string
   readonly className?: string
+  readonly disabled: boolean
 }) {
   const [billingEmail, setBillingEmail] = React.useState(defaultValue)
   const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
@@ -880,6 +900,9 @@ function BillingEmailForm({
   )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (disabled) {
+      return
+    }
     updateStripeCustomerInfo({ email: billingEmail })
   }
   return (
@@ -892,6 +915,7 @@ function BillingEmailForm({
               type="email"
               required
               value={billingEmail}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setBillingEmail(e.target.value)
               }
@@ -900,7 +924,7 @@ function BillingEmailForm({
               <b>Required</b>. Address to send billing receipts.
             </Form.Text>
           </Form.Group>
-          <KodiakSaveButton state={apiState} />
+          <KodiakSaveButton state={apiState} disabled={disabled} />
         </Form>
       </Card.Body>
     </Card>
@@ -910,9 +934,11 @@ function BillingEmailForm({
 function CompanyNameForm({
   defaultValue,
   className,
+  disabled,
 }: {
   readonly defaultValue: string
   readonly className?: string
+  readonly disabled: boolean
 }) {
   const [companyName, setCompanyName] = React.useState(defaultValue)
   const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
@@ -920,6 +946,9 @@ function CompanyNameForm({
   )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (disabled) {
+      return
+    }
     updateStripeCustomerInfo({ name: companyName })
   }
   return (
@@ -931,6 +960,7 @@ function CompanyNameForm({
             <Form.Control
               type="text"
               value={companyName}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setCompanyName(e.target.value)
               }
@@ -939,7 +969,7 @@ function CompanyNameForm({
               Added to billing receipts if provided.
             </Form.Text>
           </Form.Group>
-          <KodiakSaveButton state={apiState} />
+          <KodiakSaveButton state={apiState} disabled={disabled} />
         </Form>
       </Card.Body>
     </Card>
@@ -948,6 +978,7 @@ function CompanyNameForm({
 
 function PostalAddressForm({
   defaultValue = {},
+  disabled,
   className,
 }: {
   readonly defaultValue: {
@@ -958,6 +989,7 @@ function PostalAddressForm({
     readonly postalCode?: string
     readonly country?: string
   }
+  readonly disabled?: boolean
   readonly className?: string
 }) {
   const [line1, setLine1] = React.useState(defaultValue.line1 ?? "")
@@ -974,6 +1006,9 @@ function PostalAddressForm({
   )
   function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (disabled) {
+      return
+    }
     updateStripeCustomerInfo({
       address: { line1, line2, city, state, postalCode, country },
     })
@@ -988,6 +1023,7 @@ function PostalAddressForm({
               type="text"
               placeholder="Address line 1"
               value={line1}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setLine1(e.target.value)
               }
@@ -998,6 +1034,7 @@ function PostalAddressForm({
               type="text"
               placeholder="Address line 2"
               value={line2}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setLine2(e.target.value)
               }
@@ -1008,6 +1045,7 @@ function PostalAddressForm({
               type="text"
               placeholder="City"
               value={city}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setCity(e.target.value)
               }
@@ -1020,6 +1058,7 @@ function PostalAddressForm({
                   type="text"
                   placeholder="State / Province / Region"
                   value={state}
+                  disabled={disabled}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setState(e.target.value)
                   }
@@ -1030,6 +1069,7 @@ function PostalAddressForm({
                   type="text"
                   placeholder="ZIP / Postal Code"
                   value={postalCode}
+                  disabled={disabled}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setPostalCode(e.target.value)
                   }
@@ -1042,6 +1082,7 @@ function PostalAddressForm({
               type="text"
               placeholder="Country"
               value={country}
+              disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setCountry(e.target.value)
               }
@@ -1050,7 +1091,63 @@ function PostalAddressForm({
               Added to billing receipts if provided.
             </Form.Text>
           </Form.Group>
-          <KodiakSaveButton state={apiState} />
+          <KodiakSaveButton state={apiState} disabled={disabled} />
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
+function LimitBillingAccessForm({
+  defaultValue = false,
+  className,
+  canEdit,
+}: {
+  readonly defaultValue: boolean
+  readonly className?: string
+  readonly canEdit?: boolean
+}) {
+  const [
+    limitBillingAccessToOwners,
+    setLimitBillingAccessToOwners,
+  ] = React.useState(defaultValue)
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
+  const formDisabled = !canEdit
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!canEdit) {
+      return
+    }
+    updateStripeCustomerInfo({
+      limitBillingAccessToOwners,
+    })
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Billing Permissions</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Check
+              label="Limit billing modifications to GitHub Organization Owners"
+              id="limit-billing-access-to-owners"
+              disabled={formDisabled}
+              checked={limitBillingAccessToOwners}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setLimitBillingAccessToOwners(e.target.checked)
+              }
+            />
+            <Form.Text className="text-muted">
+              When enabled, only{" "}
+              <a href="https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/permission-levels-for-an-organization#permission-levels-for-an-organization">
+                GitHub Organization Owners
+              </a>{" "}
+              can modify the subscription or update billing information.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} disabled={formDisabled} />
         </Form>
       </Card.Body>
     </Card>
@@ -1082,6 +1179,9 @@ function Subcription({
       readonly postalCode?: string
       readonly state?: string
     }
+    readonly viewerIsOrgOwner: boolean
+    readonly viewerCanModify: boolean
+    readonly limitBillingAccessToOwners: boolean
   }
   readonly modifySubscription: () => void
   readonly teamId: string
@@ -1139,9 +1239,18 @@ function Subcription({
                 </a>
               </p>
             </Form.Group>
-            <Button variant="dark" size="sm" onClick={modifySubscription}>
+            <Button
+              variant="dark"
+              size="sm"
+              onClick={modifySubscription}
+              disabled={!subscription?.viewerCanModify}>
               Modify Subscription
             </Button>
+            {!subscription?.viewerCanModify && (
+              <Form.Text className="text-muted">
+                You must be an organization owner to modify the subscription.
+              </Form.Text>
+            )}
             <p className="small mb-0 mt-2">
               Send us an email at{" "}
               <a href="mailto:support@kodiakhq.com">support@kodiakhq.com</a> if
@@ -1159,16 +1268,24 @@ function Subcription({
         <BillingEmailForm
           className="mb-4"
           defaultValue={subscription.billingEmail}
+          disabled={!subscription.viewerCanModify}
         />
 
         <CompanyNameForm
           className="mb-4"
           defaultValue={subscription.customerName ?? ""}
+          disabled={!subscription.viewerCanModify}
         />
 
         <PostalAddressForm
           className="mb-4"
           defaultValue={subscription.customerAddress ?? {}}
+          disabled={!subscription.viewerCanModify}
+        />
+        <LimitBillingAccessForm
+          className="mb-4"
+          canEdit={subscription.viewerIsOrgOwner}
+          defaultValue={subscription.limitBillingAccessToOwners ?? false}
         />
       </Col>
     </Row>
