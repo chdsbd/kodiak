@@ -347,38 +347,39 @@ def test_usage_billing_subscription_started(
         state=stripe_customer_information.customer_address_state,
     )
 
+
 @pytest.mark.django_db
 def test_usage_limit_billing_access_to_owners_member(
     authed_client: Client, user: User, other_user: User, mocker: Any
 ) -> None:
     account, membership = create_org_account(user=user, role="member")
-    stripe_customer_information = create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    stripe_customer_information = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
+    )
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
-    assert res.json()["subscription"]['viewerIsOrgOwner'] is False
-    assert res.json()["subscription"]['viewerCanModify'] is True
-    assert res.json()["subscription"]['limitBillingAccessToOwners'] is False
+    assert res.json()["subscription"]["viewerIsOrgOwner"] is False
+    assert res.json()["subscription"]["viewerCanModify"] is True
+    assert res.json()["subscription"]["limitBillingAccessToOwners"] is False
 
     account.limit_billing_access_to_owners = True
     account.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
-    assert res.json()["subscription"]['viewerIsOrgOwner'] is False
-    assert res.json()["subscription"]['viewerCanModify'] is False
-    assert res.json()["subscription"]['limitBillingAccessToOwners'] is True
+    assert res.json()["subscription"]["viewerIsOrgOwner"] is False
+    assert res.json()["subscription"]["viewerCanModify"] is False
+    assert res.json()["subscription"]["limitBillingAccessToOwners"] is True
 
     membership.role = "admin"
     membership.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"] is not None
-    assert res.json()["subscription"]['viewerIsOrgOwner'] is True
-    assert res.json()["subscription"]['viewerCanModify'] is True
-    assert res.json()["subscription"]['limitBillingAccessToOwners'] is True
-
-
+    assert res.json()["subscription"]["viewerIsOrgOwner"] is True
+    assert res.json()["subscription"]["viewerCanModify"] is True
+    assert res.json()["subscription"]["limitBillingAccessToOwners"] is True
 
 
 @pytest.mark.django_db
@@ -952,14 +953,7 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     """
     Start a new checkout session in "setup" mode to update the payment information.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
-    )
-    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    account, _membership = create_org_account(user=user, role="member",)
 
     class FakeCheckoutSession:
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
@@ -967,14 +961,19 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     mocker.patch(
         "core.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
     )
-    res = authed_client.post(f"/v1/t/{user_account.id}/modify_payment_details")
+    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
 
+
 @pytest.mark.django_db
-def test_modify_payment_details_limit_billing_access_to_owners(authed_client: Client, user: User, mocker: Any) -> None:
-    account, membership = create_org_account(user=user,role="member", limit_billing_access_to_owners=True)
+def test_modify_payment_details_limit_billing_access_to_owners(
+    authed_client: Client, user: User, mocker: Any
+) -> None:
+    account, membership = create_org_account(
+        user=user, role="member", limit_billing_access_to_owners=True
+    )
 
     class FakeCheckoutSession:
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
@@ -985,13 +984,12 @@ def test_modify_payment_details_limit_billing_access_to_owners(authed_client: Cl
     res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
     assert res.status_code == 403
 
-    membership.role="admin"
+    membership.role = "admin"
     membership.save()
     res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
 
 
 PRIMARY_KEYS = iter(range(1000, 100000))
@@ -1048,8 +1046,11 @@ def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
 def patch_stripe_customer_modify(mocker: Any) -> None:
     mocker.patch("core.models.stripe.Customer.modify", spec=stripe.Customer.modify)
 
+
 @pytest.mark.django_db
-def test_update_stripe_customer_info_permission(authed_client: Client,user: User,patch_stripe_customer_modify: object) -> None:
+def test_update_stripe_customer_info_permission(
+    authed_client: Client, user: User, patch_stripe_customer_modify: object
+) -> None:
     account, membership = create_org_account(user, role="member")
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
@@ -1077,8 +1078,11 @@ def test_update_stripe_customer_info_permission(authed_client: Client,user: User
     account.refresh_from_db()
     assert account.limit_billing_access_to_owners is True
 
+
 @pytest.mark.django_db
-def test_update_stripe_customer_info_limit_billing_access_to_owners(authed_client: Client,user: User,patch_stripe_customer_modify: object) -> None:
+def test_update_stripe_customer_info_limit_billing_access_to_owners(
+    authed_client: Client, user: User, patch_stripe_customer_modify: object
+) -> None:
     account, membership = create_org_account(user, role="member")
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
@@ -1087,9 +1091,9 @@ def test_update_stripe_customer_info_limit_billing_access_to_owners(authed_clien
     original_email = "invoices@acme-inc.corp"
     stripe_customer_info.customer_email = original_email
     stripe_customer_info.save()
-    account.limit_billing_access_to_owners =True
+    account.limit_billing_access_to_owners = True
     account.save()
-    
+
     payload = dict(email="billing@kodiakhq.com")
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
@@ -1111,7 +1115,8 @@ def test_update_stripe_customer_info_limit_billing_access_to_owners(authed_clien
     assert res.status_code == 204
     account.refresh_from_db()
     stripe_customer_info.refresh_from_db()
-    assert stripe_customer_info.customer_email == payload['email']
+    assert stripe_customer_info.customer_email == payload["email"]
+
 
 @pytest.mark.django_db
 def test_update_billing_email(
