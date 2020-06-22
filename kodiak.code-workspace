@@ -9,6 +9,9 @@
     {
       "path": "web_api"
     },
+     {
+      "path": "docs"
+    },
     {
       "path": "infrastructure"
     }

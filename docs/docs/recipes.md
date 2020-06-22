@@ -65,10 +65,10 @@ auto_approve_usernames = ["dependabot"]
 # if using `update.always`, add dependabot to the blacklist to allow
 # dependabot to update and close stale dependency upgrades.
 [update]
-blacklist_usernames = ["dependabot"]
+ignored_usernames = ["dependabot"]
 ```
 
-If you use Kodiak with [`update.always`](/docs/config-reference#updatealways) enabled, add Dependabot to the [`update.blacklist_usernames`](/docs/config-reference#updateblacklist_usernames) list. If a PR by Dependabot is updated by another user, Dependabot will not update or close the PR when stale. This setting prevents Kodiak from breaking Dependabot PRs.
+If you use Kodiak with [`update.always`](/docs/config-reference#updatealways) enabled, add Dependabot to the [`update.ignored_usernames`](/docs/config-reference#updateignored_usernames) list. If a PR by Dependabot is updated by another user, Dependabot will not update or close the PR when stale. This setting prevents Kodiak from breaking Dependabot PRs.
 
 ## The Favourite
 
