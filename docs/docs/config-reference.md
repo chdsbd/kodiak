@@ -42,6 +42,8 @@ Require that the automerge label (`merge.automerge_label`) be set for Kodiak to 
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
 
+<span id="mergeblacklist_title_regex"/> <!-- handle old links -->
+
 ### `merge.blocking_title_regex`
 
 - **type:** `string`
@@ -61,6 +63,8 @@ merge.blocking_title_regex = ".*DONT\s*MERGE.*"
 ```
 
 > **NOTE:** `merge.blocking_title_regex` is a new name for `merge.blacklist_title_regex`. Both options behave identically.
+
+<span id="mergeblacklist_labels"/> <!-- handle old links -->
 
 ### `merge.blocking_labels`
 
@@ -304,6 +308,8 @@ When enabled, Kodiak will only update PRs that have an automerge label (configur
 When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
+
+<span id="updateblacklist_usernames"/> <!-- handle old links -->
 
 ### `update.ignored_usernames`
 
