@@ -55,6 +55,9 @@ export interface IUsageBillingPageApiResponse {
       readonly state?: string
     }
     readonly cardInfo: string
+    readonly viewerIsOrgOwner: boolean
+    readonly viewerCanModify: boolean
+    readonly limitBillingAccessToOwners: boolean
   } | null
   readonly trial: {
     readonly startDate: string
@@ -204,6 +207,7 @@ export type UpdateStripeCustomerInfoArgs = {
     readonly postalCode?: string
     readonly state?: string
   }
+  readonly limitBillingAccessToOwners?: boolean
 }
 
 export interface Api {
