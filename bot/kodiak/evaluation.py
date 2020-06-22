@@ -11,7 +11,15 @@ import toml
 from typing_extensions import Protocol
 
 from kodiak import app_config, config, messages
-from kodiak.config import V1, BodyText, MergeBodyStyle, MergeMethod, MergeTitleStyle
+from kodiak.config import (
+    DEFAULT_TITLE_REGEX,
+    UNSET_TITLE_REGEX,
+    V1,
+    BodyText,
+    MergeBodyStyle,
+    MergeMethod,
+    MergeTitleStyle,
+)
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
@@ -319,6 +327,35 @@ def get_paywall_status_for_blocker(
     return None
 
 
+@dataclass
+class BlockingTitleRegex:
+    pattern: str
+    config_key: str
+
+
+def get_blocking_title_regex(config: config.V1) -> BlockingTitleRegex:
+    """
+    merge.blocking_title_regex takes priority over merge.blacklist_title_regex.
+
+    If neither options are set we return the default regex.
+    """
+    # config.merge.blocking_title_regex takes priority.
+    if config.merge.blocking_title_regex != UNSET_TITLE_REGEX:
+        return BlockingTitleRegex(
+            pattern=config.merge.blocking_title_regex,
+            config_key="merge.blocking_title_regex",
+        )
+    if config.merge.blacklist_title_regex != UNSET_TITLE_REGEX:
+        return BlockingTitleRegex(
+            pattern=config.merge.blacklist_title_regex,
+            config_key="merge.blacklist_title_regex",
+        )
+    # user hasn't set either options so we return the default.
+    return BlockingTitleRegex(
+        pattern=DEFAULT_TITLE_REGEX, config_key="merge.blocking_title_regex"
+    )
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -500,6 +537,11 @@ async def mergeable(
                 f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
             )
             return
+        if pull_request.author.login in config.update.ignored_usernames:
+            await set_status(
+                f"🛑 not auto updating for update.ignored_usernames: {config.update.ignored_usernames!r}"
+            )
+            return
         await set_status(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
@@ -538,21 +580,28 @@ async def mergeable(
         return
 
     blacklist_labels = set(config.merge.blacklist_labels) & set(pull_request.labels)
+    blocking_labels = set(config.merge.blocking_labels) & set(pull_request.labels)
     if blacklist_labels:
         await block_merge(
             api, pull_request, f"has blacklist_labels: {blacklist_labels!r}"
         )
         return
+    if blocking_labels:
+        await block_merge(
+            api, pull_request, f"has merge.blocking_labels: {blocking_labels!r}"
+        )
+        return
+
+    title_blocker = get_blocking_title_regex(config)
 
     if (
-        config.merge.blacklist_title_regex
-        and re.search(config.merge.blacklist_title_regex, pull_request.title)
-        is not None
+        title_blocker.pattern
+        and re.search(title_blocker.pattern, pull_request.title) is not None
     ):
         await block_merge(
             api,
             pull_request,
-            f"title matches blacklist_title_regex: {config.merge.blacklist_title_regex!r}",
+            f"title matches {title_blocker.config_key}: {title_blocker.pattern!r}",
         )
         return
 
