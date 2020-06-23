@@ -42,36 +42,46 @@ Require that the automerge label (`merge.automerge_label`) be set for Kodiak to 
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
 
-### `merge.blacklist_title_regex`
+<span id="mergeblacklist_title_regex"/> <!-- handle old links -->
+
+### `merge.blocking_title_regex`
 
 - **type:** `string`
 - **default:** `"^WIP:.*"`
 - **options:** Regex pattern or `""`
+- **alias:** `merge.blacklist_title_regex`
 
 If a PR's title matches this regex, Kodiak will not merge the PR. This is useful
 to prevent merging work-in-progress PRs.
 
-Setting `merge.blacklist_title_regex = ""` disables this option.
+Setting `merge.blocking_title_regex = ""` disables this option.
 
 #### example
 
 ```
-merge.blacklist_title_regex = ".*DONT\s*MERGE.*"
+merge.blocking_title_regex = ".*DONT\s*MERGE.*"
 ```
 
-### `merge.blacklist_labels`
+> **NOTE:** `merge.blocking_title_regex` is a new name for `merge.blacklist_title_regex`. Both options behave identically.
+
+<span id="mergeblacklist_labels"/> <!-- handle old links -->
+
+### `merge.blocking_labels`
 
 - **type:** `string[]`
 - **default:** `[]`
 - **options:** List of label names
+- **alias:** `merge.blacklist_labels`
 
 Kodiak will not merge a PR with any of these labels.
 
 #### example
 
 ```
-merge.blacklist_labels = ["wip"]
+merge.blocking_labels = ["wip"]
 ```
+
+> **NOTE:** `merge.blocking_labels` is a new name for `merge.blacklist_labels`. Both options behave identically.
 
 ### `merge.method`
 
@@ -299,12 +309,15 @@ When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 
-### `update.blacklist_usernames`
+<span id="updateblacklist_usernames"/> <!-- handle old links -->
+
+### `update.ignored_usernames`
 
 - **type:** `string[]`
 - **default:** `[]`
+- **alias:** `update.blacklist_usernames`
 
-When `update.always` is enabled, pull requests opened by a user with a username in the `update.blacklist_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+When `update.always` is enabled, pull requests opened by a user with a username in the `update.ignored_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
 
 If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
 
@@ -313,8 +326,10 @@ This setting has no effect when `update.always` is disabled.
 #### example
 
 ```
-update.blacklist_usernames = ["bernard-lowe", "dependabot-preview"]
+update.ignored_usernames = ["bernard-lowe", "dependabot-preview"]
 ```
+
+> **NOTE:** `update.ignored_usernames` is a new name for `update.blacklist_usernames`. Both options behave identically.
 
 ### `approve.auto_approve_usernames`
 
@@ -372,11 +387,11 @@ require_automerge_label = true
 # If a PR's title matches this regex, Kodiak will not merge the PR. This is
 # useful to prevent merging work-in-progress PRs.
 #
-# Setting `merge.blacklist_title_regex = ""` disables this option.
-blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+# Setting `merge.blocking_title_regex = ""` disables this option.
+blocking_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
 # Kodiak will not merge a PR with any of these labels.
-blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
+blocking_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 
 # Choose merge method for Kodiak to use.
 #
