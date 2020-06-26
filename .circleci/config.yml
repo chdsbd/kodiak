@@ -206,6 +206,40 @@ jobs:
           working_directory: web_api
           command: ./s/lint
 
+  web_api_squawk:
+    docker:
+      - image: python:3.7
+      - image: circleci/postgres:12-ram
+        environment:
+          POSTGRES_DB: web_api_test
+          POSTGRES_PASSWORD: my_test_postgres_password
+    environment:
+      DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
+    steps:
+      - checkout
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: install dependencies
+          working_directory: web_api
+          command: |
+            # Use our new PATH so we can call poetry from bash
+            echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
+            source $BASH_ENV
+            command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry install
+      - save_cache:
+          paths:
+            - ./web_api/.mypy_cache
+            - /root/.cache/
+          key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
+      - run:
+          name: run squawk
+          working_directory: web_api
+          command: ./s/squawk.py
+
   # https://circleci.com/docs/2.0/building-docker-images/
   web_api_build_container:
     docker:
@@ -313,4 +347,5 @@ workflows:
     jobs:
       - web_api_test
       - web_api_lint
+      - web_api_squawk
       - web_api_build_container
