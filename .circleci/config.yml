@@ -328,29 +328,29 @@ jobs:
 
 workflows:
   version: 2
-  # all:
-  #   jobs:
-  #     - shellcheck
-  # bot:
-  #   jobs:
-  #     - bot_test
-  #     - bot_lint
-  #     - bot_build_container
-  # docs:
-  #   jobs:
-  #     - docs_typecheck
-  #     - docs_fmt
-  #     - docs_build
+  all:
+    jobs:
+      - shellcheck
+  bot:
+    jobs:
+      - bot_test
+      - bot_lint
+      - bot_build_container
+  docs:
+    jobs:
+      - docs_typecheck
+      - docs_fmt
+      - docs_build
 
-  # web_ui:
-  #   jobs:
-  #     - web_ui_lint
-  #     - web_ui_test
-  #     - web_ui_build_container
+  web_ui:
+    jobs:
+      - web_ui_lint
+      - web_ui_test
+      - web_ui_build_container
 
   web_api:
     jobs:
-      # - web_api_test
-      # - web_api_lint
+      - web_api_test
+      - web_api_lint
       - web_api_squawk
-      # - web_api_build_container
+      - web_api_build_container
