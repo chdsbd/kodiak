@@ -80,6 +80,8 @@ class User(BaseModel):
         max_length=255, help_text="OAuth token for the GitHub user."
     )
 
+    text = models.TextField(default="")
+
     class Meta:
         db_table = "user"
 
