@@ -68,6 +68,16 @@ def main() -> None:
     # get sqlmigrate to behave
     os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "1")
     os.environ.setdefault("DEBUG", "1")
+    os.environ.setdefault("KODIAK_API_GITHUB_CLIENT_ID", "Iv1.111FAKECLIENTID111")
+    os.environ.setdefault("KODIAK_API_GITHUB_CLIENT_SECRET", "888INVALIDSECRET8888")
+    os.environ.setdefault("KODIAK_WEB_APP_URL", "https://app.kodiakhq.com/")
+    os.environ.setdefault("STRIPE_PLAN_ID", "plan_somePlanId")
+    os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "price_annualPlanId")
+    os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_someWebhookSecret")
+    os.environ.setdefault("STRIPE_SECRET_KEY", "sk_someStripeSecretKey")
+    os.environ.setdefault("STRIPE_PUBLISHABLE_API_KEY", "pk_test_someExampleStripeApiKey")
+    os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
+    os.environ.setdefault("DEBUG", "1")
 
     output_files = []
 
