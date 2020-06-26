@@ -70,15 +70,19 @@ def main() -> None:
 
     output_files = []
 
-    for migration_id, filename in changed_migrations_ids:
-        log.info("getting sql for %s", filename)
-        output_sql_file = (Path(".") / filename).with_suffix(".sql").open(mode="w")
+    for migration_id, path in changed_migrations_ids:
+        log.info("getting sql for %s", path)
+        output_sql_file = (
+            (Path(MIGRATIONS_DIRECTORY) / Path(path).name)
+            .with_suffix(".sql")
+            .open(mode="w")
+        )
         subprocess.run(
-            ["poetry", "run", "manage.py", "sqlmigrate", APP_LABEL, migration_id],
+            ["poetry", "run", "./manage.py", "sqlmigrate", APP_LABEL, migration_id],
             stdout=output_sql_file,
             check=True,
         )
-        log.info("running squawk for %s", filename)
+        log.info("running squawk for %s", path)
         output_files.append(output_sql_file.name)
 
     log.info("sql files found: %s", output_files)
