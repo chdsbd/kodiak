@@ -236,8 +236,10 @@ jobs:
             - /root/.cache/
           key: web_api-v1-{{ checksum "web_api/poetry.lock" }}
       - run:
-        name: "install nodejs"
-        command: apt-get install -y nodejs
+          name: "install nodejs"
+          command: |
+            curl -sL https://deb.nodesource.com/setup_14.x | bash -
+            apt-get install -y nodejs
       - run:
           name: run squawk
           working_directory: web_api
