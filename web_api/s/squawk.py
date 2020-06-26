@@ -75,7 +75,10 @@ def main() -> None:
     os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "price_annualPlanId")
     os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_someWebhookSecret")
     os.environ.setdefault("STRIPE_SECRET_KEY", "sk_someStripeSecretKey")
-    os.environ.setdefault("STRIPE_PUBLISHABLE_API_KEY", "pk_test_someExampleStripeApiKey")
+    os.environ.setdefault(
+        "STRIPE_PUBLISHABLE_API_KEY", "pk_test_someExampleStripeApiKey"
+    )
+    os.environ.setdefault("DATABASE_URL", "redis://localhost:6379")
     os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
     os.environ.setdefault("DEBUG", "1")
 
@@ -114,13 +117,11 @@ def main() -> None:
     os.environ.setdefault("SQUAWK_GITHUB_REPO_NAME", pr_info.repo)
     os.environ.setdefault("SQUAWK_GITHUB_REPO_OWNER", pr_info.owner)
 
-    log.info(
-        subprocess.run(
-            ["squawk", "upload-to-github", *output_files],
-            capture_output=True,
-            check=True,
-        )
+    res = subprocess.run(
+        ["squawk", "upload-to-github", *output_files], capture_output=True,
     )
+    log.info(res)
+    res.check_returncode()
 
 
 if __name__ == "__main__":
