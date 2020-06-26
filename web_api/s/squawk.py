@@ -67,6 +67,7 @@ def main() -> None:
 
     # get sqlmigrate to behave
     os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "1")
+    os.environ.setdefault("DEBUG", "1")
 
     output_files = []
 
