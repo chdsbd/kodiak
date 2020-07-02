@@ -42,9 +42,22 @@ export interface IUsageBillingPageApiResponse {
       readonly totalCents: number
       readonly perSeatCents: number
       readonly currency: string
+      readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
+    readonly customerName?: string
+    readonly customerAddress?: {
+      readonly line1?: string
+      readonly city?: string
+      readonly country?: string
+      readonly line2?: string
+      readonly postalCode?: string
+      readonly state?: string
+    }
     readonly cardInfo: string
+    readonly viewerIsOrgOwner: boolean
+    readonly viewerCanModify: boolean
+    readonly limitBillingAccessToOwners: boolean
   } | null
   readonly trial: {
     readonly startDate: string
@@ -128,6 +141,7 @@ export type IUpdateSubscriptionArgs = {
   readonly teamId: string
   readonly seats: number
   readonly prorationTimestamp: number
+  readonly planPeriod: "month" | "year"
 }
 export interface ICancelSubscriptionArgs {
   readonly teamId: string
@@ -139,6 +153,7 @@ export interface IFetchSubscriptionInfoArgs {
 export interface IStartCheckoutArgs {
   readonly teamId: string
   readonly seatCount: number
+  readonly planPeriod: "month" | "year"
 }
 export interface IStartCheckoutResponse {
   readonly stripeCheckoutSessionId: string
@@ -155,6 +170,7 @@ export interface ModifyBillingResponse {
 export interface IFetchProrationArgs {
   readonly teamId: string
   readonly subscriptionQuantity: number
+  readonly subscriptionPeriod: "month" | "year"
 }
 export interface IFetchProrationResponse {
   readonly proratedCost: number
@@ -179,6 +195,21 @@ export type SubscriptionInfoResponse =
       readonly licenseCount: number
     }
 
+export type UpdateStripeCustomerInfoArgs = {
+  readonly teamId: string
+  readonly email?: string
+  readonly name?: string
+  readonly address?: {
+    readonly line1?: string
+    readonly city?: string
+    readonly country?: string
+    readonly line2?: string
+    readonly postalCode?: string
+    readonly state?: string
+  }
+  readonly limitBillingAccessToOwners?: boolean
+}
+
 export interface Api {
   loginUser: (args: ILoginUserArgs) => Promise<ILoginUserResponse>
   logoutUser: () => Promise<ILogoutResponse>
@@ -202,4 +233,7 @@ export interface Api {
   getSubscriptionInfo: (
     args: GetSubscriptionInfoArgs,
   ) => Promise<SubscriptionInfoResponse>
+  updateStripeCustomerInfo: (
+    args: UpdateStripeCustomerInfoArgs,
+  ) => Promise<unknown>
 }

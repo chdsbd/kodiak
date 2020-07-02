@@ -42,36 +42,46 @@ Require that the automerge label (`merge.automerge_label`) be set for Kodiak to 
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
 
-### `merge.blacklist_title_regex`
+<span id="mergeblacklist_title_regex"/> <!-- handle old links -->
+
+### `merge.blocking_title_regex`
 
 - **type:** `string`
 - **default:** `"^WIP:.*"`
 - **options:** Regex pattern or `""`
+- **alias:** `merge.blacklist_title_regex`
 
 If a PR's title matches this regex, Kodiak will not merge the PR. This is useful
 to prevent merging work-in-progress PRs.
 
-Setting `merge.blacklist_title_regex = ""` disables this option.
+Setting `merge.blocking_title_regex = ""` disables this option.
 
 #### example
 
 ```
-merge.blacklist_title_regex = ".*DONT\s*MERGE.*"
+merge.blocking_title_regex = ".*DONT\s*MERGE.*"
 ```
 
-### `merge.blacklist_labels`
+> **NOTE:** `merge.blocking_title_regex` is a new name for `merge.blacklist_title_regex`. Both options behave identically.
+
+<span id="mergeblacklist_labels"/> <!-- handle old links -->
+
+### `merge.blocking_labels`
 
 - **type:** `string[]`
 - **default:** `[]`
 - **options:** List of label names
+- **alias:** `merge.blacklist_labels`
 
 Kodiak will not merge a PR with any of these labels.
 
 #### example
 
 ```
-merge.blacklist_labels = ["wip"]
+merge.blocking_labels = ["wip"]
 ```
+
+> **NOTE:** `merge.blocking_labels` is a new name for `merge.blacklist_labels`. Both options behave identically.
 
 ### `merge.method`
 
@@ -83,7 +93,7 @@ Choose merge method for Kodiak to use.
 
 Kodiak will report a configuration error if the selected merge method is disabled for a repository.
 
-If you're using the "Require signed commits" GitHub Branch Protection setting to require commit signatures, _`"merge"` is the only compatible option_. Any other option will cause Kodiak to raise a configuration error.
+If you're using the "Require signed commits" GitHub Branch Protection setting to require commit signatures, _`"merge"` or `"squash"` are the only compatible options_. `"rebase"` will cause Kodiak to raise a configuration error.
 
 ### `merge.delete_branch_on_merge`
 
@@ -126,9 +136,11 @@ This option only applies when `merge.require_automerge_label` is enabled.
 - **type:** `boolean`
 - **default:** `true`
 
-Don't wait for in-progress status checks on a PR to finish before updating the branch.
+If an out-of-date pull request has running status checks, update the pull request branch without waiting for the running status checks to finish.
 
-This setting can speed up merges but increases chance of running extra CI jobs.
+This setting can speed up merges by not waiting for status checks to finish on out-of-date pull requests.
+
+> **Note:** The "Require branches to be up to date before merging" GitHub Branch Protection setting must be enabled for Kodiak to update branches.
 
 ### `merge.dont_wait_on_status_checks`
 
@@ -224,6 +236,31 @@ This setting is useful for stripping HTML comments created by PR templates.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
+### `merge.message.include_coauthors`
+
+- **type:** `boolean`
+- **default:** `false`
+
+If a PR includes commits authored by other users, add those users as coauthors to the pull request.
+
+Coauthors are added using the [`Co-authored-by` trailer syntax](https://help.github.com/en/github/committing-changes-to-your-project/creating-a-commit-with-multiple-authors#creating-co-authored-commits-on-github).
+
+This setting only applies when `merge.message.body = "pull_request"` is set.
+
+#### Example commit
+
+Notice the `Co-authored-by` trailer added by this option.
+
+```text
+Add new github login flow (#17)
+
+This change adds the new GitHub social login flow. Steve provided some great UI tweaks.
+
+Co-authored-by: Steve Dignam <7340772+sbdchd@users.noreply.github.com>
+```
+
+<img height="80px" title="Coauthors example screenshot" src="/img/coauthors-example.png"/>
+
 ### `merge.message.include_pull_request_author`
 
 - **type:** `boolean`
@@ -231,7 +268,7 @@ This option only applies when `merge.message.body_type = "markdown"`.
 
 Add the pull request author as a coauthor of the merge commit using `Co-authored-by: jdoe <828352+jdoe@users.noreply.github.com>` syntax.
 
-This setting will override `merge.message.body = "github_default"` and `merge.message.body = "empty"`. In both cases, the commit message will only contain coauthor information.
+This setting only applies when `merge.message.body = "pull_request"` is set.
 
 This setting was added to mitigate the fallout of GitHub's change to the
 squash method on March 4th, 2020. GitHub reverted their change around
@@ -272,12 +309,15 @@ When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 
-### `update.blacklist_usernames`
+<span id="updateblacklist_usernames"/> <!-- handle old links -->
+
+### `update.ignored_usernames`
 
 - **type:** `string[]`
 - **default:** `[]`
+- **alias:** `update.blacklist_usernames`
 
-When `update.always` is enabled, pull requests opened by a user with a username in the `update.blacklist_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+When `update.always` is enabled, pull requests opened by a user with a username in the `update.ignored_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
 
 If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
 
@@ -286,8 +326,10 @@ This setting has no effect when `update.always` is disabled.
 #### example
 
 ```
-update.blacklist_usernames = ["bernard-lowe", "dependabot-preview"]
+update.ignored_usernames = ["bernard-lowe", "dependabot-preview"]
 ```
+
+> **NOTE:** `update.ignored_usernames` is a new name for `update.blacklist_usernames`. Both options behave identically.
 
 ### `approve.auto_approve_usernames`
 
@@ -345,11 +387,11 @@ require_automerge_label = true
 # If a PR's title matches this regex, Kodiak will not merge the PR. This is
 # useful to prevent merging work-in-progress PRs.
 #
-# Setting `merge.blacklist_title_regex = ""` disables this option.
-blacklist_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
+# Setting `merge.blocking_title_regex = ""` disables this option.
+blocking_title_regex = "" # default: "^WIP:.*", options: "" (disables regex), a regex string (e.g. ".*DONT\s*MERGE.*")
 
 # Kodiak will not merge a PR with any of these labels.
-blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
+blocking_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 
 # Choose merge method for Kodiak to use.
 #
@@ -357,8 +399,7 @@ blacklist_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 # disabled for a repository.
 #
 # If you're using the "Require signed commits" GitHub Branch Protection setting
-# to require commit signatures, _`"merge"` is the only compatible option_. Any
-# other option will cause Kodiak to raise a configuration error.
+# to require commit signatures, "merge" or "squash" are the only compatible options. "rebase" will cause Kodiak to raise a configuration error.
 method = "merge" # default: "merge", options: "merge", "squash", "rebase"
 
 # Once a PR is merged, delete the branch. This option behaves like the GitHub

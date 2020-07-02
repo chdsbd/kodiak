@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.25.0 - 2020-06-22
+
+### Added
+- add annual subscription billing option. (#439, #451, #452)
+- add option in dashboard to limit billing modifications to GitHub Owners. (#453)
+- add new options to replace `blacklist_`-style options: `merge.blacklist_title_regex` -> `merge.blocking_title_regex`, `merge.blacklist_labels` -> `merge.blocking_labels`, `update.blacklist_usernames` -> `update.ignored_usernames`. (#444, #454)
+- add more examples for using Kodiak with Dependabot to docs. (#448)
+
+### Changed
+- better explain `merge.optimistic_updates` option in docs. (#449)
+
+## 0.24.0 - 2020-06-14
+
+### Added
+- add `merge.message.coauthors` configuration option to add commit authors as coauthors of a PR. See the [Kodiak docs for more information](https://kodiakhq.com/docs/config-reference#mergemessageinclude_coauthors). (#420, #434)
+- add UI to allow editing billing email, company name, and postal address. Company name and postal address will appear on invoices if provided. (#431, #432)
+
+### Changed
+- Redesigned UI for subscriptions page to better present trial, subscription, and enterprise plans. (#427, #433)
+
+### Fix
+- allow scrolling on margins in Kodiak dashboard
+
 ## 0.23.0 - 2020-06-06
 
 ### Added

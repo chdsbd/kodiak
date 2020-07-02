@@ -30,7 +30,7 @@ When merging a pull request, Kodiak will update the PR if out of date with the t
 
 To have Kodiak immediately update any PR that is out-of-date, enable [`update.always`](config-reference.md#updatealways).
 
-If you use Kodiak with a dependancy update bot, you should disable auto updates for the bot via [`update.blacklist_usernames`](config-reference.md#updateblacklist_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
+If you use Kodiak with a dependancy update bot, you should disable auto updates for the bot via [`update.ignored_usernames`](config-reference.md#updateignored_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
 
 ## Merging Pull Requests
 
@@ -64,8 +64,8 @@ With GitHub Branch Protection, required status checks will prevent a pull reques
 
 Kodiak has some internal features to disable merging as well:
 
-- [`merge.blacklist_title_regex`](config-reference.md#mergeblacklist_title_regex) – disable Kodiak merging based on a regex matching to the pull request title
-- [`merge.blacklist_labels`](config-reference.md#mergeblacklist_labels) – disable Kodiak merging based on labels applied to the PR
+- [`merge.blocking_title_regex`](config-reference.md#mergeblocking_title_regex) – disable Kodiak merging based on a regex matching to the pull request title
+- [`merge.blocking_labels`](config-reference.md#mergeblocking_labels) – disable Kodiak merging based on labels applied to the PR
 - [`merge.do_not_merge`](config-reference.md#mergedo_not_merge) – completely disable Kodiak from merging any PR. This is useful if you only want to use Kodiak for updating pull requests.
 
 ### Efficient Merging

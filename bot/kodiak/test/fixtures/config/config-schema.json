@@ -15,8 +15,10 @@
       "default": {
         "automerge_label": "automerge",
         "require_automerge_label": true,
-        "blacklist_title_regex": "^WIP:.*",
+        "blacklist_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
+        "blocking_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blacklist_labels": [],
+        "blocking_labels": [],
         "method": "merge",
         "delete_branch_on_merge": false,
         "block_on_reviews_requested": false,
@@ -48,7 +50,8 @@
       "default": {
         "always": false,
         "require_automerge_label": true,
-        "blacklist_usernames": []
+        "blacklist_usernames": [],
+        "ignored_usernames": []
       },
       "allOf": [
         {
@@ -151,11 +154,24 @@
         },
         "blacklist_title_regex": {
           "title": "Blacklist Title Regex",
-          "default": "^WIP:.*",
+          "default": ":::|||kodiak|||internal|||reserved|||:::",
+          "type": "string"
+        },
+        "blocking_title_regex": {
+          "title": "Blocking Title Regex",
+          "default": ":::|||kodiak|||internal|||reserved|||:::",
           "type": "string"
         },
         "blacklist_labels": {
           "title": "Blacklist Labels",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocking_labels": {
+          "title": "Blocking Labels",
           "default": [],
           "type": "array",
           "items": {
@@ -251,6 +267,14 @@
         },
         "blacklist_usernames": {
           "title": "Blacklist Usernames",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignored_usernames": {
+          "title": "Ignored Usernames",
           "default": [],
           "type": "array",
           "items": {

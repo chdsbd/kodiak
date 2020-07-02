@@ -35,7 +35,7 @@ interface IActivityPageInnerProps {
   readonly data: WebData<IActivityData>
 }
 function ActivityPageInner({ data }: IActivityPageInnerProps) {
-  if (data.status === "loading") {
+  if (data.status === "initial" || data.status === "loading") {
     return (
       <ActivityPageContainer>
         <Spinner />

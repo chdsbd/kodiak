@@ -95,7 +95,7 @@ async def status_event(status_event: StatusEvent) -> None:
             # I worry that we might miss some events where `branches` is empty,
             # but not because of a fork.
             pr_results = [await api_client.get_open_pull_requests()]
-            log.warning("could not find refs for status_event")
+            log.info("could not find refs for status_event")
         else:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs

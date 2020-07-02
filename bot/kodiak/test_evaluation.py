@@ -868,9 +868,33 @@ async def test_mergeable_has_blacklist_labels() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_has_blocking_labels() -> None:
+    """
+    blocking labels should prevent merge
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.blocking_labels = ["dont merge!"]
+    pull_request.labels = ["bug", "dont merge!", "needs review"]
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_blacklist_title_regex() -> None:
     """
-    block merge if title regex matches pull request
+    block merge if blacklist_title_regex matches pull request
     """
     api = create_api()
     mergeable = create_mergeable()
@@ -884,12 +908,97 @@ async def test_mergeable_blacklist_title_regex() -> None:
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
-    assert "matches blacklist_title_regex" in api.set_status.calls[0]["msg"]
+    assert "matches merge.blacklist_title_regex" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_blocking_title_regex() -> None:
+    """
+    block merge if blocking_title_regex matches pull request
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    pull_request.title = "WIP: add new feature"
+    config.merge.blocking_title_regex = "^WIP.*"
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "matches merge.blocking_title_regex" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_blocking_title_regex_default() -> None:
+    """
+    We should default to "^WIP.*" if unset.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    pull_request.title = "WIP: add new feature"
+    assert (
+        config.merge.blocking_title_regex == ":::|||kodiak|||internal|||reserved|||:::"
+    )
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "matches merge.blocking_title_regex" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_blocking_title_disabled() -> None:
+    """
+    We should be able to disable the title regex by setting it to empty string.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    pull_request.title = "WIP: add new feature"
+    config.merge.blocking_title_regex = "WIP.*"
+
+    # verify by default we block
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "matches merge.blocking_title_regex" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+    # should disable blocking_title_regex by setting to empty string
+    config.merge.blocking_title_regex = ""
+    api = create_api()
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -3551,6 +3660,87 @@ async def test_mergeable_update_username_blacklist_merging(
             api_call_retry_timeout=5,
             api_call_retry_method_name=None,
             #
+            merging=True,
+        )
+    assert api.update_branch.call_count == 1
+    assert api.set_status.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_update_ignored_usernames() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    config = create_config()
+    config.update.always = True
+    config.update.ignored_usernames = ["mr-test"]
+    config.update.require_automerge_label = True
+
+    pull_request = create_pull_request()
+    pull_request.author.login = "mr-test"
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    branch_protection = create_branch_protection()
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+
+    check_run = create_check_run()
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[check_run],
+    )
+    assert api.update_branch.call_count == 0
+    assert api.set_status.call_count == 1
+    assert (
+        "not auto updating for update.ignored_usernames"
+        in api.set_status.calls[0]["msg"]
+    )
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_update_ignored_usernames_merging() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    config = create_config()
+    config.update.always = True
+    config.update.ignored_usernames = ["mr-test"]
+    config.update.require_automerge_label = True
+
+    pull_request = create_pull_request()
+    pull_request.author.login = "mr-test"
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    branch_protection = create_branch_protection()
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+
+    check_run = create_check_run()
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.SUCCESS
+
+    with pytest.raises(PollForever):
+        await mergeable(
+            api=api,
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            check_runs=[check_run],
             merging=True,
         )
     assert api.update_branch.call_count == 1

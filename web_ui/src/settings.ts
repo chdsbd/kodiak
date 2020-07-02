@@ -6,6 +6,7 @@ export const helpUrl = "https://kodiakhq.com/help"
 export const billingDocsUrl = "https://kodiakhq.com/docs/billing"
 export const loginPath = "/v1/oauth_login"
 export const monthlyCost = 499
+export const annualCost = 4990
 
 export const getStripeSelfServeUrl = (teamId: string) =>
   `/v1/t/${teamId}/stripe_self_serve_redirect`

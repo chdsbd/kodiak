@@ -92,7 +92,12 @@ class User(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_id}"
 
-    def can_edit(self, account: Account) -> bool:
+    def can_edit_subscription(self, account: Account) -> bool:
+        return not account.limit_billing_access_to_owners or self.is_admin(
+            account=account
+        )
+
+    def is_admin(self, account: Account) -> bool:
         return cast(
             bool,
             AccountMembership.objects.filter(
@@ -238,6 +243,16 @@ class SeatsExceeded(pydantic.BaseModel):
     allowed_user_ids: List[int]
 
 
+@dataclass
+class Address:
+    line1: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    line2: Optional[str] = None
+    postal_code: Optional[str] = None
+    state: Optional[str] = None
+
+
 class Account(BaseModel):
     """
     An GitHub Kodiak App installation for a GitHub organization or user.
@@ -264,18 +279,13 @@ class Account(BaseModel):
     )
     trial_email = models.CharField(blank=True, max_length=255)
 
-    stripe_plan_id = models.CharField(
-        max_length=255,
-        null=True,
-        help_text="Stripe plan_id to use when creating subscription. Overrides settings.STRIPE_PLAN_ID if provided. We only need to set this when we provide a custom plan for a given user.",
-    )
-
     stripe_customer_id = models.CharField(
         blank=True,
         max_length=255,
         db_index=True,
         help_text="ID of the Stripe Customer associated with this account. This will have a corresponding object in StripeCustomerInformation if the user has created a subscription.",
     )
+    limit_billing_access_to_owners = models.BooleanField(default=False)
 
     class Meta:
         db_table = "account"
@@ -384,6 +394,48 @@ class Account(BaseModel):
     def update_from(self, customer: stripe.Customer) -> None:
         self.stripe_customer_id = customer.id
         self.save()
+
+    def update_billing_info(
+        self,
+        email: Optional[str] = None,
+        name: Optional[str] = None,
+        address: Optional[Address] = None,
+    ) -> None:
+        if not self.stripe_customer_id:
+            return None
+        stripe.Customer.modify(
+            self.stripe_customer_id,
+            email=email,
+            name=name,
+            address=(
+                dict(
+                    line1=address.line1,
+                    city=address.city,
+                    country=address.country,
+                    line2=address.line2,
+                    postal_code=address.postal_code,
+                    state=address.state,
+                )
+                if address is not None
+                else None
+            ),
+        )
+        stripe_customer_info = self.stripe_customer_info()
+        if stripe_customer_info:
+            if email is not None:
+                stripe_customer_info.customer_email = email
+            if name is not None:
+                stripe_customer_info.customer_name = name
+            if address is not None:
+                stripe_customer_info.customer_address_line1 = address.line1
+                stripe_customer_info.customer_address_city = address.city
+                stripe_customer_info.customer_address_country = address.country
+                stripe_customer_info.customer_address_line2 = address.line2
+                stripe_customer_info.customer_address_postal_code = address.postal_code
+                stripe_customer_info.customer_address_state = address.state
+
+            stripe_customer_info.save()
+        return None
 
     def update_bot(self) -> None:
         """
@@ -861,6 +913,35 @@ class StripeCustomerInformation(models.Model):
         null=True,
         help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
     )
+    customer_name = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="The customer’s full name or business name.",
+    )
+    customer_address_line1 = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Address line 1 (e.g., street, PO Box, or company name).",
+    )
+    customer_address_city = models.CharField(
+        max_length=255, null=True, help_text="City, district, suburb, town, or village."
+    )
+    customer_address_country = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Two-letter country code (ISO 3166-1 alpha-2).",
+    )
+    customer_address_line2 = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="Address line 2 (e.g., apartment, suite, unit, or building).",
+    )
+    customer_address_postal_code = models.CharField(
+        max_length=255, null=True, help_text="ZIP or postal code."
+    )
+    customer_address_state = models.CharField(
+        max_length=255, null=True, help_text="State, county, province, or region."
+    )
 
     # https://stripe.com/docs/api/payment_methods/object
     payment_method_card_brand = models.CharField(
@@ -886,6 +967,15 @@ class StripeCustomerInformation(models.Model):
     plan_amount = models.IntegerField(
         help_text="The amount in cents to be charged on the interval specified."
     )
+    plan_interval = models.CharField(
+        max_length=255,
+        null=True,
+        help_text="The frequency at which a subscription is billed. One of `day`, `week`, `month` or `year`.",
+    )
+    plan_interval_count = models.IntegerField(
+        null=True,
+        help_text="The number of intervals (specified in the `interval` attribute) between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months.",
+    )
 
     # https://stripe.com/docs/api/subscriptions/object
     subscription_quantity = models.IntegerField(
@@ -906,31 +996,53 @@ class StripeCustomerInformation(models.Model):
 
     def update_from(
         self,
-        subscription: stripe.Subscription,
-        customer: stripe.Customer,
-        payment_method: stripe.PaymentMethod,
+        subscription: Optional[stripe.Subscription] = None,
+        customer: Optional[stripe.Customer] = None,
+        payment_method: Optional[stripe.PaymentMethod] = None,
     ) -> None:
+        if customer is not None:
+            self.customer_email = customer.email
+            self.customer_balance = customer.balance
+            self.customer_created = customer.created
+            self.customer_currency = customer.currency
+            self.customer_name = customer.name
+            self.customer_address_line1 = (
+                customer.address.line1 if customer.address else None
+            )
+            self.customer_address_city = (
+                customer.address.city if customer.address else None
+            )
+            self.customer_address_country = (
+                customer.address.country if customer.address else None
+            )
+            self.customer_address_line2 = (
+                customer.address.line2 if customer.address else None
+            )
+            self.customer_address_postal_code = (
+                customer.address.postal_code if customer.address else None
+            )
+            self.customer_address_state = (
+                customer.address.state if customer.address else None
+            )
 
-        self.subscription_id = subscription.id
-        self.plan_id = subscription.plan.id
-        self.payment_method_id = payment_method.id
+        if payment_method is not None:
+            self.payment_method_id = payment_method.id
+            self.payment_method_card_brand = payment_method.card.brand
+            self.payment_method_card_exp_month = payment_method.card.exp_month
+            self.payment_method_card_exp_year = payment_method.card.exp_year
+            self.payment_method_card_last4 = payment_method.card.last4
 
-        self.customer_email = customer.email
-        self.customer_balance = customer.balance
-        self.customer_created = customer.created
-        self.customer_currency = customer.currency
+        if subscription is not None:
+            self.plan_id = subscription.plan.id
+            self.plan_amount = subscription.plan.amount
+            self.plan_interval = subscription.plan.interval
+            self.plan_interval_count = subscription.plan.interval_count
 
-        self.payment_method_card_brand = payment_method.card.brand
-        self.payment_method_card_exp_month = payment_method.card.exp_month
-        self.payment_method_card_exp_year = payment_method.card.exp_year
-        self.payment_method_card_last4 = payment_method.card.last4
-
-        self.plan_amount = subscription.plan.amount
-
-        self.subscription_quantity = subscription.quantity
-        self.subscription_start_date = subscription.start_date
-        self.subscription_current_period_end = subscription.current_period_end
-        self.subscription_current_period_start = subscription.current_period_start
+            self.subscription_id = subscription.id
+            self.subscription_quantity = subscription.quantity
+            self.subscription_start_date = subscription.start_date
+            self.subscription_current_period_end = subscription.current_period_end
+            self.subscription_current_period_start = subscription.current_period_start
         self.save()
         self.get_account().update_bot()
 
@@ -966,7 +1078,9 @@ class StripeCustomerInformation(models.Model):
         self.delete()
         account.update_bot()
 
-    def preview_proration(self, *, timestamp: int, subscription_quantity: int) -> int:
+    def preview_proration(
+        self, *, timestamp: int, subscription_quantity: int, plan_id: str
+    ) -> int:
         proration_date = timestamp
 
         subscription = stripe.Subscription.retrieve(self.subscription_id)
@@ -976,6 +1090,7 @@ class StripeCustomerInformation(models.Model):
         subscription_items = [
             {
                 "id": subscription["items"]["data"][0].id,
+                "plan": plan_id,
                 "quantity": subscription_quantity,
             }
         ]

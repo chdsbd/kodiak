@@ -106,5 +106,6 @@ REDIS_URL = os.environ["REDIS_URL"]
 # Stripe Credentials https://dashboard.stripe.com/account/apikeys
 STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
 STRIPE_PLAN_ID = os.environ["STRIPE_PLAN_ID"]
+STRIPE_ANNUAL_PLAN_ID = os.environ["STRIPE_ANNUAL_PLAN_ID"]
 STRIPE_WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
 STRIPE_PUBLISHABLE_API_KEY = os.environ["STRIPE_PUBLISHABLE_API_KEY"]

@@ -4,7 +4,9 @@ version = 1 # required
 [merge]
 automerge_label = "automerge"
 require_automerge_label = true
-blacklist_title_regex = "^WIP:.*"
+# this setting is for snapshot testing purposes. This gets replaced with the
+# `WIP:.*` default regex in evaluation.py
+blacklist_title_regex = ":::|||kodiak|||internal|||reserved|||:::"
 blacklist_labels = []
 method = "merge"
 delete_branch_on_merge = false
