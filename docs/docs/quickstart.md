@@ -14,7 +14,7 @@ sidebar_label: Quick Start
     version = 1
     ```
 
-3.  [Configure GitHub branch protection](https://help.github.com/en/articles/configuring-protected-branches)
+3.  Configure [GitHub branch protection](https://help.github.com/en/articles/configuring-protected-branches). Setup [required status checks](https://docs.github.com/en/github/administering-a-repository/enabling-required-status-checks) to prevent failing PRs from being merged.
 
 4.  Create an automerge label (default: "automerge")
 
