@@ -93,7 +93,7 @@ Choose merge method for Kodiak to use.
 
 Kodiak will report a configuration error if the selected merge method is disabled for a repository.
 
-If you're using the "Require signed commits" GitHub Branch Protection setting to require commit signatures, _`"merge"` is the only compatible option_. Any other option will cause Kodiak to raise a configuration error.
+If you're using the "Require signed commits" GitHub Branch Protection setting to require commit signatures, _`"merge"` or `"squash"` are the only compatible options_. `"rebase"` will cause Kodiak to raise a configuration error.
 
 ### `merge.delete_branch_on_merge`
 
@@ -399,8 +399,7 @@ blocking_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 # disabled for a repository.
 #
 # If you're using the "Require signed commits" GitHub Branch Protection setting
-# to require commit signatures, _`"merge"` is the only compatible option_. Any
-# other option will cause Kodiak to raise a configuration error.
+# to require commit signatures, "merge" or "squash" are the only compatible options. "rebase" will cause Kodiak to raise a configuration error.
 method = "merge" # default: "merge", options: "merge", "squash", "rebase"
 
 # Once a PR is merged, delete the branch. This option behaves like the GitHub
