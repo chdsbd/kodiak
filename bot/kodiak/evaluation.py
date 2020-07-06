@@ -203,16 +203,6 @@ def get_merge_body(
     return merge_body
 
 
-async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
-    if cfg.merge.method == config.MergeMethod.merge:
-        return repo.merge_commit_allowed
-    if cfg.merge.method == config.MergeMethod.squash:
-        return repo.squash_merge_allowed
-    if cfg.merge.method == config.MergeMethod.rebase:
-        return repo.rebase_merge_allowed
-    raise TypeError("Unknown value")
-
-
 def review_status(reviews: List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
