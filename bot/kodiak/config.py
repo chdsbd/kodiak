@@ -64,7 +64,7 @@ class Merge(BaseModel):
     blocking_labels: List[str] = []
     # action to take when attempting to merge PR. An error will occur if method
     # is disabled for repository
-    method: MergeMethod = MergeMethod.merge
+    method: Optional[MergeMethod] = None
     # delete branch when PR is merged
     delete_branch_on_merge: bool = False
     # DEPRECATED

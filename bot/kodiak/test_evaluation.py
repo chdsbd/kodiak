@@ -1088,6 +1088,10 @@ async def test_mergeable_default_merge_method() -> None:
     mergeable = create_mergeable()
     config = create_config()
 
+    assert (
+        config.merge.method is None
+    ), "we shouldn't have specified a value for the merge method. We want to allow the default."
+
     await mergeable(api=api, config=config, merging=True)
     assert api.merge.call_count == 1
     assert api.merge.calls[0]["merge_method"] == MergeMethod.merge
@@ -1095,6 +1099,36 @@ async def test_mergeable_default_merge_method() -> None:
     assert api.dequeue.called is False
     assert api.queue_for_merge.called is False
     assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_single_merge_method() -> None:
+    """
+    If an account only has one merge method configured, use that if they haven't
+    specified an option.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    assert config.merge.method is None, "we must not specify a default for this to work"
+
+    await mergeable(
+        api=api,
+        config=config,
+        valid_merge_methods=[
+            # Kodiak should select the only valid merge method if `merge.method`
+            # is not configured.
+            MergeMethod.rebase
+        ],
+        merging=True,
+    )
+    assert api.merge.call_count == 1
+    assert api.merge.calls[0]["merge_method"] == "rebase"
+
+    assert api.dequeue.called is False
+    assert api.update_branch.called is False
+    assert api.queue_for_merge.called is False
 
 
 @pytest.mark.asyncio

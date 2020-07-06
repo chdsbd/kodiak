@@ -435,7 +435,13 @@ async def mergeable(
         )
         return
 
-    merge_method = config.merge.method
+    if config.merge.method is not None:
+        merge_method = config.merge.method
+    elif len(valid_merge_methods) == 1:
+        merge_method = valid_merge_methods[0]
+    else:
+        merge_method = MergeMethod.merge
+
     if (
         branch_protection.requiresCommitSignatures
         and merge_method == MergeMethod.rebase
