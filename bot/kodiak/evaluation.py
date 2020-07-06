@@ -120,12 +120,15 @@ class MergeBody:
 
 
 def get_merge_body(
-    config: V1, pull_request: PullRequest, commit_authors: List[CommitAuthor]
+    config: V1,
+    merge_method: MergeMethod,
+    pull_request: PullRequest,
+    commit_authors: List[CommitAuthor],
 ) -> MergeBody:
     """
     Get merge options for a pull request to call GitHub API.
     """
-    merge_body = MergeBody(merge_method=config.merge.method.value)
+    merge_body = MergeBody(merge_method=merge_method)
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(
             config.merge.message.body_type,
@@ -432,9 +435,10 @@ async def mergeable(
         )
         return
 
+    merge_method = config.merge.method
     if (
         branch_protection.requiresCommitSignatures
-        and config.merge.method == MergeMethod.rebase
+        and merge_method == MergeMethod.rebase
     ):
         await cfg_err(
             api,
@@ -443,12 +447,12 @@ async def mergeable(
         )
         return
 
-    if config.merge.method not in valid_merge_methods:
+    if merge_method not in valid_merge_methods:
         valid_merge_methods_str = [method.value for method in valid_merge_methods]
         await cfg_err(
             api,
             pull_request,
-            f"configured merge.method {config.merge.method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
+            f"configured merge.method {merge_method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
         )
         return
 
@@ -892,7 +896,7 @@ branch protection requirements.
     # okay to merge if we reach this point.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
-        merge_args = get_merge_body(config, pull_request, commit_authors)
+        merge_args = get_merge_body(config, merge_method, pull_request, commit_authors)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
             await api.merge(
