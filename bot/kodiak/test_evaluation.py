@@ -3245,18 +3245,18 @@ async def test_mergeable_skippable_check_timeout(
 
 def test_pr_get_merge_body_full(pull_request: PullRequest) -> None:
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     title=MergeTitleStyle.pull_request_title,
                     body=MergeBodyStyle.pull_request_body,
                     include_pr_number=True,
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3269,8 +3269,9 @@ def test_pr_get_merge_body_full(pull_request: PullRequest) -> None:
 
 def test_pr_get_merge_body_empty(pull_request: PullRequest) -> None:
     actual = get_merge_body(
-        V1(version=1, merge=Merge(method=MergeMethod.squash)),
-        pull_request,
+        config=V1(version=1),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(merge_method="squash")
@@ -3280,16 +3281,16 @@ def test_pr_get_merge_body_empty(pull_request: PullRequest) -> None:
 def test_get_merge_body_strip_html_comments(pull_request: PullRequest) -> None:
     pull_request.body = "hello <!-- testing -->world"
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body, strip_html_comments=True
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="hello world")
@@ -3299,14 +3300,11 @@ def test_get_merge_body_strip_html_comments(pull_request: PullRequest) -> None:
 def test_get_merge_body_empty(pull_request: PullRequest) -> None:
     pull_request.body = "hello world"
     actual = get_merge_body(
-        V1(
-            version=1,
-            merge=Merge(
-                method=MergeMethod.squash,
-                message=MergeMessage(body=MergeBodyStyle.empty),
-            ),
+        config=V1(
+            version=1, merge=Merge(message=MergeMessage(body=MergeBodyStyle.empty))
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="")
@@ -3319,16 +3317,16 @@ def test_get_merge_body_includes_pull_request_url(pull_request: PullRequest) -> 
     pull request url in the commit message.
     """
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body, include_pull_request_url=True
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3348,18 +3346,18 @@ def test_get_merge_body_includes_pull_request_url_with_coauthor(
     Coauthor should appear after the pull request url
     """
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     include_pull_request_url=True,
                     include_pull_request_author=True,
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3380,17 +3378,17 @@ def test_get_merge_body_include_pull_request_author_user(
     pull_request.body = "hello world"
 
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     include_pull_request_author=True,
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3408,17 +3406,17 @@ def test_get_merge_body_include_pull_request_author_bot(
     pull_request.author.type = "Bot"
 
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     include_pull_request_author=True,
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3439,17 +3437,17 @@ def test_get_merge_body_include_pull_request_author_mannequin(
     pull_request.author.type = "Mannequin"
 
     actual = get_merge_body(
-        V1(
+        config=V1(
             version=1,
             merge=Merge(
-                method=MergeMethod.squash,
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     include_pull_request_author=True,
-                ),
+                )
             ),
         ),
-        pull_request,
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
         commit_authors=[],
     )
     expected = MergeBody(
@@ -3476,7 +3474,10 @@ def test_get_merge_body_include_pull_request_author_invalid_body_style(
     ):
         config.merge.message.body = body_style
         actual = get_merge_body(
-            config=config, pull_request=pull_request, commit_authors=[]
+            config=config,
+            pull_request=pull_request,
+            merge_method=MergeMethod.merge,
+            commit_authors=[],
         )
         expected = MergeBody(merge_method="merge", commit_message=commit_message)
         assert actual == expected
@@ -3493,6 +3494,7 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
 
     actual = get_merge_body(
         config=config,
+        merge_method=MergeMethod.merge,
         pull_request=pull_request,
         commit_authors=[
             CommitAuthor(
@@ -3534,6 +3536,7 @@ def test_get_merge_body_include_coauthors_invalid_body_style(
         actual = get_merge_body(
             config=config,
             pull_request=pull_request,
+            merge_method=MergeMethod.merge,
             commit_authors=[
                 CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
                 CommitAuthor(
