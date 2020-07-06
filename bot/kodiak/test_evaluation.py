@@ -413,7 +413,6 @@ def create_config() -> V1:
     cfg = V1(version=1)
     cfg.merge.automerge_label = "automerge"
     cfg.merge.blacklist_labels = []
-    cfg.merge.method = MergeMethod.squash
     return cfg
 
 
@@ -465,7 +464,11 @@ def create_mergeable() -> MergeableType:
         check_runs: List[CheckRun] = [create_check_run()],
         commit_authors: List[CommitAuthor] = [],
         valid_signature: bool = False,
-        valid_merge_methods: List[MergeMethod] = [MergeMethod.squash],
+        valid_merge_methods: List[MergeMethod] = [
+            MergeMethod.merge,
+            MergeMethod.squash,
+            MergeMethod.rebase,
+        ],
         merging: bool = False,
         is_active_merge: bool = False,
         skippable_check_timeout: int = 5,
@@ -1074,6 +1077,24 @@ async def test_mergeable_invalid_merge_method() -> None:
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_default_merge_method() -> None:
+    """
+    Should default to `merge` commits.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    await mergeable(api=api, config=config, merging=True)
+    assert api.merge.call_count == 1
+    assert api.merge.calls[0]["merge_method"] == MergeMethod.merge
+
+    assert api.dequeue.called is False
+    assert api.queue_for_merge.called is False
+    assert api.update_branch.called is False
 
 
 @pytest.mark.asyncio
@@ -3457,7 +3478,7 @@ def test_get_merge_body_include_pull_request_author_invalid_body_style(
         actual = get_merge_body(
             config=config, pull_request=pull_request, commit_authors=[]
         )
-        expected = MergeBody(merge_method="squash", commit_message=commit_message)
+        expected = MergeBody(merge_method="merge", commit_message=commit_message)
         assert actual == expected
 
 
@@ -3487,7 +3508,7 @@ def test_get_merge_body_include_coauthors(pull_request: PullRequest) -> None:
         ],
     )
     expected = MergeBody(
-        merge_method="squash",
+        merge_method="merge",
         commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>\nCo-authored-by: d-abernathy[bot] <771233+d-abernathy[bot]@users.noreply.github.com>",
     )
     assert actual == expected
@@ -3520,7 +3541,7 @@ def test_get_merge_body_include_coauthors_invalid_body_style(
                 ),
             ],
         )
-        expected = MergeBody(merge_method="squash", commit_message=commit_message)
+        expected = MergeBody(merge_method="merge", commit_message=commit_message)
         assert actual == expected
 
 
