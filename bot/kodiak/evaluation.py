@@ -203,16 +203,6 @@ def get_merge_body(
     return merge_body
 
 
-async def valid_merge_methods(cfg: config.V1, repo: RepoInfo) -> bool:
-    if cfg.merge.method == config.MergeMethod.merge:
-        return repo.merge_commit_allowed
-    if cfg.merge.method == config.MergeMethod.squash:
-        return repo.squash_merge_allowed
-    if cfg.merge.method == config.MergeMethod.rebase:
-        return repo.rebase_merge_allowed
-    raise TypeError("Unknown value")
-
-
 def review_status(reviews: List[PRReview]) -> PRReviewState:
     """
     Find the most recent actionable review state for a user
@@ -359,6 +349,33 @@ def get_blocking_title_regex(config: config.V1) -> BlockingTitleRegex:
     )
 
 
+# merge methods ordered by preference for selection.
+MERGE_METHODS = (MergeMethod.merge, MergeMethod.squash, MergeMethod.rebase)
+
+
+def get_merge_method(
+    cfg_merge_method: Optional[MergeMethod],
+    valid_merge_methods: List[MergeMethod],
+    log: structlog.BoundLogger,
+) -> MergeMethod:
+    if cfg_merge_method is not None:
+        return cfg_merge_method
+
+    # take the first valid merge method.
+    for merge_method in MERGE_METHODS:
+        if merge_method in valid_merge_methods:
+            return merge_method
+
+    # NOTE(chdsbd): I don't think the following code should be reachable in
+    # production, but I don't want to blow things up with an assert.
+    log.warning(
+        "no merge methods selected.",
+        cfg_merge_method=cfg_merge_method,
+        valid_merge_methods=valid_merge_methods,
+    )
+    return MergeMethod.merge
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -435,7 +452,12 @@ async def mergeable(
         )
         return
 
-    merge_method = config.merge.method
+    merge_method = get_merge_method(
+        cfg_merge_method=config.merge.method,
+        valid_merge_methods=valid_merge_methods,
+        log=log,
+    )
+
     if (
         branch_protection.requiresCommitSignatures
         and merge_method == MergeMethod.rebase
