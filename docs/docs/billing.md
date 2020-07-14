@@ -49,7 +49,7 @@ You can modify your subscription at any time. Any changes will be prorated.
 
 > An active subscription is required to edit this information
 
-Your seats and payment method can be modified via the "Manage Subscription" model as described above.
+Your seats and payment method can be modified via the "Manage Subscription" modal as described above.
 
 To modify your billing email, company name, or postal address simply edit the forms on the "Usage & Billing" page.
 
