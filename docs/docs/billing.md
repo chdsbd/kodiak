@@ -24,8 +24,6 @@ Contact us with any questions or concerns at support@kodiakhq.com.
 
 ## Create Subscription
 
-> For GitHub organizations you must have an "Owner" role to create a subscription.
-
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
 3. Select "Usage & Billing" from the sidebar
@@ -38,16 +36,30 @@ Contact us with any questions or concerns at support@kodiakhq.com.
 
 You can modify your subscription at any time. Any changes will be prorated.
 
-> For GitHub organizations you must have an "Owner" role to modify a subscription.
-
 1. Login to the Kodiak dashboard at https://app.kodiakhq.com
 2. Choose the account you wish to modify from the account switcher
 3. Select "Usage & Billing" from the sidebar
 4. Select "Modify Subscription" (See "Start Trial" or "Create Subscription" above if you do not see this option.)
-5. With the "Manage Subscription" modal you can add/remove seats, change your billing email or payment method, or cancel your subscription.
+5. With the "Manage Subscription" modal you can add/remove seats, change your payment method, or cancel your subscription.
    - To add/remove seats, change the seat count and then click "Update Plan for \$x.xx" (your payment method will be charged immediately).
-   - To change your billing email or payment method, click the "update" link next to the fields and you will be direct to Stripe to handle this update process.
+   - To change your payment method, click the "update" link below the Payment Method field and you will be redirected to Stripe to handle this update process.
    - To cancel your subscription click "Cancel Subscription" at the end of the modal and confirm the cancellation.
+
+## Modify Account Information
+
+> An active subscription is required to edit this information
+
+Your seats and payment method can be modified via the "Manage Subscription" modal as described above.
+
+To modify your billing email, company name, or postal address simply edit the forms on the "Usage & Billing" page.
+
+## Control Billing Permissions
+
+> An active subscription is required to edit this information
+
+When "Limit billing modifications to GitHub Organization Owners" is enabled, only users that are [GitHub Organization Owners](https://help.github.com/en/github/setting-up-and-managing-organizations-and-teams/permission-levels-for-an-organization#permission-levels-for-an-organization) will be able to modifying your subscription or account information.
+
+This setting can be modified on the "Usage & Billing" page in the "Billing Permissions" form.
 
 ## Complimentary Access
 
