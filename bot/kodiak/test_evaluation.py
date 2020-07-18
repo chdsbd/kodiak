@@ -2494,8 +2494,9 @@ async def test_mergeable_prioritize_ready_to_merge(
         api_call_retry_method_name=None,
     )
 
-    assert api.set_status.call_count == 1
+    assert api.set_status.call_count == 2
     assert "attempting to merge PR (merging)" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert api.merge.call_count == 1
@@ -2541,8 +2542,9 @@ async def test_mergeable_merge(
         merging=True,
     )
 
-    assert api.set_status.call_count == 1
+    assert api.set_status.call_count == 2
     assert "attempting to merge PR (merging)" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert api.merge.call_count == 1
@@ -3659,8 +3661,9 @@ async def test_mergeable_include_coauthors() -> None:
         ],
         merging=True,
     )
-    assert api.set_status.call_count == 1
+    assert api.set_status.call_count == 2
     assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
 
     assert api.merge.call_count == 1
     assert (
