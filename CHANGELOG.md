@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.26.0 - 2020-07-09
+
+### Changed
+- `merge.method` now defaults to the first valid merge method in the list `"merge"`, `"squash"`, and `"rebase"`. Previously the default was always `"merge"`, even when that method was disabled on a repository. See [the configuration reference](https://kodiakhq.com/docs/config-reference#mergemethod) for more information. (#464, #466)
+
 ## 0.25.0 - 2020-06-22
 
 ### Added

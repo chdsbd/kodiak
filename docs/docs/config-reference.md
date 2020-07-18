@@ -86,10 +86,12 @@ merge.blocking_labels = ["wip"]
 ### `merge.method`
 
 - **type:** `string`
-- **default:** `"merge"`
+- **default:** first valid merge method in list `"merge"`, `"squash"`, `"rebase"`
 - **options:** `"merge"`, `"squash"`, `"rebase"`
 
 Choose merge method for Kodiak to use.
+
+If not configured, the first valid merge method in the list `"merge"`, `"squash"`, `"rebase"` will be used. For example, if `"squash"` and `"rebase"` are the only valid options on a repository, Kodiak will choose `"squash"` since it's the first valid option.
 
 Kodiak will report a configuration error if the selected merge method is disabled for a repository.
 

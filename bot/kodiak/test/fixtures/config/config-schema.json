@@ -19,7 +19,7 @@
         "blocking_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blacklist_labels": [],
         "blocking_labels": [],
-        "method": "merge",
+        "method": null,
         "delete_branch_on_merge": false,
         "block_on_reviews_requested": false,
         "notify_on_conflict": true,
@@ -180,7 +180,6 @@
         },
         "method": {
           "title": "Method",
-          "default": "merge",
           "enum": [
             "merge",
             "squash",
