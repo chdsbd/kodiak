@@ -928,6 +928,8 @@ branch protection requirements.
                 )
             )
             await api.create_comment(body)
+        else:
+            await set_status("merge complete 🎉")
 
     else:
         position_in_queue = await api.queue_for_merge()
