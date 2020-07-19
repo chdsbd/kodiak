@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.27.0 - 2020-07-18
+
+### Changed
+- Kodiak now sets a status check on merge ("merge complete 🎉"). Previously the last status check set by Kodiak would be unchanged ("⛴ attempting to merge PR (merging)"). (#469)
+
 ## 0.26.0 - 2020-07-09
 
 ### Changed
