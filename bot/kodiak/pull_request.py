@@ -84,7 +84,7 @@ async def evaluate_pr(
                     requeue_callback=requeue_callback,
                     queue_for_merge_callback=queue_for_merge_callback,
                 ),
-                timeout=10,
+                timeout=30,
             )
             if pr is None:
                 log.info("failed to get_pr")
@@ -114,7 +114,7 @@ async def evaluate_pr(
                         api_call_retry_timeout=api_call_retry_timeout,
                         api_call_retry_method_name=api_call_retry_method_name,
                     ),
-                    timeout=10,
+                    timeout=30,
                 )
                 log.info("evaluate_pr successful")
             except RetryForSkippableChecks:
@@ -138,12 +138,9 @@ async def evaluate_pr(
                 log.exception("api_call_retry_timeout")
             return
         except asyncio.TimeoutError:
-            if api_call_retry_timeout:
-                api_call_retry_method_name = None
-                api_call_retry_timeout -= 1
-                log.info("mergeable_timeout")
-                continue
+            # On timeout we add the PR to the back of the queue to try again.
             log.exception("mergeable_timeout")
+            await requeue_callback()
 
 
 class PRV2:
