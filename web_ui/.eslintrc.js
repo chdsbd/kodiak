@@ -21,6 +21,16 @@ module.exports = {
   rules: {
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "error",
+    "no-restricted-globals": [
+      "error",
+      "close",
+      "closed",
+      "status",
+      "name",
+      "length",
+      "origin",
+      "event",
+    ],
     "react/self-closing-comp": [
       "error",
       {
