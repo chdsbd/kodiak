@@ -99,6 +99,9 @@ interface IUsageBillingData {
     readonly firstActiveDate?: string
     readonly hasSeatLicense?: boolean
   }>
+  readonly subscriptionExemption: {
+    readonly message: string | null
+  } | null
 }
 
 interface IUsageBillingPageInnerProps {
@@ -1386,6 +1389,9 @@ function BillingDocumentation({
   )
 }
 
+const FALLBACK_SUBSCRIPTION_EXEMPTION =
+  "Your account is excepted from subscriptions. Please contact us at support@kodiakhq.com with any questions."
+
 function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const location = useLocation()
   const history = useHistory()
@@ -1482,13 +1488,25 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           </>
         ) : (
           <Row>
-            <Col>
-              <p className="text-center">
-                Kodiak is free for personal GitHub accounts.
-                <br />
-                Organizations can subscribe to use Kodiak on private
-                repositories.
-              </p>
+            <Col lg={8}>
+              <Card className="mb-4">
+                <Card.Body>
+                  <Card.Title>
+                    <span>Subscription</span>
+                  </Card.Title>
+                  {data.subscriptionExemption != null ? (
+                    data.subscriptionExemption.message ||
+                    FALLBACK_SUBSCRIPTION_EXEMPTION
+                  ) : (
+                    <>
+                      Kodiak is free for personal GitHub accounts.
+                      <br />
+                      Organizations can subscribe to use Kodiak on private
+                      repositories.
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
             </Col>
           </Row>
         )}

@@ -78,6 +78,9 @@ export interface IUsageBillingPageApiResponse {
     readonly firstActiveDate?: string
     readonly hasSeatLicense?: boolean
   }>
+  readonly subscriptionExemption: {
+    readonly message: string | null
+  } | null
 }
 
 export interface IActivityArgs {
