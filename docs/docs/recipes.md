@@ -23,7 +23,7 @@ Kodiak can automerge Dependabot PRs without human intervention by configuring De
 
 ### Configuring Dependabot with the automerge label
 
-1. Install Kodiak following the [quick start guide](http://localhost:3001/docs/quickstart).
+1. Install Kodiak following the [quick start guide](/docs/quickstart).
 
 2. Configure dependabot to open PRs with your [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label. See the [Dependabot labels documentation](https://help.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates#labels) for more information.
 
