@@ -93,11 +93,9 @@ body = "pull_request_body" # default: "github_default"
 
 By default, Kodiak will efficiently merge pull requests.
 
-When "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge.
+When ["Require branches to be up to date before merging"](features.md#updating-pull-requests) is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge. In this case Kodiak will update a pull request just before merge.
 
-By default, Kodiak will only update a pull request just before merge.
-
-If we had multiple PRs waiting to be merged, each PR would only be updated prior to merge.
+If we had multiple PRs waiting to be merged, each PR would only be updated (if required) just before to merge.
 
 ```toml
 # .kodiak.toml
@@ -105,11 +103,13 @@ If we had multiple PRs waiting to be merged, each PR would only be updated prior
 version = 1
 ```
 
+See ["Efficient Merging"](features.md#efficient-merging) for more information.
+
 ## Speedy Merges
 
 By default, pull requests are merged on a first-come-first-served policy for the merge queue. Enabling [`merge.prioritize_ready_to_merge`](config-reference.md#mergeprioritize_ready_to_merge) bypasses the queue for any PR that can be merged without updates.
 
-Assuming "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, when [`update.always`](config-reference.md#updatealways) is enabled, a pull request's branch will be updated when the target branch updates. This option may improve merge speeds but wastes resources.
+Assuming ["Require branches to be up to date before merging"](features.md#updating-pull-requests) is enabled via GitHub Branch Protection settings, when [`update.always`](config-reference.md#updatealways) is enabled, a pull request's branch will be updated when the target branch updates. This option may improve merge speeds but wastes resources.
 
 ```toml
 # .kodiak.toml
