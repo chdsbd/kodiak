@@ -89,6 +89,8 @@ title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"
 ```
 
+<span id="efficiency-and-speed"/> <!-- handle old links -->
+
 ## Efficient Merges
 
 By default, Kodiak will efficiently merge pull requests.
@@ -103,7 +105,7 @@ If we had multiple PRs waiting to be merged, each PR would only be updated (if r
 version = 1
 ```
 
-See ["Efficient Merging"](features.md#efficient-merging) for more information.
+See ["Efficient Merging"](features.md#efficient-merging) for more information about efficiency.
 
 ## Speedy Merges
 
