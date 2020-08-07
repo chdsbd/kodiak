@@ -142,6 +142,8 @@ If Kodiak is merging an out-of-date pull request that has running status checks,
 
 This setting can speed up merges by not waiting for status checks to finish on out-of-date pull requests.
 
+Assuming your status checks pass most of the time, it's useful to leave `merge.optimistic_updates` enabled.
+
 > **Note:** The "Require branches to be up to date before merging" GitHub Branch Protection setting must be enabled for Kodiak to update branches.
 
 ### `merge.dont_wait_on_status_checks`
