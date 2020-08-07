@@ -89,20 +89,33 @@ title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"
 ```
 
-## Efficiency and Speed
+## Efficient Merges
 
-This config prioritizes resource conservation by only updating a PR when it is ready to merge and favors speed by immediately merging any PR that is ready to merge.
+By default Kodiak will efficiently merge pull requests. 
 
-Disabling `merge.prioritize_ready_to_merge` would improve fairness by ensuring a first-come-first-served policy for the merge queue.
+
+When "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge.
+
+By default Kodiak will efficiently update pull requests and only update a pull request just before merge.
+
+If we had multiple PRs waiting to be merged, each PR would only be updated prior to merge.
+
+
+```toml
+# .kodiak.toml
+# Kodiak is efficient by default
+version = 1
+```
+
+## Speedy Merges
+
+By default, pull requests are merged on a first-come-first-served policy for the merge queue. Enabling `merge.prioritize_ready_to_merge` bypasses the queue for any PR that can be merged without updates.
 
 ```toml
 # .kodiak.toml
 version = 1
 
 [merge]
-# don't wait for running status checks when a PR needs update.
-optimistic_updates = true # default: true
-
 # if a PR is ready, merge it, don't place it in the merge queue.
 prioritize_ready_to_merge = true # default: false
 ```
