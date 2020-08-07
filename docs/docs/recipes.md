@@ -95,7 +95,7 @@ By default Kodiak will efficiently merge pull requests.
 
 When "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge.
 
-By default Kodiak will efficiently update pull requests and only update a pull request just before merge.
+By default Kodiak will only update a pull request just before merge.
 
 If we had multiple PRs waiting to be merged, each PR would only be updated prior to merge.
 
