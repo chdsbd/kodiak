@@ -91,15 +91,13 @@ body = "pull_request_body" # default: "github_default"
 
 ## Efficient Merges
 
-By default Kodiak will efficiently merge pull requests. 
-
+By default Kodiak will efficiently merge pull requests.
 
 When "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge.
 
 By default Kodiak will efficiently update pull requests and only update a pull request just before merge.
 
 If we had multiple PRs waiting to be merged, each PR would only be updated prior to merge.
-
 
 ```toml
 # .kodiak.toml
