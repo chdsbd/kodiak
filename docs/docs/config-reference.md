@@ -138,7 +138,9 @@ This option only applies when `merge.require_automerge_label` is enabled.
 - **type:** `boolean`
 - **default:** `true`
 
-If an out-of-date pull request has running status checks, update the pull request branch without waiting for the running status checks to finish.
+_Assuming your status checks pass most of the time, it's useful to leave `merge.optimistic_updates` enabled._
+
+If Kodiak is merging an out-of-date pull request that has running status checks, update the pull request's branch without waiting for the running status checks to finish.
 
 This setting can speed up merges by not waiting for status checks to finish on out-of-date pull requests.
 
