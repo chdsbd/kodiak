@@ -107,7 +107,9 @@ version = 1
 
 ## Speedy Merges
 
-By default, pull requests are merged on a first-come-first-served policy for the merge queue. Enabling `merge.prioritize_ready_to_merge` bypasses the queue for any PR that can be merged without updates.
+By default, pull requests are merged on a first-come-first-served policy for the merge queue. Enabling [`merge.prioritize_ready_to_merge`](config-reference.md#mergeprioritize_ready_to_merge) bypasses the queue for any PR that can be merged without updates.
+
+Assuming "Require branches to be up to date before merging" is enabled via GitHub Branch Protection settings, when [`update.always`](config-reference.md#updatealways) is enabled, a pull request's branch will be updated when the target branch updates. This option may improve merge speeds but wastes resources.
 
 ```toml
 # .kodiak.toml
@@ -116,6 +118,10 @@ version = 1
 [merge]
 # if a PR is ready, merge it, don't place it in the merge queue.
 prioritize_ready_to_merge = true # default: false
+
+[update]
+# immediately update a pull request's branch when outdated.
+always = true # default: false
 ```
 
 ## Better Merge Messages
