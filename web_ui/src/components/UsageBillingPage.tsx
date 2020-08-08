@@ -1390,7 +1390,7 @@ function BillingDocumentation({
 }
 
 const FALLBACK_SUBSCRIPTION_EXEMPTION =
-  "Your account is excepted from subscriptions. Please contact us at support@kodiakhq.com with any questions."
+  "Your account has complimentary access to Kodiak and is excluded from subscriptions. Please contact us at support@kodiakhq.com with any questions."
 
 function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const location = useLocation()
