@@ -24,7 +24,6 @@ from core import auth
 from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
-    AccountType,
     Address,
     AnonymousUser,
     PullRequestActivity,
