@@ -24,7 +24,6 @@ from core import auth
 from core.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from core.models import (
     Account,
-    AccountType,
     Address,
     AnonymousUser,
     PullRequestActivity,
@@ -128,13 +127,18 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         )
         for active_user in active_users
     ]
+    subscription_exemption = None
+
+    if account.subscription_exempt:
+        subscription_exemption = dict(message=account.subscription_exempt_message)
 
     return JsonResponse(
         dict(
-            accountCanSubscribe=account.github_account_type != AccountType.user,
+            accountCanSubscribe=account.can_subscribe(),
             subscription=subscription,
             trial=trial,
             activeUsers=active_user_with_license_info,
+            subscriptionExemption=subscription_exemption,
         )
     )
 

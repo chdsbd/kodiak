@@ -307,3 +307,23 @@ def test_can_edit_subscription() -> None:
     membership.role = "admin"
     membership.save()
     assert user.can_edit_subscription(account) is True
+
+
+def test_account_can_subscribe() -> None:
+    """
+    Organization accounts that are missing exemptions can subscribe.
+
+    GitHub user accounts and accounts marked as exempt cannot subscribe.
+    """
+    assert (
+        Account(github_account_type=AccountType.user).can_subscribe() is False
+    ), "user accounts cannot subscribe"
+    assert (
+        Account(github_account_type=AccountType.organization).can_subscribe() is True
+    ), "organization accounts can subscribe"
+    assert (
+        Account(
+            github_account_type=AccountType.organization, subscription_exempt=True
+        ).can_subscribe()
+        is False
+    ), "organization accounts with an exemption cannot subscribe"

@@ -169,6 +169,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
             hasSeatLicense=False,
         )
     ]
+    assert (
+        res.json()["subscriptionExemption"] is None
+    ), "we should always return this field"
 
     user_account.github_account_type = AccountType.organization
     user_account.save()
@@ -378,6 +381,39 @@ def test_usage_limit_billing_access_to_owners_member(
     assert res.json()["subscription"]["viewerIsOrgOwner"] is True
     assert res.json()["subscription"]["viewerCanModify"] is True
     assert res.json()["subscription"]["limitBillingAccessToOwners"] is True
+
+
+@pytest.mark.django_db
+def test_usage_billing_subscription_exemption(
+    authed_client: Client, user: User
+) -> None:
+    """
+    When a subscription exemption is enabled we'll return a null message unless
+    one is specified.
+
+    We shouldn't be able to subscribe with an exemption
+    """
+    account, membership = create_org_account(user=user, role="member")
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+
+    account.subscription_exempt = True
+    account.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscriptionExemption"] == dict(message=None)
+    assert res.json()["accountCanSubscribe"] is False
+
+    account.subscription_exempt = True
+    account.subscription_exempt_message = (
+        "As a GitHub Sponsor of Kodiak you have complimentary access."
+    )
+    account.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscriptionExemption"] == dict(
+        message=account.subscription_exempt_message
+    )
+    assert res.json()["accountCanSubscribe"] is False
 
 
 @pytest.mark.django_db
