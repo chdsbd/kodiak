@@ -381,6 +381,31 @@ def test_usage_limit_billing_access_to_owners_member(
 
 
 @pytest.mark.django_db
+def test_usage_limit_billing_access_to_owners_member(
+    authed_client: Client, user: User
+) -> None:
+    account, membership = create_org_account(user=user, role="member")
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+
+    account.subscription_exempt = True
+    account.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscriptionExemption"] == dict(message=None)
+
+    account.subscription_exempt = True
+    account.subscription_exempt_message = (
+        "As a GitHub Sponsor of Kodiak you have complimentary access."
+    )
+    account.save()
+    res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
+    assert res.status_code == 200
+    assert res.json()["subscriptionExemption"] == dict(
+        message=account.subscription_exempt_message
+    )
+
+
+@pytest.mark.django_db
 def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Verify that our proration endpoint correctly handles proration.
