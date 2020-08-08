@@ -381,7 +381,7 @@ def test_usage_limit_billing_access_to_owners_member(
 
 
 @pytest.mark.django_db
-def test_usage_limit_billing_access_to_owners_member(
+def test_usage_billing_subscription_exemption(
     authed_client: Client, user: User
 ) -> None:
     account, membership = create_org_account(user=user, role="member")
