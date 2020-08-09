@@ -526,6 +526,30 @@ async def mergeable(
             )
             return
 
+    # we should trigger mergeability checks whenever we encounter UNKNOWN.
+    # 
+    # I don't foresee conflicts with checking configuration errors,
+    # `config.disable_bot_label`, and the paywall before this code.
+    # 
+    # Previously we had an issue where this code wasn't being entered because
+    # `merge.blocking_title_regex` was checked first. Which caused
+    # `update.always` to not operate.
+    if pull_request.mergeable == MergeableState.UNKNOWN:
+        # we need to trigger a test commit to fix this. We do that by calling
+        # GET on the pull request endpoint.
+        await api.trigger_test_commit()
+
+        # queue the PR for evaluation again in case GitHub doesn't send another
+        # webhook for the commit test.
+        await api.requeue()
+
+        # we don't want to abort the merge if we encounter this status check.
+        # Just keep polling!
+        if merging:
+            raise PollForever
+
+        return
+
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
         and pull_request.state == PullRequestState.OPEN
@@ -671,22 +695,6 @@ async def mergeable(
         # TODO(chdsbd): This status means that the pr is mergeable but has failing
         # status checks. we may want to handle this via config
         pass
-
-    if pull_request.mergeable == MergeableState.UNKNOWN:
-        # we need to trigger a test commit to fix this. We do that by calling
-        # GET on the pull request endpoint.
-        await api.trigger_test_commit()
-
-        # queue the PR for evaluation again in case GitHub doesn't send another
-        # webhook for the commit test.
-        await api.requeue()
-
-        # we don't want to abort the merge if we encounter this status check.
-        # Just keep polling!
-        if merging:
-            raise PollForever
-
-        return
 
     wait_for_checks = False
     if pull_request.mergeStateStatus in (
