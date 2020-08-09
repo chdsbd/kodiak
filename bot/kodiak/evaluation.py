@@ -527,10 +527,10 @@ async def mergeable(
             return
 
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
-    # 
+    #
     # I don't foresee conflicts with checking configuration errors,
     # `config.disable_bot_label`, and the paywall before this code.
-    # 
+    #
     # Previously we had an issue where this code wasn't being entered because
     # `merge.blocking_title_regex` was checked first. Which caused
     # `update.always` to not operate.
