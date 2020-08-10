@@ -1609,6 +1609,38 @@ async def test_mergeable_pull_request_need_test_commit_merging() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
+    """
+    If a pull request mergeable status is UNKNOWN we should trigger a test
+    commit and queue it for evaluation.
+
+    Regression test, merge.blocking_title_regex should not prevent us for
+    triggering a test commit.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
+    config.update.always = True
+    config.merge.blocking_title_regex = "^WIP:.*"
+    pull_request.title = "WIP: add(api): endpoint for checking notifications"
+
+    pull_request.mergeable = MergeableState.UNKNOWN
+
+    await mergeable(api=api, pull_request=pull_request)
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.trigger_test_commit.call_count == 1
+    assert api.requeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_missing_required_approving_reviews() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't
