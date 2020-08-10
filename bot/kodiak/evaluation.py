@@ -534,7 +534,10 @@ async def mergeable(
     # Previously we had an issue where this code wasn't being entered because
     # `merge.blocking_title_regex` was checked first. Which caused
     # `update.always` to not operate.
-    if pull_request.mergeable == MergeableState.UNKNOWN:
+    if (
+        pull_request.mergeable == MergeableState.UNKNOWN
+        and pull_request.state == PullRequestState.OPEN
+    ):
         # we need to trigger a test commit to fix this. We do that by calling
         # GET on the pull request endpoint.
         await api.trigger_test_commit()
