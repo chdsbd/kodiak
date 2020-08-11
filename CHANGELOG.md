@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.28.0 - 2020-08-10
+
+### Fixed
+- Fixed conflict between `merge.blocking_title_regex` and the trigger test commit logic that prevent `update.always` from working. (#482, #483)
+
+### Changed
+- Added distinct "speed" and "efficiency" recipes to docs. (#480)
+
 ## 0.27.0 - 2020-07-18
 
 ### Changed
