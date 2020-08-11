@@ -1609,6 +1609,82 @@ async def test_mergeable_pull_request_need_test_commit_merging() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
+    """
+    If a pull request mergeable status is UNKNOWN we should trigger a test
+    commit and queue it for evaluation.
+
+    Regression test, merge.blocking_title_regex should not prevent us for
+    triggering a test commit.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
+    config.update.always = True
+    config.merge.blocking_title_regex = "^WIP:.*"
+    pull_request.title = "WIP: add(api): endpoint for checking notifications"
+
+    pull_request.mergeable = MergeableState.UNKNOWN
+    pull_request.state = PullRequestState.OPEN
+
+    await mergeable(api=api, pull_request=pull_request)
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 0
+    assert api.trigger_test_commit.call_count == 1
+    assert api.requeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open() -> None:
+    """
+    If a pull request mergeable status is UNKNOWN _and_ it is OPEN we should
+    trigger a test commit and queue it for evaluation.
+
+    Regression test to prevent infinite loop calling trigger_test_commit on
+    merged/closed pull requests.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
+    config.update.always = True
+    config.merge.blocking_title_regex = "^WIP:.*"
+    pull_request.title = "WIP: add(api): endpoint for checking notifications"
+
+    pull_request.mergeable = MergeableState.UNKNOWN
+
+    # this test is nearly identical to
+    # test_mergeable_pull_request_need_test_commit_need_update, except our pull
+    # request state is MERGED or CLOSED instead of OPEN.
+    for index, pull_request_state in enumerate(
+        (PullRequestState.MERGED, PullRequestState.CLOSED)
+    ):
+        pull_request.state = pull_request_state
+        await mergeable(api=api, pull_request=pull_request)
+        assert api.set_status.call_count == index + 1
+        assert (
+            "cannot merge (title matches merge.blocking_title_regex"
+            in api.set_status.calls[0]["msg"]
+        )
+        assert api.dequeue.call_count == index + 1
+        assert api.trigger_test_commit.call_count == 0
+        assert api.requeue.call_count == 0
+
+        # verify we haven't tried to update/merge the PR
+        assert api.update_branch.called is False
+        assert api.merge.called is False
+        assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_missing_required_approving_reviews() -> None:
     """
     Don't merge when branch protection requires approving reviews and we don't

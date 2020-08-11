@@ -23,7 +23,7 @@ Kodiak can automerge Dependabot PRs without human intervention by configuring De
 
 ### Configuring Dependabot with the automerge label
 
-1. Install Kodiak following the [quick start guide](http://localhost:3001/docs/quickstart).
+1. Install Kodiak following the [quick start guide](/docs/quickstart).
 
 2. Configure dependabot to open PRs with your [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label. See the [Dependabot labels documentation](https://help.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates#labels) for more information.
 
@@ -89,22 +89,41 @@ title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"
 ```
 
-## Efficiency and Speed
+<span id="efficiency-and-speed"/> <!-- handle old links -->
 
-This config prioritizes resource conservation by only updating a PR when it is ready to merge and favors speed by immediately merging any PR that is ready to merge.
+## Efficient Merges
 
-Disabling `merge.prioritize_ready_to_merge` would improve fairness by ensuring a first-come-first-served policy for the merge queue.
+By default, Kodiak will efficiently merge pull requests.
+
+When ["Require branches to be up to date before merging"](features.md#updating-pull-requests) is enabled via GitHub Branch Protection settings, a pull request's branch must be up-to-date with the target branch before merge. In this case Kodiak will update a pull request just before merge.
+
+If we had multiple PRs waiting to be merged, each PR would only be updated (if required) just before to merge.
+
+```toml
+# .kodiak.toml
+# Kodiak is efficient by default
+version = 1
+```
+
+See ["Efficient Merging"](features.md#efficient-merging) for more information about efficiency.
+
+## Speedy Merges
+
+By default, pull requests are merged on a first-come-first-served policy for the merge queue. Enabling [`merge.prioritize_ready_to_merge`](config-reference.md#mergeprioritize_ready_to_merge) bypasses the queue for any PR that can be merged without updates.
+
+Assuming ["Require branches to be up to date before merging"](features.md#updating-pull-requests) is enabled via GitHub Branch Protection settings, when [`update.always`](config-reference.md#updatealways) is enabled, a pull request's branch will be updated when the target branch updates. This option may improve merge speeds but wastes resources.
 
 ```toml
 # .kodiak.toml
 version = 1
 
 [merge]
-# don't wait for running status checks when a PR needs update.
-optimistic_updates = true # default: true
-
 # if a PR is ready, merge it, don't place it in the merge queue.
 prioritize_ready_to_merge = true # default: false
+
+[update]
+# immediately update a pull request's branch when outdated.
+always = true # default: false
 ```
 
 ## Better Merge Messages

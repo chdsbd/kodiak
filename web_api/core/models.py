@@ -287,6 +287,15 @@ class Account(BaseModel):
     )
     limit_billing_access_to_owners = models.BooleanField(default=False)
 
+    subscription_exempt = models.BooleanField(
+        default=False,
+        help_text="This account does not require a subscription. Potentially a GitHub Sponsor, Enterprise subscriber, non profit, etc.",
+    )
+    subscription_exempt_message = models.TextField(
+        null=True,
+        help_text="Explanation for the subscription exemption to be displayed in the Usage & Billing page.",
+    )
+
     class Meta:
         db_table = "account"
         constraints = [
@@ -347,6 +356,12 @@ class Account(BaseModel):
             bool, (self.trial_expiration - timezone.now()).total_seconds() > 0
         )
 
+    def can_subscribe(self) -> bool:
+        return (
+            self.github_account_type != AccountType.user
+            and not self.subscription_exempt
+        )
+
     def get_subscription_blocker(
         self,
     ) -> Optional[Union[SubscriptionExpired, TrialExpired, SeatsExceeded]]:
@@ -358,7 +373,7 @@ class Account(BaseModel):
         Once they exceed 0 active users they will hit the "seats_exceeded"
         state.
         """
-        if self.github_account_type == AccountType.user:
+        if not self.can_subscribe():
             return None
 
         if self.active_trial():
