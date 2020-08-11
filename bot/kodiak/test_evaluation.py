@@ -1646,6 +1646,9 @@ async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open()
     """
     If a pull request mergeable status is UNKNOWN _and_ it is OPEN we should
     trigger a test commit and queue it for evaluation.
+
+    Regression test to prevent infinite loop calling trigger_test_commit on
+    merged/closed pull requests.
     """
     api = create_api()
     mergeable = create_mergeable()
