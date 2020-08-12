@@ -80,10 +80,6 @@ We squash all PR commits and use the PR title and body for the merge commit. Onc
 # .kodiak.toml
 version = 1
 
-[merge]
-method = "squash" # default: "merge"
-delete_branch_on_merge = true # default: false
-
 [merge.message]
 title = "pull_request_title" # default: "github_default"
 body = "pull_request_body" # default: "github_default"

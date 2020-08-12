@@ -404,7 +404,7 @@ blocking_labels = [] # default: [], options: list of label names (e.g. ["wip"])
 #
 # If you're using the "Require signed commits" GitHub Branch Protection setting
 # to require commit signatures, "merge" or "squash" are the only compatible options. "rebase" will cause Kodiak to raise a configuration error.
-method = "merge" # default: "merge", options: "merge", "squash", "rebase"
+method = "merge" # default: first valid merge method in list "merge", "squash", "rebase", options: "merge", "squash", "rebase"
 
 # Once a PR is merged, delete the branch. This option behaves like the GitHub
 # repository setting "Automatically delete head branches", which automatically
