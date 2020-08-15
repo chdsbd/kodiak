@@ -84,7 +84,8 @@ function AccountsPageInner({
             </li>
           ))}
         </ul>
-        <details>
+        {/* open by default when user has no accounts */}
+        <details open={accounts.data.length === 0}>
           <summary className="mb-2">Not seeing an account?</summary>
           <a href={installUrl}>Install Kodiak</a> and sync your accounts.
           <br />
