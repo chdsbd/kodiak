@@ -335,7 +335,10 @@ workflows:
     jobs:
       - bot_test
       - bot_lint
-      - bot_build_container
+      - bot_build_container:
+          filters:
+            tags:
+              only: /^v\d*\.\d*\.\d*$/
   docs:
     jobs:
       - docs_typecheck
@@ -346,11 +349,17 @@ workflows:
     jobs:
       - web_ui_lint
       - web_ui_test
-      - web_ui_build_container
+      - web_ui_build_container:
+          filters:
+            tags:
+              only: /^v\d*\.\d*\.\d*$/
 
   web_api:
     jobs:
       - web_api_test
       - web_api_lint
       - web_api_squawk
-      - web_api_build_container
+      - web_api_build_container:
+          filters:
+            tags:
+              only: /^v\d*\.\d*\.\d*$/
