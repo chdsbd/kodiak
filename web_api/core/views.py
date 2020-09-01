@@ -97,6 +97,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 planInterval=plan_interval,
             ),
             billingEmail=stripe_customer_info.customer_email,
+            contactEmails=account.contact_emails,
             customerName=stripe_customer_info.customer_name,
             customerAddress=customer_address,
             cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
@@ -294,6 +295,7 @@ class UpdateBillingInfoModel(pydantic.BaseModel):
     email: Optional[pydantic.EmailStr] = None
     name: Optional[str] = None
     address: Optional[AddressModel] = None
+    contactEmails: Optional[str] = None
     limitBillingAccessToOwners: Optional[bool] = None
 
 
@@ -308,6 +310,12 @@ def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpRespo
         if not request.user.is_admin(account):
             raise PermissionDenied
         account.limit_billing_access_to_owners = payload.limitBillingAccessToOwners
+        account.save()
+
+    if payload.contactEmails is not None:
+        if not request.user.can_edit_subscription(account):
+            raise PermissionDenied
+        account.contact_emails = payload.contactEmails
         account.save()
 
     if (

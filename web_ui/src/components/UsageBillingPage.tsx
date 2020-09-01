@@ -66,6 +66,7 @@ interface IUsageBillingData {
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
+    readonly contactEmails?: string
     readonly customerName?: string
     readonly customerAddress?: {
       readonly line1?: string
@@ -934,6 +935,54 @@ function BillingEmailForm({
   )
 }
 
+function ContactEmailForm({
+  defaultValue,
+  className,
+  disabled,
+}: {
+  readonly defaultValue: string
+  readonly className?: string
+  readonly disabled: boolean
+}) {
+  const [contactEmails, setContactEmails] = React.useState(defaultValue)
+  const [apiState, updateStripeCustomerInfo] = useTeamApiMutation(
+    Current.api.updateStripeCustomerInfo,
+  )
+  function handleSubmit(e: React.ChangeEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (disabled) {
+      return
+    }
+    updateStripeCustomerInfo({ contactEmails })
+  }
+  return (
+    <Card className={className}>
+      <Card.Body>
+        <Card.Title>Contact Emails</Card.Title>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group>
+            <Form.Control
+              as="textarea"
+              rows="3"
+              required
+              value={contactEmails}
+              disabled={disabled}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setContactEmails(e.target.value)
+              }
+            />
+            <Form.Text className="text-muted">
+              Addresses for account notifications (one address per line).
+              Billing email will be used if not provided.
+            </Form.Text>
+          </Form.Group>
+          <KodiakSaveButton state={apiState} disabled={disabled} />
+        </Form>
+      </Card.Body>
+    </Card>
+  )
+}
+
 function CompanyNameForm({
   defaultValue,
   className,
@@ -1173,6 +1222,7 @@ function Subcription({
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
+    readonly contactEmails?: string
     readonly customerName?: string
     readonly customerAddress?: {
       readonly line1?: string
@@ -1271,6 +1321,12 @@ function Subcription({
         <BillingEmailForm
           className="mb-4"
           defaultValue={subscription.billingEmail}
+          disabled={!subscription.viewerCanModify}
+        />
+
+        <ContactEmailForm
+          className="mb-4"
+          defaultValue={subscription.contactEmail ?? ""}
           disabled={!subscription.viewerCanModify}
         />
 

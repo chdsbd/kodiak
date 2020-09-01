@@ -45,6 +45,7 @@ export interface IUsageBillingPageApiResponse {
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
+    readonly contactEmail?: string
     readonly customerName?: string
     readonly customerAddress?: {
       readonly line1?: string
@@ -211,6 +212,7 @@ export type UpdateStripeCustomerInfoArgs = {
     readonly state?: string
   }
   readonly limitBillingAccessToOwners?: boolean
+  readonly contactEmails?: string
 }
 
 export interface Api {

@@ -287,6 +287,12 @@ class Account(BaseModel):
     )
     limit_billing_access_to_owners = models.BooleanField(default=False)
 
+    contact_emails = models.TextField(
+        blank=True,
+        max_length=2000,
+        help_text="emails to contact about Kodiak issues. This is in addition to billing email from Stripe.",
+    )
+
     subscription_exempt = models.BooleanField(
         default=False,
         help_text="This account does not require a subscription. Potentially a GitHub Sponsor, Enterprise subscriber, non profit, etc.",
