@@ -1326,7 +1326,7 @@ function Subcription({
 
         <ContactEmailForm
           className="mb-4"
-          defaultValue={subscription.contactEmail ?? ""}
+          defaultValue={subscription.contactEmails ?? ""}
           disabled={!subscription.viewerCanModify}
         />
 
