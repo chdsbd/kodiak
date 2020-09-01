@@ -308,7 +308,11 @@ class Account(BaseModel):
             models.CheckConstraint(
                 check=models.Q(github_account_type__in=AccountType.values),
                 name="github_account_type_valid",
-            )
+            ),
+            models.CheckConstraint(
+                check=models.Q(contact_emails__lt=2000),
+                name="contact_emails_max_length_2000",
+            ),
         ]
 
     __repr__ = sane_repr(
