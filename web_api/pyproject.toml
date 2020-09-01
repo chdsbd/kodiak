@@ -19,6 +19,7 @@ zstandard = "^0.13.0"
 sentry-sdk = "^0.14.1"
 stripe = "2.46.0"
 email-validator = "^1.1"
+pywatchman = "^1.4"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
