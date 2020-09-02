@@ -1211,12 +1211,13 @@ def test_update_contact_emails(
     """
     User should be able to set contact emails
     """
-    account, _membership = create_org_account(user)
+    account, membership = create_org_account(user)
 
     original_email = "j.doe@acme-inc.corp"
     account.original_email = original_email
     account.save()
 
+    # by default a user should be able to set the contact emails fields.
     payload = dict(contactEmails="a.hamilton@treasury.gov\ng.washington@whitehouse.gov")
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
@@ -1226,6 +1227,29 @@ def test_update_contact_emails(
     assert res.status_code == 204
     account.refresh_from_db()
     assert account.contact_emails == payload["contactEmails"]
+
+    # if we limit to billing access and the user is not an admin they should be
+    # prevented from updating.
+    account.limit_billing_access_to_owners = True
+    account.save()
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 403
+
+    # an admin can set the field when limit_billing_access_to_owners is enabled.
+    membership.role = "admin"
+    membership.save()
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
 
 
 @pytest.mark.django_db
