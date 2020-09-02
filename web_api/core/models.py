@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
 r = redis.Redis.from_url(settings.REDIS_URL)
 
+# register Length so we can do __length__ lookup on text fields. This allows us
+# to write a check constraint on the length of a text field.
+models.TextField.register_lookup(models.functions.Length)
+
 
 def sane_repr(*attrs: str) -> Callable:
     """
@@ -287,6 +291,12 @@ class Account(BaseModel):
     )
     limit_billing_access_to_owners = models.BooleanField(default=False)
 
+    contact_emails = models.TextField(
+        blank=True,
+        max_length=2000,
+        help_text="emails to contact about Kodiak issues. This is in addition to billing email from Stripe.",
+    )
+
     subscription_exempt = models.BooleanField(
         default=False,
         help_text="This account does not require a subscription. Potentially a GitHub Sponsor, Enterprise subscriber, non profit, etc.",
@@ -302,7 +312,11 @@ class Account(BaseModel):
             models.CheckConstraint(
                 check=models.Q(github_account_type__in=AccountType.values),
                 name="github_account_type_valid",
-            )
+            ),
+            models.CheckConstraint(
+                check=models.Q(contact_emails__length__lt=2000),
+                name="contact_emails_max_length_2000",
+            ),
         ]
 
     __repr__ = sane_repr(

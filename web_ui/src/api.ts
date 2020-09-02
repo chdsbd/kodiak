@@ -211,6 +211,7 @@ export type UpdateStripeCustomerInfoArgs = {
     readonly state?: string
   }
   readonly limitBillingAccessToOwners?: boolean
+  readonly contactEmails?: string
 }
 
 export interface Api {

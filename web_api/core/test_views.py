@@ -316,6 +316,7 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["cost"]["currency"] == "eur"
     assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
+    assert res.json()["subscription"]["contactEmails"] == ""
     assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
     assert res.json()["subscription"]["customerName"] is None
     assert res.json()["subscription"]["customerAddress"] is None
@@ -1201,6 +1202,54 @@ def test_update_billing_email_empty(
     assert res.status_code == 400
     stripe_customer_info.refresh_from_db()
     assert stripe_customer_info.customer_email == original_email
+
+
+@pytest.mark.django_db
+def test_update_contact_emails(
+    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+) -> None:
+    """
+    User should be able to set contact emails
+    """
+    account, membership = create_org_account(user)
+
+    original_email = "j.doe@acme-inc.corp"
+    account.original_email = original_email
+    account.save()
+
+    # by default a user should be able to set the contact emails fields.
+    payload = dict(contactEmails="a.hamilton@treasury.gov\ng.washington@whitehouse.gov")
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
+    account.refresh_from_db()
+    assert account.contact_emails == payload["contactEmails"]
+
+    # if we limit to billing access and the user is not an admin they should be
+    # prevented from updating.
+    account.limit_billing_access_to_owners = True
+    account.save()
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 403
+
+    # an admin can set the field when limit_billing_access_to_owners is enabled.
+    membership.role = "admin"
+    membership.save()
+
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_stripe_customer_info",
+        payload,
+        content_type="application/json",
+    )
+    assert res.status_code == 204
 
 
 @pytest.mark.django_db
