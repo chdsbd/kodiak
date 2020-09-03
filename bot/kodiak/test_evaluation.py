@@ -1187,6 +1187,41 @@ async def test_mergeable_no_valid_methods() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_method_override_with_label() -> None:
+    """
+    We should be able to override merge methods with a label.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.method = MergeMethod.squash
+    override_labels = (
+        # basic
+        "kodiak:merge.method='rebase'",
+        # spacing
+        "kodiak:merge.method= 'rebase'",
+        # more spacing
+        "kodiak:merge.method = 'rebase'",
+        # full spacing
+        "kodiak: merge.method = 'rebase'",
+        # try with double quotes
+        'kodiak:merge.method="rebase"',
+    )
+    for index, override_label in enumerate(override_labels):
+        pull_request.labels = ["automerge", override_label]
+
+        await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
+        assert api.merge.call_count == index + 1
+        assert api.merge.calls[0]["merge_method"] == MergeMethod.rebase
+
+        assert api.queue_for_merge.called is False
+        assert api.dequeue.called is False
+        assert api.update_branch.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_block_on_reviews_requested() -> None:
     """
     block merge if reviews are requested and merge.block_on_reviews_requested is

@@ -353,11 +353,44 @@ def get_blocking_title_regex(config: config.V1) -> BlockingTitleRegex:
 MERGE_METHODS = (MergeMethod.merge, MergeMethod.squash, MergeMethod.rebase)
 
 
+class MergeMethodValue(pydantic.BaseModel):
+    method: MergeMethod
+
+
+class MergeMethodOverride(pydantic.BaseModel):
+    """
+    Parse the decoded toml value from merge method override.
+
+    A well formed object to parse will look like the following:
+        {"merge": {"method": "rebase"}}
+    """
+
+    merge: MergeMethodValue
+
+
 def get_merge_method(
     cfg_merge_method: Optional[MergeMethod],
     valid_merge_methods: List[MergeMethod],
+    labels: List[str],
     log: structlog.BoundLogger,
 ) -> MergeMethod:
+
+    # parse merge.method override label
+    # example: `kodiak: merge.method = "rebase"`
+    for label in labels:
+        if not label.startswith("kodiak:"):
+            continue
+        # we have an existing label "kodiak:disabled". This label will not parse
+        # here and will be ignored.
+        _start, _sep, maybe_config = label.partition("kodiak:")
+        try:
+            merge_method_override = MergeMethodOverride.parse_obj(
+                toml.loads(maybe_config)
+            )
+        except (toml.TomlDecodeError, pydantic.ValidationError):
+            continue
+        return merge_method_override.merge.method
+
     if cfg_merge_method is not None:
         return cfg_merge_method
 
@@ -456,6 +489,7 @@ async def mergeable(
         cfg_merge_method=config.merge.method,
         valid_merge_methods=valid_merge_methods,
         log=log,
+        labels=pull_request.labels,
     )
 
     if (
