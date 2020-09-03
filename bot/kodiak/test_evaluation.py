@@ -1197,8 +1197,20 @@ async def test_mergeable_method_override_with_label() -> None:
     pull_request = create_pull_request()
 
     config.merge.method = MergeMethod.squash
-    for index, override_label in enumerate(("kodiak:merge.method='rebase'",)):
-        pull_request.labels = ["automerge" ,override_label]
+    override_labels = (
+        # basic
+        "kodiak:merge.method='rebase'",
+        # spacing
+        "kodiak:merge.method= 'rebase'",
+        # more spacing
+        "kodiak:merge.method = 'rebase'",
+        # full spacing
+        "kodiak: merge.method = 'rebase'",
+        # try with double quotes
+        'kodiak:merge.method="rebase"',
+    )
+    for index, override_label in enumerate(override_labels):
+        pull_request.labels = ["automerge", override_label]
 
         await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
         assert api.merge.call_count == index + 1
