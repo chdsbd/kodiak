@@ -964,7 +964,6 @@ function ContactEmailForm({
             <Form.Control
               as="textarea"
               rows="3"
-              required
               value={contactEmails}
               disabled={disabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
