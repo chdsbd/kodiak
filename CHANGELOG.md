@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.29.0 - 2020-09-05
 
 ### Added
-- Added ability to override `merge.method` with a label like `kodiak:merge.method='rebase'`. (#476, #501)
+- Added ability to override `merge.method` with a label like `kodiak:merge.method='rebase'`. (#476, #501, #504)
 - Added contact emails field to billing page to specify additional contact emails. (#499, #502)
 
 ## 0.28.0 - 2020-08-10
