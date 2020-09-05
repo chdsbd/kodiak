@@ -349,6 +349,28 @@ This setting is useful when the "Required approving reviews" GitHub Branch Prote
 
 See the "[Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot)" recipe for an example of this feature in action.
 
+## configuration labels
+
+Some configuration options set in `.kodiak.toml` can be overriden with pull request labels.
+
+Please [open an issue on GitHub](https://github.com/chdsbd/kodiak/issues/new/choose) if you would like support for more options.
+
+### `merge.method`
+
+The [`merge.method`](config-reference.md#mergemethod) option can be overriden with a label, allowing you to merge a pull request with a `merge.method` that differs from your `.kodiak.toml` setting.
+
+#### Example
+
+Label your pull request with the `kodiak: merge.method = 'rebase'` label to set `merge.method` to "rebase" for your pull request.
+
+Here's a table of all the options:
+
+| merge method | label                             |
+| ------------ | --------------------------------- |
+| merge        | `kodiak: merge.method = "merge"`  |
+| squash       | `kodiak: merge.method = "squash"` |
+| rebase       | `kodiak: merge.method = "rebase"` |
+
 ## full examples
 
 ### minimal
