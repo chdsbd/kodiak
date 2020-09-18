@@ -167,7 +167,7 @@ class Migration(migrations.Migration):
                 null=True,
                 on_delete=django.db.models.deletion.SET_NULL,
                 related_name="+",
-                to="core.User",
+                to="web_api.User",
             ),
         ),
     ]
