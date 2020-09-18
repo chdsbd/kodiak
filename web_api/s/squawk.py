@@ -9,6 +9,7 @@ from pathlib import Path
 from shutil import which
 from typing import Mapping, Optional
 
+SQUAWK_VERSION = "0.5.0"
 APP_LABEL = "web_api"
 
 MIGRATIONS_DIRECTORY = "./web_api/migrations"
@@ -130,7 +131,9 @@ def main() -> None:
     if not is_installed("squawk"):
         subprocess.run(["npm", "config", "set", "unsafe-perm", "true"], check=True)
         log.info("squawk not found, installing")
-        subprocess.run(["npm", "install", "-g", "squawk-cli@0.3.0"], check=True)
+        subprocess.run(
+            ["npm", "install", "-g", f"squawk-cli@{SQUAWK_VERSION}"], check=True
+        )
 
     pr_info = get_pr_info(os.environ)
     assert pr_info is not None
