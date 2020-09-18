@@ -5,7 +5,7 @@ import django
 
 # fmt: off
 # must setup django before importing models
-os.environ["DJANGO_SETTINGS_MODULE"] = "web_api.settings"
+os.environ["DJANGO_SETTINGS_MODULE"] = "core.settings"
 django.setup()
 # pylint: disable=wrong-import-position
 from core.models import UserPullRequestActivity # noqa:E402 isort:skip

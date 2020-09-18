@@ -42,9 +42,9 @@ MIDDLEWARE = [
     "core.middleware.AuthenticationMiddleware",
 ]
 
-ROOT_URLCONF = "web_api.urls"
+ROOT_URLCONF = "core.urls"
 
-WSGI_APPLICATION = "web_api.wsgi.application"
+WSGI_APPLICATION = "core.wsgi.application"
 
 
 # Database

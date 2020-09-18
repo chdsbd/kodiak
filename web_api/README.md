@@ -21,7 +21,7 @@ s/build
 
 
 # run production app server
-.venv/bin/gunicorn --bind 0.0.0.0:$PORT web_api.wsgi
+.venv/bin/gunicorn --bind 0.0.0.0:$PORT core.wsgi
 
 # ingest events for analysis (run continuously)
 ./manage.py ingest_events
