@@ -25,7 +25,7 @@ def is_installed(name: str) -> bool:
 MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
 
 
-def get_migration_id(filename: str) -> Optional[str]:
+def get_migration_id(filepath: str) -> Optional[str]:
     """
     valid migrations:
         0001_initial.py
@@ -36,10 +36,11 @@ def get_migration_id(filename: str) -> Optional[str]:
 
     For a valid migration 0001_initial.py, return 0001_initial.
     """
+    filename = Path(filepath).name
     match = MIGRATION_REGEX.match(filename)
     if match is None:
         return None
-    return match.group()
+    return match.groups()[0]
 
 
 @dataclass(frozen=True)
