@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,8 +22,24 @@ def is_installed(name: str) -> bool:
     return which(name) is not None
 
 
-def get_migration_id(filename: str) -> str:
-    return Path(filename).stem
+MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
+
+
+def get_migration_id(filename: str) -> Optional[str]:
+    """
+    valid migrations:
+        0001_initial.py
+        0014_auto_20200323_0159.py
+        0023_account_limit_billing_access_to_owners.py
+    invalid migrations:
+        __init__.py
+
+    For a valid migration 0001_initial.py, return 0001_initial.
+    """
+    match = MIGRATION_REGEX.match(filename)
+    if match is None:
+        return None
+    return match.group()
 
 
 @dataclass(frozen=True)
@@ -57,12 +74,17 @@ def main() -> None:
         MIGRATIONS_DIRECTORY,
     ]
 
-    changed_migrations_ids = [
-        (get_migration_id(p), p)
-        for p in subprocess.run(diff_cmd, capture_output=True, check=True)
+    changed_migrations_ids = []
+    for p in (
+        subprocess.run(diff_cmd, capture_output=True, check=True)
         .stdout.decode()
         .split()
-    ]
+    ):
+        migration_id = get_migration_id(p)
+        if migration_id is None:
+            continue
+        changed_migrations_ids.append((migration_id, p))
+
     log.info("found migrations: %s", changed_migrations_ids)
 
     # get sqlmigrate to behave
