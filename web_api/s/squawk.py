@@ -8,9 +8,9 @@ from pathlib import Path
 from shutil import which
 from typing import Mapping, Optional
 
-APP_LABEL = "core"
+APP_LABEL = "web_api"
 
-MIGRATIONS_DIRECTORY = "./core/migrations"
+MIGRATIONS_DIRECTORY = "./web_api/migrations"
 
 
 logging.basicConfig(level=logging.INFO)
