@@ -2,15 +2,17 @@
 
 import logging
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
 from typing import Mapping, Optional
 
-APP_LABEL = "core"
+SQUAWK_VERSION = "0.5.0"
+APP_LABEL = "web_api"
 
-MIGRATIONS_DIRECTORY = "./core/migrations"
+MIGRATIONS_DIRECTORY = "./web_api/migrations"
 
 
 logging.basicConfig(level=logging.INFO)
@@ -21,8 +23,25 @@ def is_installed(name: str) -> bool:
     return which(name) is not None
 
 
-def get_migration_id(filename: str) -> str:
-    return Path(filename).stem
+MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
+
+
+def get_migration_id(filepath: str) -> Optional[str]:
+    """
+    valid migrations:
+        0001_initial.py
+        0014_auto_20200323_0159.py
+        0023_account_limit_billing_access_to_owners.py
+    invalid migrations:
+        __init__.py
+
+    For a valid migration 0001_initial.py, return 0001_initial.
+    """
+    filename = Path(filepath).name
+    match = MIGRATION_REGEX.match(filename)
+    if match is None:
+        return None
+    return match.groups()[0]
 
 
 @dataclass(frozen=True)
@@ -57,12 +76,17 @@ def main() -> None:
         MIGRATIONS_DIRECTORY,
     ]
 
-    changed_migrations_ids = [
-        (get_migration_id(p), p)
-        for p in subprocess.run(diff_cmd, capture_output=True, check=True)
+    changed_migrations_ids = []
+    for p in (
+        subprocess.run(diff_cmd, capture_output=True, check=True)
         .stdout.decode()
         .split()
-    ]
+    ):
+        migration_id = get_migration_id(p)
+        if migration_id is None:
+            continue
+        changed_migrations_ids.append((migration_id, p))
+
     log.info("found migrations: %s", changed_migrations_ids)
 
     # get sqlmigrate to behave
@@ -107,7 +131,9 @@ def main() -> None:
     if not is_installed("squawk"):
         subprocess.run(["npm", "config", "set", "unsafe-perm", "true"], check=True)
         log.info("squawk not found, installing")
-        subprocess.run(["npm", "install", "-g", "squawk-cli@0.3.0"], check=True)
+        subprocess.run(
+            ["npm", "install", "-g", f"squawk-cli@{SQUAWK_VERSION}"], check=True
+        )
 
     pr_info = get_pr_info(os.environ)
     assert pr_info is not None

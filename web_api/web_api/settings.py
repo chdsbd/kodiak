@@ -30,16 +30,16 @@ ALLOWED_HOSTS: List[str] = ["*"]
 
 # Application definition
 
-INSTALLED_APPS = ["django.contrib.sessions", "core"]
+INSTALLED_APPS = ["django.contrib.sessions", "web_api"]
 
 MIDDLEWARE = [
-    "core.middleware.HealthCheckMiddleware",
-    "core.middleware.ExceptionMiddleware",
+    "web_api.middleware.HealthCheckMiddleware",
+    "web_api.middleware.ExceptionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "core.middleware.AuthenticationMiddleware",
+    "web_api.middleware.AuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "web_api.urls"
