@@ -327,6 +327,7 @@ def branch_protection() -> BranchProtectionRule:
         requiresApprovingReviews=True,
         requiredApprovingReviewCount=1,
         requiresStatusChecks=True,
+        requiresCodeOwnerReviews=False,
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
         requiresCommitSignatures=False,

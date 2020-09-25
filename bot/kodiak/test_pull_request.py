@@ -60,6 +60,7 @@ def create_event() -> EventInfoResponse:
             "ci/circleci: frontend_test",
         ],
         requiresStrictStatusChecks=True,
+        requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
         restrictsPushes=False,
         pushAllowances=NodeListPushAllowance(nodes=[]),

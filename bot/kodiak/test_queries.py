@@ -133,6 +133,7 @@ def block_event() -> EventInfoResponse:
             "WIP (beta)",
         ],
         requiresStrictStatusChecks=True,
+        requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
         restrictsPushes=True,
         pushAllowances=NodeListPushAllowance(
