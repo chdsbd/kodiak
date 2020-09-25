@@ -351,6 +351,7 @@ class BranchProtectionRule(BaseModel):
     requiresStatusChecks: bool
     requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
+    requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance

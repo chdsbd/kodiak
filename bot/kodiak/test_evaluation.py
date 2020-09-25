@@ -37,6 +37,7 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
+    PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
@@ -341,6 +342,7 @@ def create_branch_protection() -> BranchProtectionRule:
         requiresStatusChecks=True,
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
+        requiresCodeOwnerReviews=True,
         requiresCommitSignatures=False,
         restrictsPushes=False,
         pushAllowances=NodeListPushAllowance(nodes=[]),
@@ -1842,6 +1844,47 @@ async def test_mergeable_missing_required_approving_reviews_missing_approving_re
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "missing required reviews, have 1/2" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_required_approving_reviews_code_owners() -> None:
+    """
+    Don't merge when code owners are required for review.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    review = create_review()
+
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    pull_request.reviewDecision = PullRequestReviewDecision.REVIEW_REQUIRED
+    # previously with code owner blocked PRs Kodiak would update the pull
+    # request, even if the pull request was blocked from merging.
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    branch_protection.requiresApprovingReviews = True
+    branch_protection.requiredApprovingReviewCount = 1
+    branch_protection.requiresCodeOwnerReviews = True
+    # this pull request meets requiredApprovingReviewCount, but is missing a
+    # code owner approval.
+    review.state = PRReviewState.APPROVED
+    review.author.permission = Permission.WRITE
+
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        reviews=[review],
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "missing required review" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False

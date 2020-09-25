@@ -42,6 +42,7 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
     RepoInfo,
@@ -779,6 +780,10 @@ async def mergeable(
                     f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}",
                 )
                 return
+
+        if pull_request.reviewDecision == PullRequestReviewDecision.REVIEW_REQUIRED:
+            await block_merge(api, pull_request, "missing required reviews")
+            return
 
         required: Set[str] = set()
         passing: Set[str] = set()
