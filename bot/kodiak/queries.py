@@ -253,6 +253,15 @@ class PullRequestAuthor(BaseModel):
     name: Optional[str] = None
 
 
+class PullRequestReviewDecision(Enum):
+    # The pull request has received an approving review.
+    APPROVED = "APPROVED"
+    # Changes have been requested on the pull request.
+    CHANGES_REQUESTED = "CHANGES_REQUESTED"
+    # A review is required before the pull request can be merged.
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -262,6 +271,7 @@ class PullRequest(BaseModel):
     bodyHTML: str
     author: PullRequestAuthor
     mergeStateStatus: MergeStateStatus
+    reviewDecision: Optional[PullRequestReviewDecision]
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool
