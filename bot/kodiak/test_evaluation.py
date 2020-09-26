@@ -687,7 +687,7 @@ async def test_mergeable_missing_automerge_label_require_automerge_label() -> No
     pull_request.labels = []
     await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]['msg']
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 0
     assert api.queue_for_merge.call_count == 1
 
@@ -3683,10 +3683,9 @@ async def test_mergeable_paywall_missing_subscription() -> None:
         subscription=None,
     )
 
-
     assert api.queue_for_merge.call_count == 1
     assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]['msg']
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.approve_pull_request.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.merge.call_count == 0
