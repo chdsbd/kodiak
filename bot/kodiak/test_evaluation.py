@@ -2514,6 +2514,7 @@ async def test_regression_mishandling_multiple_reviews_okay_reviews() -> None:
     api = create_api()
     pull_request = create_pull_request()
     branch_protection = create_branch_protection()
+    review_request = create_review_request()
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresApprovingReviews = True
     branch_protection.requiredApprovingReviewCount = 1
@@ -2525,6 +2526,7 @@ async def test_regression_mishandling_multiple_reviews_okay_reviews() -> None:
         api=api,
         pull_request=pull_request,
         branch_protection=branch_protection,
+        review_requests=[review_request],
         reviews=[
             PRReview(
                 state=PRReviewState.CHANGES_REQUESTED,
