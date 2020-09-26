@@ -4439,45 +4439,20 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs(
 
 
 @pytest.mark.asyncio
-async def test_mergeable_auto_approve_ignore_draft_pr(
-    api: MockPrApi,
-    config: V1,
-    config_path: str,
-    config_str: str,
-    pull_request: PullRequest,
-    branch_protection: BranchProtectionRule,
-    review: PRReview,
-    context: StatusContext,
-    check_run: CheckRun,
-) -> None:
+async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
 
     Kodiak should not approve draft PRs.
     """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    pull_request = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
     pull_request.mergeStateStatus = MergeStateStatus.DRAFT
-    await mergeable(
-        api=api,
-        config=config,
-        config_str=config_str,
-        config_path=config_path,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[],
-        contexts=[context],
-        check_runs=[check_run],
-        valid_signature=False,
-        valid_merge_methods=[MergeMethod.squash],
-        merging=False,
-        is_active_merge=False,
-        skippable_check_timeout=5,
-        api_call_retry_timeout=5,
-        api_call_retry_method_name=None,
-        #
-        reviews=[],
-    )
+    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
     assert api.approve_pull_request.call_count == 0
     assert api.set_status.call_count == 1
     assert (
