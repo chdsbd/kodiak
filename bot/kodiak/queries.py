@@ -103,6 +103,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
           databaseId
         }
       }
+      isDraft
       mergeStateStatus
       state
       mergeable
@@ -219,6 +220,9 @@ class MergeStateStatus(Enum):
     # The merge commit cannot be cleanly created.
     DIRTY = "DIRTY"
     # The merge is blocked due to the pull request being a draft.
+    #
+    # this member is being removed 2021-01-01. PullRequest.isDraft should be used instead.
+    # https://docs.github.com/en/free-pro-team@latest/graphql/overview/breaking-changes#changes-scheduled-for-2021-01-01
     DRAFT = "DRAFT"
     # Mergeable with passing commit status and pre-recieve hooks.
     HAS_HOOKS = "HAS_HOOKS"
@@ -261,6 +265,7 @@ class PullRequest(BaseModel):
     bodyText: str
     bodyHTML: str
     author: PullRequestAuthor
+    isDraft: bool
     mergeStateStatus: MergeStateStatus
     state: PullRequestState
     mergeable: MergeableState

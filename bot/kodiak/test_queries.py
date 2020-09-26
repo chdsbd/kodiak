@@ -102,6 +102,7 @@ def block_event() -> EventInfoResponse:
         author=PullRequestAuthor(login="arnold", databaseId=49118, type="Bot"),
         mergeStateStatus=MergeStateStatus.BEHIND,
         state=PullRequestState.OPEN,
+        isDraft=False,
         mergeable=MergeableState.MERGEABLE,
         isCrossRepository=False,
         labels=["automerge"],

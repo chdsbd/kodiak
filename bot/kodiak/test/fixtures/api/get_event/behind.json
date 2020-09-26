@@ -46,6 +46,7 @@
       "isPrivate": true,
       "pullRequest": {
         "id": "e14ff7599399478fb9dbc2dacb87da72",
+        "isDraft": false,
         "mergeStateStatus": "BEHIND",
         "state": "OPEN",
         "mergeable": "MERGEABLE",
