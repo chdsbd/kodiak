@@ -72,6 +72,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
         requiresStatusChecks
         requiredStatusCheckContexts
         requiresStrictStatusChecks
+        requiresCodeOwnerReviews
         requiresCommitSignatures
         restrictsPushes
         pushAllowances(first: 100) {
@@ -104,6 +105,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
         }
       }
       mergeStateStatus
+      reviewDecision
       state
       mergeable
       isCrossRepository
