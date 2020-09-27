@@ -152,8 +152,9 @@ class MockMerge(BaseMockFunc):
 
 
 class MockQueueForMerge(BaseMockFunc):
-    # FIXME(chdsbd): return_value should be set by default
-    return_value: Optional[int] = None
+    # in production we'll frequently have position information.
+    # `3` is an arbitrary position.
+    return_value: Optional[int] = 3
 
     async def __call__(self) -> Optional[int]:
         self.log_call(dict())
@@ -422,7 +423,6 @@ async def test_mergeable_abort_is_active_merge() -> None:
     """
     api = create_api()
     mergeable = create_mergeable()
-    api.queue_for_merge.return_value = 4
     await mergeable(api=api, is_active_merge=True)
     assert api.queue_for_merge.called is True
 
@@ -634,7 +634,6 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
     branch_protection = create_branch_protection()
 
     branch_protection.requiresCommitSignatures = True
-    api.queue_for_merge.return_value = 3
     for index, method in enumerate((MergeMethod.squash, MergeMethod.merge)):
         config.merge.method = method
         await mergeable(
@@ -689,7 +688,8 @@ async def test_mergeable_missing_automerge_label_require_automerge_label() -> No
     config.merge.require_automerge_label = False
     pull_request.labels = []
     await mergeable(api=api, config=config, pull_request=pull_request)
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 0
     assert api.queue_for_merge.call_count == 1
 
@@ -1972,7 +1972,6 @@ async def test_mergeable_skippable_contexts_passing() -> None:
     context.context = "WIP"
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.SUCCESS
-    api.queue_for_merge.return_value = 5
 
     await mergeable(
         api=api,
@@ -1985,7 +1984,7 @@ async def test_mergeable_skippable_contexts_passing() -> None:
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 0
     assert api.queue_for_merge.call_count == 1
-    assert "enqueued for merge (position=6th)" in api.set_status.calls[0]["msg"]
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
@@ -2203,7 +2202,6 @@ async def test_mergeable_queue_in_progress() -> None:
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
     context.state = StatusState.PENDING
     context.context = "ci/test-api"
-    api.queue_for_merge.return_value = 3
 
     await mergeable(
         api=api,
@@ -2247,7 +2245,6 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge() -> None:
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
     context.state = StatusState.PENDING
     context.context = "ci/test-api"
-    api.queue_for_merge.return_value = 3
     config.merge.prioritize_ready_to_merge = True
 
     await mergeable(
@@ -2414,9 +2411,12 @@ async def test_mergeable_merge() -> None:
 async def test_mergeable_queue_for_merge_no_position() -> None:
     """
     If we're attempting to merge from the frontend we should place the PR on the queue.
+
+    If permission information is unavailable (None) we should not set a status check.
     """
     mergeable = create_mergeable()
     api = create_api()
+    api.queue_for_merge.return_value = None
     await mergeable(api=api)
 
     assert api.set_status.call_count == 0
@@ -2433,7 +2433,6 @@ async def test_mergeable_passing() -> None:
     """
     mergeable = create_mergeable()
     api = create_api()
-    api.queue_for_merge.return_value = 3
     await mergeable(api=api)
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -2449,7 +2448,6 @@ async def test_mergeable_need_update() -> None:
     mergeable = create_mergeable()
     api = create_api()
     pull_request = create_pull_request()
-    api.queue_for_merge.return_value = 3
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 1
@@ -2522,7 +2520,6 @@ async def test_regression_mishandling_multiple_reviews_okay_reviews() -> None:
     branch_protection.requiredApprovingReviewCount = 1
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
-    api.queue_for_merge.return_value = 3
 
     await mergeable(
         api=api,
@@ -2574,7 +2571,6 @@ async def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews() 
     branch_protection.requiredApprovingReviewCount = 1
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
-    api.queue_for_merge.return_value = 3
 
     await mergeable(
         api=api,
@@ -2621,7 +2617,6 @@ async def test_regression_mishandling_multiple_reviews_okay_non_member_reviews()
     branch_protection.requiredApprovingReviewCount = 1
     first_review_date = datetime(2010, 5, 15)
     latest_review_date = first_review_date + timedelta(minutes=20)
-    api.queue_for_merge.return_value = 3
 
     await mergeable(
         api=api,
@@ -3185,7 +3180,6 @@ async def test_mergeable_include_coauthors() -> None:
     config = create_config()
     config.merge.message.include_coauthors = True
     config.merge.message.body = MergeBodyStyle.pull_request_body
-    api.queue_for_merge.return_value = 3
 
     await mergeable(
         api=api,
@@ -3503,7 +3497,6 @@ async def test_mergeable_passing_update_always_enabled() -> None:
     config = create_config()
 
     config.update.always = True
-    api.queue_for_merge.return_value = 3
     await mergeable(api=api, config=config)
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -3555,7 +3548,6 @@ async def test_mergeable_auto_approve() -> None:
     api = create_api()
     config = create_config()
     pull_request = create_pull_request()
-    api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
     await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
@@ -3580,7 +3572,6 @@ async def test_mergeable_auto_approve_existing_approval() -> None:
     config = create_config()
     pull_request = create_pull_request()
     review = create_review()
-    api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
@@ -3607,7 +3598,6 @@ async def test_mergeable_auto_approve_old_approval() -> None:
     config = create_config()
     pull_request = create_pull_request()
     review = create_review()
-    api.queue_for_merge.return_value = 3
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
@@ -3696,7 +3686,8 @@ async def test_mergeable_paywall_missing_subscription() -> None:
     )
 
     assert api.queue_for_merge.call_count == 1
-    assert api.set_status.call_count == 0
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
     assert api.approve_pull_request.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.merge.call_count == 0
