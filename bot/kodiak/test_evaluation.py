@@ -152,6 +152,8 @@ class MockMerge(BaseMockFunc):
 
 
 class MockQueueForMerge(BaseMockFunc):
+    # in production we'll frequently have position information.
+    # `3` is an arbitrary position.
     return_value: Optional[int] = 3
 
     async def __call__(self) -> Optional[int]:
