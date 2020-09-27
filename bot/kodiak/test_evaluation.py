@@ -3662,7 +3662,7 @@ async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
     pull_request.mergeStateStatus = MergeStateStatus.DRAFT
-    await mergeable(api=api, config=config, pull_request=pull_request)
+    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
     assert api.approve_pull_request.call_count == 0
     assert api.set_status.call_count == 1
     assert (
