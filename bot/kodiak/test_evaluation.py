@@ -253,6 +253,7 @@ def create_pull_request() -> PullRequest:
         ),
         mergeStateStatus=MergeStateStatus.CLEAN,
         state=PullRequestState.OPEN,
+        isDraft=False,
         mergeable=MergeableState.MERGEABLE,
         isCrossRepository=False,
         labels=["bugfix", "automerge"],
@@ -887,12 +888,41 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(mocker: Any) -> No
 async def test_mergeable_draft_pull_request() -> None:
     """
     block merge if pull request is in draft state
+
+    `mergeStateStatus.DRAFT` is being removed 2021-01-01.
+    https://docs.github.com/en/free-pro-team@latest/graphql/overview/breaking-changes#changes-scheduled-for-2021-01-01
     """
     api = create_api()
     mergeable = create_mergeable()
     pull_request = create_pull_request()
 
     pull_request.mergeStateStatus = MergeStateStatus.DRAFT
+
+    await mergeable(api=api, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "in draft state" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_draft_pull_request_is_draft_field() -> None:
+    """
+    block merge if pull request is in draft state.
+
+    Test using the `isDraft` field. `mergeStateStatus.DRAFT` is being removed 2021-01-01.
+    https://docs.github.com/en/free-pro-team@latest/graphql/overview/breaking-changes#changes-scheduled-for-2021-01-01
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
+    pull_request.isDraft = True
 
     await mergeable(api=api, pull_request=pull_request)
     assert api.set_status.call_count == 1
@@ -3646,23 +3676,33 @@ async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
     Kodiak should not approve draft PRs.
     """
     mergeable = create_mergeable()
-    api = create_api()
     config = create_config()
-    pull_request = create_pull_request()
+    pull_request_via_merge_state_status = create_pull_request()
+    pull_request_via_is_draft = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
-    pull_request.author.login = "dependency-updater"
-    pull_request.mergeStateStatus = MergeStateStatus.DRAFT
-    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
-    assert api.approve_pull_request.call_count == 0
-    assert api.set_status.call_count == 1
-    assert (
-        "cannot merge (pull request is in draft state)"
-        in api.set_status.calls[0]["msg"]
-    )
-    assert api.queue_for_merge.call_count == 0
-    assert api.dequeue.call_count == 1
-    assert api.merge.call_count == 0
-    assert api.update_branch.call_count == 0
+    pull_request_via_is_draft.author.login = "dependency-updater"
+    pull_request_via_merge_state_status.author.login = "dependency-updater"
+
+    pull_request_via_is_draft.isDraft = True
+    # configure mergeStateStatus.DRAFT instead of isDraft
+    pull_request_via_merge_state_status.mergeStateStatus = MergeStateStatus.DRAFT
+
+    for pull_request in (
+        pull_request_via_is_draft,
+        pull_request_via_merge_state_status,
+    ):
+        api = create_api()
+        await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
+        assert api.approve_pull_request.call_count == 0
+        assert api.set_status.call_count == 1
+        assert (
+            "cannot merge (pull request is in draft state)"
+            in api.set_status.calls[0]["msg"]
+        )
+        assert api.queue_for_merge.call_count == 0
+        assert api.dequeue.call_count == 1
+        assert api.merge.call_count == 0
+        assert api.update_branch.call_count == 0
 
 
 @pytest.mark.asyncio
