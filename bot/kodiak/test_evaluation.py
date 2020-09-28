@@ -1546,7 +1546,7 @@ async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
     pull_request.mergeable = MergeableState.UNKNOWN
     pull_request.state = PullRequestState.OPEN
 
-    await mergeable(api=api, pull_request=pull_request)
+    await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 0
     assert api.dequeue.call_count == 0
     assert api.trigger_test_commit.call_count == 1
@@ -1585,7 +1585,7 @@ async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open()
         (PullRequestState.MERGED, PullRequestState.CLOSED)
     ):
         pull_request.state = pull_request_state
-        await mergeable(api=api, pull_request=pull_request)
+        await mergeable(api=api, config=config, pull_request=pull_request)
         assert api.set_status.call_count == index + 1
         assert (
             "cannot merge (title matches merge.blocking_title_regex"
