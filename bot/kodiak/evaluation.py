@@ -588,10 +588,13 @@ async def mergeable(
 
         return
 
+    is_draft_pull_request = (
+        pull_request.isDraft or pull_request.mergeStateStatus == MergeStateStatus.DRAFT
+    )
     if (
         pull_request.author.login in config.approve.auto_approve_usernames
         and pull_request.state == PullRequestState.OPEN
-        and pull_request.mergeStateStatus != MergeStateStatus.DRAFT
+        and not is_draft_pull_request
     ):
         # if the PR was created by an approve author and we have not previously
         # given an approval, approve the PR.
@@ -693,7 +696,7 @@ async def mergeable(
         )
         return
 
-    if pull_request.mergeStateStatus == MergeStateStatus.DRAFT:
+    if is_draft_pull_request:
         await block_merge(api, pull_request, "pull request is in draft state")
         return
 

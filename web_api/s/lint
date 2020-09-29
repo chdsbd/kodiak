@@ -14,5 +14,5 @@ fi
 poetry run mypy .
 
 # lint
-poetry run flake8 web_api core
-poetry run pylint --rcfile='.pylintrc' web_api core
+poetry run flake8 web_api
+poetry run pylint --rcfile='.pylintrc' web_api
