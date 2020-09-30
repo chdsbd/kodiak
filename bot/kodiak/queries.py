@@ -278,6 +278,8 @@ class PullRequest(BaseModel):
     author: PullRequestAuthor
     isDraft: bool
     mergeStateStatus: MergeStateStatus
+    # null if the pull request does not require a review by default (no branch
+    # protection), and no review was requested or submitted yet.
     reviewDecision: Optional[PullRequestReviewDecision]
     state: PullRequestState
     mergeable: MergeableState
