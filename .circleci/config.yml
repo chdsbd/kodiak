@@ -3,7 +3,7 @@ version: 2
 jobs:
   bot_test:
     docker:
-      - image: python:3.7@sha256:5b430fe2263d891ce94145fdc320fe2a88336cc127301637625d6e5fe37bef60
+      - image: python:3.7@sha256:d8718f4c8f28360c88d2d8b53681edb3c95e6a7bacedabd32eb5b1d120a75dc5
       - image: circleci/redis:5.0
     steps:
       - checkout
@@ -19,6 +19,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -36,7 +37,7 @@ jobs:
 
   bot_lint:
     docker:
-      - image: python:3.7@sha256:5b430fe2263d891ce94145fdc320fe2a88336cc127301637625d6e5fe37bef60
+      - image: python:3.7@sha256:d8718f4c8f28360c88d2d8b53681edb3c95e6a7bacedabd32eb5b1d120a75dc5
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -141,7 +142,7 @@ jobs:
 
   web_api_test:
     docker:
-      - image: python:3.7@sha256:5b430fe2263d891ce94145fdc320fe2a88336cc127301637625d6e5fe37bef60
+      - image: python:3.7@sha256:d8718f4c8f28360c88d2d8b53681edb3c95e6a7bacedabd32eb5b1d120a75dc5
       - image: circleci/postgres:12-ram
         environment:
           POSTGRES_DB: web_api_test
@@ -180,7 +181,7 @@ jobs:
 
   web_api_lint:
     docker:
-      - image: python:3.7@sha256:5b430fe2263d891ce94145fdc320fe2a88336cc127301637625d6e5fe37bef60
+      - image: python:3.7@sha256:d8718f4c8f28360c88d2d8b53681edb3c95e6a7bacedabd32eb5b1d120a75dc5
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -208,7 +209,7 @@ jobs:
 
   web_api_squawk:
     docker:
-      - image: python:3.7@sha256:5b430fe2263d891ce94145fdc320fe2a88336cc127301637625d6e5fe37bef60
+      - image: python:3.7@sha256:d8718f4c8f28360c88d2d8b53681edb3c95e6a7bacedabd32eb5b1d120a75dc5
       - image: circleci/postgres:12-ram
         environment:
           POSTGRES_DB: web_api_test
