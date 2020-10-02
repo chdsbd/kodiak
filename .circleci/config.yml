@@ -14,6 +14,8 @@ jobs:
       - run:
           name: install dependencies
           working_directory: bot
+          environment:
+            SETUPTOOLS_USE_DISTUTILS: stdlib
           command: |
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
@@ -51,6 +53,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
+            python -m pip install --user setuptools
             command -v poetry || python -m pip install --user poetry==0.12.12
             poetry install
       - save_cache:
@@ -329,38 +332,38 @@ jobs:
 
 workflows:
   version: 2
-  all:
-    jobs:
-      - shellcheck
+  # all:
+  #   jobs:
+  #     - shellcheck
   bot:
     jobs:
       - bot_test
       - bot_lint
-      - bot_build_container:
-          filters:
-            tags:
-              only: /^v\d*\.\d*\.\d*$/
-  docs:
-    jobs:
-      - docs_typecheck
-      - docs_fmt
-      - docs_build
+      # - bot_build_container:
+      #     filters:
+      #       tags:
+      #         only: /^v\d*\.\d*\.\d*$/
+  # docs:
+  #   jobs:
+  #     - docs_typecheck
+  #     - docs_fmt
+  #     - docs_build
 
-  web_ui:
-    jobs:
-      - web_ui_lint
-      - web_ui_test
-      - web_ui_build_container:
-          filters:
-            tags:
-              only: /^v\d*\.\d*\.\d*$/
+  # web_ui:
+  #   jobs:
+  #     - web_ui_lint
+  #     - web_ui_test
+  #     - web_ui_build_container:
+  #         filters:
+  #           tags:
+  #             only: /^v\d*\.\d*\.\d*$/
 
-  web_api:
-    jobs:
-      - web_api_test
-      - web_api_lint
-      - web_api_squawk
-      - web_api_build_container:
-          filters:
-            tags:
-              only: /^v\d*\.\d*\.\d*$/
+  # web_api:
+  #   jobs:
+  #     - web_api_test
+  #     - web_api_lint
+  #     - web_api_squawk
+  #     - web_api_build_container:
+  #         filters:
+  #           tags:
+  #             only: /^v\d*\.\d*\.\d*$/
