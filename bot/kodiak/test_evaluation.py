@@ -2471,6 +2471,24 @@ async def test_mergeable_passing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_merge_automerge_labels() -> None:
+    """
+    Test merge.automerge_labels allows a pull request to be merged.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.labels = ["ship it!"]
+    config = create_config()
+    config.merge.automerge_labels = ["ship it!"]
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_mergeable_need_update() -> None:
     """
     When a PR isn't in the queue but needs an update we should enqueue it for merge.
