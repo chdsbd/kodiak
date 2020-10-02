@@ -47,5 +47,5 @@ pytest-cov = "^2.10"
 "pytest_plugin" = "pytest_plugin.plugin"
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=0.12", "setuptools"]
 build-backend = "poetry.masonry.api"
