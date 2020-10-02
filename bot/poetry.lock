@@ -42,28 +42,16 @@ wrapt = "*"
 
 [[package]]
 category = "main"
-description = "reference implementation of PEP 3156"
-name = "asyncio"
-optional = false
-python-versions = "*"
-version = "3.4.3"
-
-[[package]]
-category = "main"
-description = "PEP 3156 implementation of the redis protocol."
+description = ""
 name = "asyncio-redis"
 optional = false
-python-versions = "*"
-version = "0.15.1"
-
-[package.dependencies]
-asyncio = "*"
+python-versions = "^3.7"
+version = "0.1.0"
 
 [package.source]
-reference = "12dbc66bc2bcefcf7cdbe46de7dbce5bcdefe1aa"
+reference = "319c3aa80f40eccd730ae72e52064874d4428551"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
-
 [[package]]
 category = "dev"
 description = "Atomic file writes."
@@ -530,7 +518,7 @@ category = "main"
 description = "C parser in Python"
 name = "pycparser"
 optional = false
-python-versions = "*"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.19"
 
 [[package]]
@@ -870,7 +858,6 @@ appdirs = ["9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92", "
 appnope = ["5b26757dc6f79a3b7dc9fab95359328d5747fcb2409d331ea66d0272b90ab2a0", "8b995ffe925347a2138d7ac0fe77155e4311a0ea6d6da4f5128fe4b3cbe5ed71"]
 arrow = ["002f2315cf4c8404de737c42860441732d339bbc57fee584e2027520e055ecc1", "82dd5e13b733787d4eb0fef42d1ee1a99136dc1d65178f70373b3678b3181bfc"]
 astroid = ["6560e1e1749f68c64a4b5dee4e091fce798d2f0d84ebe638cf0e0585a343acf4", "b65db1bbaac9f9f4d190199bb8680af6f6f84fd3769a5ea883df8a91fe68b4c4"]
-asyncio = ["83360ff8bc97980e4ff25c964c7bd3923d333d177aa4f7fb736b019f26c7cb41", "b62c9157d36187eca799c378e572c969f0da87cd5fc42ca372d92cdb06e7e1de", "c46a87b48213d7464f22d9a497b9eef8c1928b68320a2fa94240f969f6fec08c", "c4d18b22701821de07bd6aea8b53d21449ec0ec5680645e5317062ea21817d2d"]
 asyncio-redis = []
 atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
 attrs = ["69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79", "f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"]
