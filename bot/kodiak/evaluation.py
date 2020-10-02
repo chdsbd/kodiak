@@ -568,10 +568,7 @@ async def mergeable(
     pull_request_automerge_labels = config_automerge_labels.intersection(
         pull_request_labels
     )
-    has_automerge_label = (
-        config.merge.automerge_label in pull_request_labels
-        or pull_request_automerge_labels
-    )
+    has_automerge_label = len(pull_request_automerge_labels) > 0
 
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
     #
