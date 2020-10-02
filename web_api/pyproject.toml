@@ -39,5 +39,5 @@ ipdb = "^0.12.3"
 pytest-cov = "^2.10"
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=0.12", "setuptools"]
 build-backend = "poetry.masonry.api"
