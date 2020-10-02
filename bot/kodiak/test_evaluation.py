@@ -1438,6 +1438,39 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_
 
 
 @pytest.mark.asyncio
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerge_labels() -> None:
+    """
+    We should only notify on conflict when we have an automerge label. If the
+    automerge label is missing we shouldn't create a comment.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    config = create_config()
+
+    pull_request.mergeStateStatus = MergeStateStatus.DIRTY
+    pull_request.mergeable = MergeableState.CONFLICTING
+    config.merge.notify_on_conflict = True
+    config.merge.require_automerge_label = True
+    pull_request.labels = ["ship it!!!"]
+    config.merge.automerge_labels = ["ship it!!!"]
+    assert config.merge.automerge_label != config.merge.automerge_labels[0]
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "merge conflict" in api.set_status.calls[0]["msg"]
+    assert api.remove_label.call_count == 1
+    assert api.create_comment.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label() -> None:
     """
     if a PR has a merge conflict we can't merge. If require_automerge_label is set then we shouldn't notify even if notify_on_conflict is configured. This allows prevents infinite commenting.
