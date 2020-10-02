@@ -672,7 +672,7 @@ async def mergeable(
             automerge_label = config.merge.automerge_label
             await asyncio.gather(
                 *[
-                    api.remove_label(automerge_label)
+                    api.remove_label(label)
                     for label in pull_request_automerge_labels
                 ]
             )
