@@ -54,7 +54,7 @@ class Merge(BaseModel):
     # label to enable merging of pull request.
     automerge_label: str = "automerge"
     # labels to enable merging of pull request.
-    # allows specifying additional automerge labels. 
+    # allows specifying additional automerge labels.
     automerge_labels: List[str] = []
     # if disabled, kodiak won't require a label to queue a PR for merge
     require_automerge_label: bool = True
