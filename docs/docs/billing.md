@@ -53,6 +53,19 @@ Your seats and payment method can be modified via the "Manage Subscription" moda
 
 To modify your billing email, company name, or postal address simply edit the forms on the "Usage & Billing" page.
 
+## Update Card Information
+
+Navigate to the "Usage and Billing" page. Click the "Modify Subscription" button, then click "update" under the "Payment Method" field.
+
+Click the "Modify Subscription" button.
+<img width="500px" title="Stripe card update page" src="/img/billing-modify-card-step-1.png"/>
+
+Click "update" under the "Payment Method" field.
+<img width="500px" title="Stripe card update page" src="/img/billing-modify-card-step-2.png"/>
+
+Update your card information through the Stripe page. Click "Save Card" to save your changes.
+<img width="500px" title="Stripe card update page" src="/img/billing-modify-card-step-3.png"/>
+
 ## Control Billing Permissions
 
 > An active subscription is required to edit this information
