@@ -4,7 +4,13 @@ jobs:
   bot_test:
     docker:
       - image: python:3.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
       - image: circleci/redis:5.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -37,6 +43,9 @@ jobs:
   bot_lint:
     docker:
       - image: python:3.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -66,6 +75,9 @@ jobs:
   bot_build_container:
     docker:
       - image: docker:18.05.0-ce
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - setup_remote_docker
@@ -77,6 +89,9 @@ jobs:
   docs_typecheck:
     docker:
       - image: circleci/node:12.4.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - restore_cache:
@@ -100,6 +115,9 @@ jobs:
   docs_fmt:
     docker:
       - image: circleci/node:12.4.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - restore_cache:
@@ -121,6 +139,9 @@ jobs:
   docs_build:
     docker:
       - image: circleci/node:12.4.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - restore_cache:
@@ -142,11 +163,20 @@ jobs:
   web_api_test:
     docker:
       - image: python:3.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
       - image: circleci/postgres:12-ram
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
         environment:
           POSTGRES_DB: web_api_test
           POSTGRES_PASSWORD: my_test_postgres_password
       - image: circleci/redis:5.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     environment:
       DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
     steps:
@@ -181,6 +211,9 @@ jobs:
   web_api_lint:
     docker:
       - image: python:3.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       # https://circleci.com/docs/2.0/caching/
@@ -209,7 +242,13 @@ jobs:
   web_api_squawk:
     docker:
       - image: python:3.7
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
       - image: circleci/postgres:12-ram
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
         environment:
           POSTGRES_DB: web_api_test
           POSTGRES_PASSWORD: my_test_postgres_password
@@ -249,6 +288,9 @@ jobs:
   web_api_build_container:
     docker:
       - image: docker:18.05.0-ce
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - setup_remote_docker
@@ -260,6 +302,9 @@ jobs:
   web_ui_lint:
     docker:
       - image: circleci/node:12.4.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - restore_cache:
@@ -281,6 +326,9 @@ jobs:
   web_ui_test:
     docker:
       - image: circleci/node:12.4.0
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - restore_cache:
@@ -302,6 +350,9 @@ jobs:
   shellcheck:
     docker:
       - image: ubuntu:18.04
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - run:
@@ -318,6 +369,9 @@ jobs:
   web_ui_build_container:
     docker:
       - image: docker:18.05.0-ce
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     steps:
       - checkout
       - setup_remote_docker
