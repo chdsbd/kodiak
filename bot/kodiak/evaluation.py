@@ -564,7 +564,7 @@ async def mergeable(
 
     pull_request_labels = set(pull_request.labels)
     config_automerge_labels = (
-        set([config.merge.automerge_label])
+        {config.merge.automerge_label}
         if isinstance(config.merge.automerge_label, str)
         else set(config.merge.automerge_label)
     )
