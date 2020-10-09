@@ -563,8 +563,10 @@ async def mergeable(
             return
 
     pull_request_labels = set(pull_request.labels)
-    config_automerge_labels = set(
-        config.merge.automerge_labels + [config.merge.automerge_label]
+    config_automerge_labels = (
+        {config.merge.automerge_label}
+        if isinstance(config.merge.automerge_label, str)
+        else set(config.merge.automerge_label)
     )
     pull_request_automerge_labels = config_automerge_labels.intersection(
         pull_request_labels

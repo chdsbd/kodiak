@@ -1416,8 +1416,8 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerg
     """
     We should only notify on conflict when we have an automerge label.
 
-    If we have a merge.automerge_labels label, we should remove it like we do
-    with merge.automerge_label.
+    If we have an array of merge.automerge_label labels, we should remove each
+    one like we do with merge.automerge_label.
     """
     api = create_api()
     mergeable = create_mergeable()
@@ -1429,8 +1429,7 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerg
     config.merge.notify_on_conflict = True
     config.merge.require_automerge_label = True
     pull_request.labels = ["ship it!!!"]
-    config.merge.automerge_labels = ["ship it!!!"]
-    assert config.merge.automerge_label != config.merge.automerge_labels[0]
+    config.merge.automerge_label = ["ship it!!!"]
 
     await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
@@ -2551,14 +2550,14 @@ async def test_mergeable_passing() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_merge_automerge_labels() -> None:
     """
-    Test merge.automerge_labels allows a pull request to be merged.
+    Test merge.automerge_label array allows a pull request to be merged.
     """
     mergeable = create_mergeable()
     api = create_api()
     pull_request = create_pull_request()
     pull_request.labels = ["ship it!"]
     config = create_config()
-    config.merge.automerge_labels = ["ship it!"]
+    config.merge.automerge_label = ["ship it!"]
     await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
