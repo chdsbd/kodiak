@@ -2550,7 +2550,7 @@ async def test_mergeable_passing() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_merge_automerge_labels() -> None:
     """
-    Test merge.automerge_label allows a pull request to be merged.
+    Test merge.automerge_label array allows a pull request to be merged.
     """
     mergeable = create_mergeable()
     api = create_api()
