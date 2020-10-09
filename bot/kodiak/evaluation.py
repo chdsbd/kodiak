@@ -1,3 +1,4 @@
+import asyncio
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
@@ -561,6 +562,15 @@ async def mergeable(
             )
             return
 
+    pull_request_labels = set(pull_request.labels)
+    config_automerge_labels = set(
+        config.merge.automerge_labels + [config.merge.automerge_label]
+    )
+    pull_request_automerge_labels = config_automerge_labels.intersection(
+        pull_request_labels
+    )
+    has_automerge_label = len(pull_request_automerge_labels) > 0
+
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
     #
     # I don't foresee conflicts with checking configuration errors,
@@ -613,8 +623,7 @@ async def mergeable(
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
     meets_label_requirement = (
-        config.merge.automerge_label in pull_request.labels
-        or not config.update.require_automerge_label
+        has_automerge_label or not config.update.require_automerge_label
     )
 
     if (
@@ -640,10 +649,7 @@ async def mergeable(
         await api.update_branch()
         return
 
-    if (
-        config.merge.require_automerge_label
-        and config.merge.automerge_label not in pull_request.labels
-    ):
+    if config.merge.require_automerge_label and not has_automerge_label:
         await block_merge(
             api,
             pull_request,
@@ -659,9 +665,15 @@ async def mergeable(
     ) and pull_request.state == PullRequestState.OPEN:
         await block_merge(api, pull_request, "merge conflict")
         # remove label if configured and send message
-        if config.merge.notify_on_conflict and config.merge.require_automerge_label:
+        if (
+            config.merge.notify_on_conflict
+            and config.merge.require_automerge_label
+            and has_automerge_label
+        ):
             automerge_label = config.merge.automerge_label
-            await api.remove_label(automerge_label)
+            await asyncio.gather(
+                *[api.remove_label(label) for label in pull_request_automerge_labels]
+            )
             body = textwrap.dedent(
                 f"""
             This PR currently has a merge conflict. Please resolve this and then re-add the `{automerge_label}` label.

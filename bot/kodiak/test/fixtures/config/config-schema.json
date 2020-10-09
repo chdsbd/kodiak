@@ -14,6 +14,7 @@
       "title": "Merge",
       "default": {
         "automerge_label": "automerge",
+        "automerge_labels": [],
         "require_automerge_label": true,
         "blacklist_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blocking_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
@@ -146,6 +147,14 @@
           "title": "Automerge Label",
           "default": "automerge",
           "type": "string"
+        },
+        "automerge_labels": {
+          "title": "Automerge Labels",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "require_automerge_label": {
           "title": "Require Automerge Label",
