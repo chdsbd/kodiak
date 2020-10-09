@@ -1416,8 +1416,8 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerg
     """
     We should only notify on conflict when we have an automerge label.
 
-    If we have a merge.automerge_label label, we should remove it like we do
-    with merge.automerge_label.
+    If we have an array of merge.automerge_label labels, we should remove each
+    one like we do with merge.automerge_label.
     """
     api = create_api()
     mergeable = create_mergeable()
