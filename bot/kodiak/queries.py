@@ -72,6 +72,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
         requiresStatusChecks
         requiredStatusCheckContexts
         requiresStrictStatusChecks
+        requiresCodeOwnerReviews
         requiresCommitSignatures
         restrictsPushes
         pushAllowances(first: 100) {
@@ -105,6 +106,7 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
       }
       isDraft
       mergeStateStatus
+      reviewDecision
       state
       mergeable
       isCrossRepository
@@ -257,6 +259,15 @@ class PullRequestAuthor(BaseModel):
     name: Optional[str] = None
 
 
+class PullRequestReviewDecision(Enum):
+    # The pull request has received an approving review.
+    APPROVED = "APPROVED"
+    # Changes have been requested on the pull request.
+    CHANGES_REQUESTED = "CHANGES_REQUESTED"
+    # A review is required before the pull request can be merged.
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -267,6 +278,9 @@ class PullRequest(BaseModel):
     author: PullRequestAuthor
     isDraft: bool
     mergeStateStatus: MergeStateStatus
+    # null if the pull request does not require a review by default (no branch
+    # protection), and no review was requested or submitted yet.
+    reviewDecision: Optional[PullRequestReviewDecision]
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool
@@ -346,6 +360,7 @@ class BranchProtectionRule(BaseModel):
     requiresStatusChecks: bool
     requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
+    requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
