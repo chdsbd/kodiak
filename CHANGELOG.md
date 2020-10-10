@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.30.0 - 2020-10-10
+
+### Added
+- Added support for specifying multiple automerge labels by setting `merge.automerge_label` to an array of strings instead of a string. (#516, #522)
+- Added GitHub CodeOwners support. (#509)
+
+### Fixed
+- Fixed Draft PR handling to support a breaking change being made to the GitHub GraphQL API on January 1st, 2021. Older versions of Kodiak will not handle Draft PRs correctly after Jan 1, 2021. (#531)
+
 ## 0.29.0 - 2020-09-05
 
 ### Added
