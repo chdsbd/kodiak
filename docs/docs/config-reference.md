@@ -22,7 +22,7 @@ For Kodiak to run on a pull request:
 
 ### `merge.automerge_label`
 
-- **type:** `string`
+- **type:** `string` or `string[]`
 - **default:** `"automerge"`
 
 Label to enable Kodiak to merge a PR.
@@ -31,6 +31,12 @@ By default, Kodiak will only act on PRs that have this label. You can disable th
 
 ```toml
 merge.automerge_label = "🚀 merge it!"
+```
+
+If multiple labels are specified in an array, any of the specified labels will trigger merge.
+
+```toml
+merge.automerge_labels = ["🚢 it!", "merge it!"]
 ```
 
 ### `merge.require_automerge_label`
