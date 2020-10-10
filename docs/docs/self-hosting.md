@@ -6,6 +6,8 @@ sidebar_label: Self Hosting
 
 If you don't want to use the [GitHub App](https://github.com/marketplace/kodiakhq#pricing-and-setup), you can run Kodiak on your own infrastructure.
 
+> We recommend [watching the Kodiak repo for releases](https://docs.github.com/en/enterprise-server@2.20/github/receiving-notifications-about-activity-on-github/watching-and-unwatching-releases-for-a-repository#watching-releases-for-a-repository), so that you can get bug fixes and avoid issues with GitHub API changes.
+
 ## Heroku
 
 These instructions describe setting up Kodiak on Heroku using a Docker container, but you should be able to adapt this for other container platforms.
