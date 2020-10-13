@@ -2273,7 +2273,9 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
     account = create_account()
 
     patched_retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", spec=stripe.Customer.retrieve,
+        "web_api.views.stripe.Customer.retrieve",
+        spec=stripe.Customer.retrieve,
+        return_value=create_stripe_customer(),
     )
     mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
     assert StripeCustomerInformation.objects.count() == 0
