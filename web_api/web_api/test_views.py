@@ -426,18 +426,10 @@ def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None
     """
     account, _membership = create_org_account(user)
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-        ),
-        "fake-key",
-    )
     patched_stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve",
         spec=stripe.Subscription.retrieve,
-        return_value=fake_subscription,
+        return_value=create_stripe_subscription(),
     )
     fake_invoice = stripe.Invoice.construct_from(
         {
@@ -528,27 +520,13 @@ def test_update_subscription(
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=period_start,
-            current_period_start=period_end,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ", object="plan", amount=499, interval="month"
-            ),
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
 
+    sub = create_stripe_subscription()
     stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.models.stripe.Subscription.retrieve", return_value=sub
     )
     stripe_subscription_modify = mocker.patch(
-        "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
+        "web_api.models.stripe.Subscription.modify", return_value=sub
     )
     fake_invoice = stripe.Invoice.construct_from(
         dict(object="invoice", id="in_00000000000000"), "fake-key",
@@ -638,23 +616,25 @@ def test_update_subscription(
     assert stripe_invoice_pay.call_count == 2, "not hit because we're changing plans"
 
 
-def create_fake_subscription(
+def create_stripe_subscription(
     interval: Literal["month", "year"] = "month"
 ) -> stripe.Subscription:
     return stripe.Subscription.construct_from(
         dict(
             object="subscription",
             id="sub_Gu1xedsfo1",
-            current_period_end=566789,
-            current_period_start=567890,
+            current_period_end=1690982549,
+            current_period_start=1688304149,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
             plan=dict(
                 id=settings.STRIPE_ANNUAL_PLAN_ID,
                 object="plan",
                 amount=499,
                 interval=interval,
+                interval_count=1,
             ),
             quantity=4,
+            start_date=1443556775,
             default_payment_method="pm_22dldxf3",
         ),
         "fake-key",
@@ -675,11 +655,11 @@ def test_update_subscription_switch_plans(
 
     stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve",
-        return_value=create_fake_subscription(interval="month"),
+        return_value=create_stripe_subscription(interval="month"),
     )
     stripe_subscription_modify = mocker.patch(
         "web_api.models.stripe.Subscription.modify",
-        return_value=create_fake_subscription(interval="year"),
+        return_value=create_stripe_subscription(interval="year"),
     )
     fake_invoice = stripe.Invoice.construct_from(
         dict(object="invoice", id="in_00000000000000"), "fake-key",
@@ -721,14 +701,7 @@ def test_update_subscription_missing_customer(
     We should get an error when we try to update a subscription for an Account
     that doesn't have an associated subscription.
     """
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
 
     stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
@@ -1670,23 +1643,9 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     customer_retrieve = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            default_payment_method="pm_47xubd3i",
-            plan=dict(
-                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1
-            ),
-            quantity=10,
-            start_date=1443556775,
-            current_period_start=1653173784,
-            current_period_end=1660949784,
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -1864,23 +1823,9 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     customer_retrieve = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            default_payment_method="pm_47xubd3i",
-            plan=dict(
-                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1,
-            ),
-            quantity=10,
-            start_date=1443556775,
-            current_period_start=1653173784,
-            current_period_end=1660949784,
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -2114,28 +2059,9 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
         "fake-key",
     )
     mocker.patch("web_api.views.stripe.Customer.retrieve", return_value=fake_customer)
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ",
-                object="plan",
-                amount=499,
-                interval="month",
-                interval_count=1,
-            ),
-            start_date=1443556775,
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
     retrieve_subscription = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -2430,28 +2356,9 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ",
-                object="plan",
-                amount=499,
-                interval="month",
-                interval_count=1,
-            ),
-            start_date=1443556775,
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
     mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -2550,28 +2457,9 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ",
-                object="plan",
-                amount=499,
-                interval="month",
-                interval_count=1,
-            ),
-            start_date=1443556775,
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
     mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
@@ -2670,28 +2558,9 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
         spec=stripe.Customer.retrieve,
         return_value=fake_customer,
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ",
-                object="plan",
-                amount=499,
-                interval="month",
-                interval_count=1,
-            ),
-            start_date=1443556775,
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
     mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
     )
     fake_payment_method = stripe.PaymentMethod.construct_from(
         dict(
