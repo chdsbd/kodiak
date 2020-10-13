@@ -551,12 +551,26 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
             if stripe_customer_info is None:
                 logger.warning("expected account %s to have customer info", account)
                 return HttpResponse(status=200)
-            stripe_customer_info.update_from_stripe()
+            subscription = stripe.Subscription.retrieve(
+                stripe_customer_info.subscription_id
+            )
+            payment_method = stripe.PaymentMethod.retrieve(
+                subscription.default_payment_method
+            )
+            stripe_customer_info.update_from(
+                customer=customer,
+                subscription=subscription,
+                payment_method=payment_method,
+            )
         elif checkout_session.mode == "subscription":
             # subscription occurs after a user creates a subscription through
             # the checkout.
             account = Account.objects.get(id=checkout_session.client_reference_id)
+            subscription = stripe.Subscription.retrieve(checkout_session.subscription)
             customer = stripe.Customer.retrieve(checkout_session.customer)
+            payment_method = stripe.PaymentMethod.retrieve(
+                subscription.default_payment_method
+            )
 
             account.update_from(customer=customer)
 
@@ -568,7 +582,11 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
                 stripe_customer_info = StripeCustomerInformation(
                     customer_id=customer.id
                 )
-            stripe_customer_info.update_from_stripe()
+            stripe_customer_info.update_from(
+                subscription=subscription,
+                customer=customer,
+                payment_method=payment_method,
+            )
         else:
             raise BadRequest
         # Then define and call a method to handle the successful payment intent.
@@ -590,7 +608,10 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
                 "expected invoice to have corresponding StripeCustomerInformation"
             )
             raise BadRequest
-        stripe_customer.update_from_stripe()
+        sub = stripe.Subscription.retrieve(stripe_customer.subscription_id)
+        stripe_customer.subscription_current_period_end = sub.current_period_end
+        stripe_customer.subscription_current_period_start = sub.current_period_start
+        stripe_customer.save()
         stripe_customer.get_account().update_bot()
     elif event.type == "customer.subscription.deleted":
         # I don't think we need to do anything on subscription deletion. We can
@@ -601,13 +622,14 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     elif event.type == "invoice.payment_failed":
         logger.warning("invoice.payment_failed %s", event)
     elif event.type == "customer.updated":
+        customer = stripe.Customer.retrieve(event.data.object.id)
         stripe_customer_info = StripeCustomerInformation.objects.filter(
-            customer_id=event.data.object.id
+            customer_id=customer.id
         ).first()
         if stripe_customer_info is None:
             logger.warning("customer.update event for unknown customer %s", event)
             raise BadRequest
-        stripe_customer_info.update_from_stripe()
+        stripe_customer_info.update_from(customer=customer)
 
     else:
         # Unexpected event type

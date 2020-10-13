@@ -1023,51 +1023,55 @@ class StripeCustomerInformation(models.Model):
     class Meta:
         db_table = "stripe_customer_information"
 
-    def update_from_stripe(self) -> None:
-        customer = stripe.Customer.retrieve(self.customer_id)
-        subscription = stripe.Subscription.retrieve(customer.subscriptions.data[0].id)
-        payment_method = stripe.PaymentMethod.retrieve(
-            subscription.default_payment_method
-        )
+    def update_from(
+        self,
+        subscription: Optional[stripe.Subscription] = None,
+        customer: Optional[stripe.Customer] = None,
+        payment_method: Optional[stripe.PaymentMethod] = None,
+    ) -> None:
+        if customer is not None:
+            self.customer_email = customer.email
+            self.customer_balance = customer.balance
+            self.customer_created = customer.created
+            self.customer_currency = customer.currency
+            self.customer_name = customer.name
+            self.customer_address_line1 = (
+                customer.address.line1 if customer.address else None
+            )
+            self.customer_address_city = (
+                customer.address.city if customer.address else None
+            )
+            self.customer_address_country = (
+                customer.address.country if customer.address else None
+            )
+            self.customer_address_line2 = (
+                customer.address.line2 if customer.address else None
+            )
+            self.customer_address_postal_code = (
+                customer.address.postal_code if customer.address else None
+            )
+            self.customer_address_state = (
+                customer.address.state if customer.address else None
+            )
 
-        self.customer_email = customer.email
-        self.customer_balance = customer.balance
-        self.customer_created = customer.created
-        self.customer_currency = customer.currency
-        self.customer_name = customer.name
-        self.customer_address_line1 = (
-            customer.address.line1 if customer.address else None
-        )
-        self.customer_address_city = customer.address.city if customer.address else None
-        self.customer_address_country = (
-            customer.address.country if customer.address else None
-        )
-        self.customer_address_line2 = (
-            customer.address.line2 if customer.address else None
-        )
-        self.customer_address_postal_code = (
-            customer.address.postal_code if customer.address else None
-        )
-        self.customer_address_state = (
-            customer.address.state if customer.address else None
-        )
+        if payment_method is not None:
+            self.payment_method_id = payment_method.id
+            self.payment_method_card_brand = payment_method.card.brand
+            self.payment_method_card_exp_month = payment_method.card.exp_month
+            self.payment_method_card_exp_year = payment_method.card.exp_year
+            self.payment_method_card_last4 = payment_method.card.last4
 
-        self.payment_method_id = payment_method.id
-        self.payment_method_card_brand = payment_method.card.brand
-        self.payment_method_card_exp_month = payment_method.card.exp_month
-        self.payment_method_card_exp_year = payment_method.card.exp_year
-        self.payment_method_card_last4 = payment_method.card.last4
+        if subscription is not None:
+            self.plan_id = subscription.plan.id
+            self.plan_amount = subscription.plan.amount
+            self.plan_interval = subscription.plan.interval
+            self.plan_interval_count = subscription.plan.interval_count
 
-        self.plan_id = subscription.plan.id
-        self.plan_amount = subscription.plan.amount
-        self.plan_interval = subscription.plan.interval
-        self.plan_interval_count = subscription.plan.interval_count
-
-        self.subscription_id = subscription.id
-        self.subscription_quantity = subscription.quantity
-        self.subscription_start_date = subscription.start_date
-        self.subscription_current_period_end = subscription.current_period_end
-        self.subscription_current_period_start = subscription.current_period_start
+            self.subscription_id = subscription.id
+            self.subscription_quantity = subscription.quantity
+            self.subscription_start_date = subscription.start_date
+            self.subscription_current_period_end = subscription.current_period_end
+            self.subscription_current_period_start = subscription.current_period_start
         self.save()
         self.get_account().update_bot()
 
