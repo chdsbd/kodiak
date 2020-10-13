@@ -1,5 +1,6 @@
 import datetime
 import json
+import random
 import time
 from typing import Any, Tuple, Union, cast
 
@@ -47,6 +48,29 @@ def other_user() -> User:
     )
 
 
+def random_id() -> int:
+    return random.randint(0, 100_000_000)
+
+
+def create_account(
+    *,
+    stripe_customer_id: str = "cus_523405923045",
+    github_account_login: str = "acme-corp",
+    github_account_type: Literal["User", "Organization"] = "User",
+) -> Account:
+
+    return cast(
+        Account,
+        Account.objects.create(
+            github_installation_id=random_id(),
+            github_account_id=random_id(),
+            github_account_login=github_account_login,
+            github_account_type=github_account_type,
+            stripe_customer_id=stripe_customer_id,
+        ),
+    )
+
+
 @pytest.fixture
 def mocked_responses() -> Any:
     with responses.RequestsMock() as rsps:
@@ -66,12 +90,7 @@ def authed_client(client: Client, user: User) -> Client:
 
 @pytest.mark.django_db
 def test_usage_billing(authed_client: Client, user: User, other_user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     # this user opened a PR on a private repository that Kodiak also acted on,
@@ -189,12 +208,7 @@ def test_usage_billing_trial_active(
     """
     When the Account has an active trial, we return trial information in the API response.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
     user_account.save()
@@ -219,12 +233,7 @@ def test_usage_billing_trial_expired(
     When the Account has an expired trial, we return trial information in the
     API response and indicate that the trial is expired.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
     user_account.trial_start = timezone.make_aware(datetime.datetime(2000, 4, 15))
@@ -250,12 +259,7 @@ def test_usage_billing_trial_expired(
 
 @pytest.mark.django_db
 def test_usage_billing_authentication(authed_client: Client, other_user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -277,12 +281,8 @@ def test_usage_billing_subscription_started(
     mocker.patch(
         "web_api.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC
     )
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     stripe_customer_information = StripeCustomerInformation.objects.create(
@@ -535,12 +535,8 @@ def test_update_subscription(
         "web_api.models.stripe.Invoice.create", return_value=fake_invoice
     )
     stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
     StripeCustomerInformation.objects.create(
@@ -709,12 +705,8 @@ def test_update_subscription_missing_customer(
     stripe_subscription_modify = mocker.patch(
         "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
     )
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
     assert (
@@ -850,12 +842,7 @@ def test_cancel_subscription_admin_limit_billing_access_to_owners(
 
 @pytest.mark.django_db
 def test_activity(authed_client: Client, user: User,) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
         date=datetime.date(2020, 2, 3),
@@ -885,12 +872,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 @pytest.mark.django_db
 def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -903,12 +885,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Start a Stripe checkout session and return the required credentials to the frontend.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     class FakeCheckoutSession:
@@ -1340,27 +1317,18 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
 
     We could also sort them on the frontend.
     """
-    industries = Account.objects.create(
-        github_installation_id=125,
-        github_account_login="industries",
-        github_account_id=2234,
-        github_account_type="Organization",
+    industries = create_account(
+        github_account_login="industries", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=industries, user=user, role="member")
 
-    acme = Account.objects.create(
-        github_installation_id=1066615,
-        github_account_login="acme-corp",
-        github_account_id=523412234,
-        github_account_type="Organization",
+    acme = create_account(
+        github_account_login="acme-corp", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=acme, user=user, role="member")
 
-    market = Account.objects.create(
-        github_installation_id=540,
-        github_account_login="market",
-        github_account_id=1020,
-        github_account_type="Organization",
+    market = create_account(
+        github_account_login="market", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=market, user=user, role="member")
 
@@ -1369,17 +1337,17 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
         {
             "id": str(acme.id),
             "name": "acme-corp",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/523412234",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{acme.github_account_id}",
         },
         {
             "id": str(industries.id),
             "name": "industries",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/2234",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{industries.github_account_id}",
         },
         {
             "id": str(market.id),
             "name": "market",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/1020",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{market.github_account_id}",
         },
     ]
 
@@ -1408,18 +1376,10 @@ def test_sync_accounts_failure(
 
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
-    org_account = Account.objects.create(
-        github_installation_id=83676,
-        github_account_id=779874,
-        github_account_login="recipeyak",
-        github_account_type="Organization",
+    org_account = create_account(
+        github_account_login="recipeyak", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1452,12 +1412,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
 def test_current_account_authentication(
     authed_client: Client, other_user: User,
 ) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -1467,18 +1422,12 @@ def test_current_account_authentication(
 
 @pytest.mark.django_db
 def test_accounts(authed_client: Client, user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    user_account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
-    org_account = Account.objects.create(
-        github_installation_id=83676,
-        github_account_id=779874,
-        github_account_login="recipeyak",
-        github_account_type="Organization",
+    org_account = create_account(
+        github_account_login="recipeyak", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1511,11 +1460,8 @@ def test_start_trial(
     When a user starts a trial we should update their account.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     assert account.trial_start is None
@@ -1557,11 +1503,8 @@ def test_start_trial_existing_trial(
     Starting a trial when there is already an existing trial shouldn't alter
     current trial.
     """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     account.start_trial(actor=user, billing_email="b.lowe@example.com", length_days=2)
@@ -1626,10 +1569,11 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     Verify our webhook handler updates our subscription on this event.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
+    account = create_account()
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
-            id="cus_Gz7jQFKdh4KirU",
+            id=account.stripe_customer_id,
             email="j.doe@example.com",
             name=None,
             address=None,
@@ -1659,14 +1603,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_Gz7jQFKdh4KirU",
-    )
-    StripeCustomerInformation.objects.create(
+    stripe_customer_info = StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
@@ -1685,6 +1622,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         subscription_current_period_end=1658357784,
     )
     assert StripeCustomerInformation.objects.count() == 1
+    assert account.stripe_customer_info() == stripe_customer_info
     res = post_webhook(
         """
 {
@@ -1839,13 +1777,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
         "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="",
-    )
+    account = create_account(stripe_customer_id="")
     other_account = Account.objects.create(
         github_installation_id=523940,
         github_account_id=65234234,
@@ -2018,13 +1950,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     This event will get sent when a subscription is updated.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
     stripe_customer_info = StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
@@ -2313,13 +2239,7 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     Verify our webhook handler updates our customer when we get a customer.updated event
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
     StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
@@ -2407,13 +2327,7 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     This is basically the same as the previous test but with the address provided.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
     StripeCustomerInformation.objects.create(
         customer_id=account.stripe_customer_id,
@@ -2514,19 +2428,6 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     assert (
         updated_stripe_customer_info.customer_address_state
         == fake_customer.address.state
-    )
-
-
-def create_account() -> Account:
-    return cast(
-        Account,
-        Account.objects.create(
-            github_installation_id=377930,
-            github_account_id=900966,
-            github_account_login="acme-corp",
-            github_account_type="User",
-            stripe_customer_id="cus_523405923045",
-        ),
     )
 
 
