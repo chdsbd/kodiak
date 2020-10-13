@@ -1,6 +1,5 @@
 import datetime
 import json
-import random
 import time
 from typing import Any, Optional, Tuple, Type, Union, cast
 
@@ -93,7 +92,10 @@ def create_org_account(
 
 
 def create_stripe_customer_info(
-    customer_id: str = "cus_eG4134df", subscription_id: str = "sub_Gu1xedsfo1"
+    customer_id: str = "cus_eG4134df",
+    subscription_id: str = "sub_Gu1xedsfo1",
+    subscription_current_period_start: int = 1650581784,
+    subscription_current_period_end: int = 1658357784,
 ) -> StripeCustomerInformation:
     return cast(
         StripeCustomerInformation,
@@ -113,8 +115,8 @@ def create_stripe_customer_info(
             plan_interval="month",
             subscription_quantity=3,
             subscription_start_date=1585781784,
-            subscription_current_period_start=1650581784,
-            subscription_current_period_end=1658357784,
+            subscription_current_period_start=subscription_current_period_start,
+            subscription_current_period_end=subscription_current_period_end,
         ),
     )
 
@@ -378,22 +380,8 @@ def test_usage_billing_subscription_started(
         github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
-    stripe_customer_information = StripeCustomerInformation.objects.create(
+    stripe_customer_information = create_stripe_customer_info(
         customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        customer_currency="eur",
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
         subscription_current_period_start=period_start,
         subscription_current_period_end=period_end,
     )
@@ -408,7 +396,7 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
-    assert res.json()["subscription"]["cost"]["currency"] == "eur"
+    assert res.json()["subscription"]["cost"]["currency"] == "usd"
     assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["contactEmails"] == ""
@@ -632,21 +620,8 @@ def test_update_subscription(
         github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
-    StripeCustomerInformation.objects.create(
+    create_stripe_customer_info(
         customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
         subscription_current_period_start=period_start,
         subscription_current_period_end=period_end,
     )
