@@ -1663,6 +1663,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
             balance=5000,
             created=1643455402,
             currency="gbp",
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
         ),
         "fake-key",
     )
@@ -1772,7 +1773,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         % (account.id, account.stripe_customer_id)
     )
     assert res.status_code == 200
-    assert customer_retrieve.call_count == 1
+    assert customer_retrieve.call_count == 2
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
@@ -1853,6 +1854,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
             email="j.doe@example.com",
             name=None,
             address=None,
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
             balance=5000,
             created=1643455402,
             currency="brl",
@@ -2003,7 +2005,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
 
     assert res.status_code == 200
     assert update_bot.call_count == 1
-    assert customer_retrieve.call_count == 1
+    assert customer_retrieve.call_count == 2
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
     assert StripeCustomerInformation.objects.count() == 2
@@ -2097,6 +2099,21 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
         subscription_current_period_start=1590982549,
         subscription_current_period_end=1588304149,
     )
+    fake_customer = stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id="cus_Gz7jQFKdh4KirU",
+            email="j.doe@example.com",
+            name=None,
+            address=None,
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
+            balance=5000,
+            created=1643455402,
+            currency="brl",
+        ),
+        "fake-key",
+    )
+    mocker.patch("web_api.views.stripe.Customer.retrieve", return_value=fake_customer)
     fake_subscription = stripe.Subscription.construct_from(
         dict(
             object="subscription",
@@ -2111,6 +2128,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
                 interval="month",
                 interval_count=1,
             ),
+            start_date=1443556775,
             quantity=4,
             default_payment_method="pm_22dldxf3",
         ),
@@ -2118,6 +2136,17 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     )
     retrieve_subscription = mocker.patch(
         "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     assert StripeCustomerInformation.objects.count() == 1
@@ -2264,7 +2293,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     )
 
     assert res.status_code == 200
-    assert update_bot.call_count == 1
+    assert update_bot.call_count == 2
     assert retrieve_subscription.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
@@ -2394,11 +2423,46 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
             currency="usd",
             email="accounting@acme.corp",
             name="Acme Corp Inc",
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
         ),
         "fake-key",
     )
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=1690982549,
+            current_period_start=1688304149,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ",
+                object="plan",
+                amount=499,
+                interval="month",
+                interval_count=1,
+            ),
+            start_date=1443556775,
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
     patched_update_bot = mocker.patch(
         "web_api.models.Account.update_bot", spec=Account.update_bot
@@ -2479,11 +2543,46 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
             currency="usd",
             email="accounting@acme.corp",
             name="Acme Corp Inc",
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
         ),
         "fake-key",
     )
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
+    )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=1690982549,
+            current_period_start=1688304149,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ",
+                object="plan",
+                amount=499,
+                interval="month",
+                interval_count=1,
+            ),
+            start_date=1443556775,
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
     patched_update_bot = mocker.patch(
         "web_api.models.Account.update_bot", spec=Account.update_bot
@@ -2562,6 +2661,7 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
             currency="usd",
             email="accounting@acme.corp",
             name="Acme Corp Inc",
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
         ),
         "fake-key",
     )
@@ -2570,13 +2670,46 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
         spec=stripe.Customer.retrieve,
         return_value=fake_customer,
     )
+    fake_subscription = stripe.Subscription.construct_from(
+        dict(
+            object="subscription",
+            id="sub_Gu1xedsfo1",
+            current_period_end=1690982549,
+            current_period_start=1688304149,
+            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
+            plan=dict(
+                id="plan_G2df31A4G5JzQ",
+                object="plan",
+                amount=499,
+                interval="month",
+                interval_count=1,
+            ),
+            start_date=1443556775,
+            quantity=4,
+            default_payment_method="pm_22dldxf3",
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+    )
+    fake_payment_method = stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+    mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+    )
     mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
     assert StripeCustomerInformation.objects.count() == 0
     assert patched_retrieve_customer.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 400
-    assert patched_retrieve_customer.call_count == 1
     assert StripeCustomerInformation.objects.count() == 0
 
 
