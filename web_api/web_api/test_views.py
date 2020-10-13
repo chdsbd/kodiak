@@ -48,8 +48,11 @@ def other_user() -> User:
     )
 
 
-def random_id() -> int:
-    return random.randint(0, 100_000_000)
+PRIMARY_KEYS = iter(range(1000, 100000))
+
+
+def create_pk() -> int:
+    return next(PRIMARY_KEYS)
 
 
 def create_account(
@@ -62,13 +65,31 @@ def create_account(
     return cast(
         Account,
         Account.objects.create(
-            github_installation_id=random_id(),
-            github_account_id=random_id(),
+            github_installation_id=create_pk(),
+            github_account_id=create_pk(),
             github_account_login=github_account_login,
             github_account_type=github_account_type,
             stripe_customer_id=stripe_customer_id,
         ),
     )
+
+
+def create_org_account(
+    user: User,
+    role: Literal["member", "admin"] = "member",
+    limit_billing_access_to_owners: bool = False,
+) -> Tuple[Account, AccountMembership]:
+    account_id = create_pk()
+    account = Account.objects.create(
+        github_installation_id=create_pk(),
+        github_account_id=account_id,
+        github_account_login=f"Acme-corp-{account_id}",
+        github_account_type="Organization",
+        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
+        limit_billing_access_to_owners=limit_billing_access_to_owners,
+    )
+    membership = AccountMembership.objects.create(account=account, user=user, role=role)
+    return (account, membership)
 
 
 def create_stripe_customer_info(
@@ -1049,31 +1070,6 @@ def test_modify_payment_details_limit_billing_access_to_owners(
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
-
-PRIMARY_KEYS = iter(range(1000, 100000))
-
-
-def create_pk() -> int:
-    return next(PRIMARY_KEYS)
-
-
-def create_org_account(
-    user: User,
-    role: Literal["member", "admin"] = "member",
-    limit_billing_access_to_owners: bool = False,
-) -> Tuple[Account, AccountMembership]:
-    account_id = create_pk()
-    account = Account.objects.create(
-        github_installation_id=create_pk(),
-        github_account_id=account_id,
-        github_account_login=f"Acme-corp-{account_id}",
-        github_account_type="Organization",
-        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
-        limit_billing_access_to_owners=limit_billing_access_to_owners,
-    )
-    membership = AccountMembership.objects.create(account=account, user=user, role=role)
-    return (account, membership)
 
 
 @pytest.fixture
