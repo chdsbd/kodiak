@@ -937,11 +937,6 @@ class StripeCustomerInformation(models.Model):
     customer_created = models.IntegerField(
         help_text="Time at which the object was created. Measured in seconds since the Unix epoch."
     )
-    customer_currency = models.CharField(
-        max_length=255,
-        null=True,
-        help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
-    )
     customer_name = models.CharField(
         max_length=255,
         null=True,
@@ -1033,7 +1028,6 @@ class StripeCustomerInformation(models.Model):
         self.customer_email = customer.email
         self.customer_balance = customer.balance
         self.customer_created = customer.created
-        self.customer_currency = customer.currency
         self.customer_name = customer.name
         self.customer_address_line1 = (
             customer.address.line1 if customer.address else None

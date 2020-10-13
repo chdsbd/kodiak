@@ -93,7 +93,8 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 totalCents=stripe_customer_info.plan_amount
                 * stripe_customer_info.subscription_quantity,
                 perSeatCents=stripe_customer_info.plan_amount,
-                currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
+                # currency is deprecated
+                currency="usd",
                 planInterval=plan_interval,
             ),
             billingEmail=stripe_customer_info.customer_email,
