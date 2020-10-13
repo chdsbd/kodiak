@@ -614,12 +614,12 @@ def test_update_subscription(
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     update_bot = mocker.patch("web_api.models.Account.update_bot")
 
-    sub = create_stripe_subscription()
+    fake_subscription = create_stripe_subscription()
     stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve", return_value=sub
+        "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
     )
     stripe_subscription_modify = mocker.patch(
-        "web_api.models.stripe.Subscription.modify", return_value=sub
+        "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
     )
     fake_invoice = stripe.Invoice.construct_from(
         dict(object="invoice", id="in_00000000000000"), "fake-key",
