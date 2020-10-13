@@ -2517,6 +2517,19 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     )
 
 
+def create_account() -> Account:
+    return cast(
+        Account,
+        Account.objects.create(
+            github_installation_id=377930,
+            github_account_id=900966,
+            github_account_login="acme-corp",
+            github_account_type="User",
+            stripe_customer_id="cus_523405923045",
+        ),
+    )
+
+
 @pytest.mark.django_db
 def test_stripe_webhook_handler_customer_updated_no_matching_customer(
     mocker: Any,
@@ -2524,56 +2537,12 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
     """
     If we get a customer.updated event for a non existent customer we should error.
     """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=account.stripe_customer_id,
-            address=dict(
-                line1="123 Main St",
-                line2="Apt 2B",
-                city="Cambridge",
-                state="Massachusetts",
-                postal_code="02139",
-                country="United States",
-            ),
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
-        ),
-        "fake-key",
-    )
     patched_retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve",
-        spec=stripe.Customer.retrieve,
-        return_value=fake_customer,
+        "web_api.models.StripeCustomerInformation.update_from_stripe",
+        spec=StripeCustomerInformation,
     )
-    mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve",
-        return_value=create_stripe_subscription(),
-    )
-    fake_payment_method = stripe.PaymentMethod.construct_from(
-        dict(
-            object="payment_method",
-            id="pm_55yfgbc6",
-            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
-        ),
-        "fake-key",
-    )
-    mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
-    )
-    mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
     assert StripeCustomerInformation.objects.count() == 0
     assert patched_retrieve_customer.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
