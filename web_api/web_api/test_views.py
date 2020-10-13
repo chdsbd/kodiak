@@ -71,6 +71,33 @@ def create_account(
     )
 
 
+def create_stripe_customer_info(
+    customer_id: str = "cus_eG4134df", subscription_id: str = "sub_Gu1xedsfo1"
+) -> StripeCustomerInformation:
+    return cast(
+        StripeCustomerInformation,
+        StripeCustomerInformation.objects.create(
+            customer_id=customer_id,
+            subscription_id=subscription_id,
+            plan_id="plan_G2df31A4G5JzQ",
+            payment_method_id="pm_22dldxf3",
+            customer_email="accounting@acme-corp.com",
+            customer_balance=0,
+            customer_created=1585781308,
+            payment_method_card_brand="mastercard",
+            payment_method_card_exp_month="03",
+            payment_method_card_exp_year="32",
+            payment_method_card_last4="4242",
+            plan_amount=499,
+            plan_interval="month",
+            subscription_quantity=3,
+            subscription_start_date=1585781784,
+            subscription_current_period_start=1650581784,
+            subscription_current_period_end=1658357784,
+        ),
+    )
+
+
 @pytest.fixture
 def mocked_responses() -> Any:
     with responses.RequestsMock() as rsps:
@@ -1004,31 +1031,6 @@ def create_org_account(
     return (account, membership)
 
 
-def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id=customer_id,
-            subscription_id="sub_Gu1xedsfo1",
-            plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
-            plan_amount=499,
-            plan_interval="month",
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            subscription_current_period_start=1650581784,
-            subscription_current_period_end=1658357784,
-        ),
-    )
-
-
 @pytest.fixture
 def patch_stripe_customer_modify(mocker: Any) -> None:
     mocker.patch("web_api.models.stripe.Customer.modify", spec=stripe.Customer.modify)
@@ -1603,23 +1605,8 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
         "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
-    stripe_customer_info = StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1658357784,
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
     )
     assert StripeCustomerInformation.objects.count() == 1
     assert account.stripe_customer_info() == stripe_customer_info
@@ -1778,30 +1765,14 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
 
     account = create_account(stripe_customer_id="")
-    other_account = Account.objects.create(
-        github_installation_id=523940,
-        github_account_id=65234234,
+    other_account = create_account(
         github_account_login="delos-engineering",
         github_account_type="Organization",
         stripe_customer_id="cus_354HjLriodop21",
     )
-    other_subscription = StripeCustomerInformation.objects.create(
+    other_subscription = create_stripe_customer_info(
         customer_id=other_account.stripe_customer_id,
         subscription_id="sub_L43DyAEVGwzt32",
-        plan_id="plan_Gz345gdsdf",
-        payment_method_id="pm_34lbsdf3",
-        customer_email="engineering@delos.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1658357784,
     )
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
@@ -1952,23 +1923,8 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     account = create_account()
 
-    stripe_customer_info = StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
     )
     fake_customer = stripe.Customer.construct_from(
         dict(
@@ -2241,24 +2197,7 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     account = create_account()
 
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
@@ -2329,24 +2268,7 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     account = create_account()
 
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
     fake_customer = stripe.Customer.construct_from(
         dict(
             object="customer",
