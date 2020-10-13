@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Type, Union, cast
 
 import pytest
 import responses
@@ -47,6 +47,125 @@ def other_user() -> User:
     )
 
 
+PRIMARY_KEYS = iter(range(1000, 100000))
+
+
+def create_pk() -> int:
+    return next(PRIMARY_KEYS)
+
+
+def create_account(
+    *,
+    stripe_customer_id: str = "cus_523405923045",
+    github_account_login: str = "acme-corp",
+    github_account_type: Literal["User", "Organization"] = "User",
+) -> Account:
+
+    return cast(
+        Account,
+        Account.objects.create(
+            github_installation_id=create_pk(),
+            github_account_id=create_pk(),
+            github_account_login=github_account_login,
+            github_account_type=github_account_type,
+            stripe_customer_id=stripe_customer_id,
+        ),
+    )
+
+
+def create_org_account(
+    user: User,
+    role: Literal["member", "admin"] = "member",
+    limit_billing_access_to_owners: bool = False,
+) -> Tuple[Account, AccountMembership]:
+    account_id = create_pk()
+    account = Account.objects.create(
+        github_installation_id=create_pk(),
+        github_account_id=account_id,
+        github_account_login=f"Acme-corp-{account_id}",
+        github_account_type="Organization",
+        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
+        limit_billing_access_to_owners=limit_billing_access_to_owners,
+    )
+    membership = AccountMembership.objects.create(account=account, user=user, role=role)
+    return (account, membership)
+
+
+def create_stripe_customer_info(
+    customer_id: str = "cus_eG4134df",
+    subscription_id: str = "sub_Gu1xedsfo1",
+    subscription_current_period_start: int = 1650581784,
+    subscription_current_period_end: int = 1658357784,
+) -> StripeCustomerInformation:
+    return cast(
+        StripeCustomerInformation,
+        StripeCustomerInformation.objects.create(
+            customer_id=customer_id,
+            subscription_id=subscription_id,
+            plan_id="plan_G2df31A4G5JzQ",
+            payment_method_id="pm_22dldxf3",
+            customer_email="accounting@acme-corp.com",
+            customer_balance=0,
+            customer_created=1585781308,
+            payment_method_card_brand="mastercard",
+            payment_method_card_exp_month="03",
+            payment_method_card_exp_year="32",
+            payment_method_card_last4="4242",
+            plan_amount=499,
+            plan_interval="month",
+            subscription_quantity=3,
+            subscription_start_date=1585781784,
+            subscription_current_period_start=subscription_current_period_start,
+            subscription_current_period_end=subscription_current_period_end,
+        ),
+    )
+
+
+def create_stripe_payment_method() -> stripe.PaymentMethod:
+    return stripe.PaymentMethod.construct_from(
+        dict(
+            object="payment_method",
+            id="pm_55yfgbc6",
+            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
+        ),
+        "fake-key",
+    )
+
+
+class Unset:
+    pass
+
+
+def create_stripe_customer(
+    *,
+    id: str = "cus_Gz7jQFKdh4KirU",
+    address: Optional[Union[dict, Type[Unset]]] = Unset,
+) -> stripe.Customer:
+    if address == Unset:
+        address = dict(
+            line1="123 Main St",
+            line2="Apt 2B",
+            city="Cambridge",
+            state="Massachusetts",
+            postal_code="02139",
+            country="United States",
+        )
+    return stripe.Customer.construct_from(
+        dict(
+            object="customer",
+            id=id,
+            address=address,
+            balance=0,
+            created=1592096376,
+            currency="usd",
+            email="accounting@acme.corp",
+            name="Acme Corp Inc",
+            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
+        ),
+        "fake-key",
+    )
+
+
 @pytest.fixture
 def mocked_responses() -> Any:
     with responses.RequestsMock() as rsps:
@@ -66,12 +185,7 @@ def authed_client(client: Client, user: User) -> Client:
 
 @pytest.mark.django_db
 def test_usage_billing(authed_client: Client, user: User, other_user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     # this user opened a PR on a private repository that Kodiak also acted on,
@@ -189,12 +303,7 @@ def test_usage_billing_trial_active(
     """
     When the Account has an active trial, we return trial information in the API response.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
     user_account.save()
@@ -219,12 +328,7 @@ def test_usage_billing_trial_expired(
     When the Account has an expired trial, we return trial information in the
     API response and indicate that the trial is expired.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
     user_account.trial_start = timezone.make_aware(datetime.datetime(2000, 4, 15))
@@ -250,12 +354,7 @@ def test_usage_billing_trial_expired(
 
 @pytest.mark.django_db
 def test_usage_billing_authentication(authed_client: Client, other_user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -277,30 +376,12 @@ def test_usage_billing_subscription_started(
     mocker.patch(
         "web_api.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC
     )
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
-    stripe_customer_information = StripeCustomerInformation.objects.create(
+    stripe_customer_information = create_stripe_customer_info(
         customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        customer_currency="eur",
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
         subscription_current_period_start=period_start,
         subscription_current_period_end=period_end,
     )
@@ -315,7 +396,7 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
-    assert res.json()["subscription"]["cost"]["currency"] == "eur"
+    assert res.json()["subscription"]["cost"]["currency"] == "usd"
     assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["contactEmails"] == ""
@@ -426,18 +507,10 @@ def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None
     """
     account, _membership = create_org_account(user)
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-        ),
-        "fake-key",
-    )
     patched_stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve",
         spec=stripe.Subscription.retrieve,
-        return_value=fake_subscription,
+        return_value=create_stripe_subscription(),
     )
     fake_invoice = stripe.Invoice.construct_from(
         {
@@ -528,22 +601,8 @@ def test_update_subscription(
     period_start = int(time.time())
     period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=period_start,
-            current_period_start=period_end,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ", object="plan", amount=499, interval="month"
-            ),
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
 
+    fake_subscription = create_stripe_subscription()
     stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
     )
@@ -557,29 +616,12 @@ def test_update_subscription(
         "web_api.models.stripe.Invoice.create", return_value=fake_invoice
     )
     stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
-    StripeCustomerInformation.objects.create(
+    create_stripe_customer_info(
         customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
         subscription_current_period_start=period_start,
         subscription_current_period_end=period_end,
     )
@@ -638,23 +680,25 @@ def test_update_subscription(
     assert stripe_invoice_pay.call_count == 2, "not hit because we're changing plans"
 
 
-def create_fake_subscription(
+def create_stripe_subscription(
     interval: Literal["month", "year"] = "month"
 ) -> stripe.Subscription:
     return stripe.Subscription.construct_from(
         dict(
             object="subscription",
             id="sub_Gu1xedsfo1",
-            current_period_end=566789,
-            current_period_start=567890,
+            current_period_end=1690982549,
+            current_period_start=1688304149,
             items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
             plan=dict(
                 id=settings.STRIPE_ANNUAL_PLAN_ID,
                 object="plan",
                 amount=499,
                 interval=interval,
+                interval_count=1,
             ),
             quantity=4,
+            start_date=1443556775,
             default_payment_method="pm_22dldxf3",
         ),
         "fake-key",
@@ -675,11 +719,11 @@ def test_update_subscription_switch_plans(
 
     stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve",
-        return_value=create_fake_subscription(interval="month"),
+        return_value=create_stripe_subscription(interval="month"),
     )
     stripe_subscription_modify = mocker.patch(
         "web_api.models.stripe.Subscription.modify",
-        return_value=create_fake_subscription(interval="year"),
+        return_value=create_stripe_subscription(interval="year"),
     )
     fake_invoice = stripe.Invoice.construct_from(
         dict(object="invoice", id="in_00000000000000"), "fake-key",
@@ -721,14 +765,7 @@ def test_update_subscription_missing_customer(
     We should get an error when we try to update a subscription for an Account
     that doesn't have an associated subscription.
     """
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
 
     stripe_subscription_retrieve = mocker.patch(
         "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
@@ -736,12 +773,8 @@ def test_update_subscription_missing_customer(
     stripe_subscription_modify = mocker.patch(
         "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
     )
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-        stripe_customer_id="cus_Ged32s2xnx12",
+    account = create_account(
+        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
     assert (
@@ -877,12 +910,7 @@ def test_cancel_subscription_admin_limit_billing_access_to_owners(
 
 @pytest.mark.django_db
 def test_activity(authed_client: Client, user: User,) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
         date=datetime.date(2020, 2, 3),
@@ -912,12 +940,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 @pytest.mark.django_db
 def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -930,12 +953,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Start a Stripe checkout session and return the required credentials to the frontend.
     """
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     class FakeCheckoutSession:
@@ -1027,56 +1045,6 @@ def test_modify_payment_details_limit_billing_access_to_owners(
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
     assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
-
-PRIMARY_KEYS = iter(range(1000, 100000))
-
-
-def create_pk() -> int:
-    return next(PRIMARY_KEYS)
-
-
-def create_org_account(
-    user: User,
-    role: Literal["member", "admin"] = "member",
-    limit_billing_access_to_owners: bool = False,
-) -> Tuple[Account, AccountMembership]:
-    account_id = create_pk()
-    account = Account.objects.create(
-        github_installation_id=create_pk(),
-        github_account_id=account_id,
-        github_account_login=f"Acme-corp-{account_id}",
-        github_account_type="Organization",
-        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
-        limit_billing_access_to_owners=limit_billing_access_to_owners,
-    )
-    membership = AccountMembership.objects.create(account=account, user=user, role=role)
-    return (account, membership)
-
-
-def create_stripe_customer_info(customer_id: str) -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id=customer_id,
-            subscription_id="sub_Gu1xedsfo1",
-            plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
-            plan_amount=499,
-            plan_interval="month",
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            subscription_current_period_start=1650581784,
-            subscription_current_period_end=1658357784,
-        ),
-    )
 
 
 @pytest.fixture
@@ -1367,27 +1335,18 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
 
     We could also sort them on the frontend.
     """
-    industries = Account.objects.create(
-        github_installation_id=125,
-        github_account_login="industries",
-        github_account_id=2234,
-        github_account_type="Organization",
+    industries = create_account(
+        github_account_login="industries", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=industries, user=user, role="member")
 
-    acme = Account.objects.create(
-        github_installation_id=1066615,
-        github_account_login="acme-corp",
-        github_account_id=523412234,
-        github_account_type="Organization",
+    acme = create_account(
+        github_account_login="acme-corp", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=acme, user=user, role="member")
 
-    market = Account.objects.create(
-        github_installation_id=540,
-        github_account_login="market",
-        github_account_id=1020,
-        github_account_type="Organization",
+    market = create_account(
+        github_account_login="market", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=market, user=user, role="member")
 
@@ -1396,17 +1355,17 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
         {
             "id": str(acme.id),
             "name": "acme-corp",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/523412234",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{acme.github_account_id}",
         },
         {
             "id": str(industries.id),
             "name": "industries",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/2234",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{industries.github_account_id}",
         },
         {
             "id": str(market.id),
             "name": "market",
-            "profileImgUrl": "https://avatars.githubusercontent.com/u/1020",
+            "profileImgUrl": f"https://avatars.githubusercontent.com/u/{market.github_account_id}",
         },
     ]
 
@@ -1435,18 +1394,10 @@ def test_sync_accounts_failure(
 
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
-    org_account = Account.objects.create(
-        github_installation_id=83676,
-        github_account_id=779874,
-        github_account_login="recipeyak",
-        github_account_type="Organization",
+    org_account = create_account(
+        github_account_login="recipeyak", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1479,12 +1430,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
 def test_current_account_authentication(
     authed_client: Client, other_user: User,
 ) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=other_user.github_login,
-        github_account_type="User",
-    )
+    user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -1494,18 +1440,12 @@ def test_current_account_authentication(
 
 @pytest.mark.django_db
 def test_accounts(authed_client: Client, user: User) -> None:
-    user_account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    user_account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
-    org_account = Account.objects.create(
-        github_installation_id=83676,
-        github_account_id=779874,
-        github_account_login="recipeyak",
-        github_account_type="Organization",
+    org_account = create_account(
+        github_account_login="recipeyak", github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1523,9 +1463,7 @@ def test_accounts(authed_client: Client, user: User) -> None:
 
 @pytest.fixture
 def patch_start_trial(mocker: Any) -> None:
-    fake_customer = stripe.Customer.construct_from(
-        dict(object="customer", id="cust_Gx2a3gd5x6",), "fake-key",
-    )
+    fake_customer = create_stripe_customer()
     mocker.patch("web_api.models.stripe.Customer.create", return_value=fake_customer)
     mocker.patch("web_api.models.stripe.Customer.modify", return_value=fake_customer)
 
@@ -1538,11 +1476,8 @@ def test_start_trial(
     When a user starts a trial we should update their account.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     assert account.trial_start is None
@@ -1584,11 +1519,8 @@ def test_start_trial_existing_trial(
     Starting a trial when there is already an existing trial shouldn't alter
     current trial.
     """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login=user.github_login,
-        github_account_type="User",
+    account = create_account(
+        github_account_login=user.github_login, github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     account.start_trial(actor=user, billing_email="b.lowe@example.com", length_days=2)
@@ -1653,78 +1585,25 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     Verify our webhook handler updates our subscription on this event.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id="cus_Gz7jQFKdh4KirU",
-            email="j.doe@example.com",
-            name=None,
-            address=None,
-            balance=5000,
-            created=1643455402,
-            currency="gbp",
-        ),
-        "fake-key",
-    )
+    account = create_account()
+    fake_customer = create_stripe_customer(id=account.stripe_customer_id, address=None)
     customer_retrieve = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            default_payment_method="pm_47xubd3i",
-            plan=dict(
-                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1
-            ),
-            quantity=10,
-            start_date=1443556775,
-            current_period_start=1653173784,
-            current_period_end=1660949784,
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
     )
-    fake_payment_method = stripe.PaymentMethod.construct_from(
-        dict(
-            object="payment_method",
-            id="pm_55yfgbc6",
-            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
-        ),
-        "fake-key",
-    )
+    fake_payment_method = create_stripe_payment_method()
     payment_method_retrieve = mocker.patch(
         "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_Gz7jQFKdh4KirU",
-    )
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1658357784,
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
     )
     assert StripeCustomerInformation.objects.count() == 1
+    assert account.stripe_customer_info() == stripe_customer_info
     res = post_webhook(
         """
 {
@@ -1846,83 +1725,28 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     Verify our webhook handler creates a subscription on this event.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id="cus_Gz7jQFKdh4KirU",
-            email="j.doe@example.com",
-            name=None,
-            address=None,
-            balance=5000,
-            created=1643455402,
-            currency="brl",
-        ),
-        "fake-key",
-    )
+    fake_customer = create_stripe_customer()
     customer_retrieve = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            default_payment_method="pm_47xubd3i",
-            plan=dict(
-                id="plan_Gz345gdsdf", amount=499, interval="month", interval_count=1,
-            ),
-            quantity=10,
-            start_date=1443556775,
-            current_period_start=1653173784,
-            current_period_end=1660949784,
-        ),
-        "fake-key",
-    )
+    fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
     )
-    fake_payment_method = stripe.PaymentMethod.construct_from(
-        dict(
-            object="payment_method",
-            id="pm_55yfgbc6",
-            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
-        ),
-        "fake-key",
-    )
+    fake_payment_method = create_stripe_payment_method()
     payment_method_retrieve = mocker.patch(
         "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
     )
 
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="",
-    )
-    other_account = Account.objects.create(
-        github_installation_id=523940,
-        github_account_id=65234234,
+    account = create_account(stripe_customer_id="")
+    other_account = create_account(
         github_account_login="delos-engineering",
         github_account_type="Organization",
         stripe_customer_id="cus_354HjLriodop21",
     )
-    other_subscription = StripeCustomerInformation.objects.create(
+    other_subscription = create_stripe_customer_info(
         customer_id=other_account.stripe_customer_id,
         subscription_id="sub_L43DyAEVGwzt32",
-        plan_id="plan_Gz345gdsdf",
-        payment_method_id="pm_34lbsdf3",
-        customer_email="engineering@delos.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1650581784,
-        subscription_current_period_end=1658357784,
     )
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
@@ -2071,53 +1895,14 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     This event will get sent when a subscription is updated.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
-    stripe_customer_info = StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
-    )
-    fake_subscription = stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id="plan_G2df31A4G5JzQ",
-                object="plan",
-                amount=499,
-                interval="month",
-                interval_count=1,
-            ),
-            quantity=4,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
+    stripe_customer_info = create_stripe_customer_info(
+        customer_id=account.stripe_customer_id
     )
     retrieve_subscription = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
     )
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     assert StripeCustomerInformation.objects.count() == 1
@@ -2358,45 +2143,10 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     Verify our webhook handler updates our customer when we get a customer.updated event
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
-    )
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=account.stripe_customer_id,
-            address=None,
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-        ),
-        "fake-key",
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    fake_customer = create_stripe_customer(id=account.stripe_customer_id, address=None)
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
@@ -2436,52 +2186,10 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     This is basically the same as the previous test but with the address provided.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
-    StripeCustomerInformation.objects.create(
-        customer_id=account.stripe_customer_id,
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        subscription_current_period_start=1590982549,
-        subscription_current_period_end=1588304149,
-    )
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=account.stripe_customer_id,
-            address=dict(
-                line1="123 Main St",
-                line2="Apt 2B",
-                city="Cambridge",
-                state="Massachusetts",
-                postal_code="02139",
-                country="United States",
-            ),
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-        ),
-        "fake-key",
-    )
+    create_stripe_customer_info(customer_id=account.stripe_customer_id)
+    fake_customer = create_stripe_customer(id=account.stripe_customer_id,)
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
@@ -2537,38 +2245,12 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
     """
     If we get a customer.updated event for a non existent customer we should error.
     """
-    account = Account.objects.create(
-        github_installation_id=377930,
-        github_account_id=900966,
-        github_account_login="acme-corp",
-        github_account_type="User",
-        stripe_customer_id="cus_523405923045",
-    )
+    account = create_account()
 
-    fake_customer = stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=account.stripe_customer_id,
-            address=dict(
-                line1="123 Main St",
-                line2="Apt 2B",
-                city="Cambridge",
-                state="Massachusetts",
-                postal_code="02139",
-                country="United States",
-            ),
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-        ),
-        "fake-key",
-    )
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve",
         spec=stripe.Customer.retrieve,
-        return_value=fake_customer,
+        return_value=create_stripe_customer(),
     )
     mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
     assert StripeCustomerInformation.objects.count() == 0
