@@ -1900,14 +1900,23 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
     )
+    retrieve_customer = mocker.patch(
+        "web_api.views.stripe.Customer.retrieve", return_value=create_stripe_customer(),
+    )
     retrieve_subscription = mocker.patch(
         "web_api.views.stripe.Subscription.retrieve",
         return_value=create_stripe_subscription(),
+    )
+    retrieve_payment_method = mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve",
+        return_value=create_stripe_payment_method(),
     )
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
     assert retrieve_subscription.call_count == 0
+    assert retrieve_customer.call_count == 0
+    assert retrieve_payment_method.call_count == 0
     res = post_webhook(
         """
 {
@@ -2051,6 +2060,8 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     assert res.status_code == 200
     assert update_bot.call_count == 1
     assert retrieve_subscription.call_count == 1
+    assert retrieve_customer.call_count == 1
+    assert retrieve_payment_method.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert (
@@ -2150,17 +2161,29 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
+    patched_retrieve_subscription = mocker.patch(
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
+    )
+    patched_retrieve_payment_method = mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve",
+        return_value=create_stripe_payment_method(),
+    )
     patched_update_bot = mocker.patch(
         "web_api.models.Account.update_bot", spec=Account.update_bot
     )
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
     assert patched_retrieve_customer.call_count == 0
+    assert patched_retrieve_subscription.call_count == 0
+    assert patched_retrieve_payment_method.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 200
     assert patched_update_bot.call_count == 1
     assert patched_retrieve_customer.call_count == 1
+    assert patched_retrieve_subscription.call_count == 1
+    assert patched_retrieve_payment_method.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert updated_stripe_customer_info.customer_email == fake_customer.email
@@ -2193,17 +2216,29 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
+    patched_retrieve_subscription = mocker.patch(
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=create_stripe_subscription(),
+    )
+    patched_retrieve_payment_method = mocker.patch(
+        "web_api.views.stripe.PaymentMethod.retrieve",
+        return_value=create_stripe_payment_method(),
+    )
     patched_update_bot = mocker.patch(
         "web_api.models.Account.update_bot", spec=Account.update_bot
     )
     assert StripeCustomerInformation.objects.count() == 1
     assert update_bot.call_count == 0
     assert patched_retrieve_customer.call_count == 0
+    assert patched_retrieve_subscription.call_count == 0
+    assert patched_retrieve_payment_method.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 200
     assert patched_update_bot.call_count == 1
     assert patched_retrieve_customer.call_count == 1
+    assert patched_retrieve_subscription.call_count == 1
+    assert patched_retrieve_payment_method.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert updated_stripe_customer_info.customer_email == fake_customer.email
@@ -2247,19 +2282,18 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
     """
     account = create_account()
 
-    patched_retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve",
-        spec=stripe.Customer.retrieve,
-        return_value=create_stripe_customer(),
+    patched_update_from_stripe = mocker.patch(
+        "web_api.models.StripeCustomerInformation.update_from_stripe",
+        spec=StripeCustomerInformation.update_from_stripe,
     )
     mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
     assert StripeCustomerInformation.objects.count() == 0
-    assert patched_retrieve_customer.call_count == 0
+    assert patched_update_from_stripe.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 400
-    assert patched_retrieve_customer.call_count == 1
     assert StripeCustomerInformation.objects.count() == 0
+    assert patched_update_from_stripe.call_count == 0
 
 
 @pytest.mark.django_db
