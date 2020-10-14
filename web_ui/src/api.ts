@@ -41,7 +41,7 @@ export interface IUsageBillingPageApiResponse {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
-      readonly currency: string
+      readonly planProductName: string
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
@@ -54,7 +54,6 @@ export interface IUsageBillingPageApiResponse {
       readonly postalCode?: string
       readonly state?: string
     }
-    readonly cardInfo: string
     readonly viewerIsOrgOwner: boolean
     readonly viewerCanModify: boolean
     readonly limitBillingAccessToOwners: boolean
@@ -140,15 +139,6 @@ export interface IStartTrialArgs {
   readonly teamId: string
   readonly billingEmail: string
 }
-export type IUpdateSubscriptionArgs = {
-  readonly teamId: string
-  readonly seats: number
-  readonly prorationTimestamp: number
-  readonly planPeriod: "month" | "year"
-}
-export interface ICancelSubscriptionArgs {
-  readonly teamId: string
-}
 export interface IFetchSubscriptionInfoArgs {
   readonly teamId: string
 }
@@ -161,23 +151,6 @@ export interface IStartCheckoutArgs {
 export interface IStartCheckoutResponse {
   readonly stripeCheckoutSessionId: string
   readonly stripePublishableApiKey: string
-}
-export interface IModifyBillingArgs {
-  readonly teamId: string
-}
-export interface ModifyBillingResponse {
-  readonly stripeCheckoutSessionId: string
-  readonly stripePublishableApiKey: string
-}
-
-export interface IFetchProrationArgs {
-  readonly teamId: string
-  readonly subscriptionQuantity: number
-  readonly subscriptionPeriod: "month" | "year"
-}
-export interface IFetchProrationResponse {
-  readonly proratedCost: number
-  readonly prorationTime: number
 }
 
 export type GetSubscriptionInfoArgs = {
@@ -227,13 +200,7 @@ export interface Api {
     args: ICurrentAccountArgs,
   ) => Promise<ICurrentAccountApiResponse>
   startTrial: (args: IStartTrialArgs) => Promise<unknown>
-  updateSubscription: (args: IUpdateSubscriptionArgs) => Promise<unknown>
-  cancelSubscription: (args: ICancelSubscriptionArgs) => Promise<unknown>
-  fetchProration: (
-    args: IFetchProrationArgs,
-  ) => Promise<IFetchProrationResponse>
   startCheckout: (args: IStartCheckoutArgs) => Promise<IStartCheckoutResponse>
-  modifyBilling: (args: IModifyBillingArgs) => Promise<ModifyBillingResponse>
   getSubscriptionInfo: (
     args: GetSubscriptionInfoArgs,
   ) => Promise<SubscriptionInfoResponse>

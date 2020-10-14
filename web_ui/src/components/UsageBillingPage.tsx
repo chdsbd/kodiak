@@ -24,12 +24,9 @@ import sortBy from "lodash/sortBy"
 import { useLocation, useHistory, useParams } from "react-router-dom"
 import { loadStripe } from "@stripe/stripe-js"
 import * as settings from "../settings"
-import debounce from "lodash/debounce"
-import { GoLinkExternal } from "react-icons/go"
 
-const DEFAULT_CURRENCY = "usd"
-const MONTHLY_COST = formatCents(settings.monthlyCost, DEFAULT_CURRENCY)
-const ANNUAL_COST = formatCents(settings.annualCost, DEFAULT_CURRENCY)
+const MONTHLY_COST = formatCents(settings.monthlyCost)
+const ANNUAL_COST = formatCents(settings.annualCost)
 
 interface IQuestionProps {
   readonly content: string | React.ReactNode
@@ -62,7 +59,7 @@ interface IUsageBillingData {
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
-      readonly currency: string
+      readonly planProductName: string
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
@@ -76,7 +73,6 @@ interface IUsageBillingData {
       readonly postalCode?: string
       readonly state?: string
     }
-    readonly cardInfo: string
     readonly viewerIsOrgOwner: boolean
     readonly viewerCanModify: boolean
     readonly limitBillingAccessToOwners: boolean
@@ -134,10 +130,10 @@ function UsageAndBillingContainer({ children }: { children: React.ReactNode }) {
   )
 }
 
-function formatCents(cents: number, currency: string): string {
+function formatCents(cents: number): string {
   const formatter = new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency,
+    currency: "usd",
   })
   return formatter.format(cents / 100)
 }
@@ -158,7 +154,7 @@ function formatFromNow(dateString: string): string {
 }
 
 function FormatDate({ date }: { date: string }) {
-  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
+  return <>{formatDate(parseISO(date), "y-MM-dd")}</>
 }
 
 interface IInstallCompleteModalProps {
@@ -309,7 +305,6 @@ function StartSubscriptionModal({
       }
     })
   }
-  const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
   const seatCost =
     period === "year" ? settings.annualCost : settings.monthlyCost
   const costCents = seats * seatCost
@@ -373,11 +368,11 @@ function StartSubscriptionModal({
               type="text"
               required
               disabled
-              value={formatCost(costCents)}
+              value={formatCents(costCents)}
             />
             <Form.Text className="text-muted">
               Billed {formatPeriod(period)}. <b>{seats} seat(s) </b>
-              at <b>{formatCost(seatCost)}/seat</b>.{" "}
+              at <b>{formatCents(seatCost)}/seat</b>.{" "}
             </Form.Text>
           </Form.Group>
           <Button
@@ -399,281 +394,6 @@ function StartSubscriptionModal({
             <Form.Text className="text-danger">{status.msg}</Form.Text>
           )}
         </Form>
-      </Modal.Body>
-    </Modal>
-  )
-}
-
-type IProrationAmount =
-  | { kind: "loading" }
-  | { kind: "failed" }
-  | { kind: "success"; cost: number }
-
-interface IManageSubscriptionModalProps {
-  readonly show: boolean
-  readonly onClose: (props?: { reload?: boolean }) => void
-  readonly seatUsage: number
-  readonly currentSeats: number
-  readonly billingEmail: string
-  readonly cardInfo: string
-  readonly cost: {
-    readonly totalCents: number
-    readonly perSeatCents: number
-    readonly planInterval: "month" | "year"
-  }
-}
-function ManageSubscriptionModal({
-  show,
-  onClose,
-  seatUsage,
-  cost,
-  billingEmail,
-  cardInfo,
-  currentSeats,
-}: IManageSubscriptionModalProps) {
-  const [seats, setSeats] = React.useState(currentSeats)
-  const [creatingSubscription, setCreatingSubscription] = React.useState(false)
-  const [error, setError] = React.useState("")
-  const [prorationAmount, setProrationAmount] = React.useState<
-    IProrationAmount
-  >({ kind: "loading" })
-  const [prorationTimestamp, setProrationTimestamp] = React.useState(0)
-  const [subscriptionPeriod, setSubscriptionPeriod] = React.useState<
-    "month" | "year"
-  >(cost.planInterval)
-  const seatsRef = React.useRef(0)
-  const subscriptionPeriodRef = React.useRef<"month" | "year">("month")
-
-  const formatCost = (cents: number) => formatCents(cents, DEFAULT_CURRENCY)
-
-  React.useEffect(() => {
-    seatsRef.current = seats
-  }, [seats])
-  React.useEffect(() => {
-    subscriptionPeriodRef.current = subscriptionPeriod
-  }, [subscriptionPeriod])
-
-  function setSubscription() {
-    setCreatingSubscription(true)
-    setError("")
-    teamApi(Current.api.updateSubscription, {
-      seats,
-      prorationTimestamp,
-      planPeriod: subscriptionPeriod,
-    }).then(res => {
-      if (res.ok) {
-        // trigger page refresh.
-        location.search = ""
-      } else {
-        setError("failed to update plan")
-      }
-      setCreatingSubscription(false)
-    })
-  }
-
-  function cancelSubscription() {
-    const res = prompt(
-      "Please enter 'cancel subscription' to cancel your subscription.",
-    )
-    if (
-      res == null ||
-      res.toLowerCase().replace(/\s/g, "") !== "cancelsubscription"
-    ) {
-      return
-    }
-    teamApi(Current.api.cancelSubscription).then(res => {
-      if (res.ok) {
-        onClose({ reload: true })
-        alert("subscription canceled")
-        location.search = ""
-      } else {
-        alert("failed to cancel subscription")
-      }
-    })
-  }
-
-  const fetchProrationDebounced = React.useCallback(
-    debounce(() => {
-      setProrationAmount({ kind: "loading" })
-      teamApi(Current.api.fetchProration, {
-        subscriptionQuantity: seatsRef.current,
-        subscriptionPeriod: subscriptionPeriodRef.current,
-      }).then(res => {
-        if (res.ok) {
-          setProrationAmount({ kind: "success", cost: res.data.proratedCost })
-          setProrationTimestamp(res.data.prorationTime)
-        } else {
-          setProrationAmount({ kind: "failed" })
-        }
-      })
-    }, 250),
-    [],
-  )
-
-  React.useEffect(() => {
-    if (show) {
-      fetchProrationDebounced()
-    }
-  }, [show, fetchProrationDebounced, seats, subscriptionPeriod])
-
-  function formatProration(x: IProrationAmount) {
-    if (x.kind === "loading" || x.kind === "failed") {
-      return "--"
-    }
-    if (x.kind === "success") {
-      if (x.cost > 0) {
-        return formatCost(x.cost)
-      }
-      return `account credit of ${formatCost(-x.cost)}`
-    }
-    return "--"
-  }
-
-  function updateBillingInfo() {
-    teamApi(Current.api.modifyBilling).then(async res => {
-      if (res.ok) {
-        const stripe = await loadStripe(res.data.stripePublishableApiKey)
-        if (stripe == null) {
-          setError("Failed to load Stripe")
-          return
-        }
-        const { error } = await stripe.redirectToCheckout({
-          sessionId: res.data.stripeCheckoutSessionId,
-        })
-        if (error) {
-          setError("Problem updating billing info")
-        }
-      } else {
-        setError("Problem updating billing info")
-      }
-    })
-  }
-
-  const perSeatCents =
-    subscriptionPeriod === "year" ? settings.annualCost : settings.monthlyCost
-
-  const costCents = seats * perSeatCents
-  const subscriptionUnchanged =
-    seats === currentSeats && subscriptionPeriod === cost.planInterval
-  return (
-    <Modal show={show} onHide={() => onClose()}>
-      <Modal.Header closeButton>
-        <Modal.Title>Manage Subscription</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form
-          onSubmit={(e: React.FormEvent) => {
-            e.preventDefault()
-            if (creatingSubscription) {
-              return
-            }
-            setSubscription()
-          }}>
-          <Form.Group controlId="formBasicEmail">
-            <Form.Label>Seats</Form.Label>
-            <Form.Control
-              type="number"
-              required
-              min="1"
-              placeholder="Enter seat count"
-              value={String(seats)}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setSeats(Math.max(parseInt(e.target.value, 10) || 1, 1))
-              }}
-            />
-            {seatUsage > 0 && (
-              <Form.Text className="text-muted">
-                You have <b>{seatUsage}</b> active seats this billing period.
-                Select at least <b>{seatUsage}</b> seats to continue service.
-              </Form.Text>
-            )}
-            <Form.Text className="text-muted">
-              Your current plan costs{" "}
-              <b>
-                {formatCost(cost.totalCents)}/{cost.planInterval}
-              </b>{" "}
-              for <b>{currentSeats} seat(s)</b> at{" "}
-              <b>{formatCost(cost.perSeatCents)}/seat</b>.
-            </Form.Text>
-          </Form.Group>
-
-          <Form.Group controlId="formBasicEmail">
-            <Form.Label>Plan Period</Form.Label>
-            <Form.Check
-              type="radio"
-              id="monthly-sub-editor"
-              label="Monthly"
-              checked={subscriptionPeriod === "month"}
-              onChange={() => setSubscriptionPeriod("month")}
-            />
-            <Form.Check
-              type="radio"
-              id="annually-sub-editor"
-              label="Annually"
-              checked={subscriptionPeriod === "year"}
-              onChange={() => setSubscriptionPeriod("year")}
-            />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Billing Email </Form.Label>
-            <Form.Control type="text" required disabled value={billingEmail} />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Payment Method </Form.Label>
-            <Form.Control type="text" required disabled value={cardInfo} />
-            <Form.Text className="text-muted">
-              <a href="#" onClick={updateBillingInfo}>
-                update
-              </a>
-            </Form.Text>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label>Due Today</Form.Label>
-            <Form.Control
-              type="text"
-              required
-              disabled
-              value={
-                subscriptionUnchanged || prorationAmount.kind !== "success"
-                  ? "--"
-                  : formatProration(prorationAmount)
-              }
-            />
-            {!subscriptionUnchanged && prorationAmount.kind === "success" ? (
-              <Form.Text className="text-muted">
-                Includes prorations. Renews {formatPeriod(subscriptionPeriod)}{" "}
-                at <b>{formatCost(costCents)}</b> for <b>{seats} seat(s) </b>
-                at <b>{formatCost(perSeatCents)}/seat</b>.{" "}
-              </Form.Text>
-            ) : null}
-          </Form.Group>
-          <Button
-            variant="primary"
-            type="submit"
-            block
-            disabled={
-              creatingSubscription ||
-              prorationAmount.kind !== "success" ||
-              subscriptionUnchanged
-            }>
-            {subscriptionUnchanged
-              ? "first modify your subscription..."
-              : prorationAmount.kind === "success"
-              ? prorationAmount.cost > 0
-                ? `Update Plan for ${formatCost(prorationAmount.cost)}`
-                : "Update Plan"
-              : "loading..."}
-          </Button>
-          {error && <Form.Text className="text-danger">{error}</Form.Text>}
-        </Form>
-        <hr />
-        <Button
-          variant="outline-danger"
-          type="button"
-          size="sm"
-          onClick={cancelSubscription}>
-          Cancel Subscription
-        </Button>
       </Modal.Body>
     </Modal>
   )
@@ -1205,10 +925,9 @@ function LimitBillingAccessForm({
   )
 }
 
-function Subcription({
+function Subscription({
   subscription,
   teamId,
-  modifySubscription,
 }: {
   readonly subscription: {
     readonly seats: number
@@ -1217,7 +936,7 @@ function Subcription({
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
-      readonly currency: string
+      readonly planProductName: string
       readonly planInterval: "month" | "year"
     }
     readonly billingEmail: string
@@ -1235,9 +954,15 @@ function Subcription({
     readonly viewerCanModify: boolean
     readonly limitBillingAccessToOwners: boolean
   }
-  readonly modifySubscription: () => void
   readonly teamId: string
 }) {
+  const totalCostFormatted = formatCents(subscription.cost.totalCents)
+  const planIntervalFormatted =
+    subscription.cost.planInterval === "month" ? "Month" : "Year"
+  const renewalDateFormatted = formatDate(
+    new Date(subscription.nextBillingDate),
+    "MMMM do, y",
+  )
   return (
     <Row>
       <Col lg={8}>
@@ -1257,47 +982,38 @@ function Subcription({
               </Form.Text>
             </Form.Group>
             <Form.Group>
-              <Form.Label className="font-weight-bold">
-                Next Billing Date
-              </Form.Label>
-              <p>
-                <FormatDate date={subscription.nextBillingDate} />
-              </p>
-            </Form.Group>
-            <Form.Group>
               <Form.Label className="font-weight-bold">Cost</Form.Label>
-              <p>
-                {subscription.seats} seats ⨉{" "}
-                {formatCents(
-                  subscription.cost.perSeatCents,
-                  subscription.cost.currency,
-                )}{" "}
-                / seat ={" "}
-                {formatCents(
-                  subscription.cost.totalCents,
-                  subscription.cost.currency,
-                )}{" "}
-                / {subscription.cost.planInterval}
-              </p>
+
+              <div>
+                {" "}
+                {totalCostFormatted} / {planIntervalFormatted}
+              </div>
+              <Form.Text></Form.Text>
+              <Form.Text className="text-muted">
+                Renews on{" "}
+                <span className="text-body">{renewalDateFormatted}</span>.
+              </Form.Text>
             </Form.Group>
             <Form.Group>
               <Form.Label className="font-weight-bold">
-                Billing History
+                Billing Settings
               </Form.Label>
               <p>
-                <a href={settings.getStripeSelfServeUrl(teamId)}>
-                  view billing history
-                  <GoLinkExternal className="pl-1" />
-                </a>
+                add or remove seats, update payment methods, or view billing
+                history.
               </p>
+              <div>
+                <Button
+                  variant="dark"
+                  size="sm"
+                  as="a"
+                  className="text-decoration-none"
+                  href={settings.getStripeSelfServeUrl(teamId)}
+                  disabled={!subscription?.viewerCanModify}>
+                  manage billing settings
+                </Button>
+              </div>
             </Form.Group>
-            <Button
-              variant="dark"
-              size="sm"
-              onClick={modifySubscription}
-              disabled={!subscription?.viewerCanModify}>
-              Modify Subscription
-            </Button>
             {!subscription?.viewerCanModify && (
               <Form.Text className="text-muted">
                 You must be an organization owner to modify the subscription.
@@ -1458,9 +1174,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   const showSubscriptionManagerModal = Boolean(
     queryParams.get("start_subscription"),
   )
-  const showSubscriptionModifyModal = Boolean(
-    queryParams.get("modify_subscription"),
-  )
   function clearQueryString() {
     history.push({ search: "" })
   }
@@ -1485,9 +1198,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
   function handleStartTrial() {
     history.push({ search: "start_trial=1" })
   }
-  function modifySubscription() {
-    history.push({ search: "modify_subscription=1" })
-  }
 
   return (
     <UsageAndBillingContainer>
@@ -1506,25 +1216,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           onClose={clearQueryString}
           seatUsage={data.activeUsers.length}
         />
-        {data.subscription != null ? (
-          <>
-            <ManageSubscriptionModal
-              show={showSubscriptionModifyModal}
-              currentSeats={data.subscription.seats}
-              seatUsage={data.activeUsers.length}
-              billingEmail={data.subscription.billingEmail}
-              cardInfo={data.subscription.cardInfo}
-              cost={data.subscription.cost}
-              onClose={x => {
-                if (x?.reload) {
-                  location.search = ""
-                } else {
-                  clearQueryString()
-                }
-              }}
-            />
-          </>
-        ) : null}
         {data.accountCanSubscribe ? (
           <>
             {data.subscription == null ? (
@@ -1534,11 +1225,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                 trial={data.trial}
               />
             ) : (
-              <Subcription
-                subscription={data.subscription}
-                teamId={teamId}
-                modifySubscription={modifySubscription}
-              />
+              <Subscription subscription={data.subscription} teamId={teamId} />
             )}
           </>
         ) : (

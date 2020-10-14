@@ -110,15 +110,6 @@ export const Current: World = {
           jsonToFormData({ billingEmail: args.billingEmail }),
         )
       ).data,
-    updateSubscription: async (args: api.IUpdateSubscriptionArgs) =>
-      (
-        await authRoute.post<unknown>(
-          `/v1/t/${args.teamId}/update_subscription`,
-          jsonToFormData(args),
-        )
-      ).data,
-    cancelSubscription: async (args: api.ICancelSubscriptionArgs) =>
-      await authRoute.post<unknown>(`/v1/t/${args.teamId}/cancel_subscription`),
     startCheckout: async (args: api.IStartCheckoutArgs) =>
       (
         await authRoute.post<api.IStartCheckoutResponse>(
@@ -126,22 +117,6 @@ export const Current: World = {
           jsonToFormData({
             seatCount: args.seatCount,
             planPeriod: args.planPeriod,
-          }),
-        )
-      ).data,
-    modifyBilling: async (args: api.IModifyBillingArgs) =>
-      (
-        await authRoute.post<api.ModifyBillingResponse>(
-          `/v1/t/${args.teamId}/modify_payment_details`,
-        )
-      ).data,
-    fetchProration: async (args: api.IFetchProrationArgs) =>
-      (
-        await authRoute.post<api.IFetchProrationResponse>(
-          `/v1/t/${args.teamId}/fetch_proration`,
-          jsonToFormData({
-            subscriptionQuantity: args.subscriptionQuantity,
-            subscriptionPeriod: args.subscriptionPeriod,
           }),
         )
       ).data,
