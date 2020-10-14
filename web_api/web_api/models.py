@@ -1000,6 +1000,14 @@ class StripeCustomerInformation(models.Model):
         null=True,
         help_text="The number of intervals (specified in the `interval` attribute) between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months.",
     )
+    plan_product_name = models.CharField(
+        null=True, max_length=255, help_text="The product's name. Displayed to users."
+    )
+
+    upcoming_invoice_total = models.IntegerField(
+        null=True,
+        help_text="total cost in cents to be billed to customer via next subscription invoice.",
+    )
 
     # https://stripe.com/docs/api/subscriptions/object
     subscription_quantity = models.IntegerField(
@@ -1024,6 +1032,8 @@ class StripeCustomerInformation(models.Model):
         payment_method = stripe.PaymentMethod.retrieve(
             subscription.default_payment_method
         )
+        product = stripe.Product.retrieve(subscription.plan.product)
+        upcoming_invoice = stripe.Invoice.upcoming(subscription=subscription.id)
 
         self.customer_email = customer.email
         self.customer_balance = customer.balance
@@ -1056,12 +1066,16 @@ class StripeCustomerInformation(models.Model):
         self.plan_amount = subscription.plan.amount
         self.plan_interval = subscription.plan.interval
         self.plan_interval_count = subscription.plan.interval_count
+        self.plan_product_name = product.name
 
         self.subscription_id = subscription.id
         self.subscription_quantity = subscription.quantity
         self.subscription_start_date = subscription.start_date
         self.subscription_current_period_end = subscription.current_period_end
         self.subscription_current_period_start = subscription.current_period_start
+
+        self.upcoming_invoice_total = upcoming_invoice.total
+
         self.save()
         self.get_account().update_bot()
 
