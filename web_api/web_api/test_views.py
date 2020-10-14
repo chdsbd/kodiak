@@ -404,7 +404,6 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["customerName"] is None
     assert res.json()["subscription"]["customerAddress"] is None
 
-    stripe_customer_information.customer_currency = None
     stripe_customer_information.plan_interval = "year"
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
@@ -1665,7 +1664,6 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert stripe_customer_info_updated.customer_email == fake_customer.email
     assert stripe_customer_info_updated.customer_balance == fake_customer.balance
     assert stripe_customer_info_updated.customer_created == fake_customer.created
-    assert stripe_customer_info_updated.customer_currency == fake_customer.currency
 
     assert (
         stripe_customer_info_updated.payment_method_card_brand
@@ -2189,7 +2187,6 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     assert updated_stripe_customer_info.customer_email == fake_customer.email
     assert updated_stripe_customer_info.customer_balance == fake_customer.balance
     assert updated_stripe_customer_info.customer_created == fake_customer.created
-    assert updated_stripe_customer_info.customer_currency == fake_customer.currency
     assert updated_stripe_customer_info.customer_name == fake_customer.name
 
     assert fake_customer.address is None
@@ -2244,7 +2241,6 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     assert updated_stripe_customer_info.customer_email == fake_customer.email
     assert updated_stripe_customer_info.customer_balance == fake_customer.balance
     assert updated_stripe_customer_info.customer_created == fake_customer.created
-    assert updated_stripe_customer_info.customer_currency == fake_customer.currency
     assert updated_stripe_customer_info.customer_name == fake_customer.name
 
     assert fake_customer.address is not None
