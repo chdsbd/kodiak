@@ -46,35 +46,6 @@ def test_get_subscription_blocker_ok() -> None:
 
 
 @pytest.mark.django_db
-def test_get_subscription_blocker_subscription_expired() -> None:
-    account = create_account(trial_expiration=None)
-    stripe_customer_information = StripeCustomerInformation.objects.create(
-        customer_id="cus_H2pvQ2kt7nk0JY",
-        subscription_id="sub_Gu1xedsfo1",
-        plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
-        customer_email="accounting@acme-corp.com",
-        customer_balance=0,
-        customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
-        plan_amount=499,
-        subscription_quantity=3,
-        subscription_start_date=1585781784,
-        #
-        subscription_current_period_start=0,
-        subscription_current_period_end=100,
-    )
-
-    assert stripe_customer_information.expired is True
-    blocker = account.get_subscription_blocker()
-    assert blocker is not None
-    assert blocker.kind == "subscription_expired"
-
-
-@pytest.mark.django_db
 def test_get_subscription_blocker_trial_expired() -> None:
     account = create_account(
         trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),
@@ -138,14 +109,9 @@ def test_get_subscription_blocker_seats_exceeded(
         customer_id="cus_H2pvQ2kt7nk0JY",
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
         customer_email="accounting@acme-corp.com",
         customer_balance=0,
         customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
         plan_amount=499,
         subscription_quantity=3,
         subscription_start_date=1585781784,
@@ -153,7 +119,6 @@ def test_get_subscription_blocker_seats_exceeded(
         subscription_current_period_start=0,
         subscription_current_period_end=1987081359,
     )
-    assert stripe_customer_information.expired is False
     assert patched_get_active_users_in_last_30_days.call_count == 0
     assert (
         len(UserPullRequestActivity.get_active_users_in_last_30_days(account=account))
@@ -263,14 +228,9 @@ def test_get_subscription_blocker_expired_trial_subscription_ok(
         customer_id="cus_H2pvQ2kt7nk0JY",
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",
-        payment_method_id="pm_22dldxf3",
         customer_email="accounting@acme-corp.com",
         customer_balance=0,
         customer_created=1585781308,
-        payment_method_card_brand="mastercard",
-        payment_method_card_exp_month="03",
-        payment_method_card_exp_year="32",
-        payment_method_card_last4="4242",
         plan_amount=499,
         subscription_quantity=10,
         subscription_start_date=1585781784,

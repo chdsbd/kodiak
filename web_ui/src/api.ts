@@ -38,6 +38,8 @@ export interface IUsageBillingPageApiResponse {
     readonly seats: number
     readonly nextBillingDate: string
     readonly expired: boolean
+    readonly cancelAt?: string
+    readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number

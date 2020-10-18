@@ -56,6 +56,8 @@ interface IUsageBillingData {
     readonly seats: number
     readonly nextBillingDate: string
     readonly expired: boolean
+    readonly cancelAt?: string
+    readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
@@ -924,7 +926,9 @@ function LimitBillingAccessForm({
     </Card>
   )
 }
-
+function formatRenewalCancelDate(x: string): string {
+  return formatDate(new Date(x), "MMMM do, y")
+}
 function Subscription({
   subscription,
   teamId,
@@ -933,6 +937,8 @@ function Subscription({
     readonly seats: number
     readonly nextBillingDate: string
     readonly expired: boolean
+    readonly cancelAt?: string
+    readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
       readonly perSeatCents: number
@@ -959,10 +965,11 @@ function Subscription({
   const totalCostFormatted = formatCents(subscription.cost.totalCents)
   const planIntervalFormatted =
     subscription.cost.planInterval === "month" ? "Month" : "Year"
-  const renewalDateFormatted = formatDate(
-    new Date(subscription.nextBillingDate),
-    "MMMM do, y",
+
+  const renewalDateFormatted = formatRenewalCancelDate(
+    subscription.nextBillingDate,
   )
+
   return (
     <Row>
       <Col lg={8}>
@@ -989,10 +996,20 @@ function Subscription({
                 {totalCostFormatted} / {planIntervalFormatted}
               </div>
               <Form.Text></Form.Text>
-              <Form.Text className="text-muted">
-                Renews on{" "}
-                <span className="text-body">{renewalDateFormatted}</span>.
-              </Form.Text>
+              {subscription.cancelAt ? (
+                <Form.Text className="text-muted">
+                  Cancels on{" "}
+                  <span className="text-body">
+                    {formatRenewalCancelDate(subscription.cancelAt)}
+                  </span>
+                  .
+                </Form.Text>
+              ) : (
+                <Form.Text className="text-muted">
+                  Renews on{" "}
+                  <span className="text-body">{renewalDateFormatted}</span>.
+                </Form.Text>
+              )}
             </Form.Group>
             <Form.Group>
               <Form.Label className="font-weight-bold">

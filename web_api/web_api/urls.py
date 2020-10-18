@@ -11,11 +11,7 @@ urlpatterns = [
     path("v1/t/<uuid:team_id>/activity", views.activity),
     path("v1/t/<uuid:team_id>/current_account", views.current_account),
     path("v1/t/<uuid:team_id>/start_trial", views.start_trial),
-    path("v1/t/<uuid:team_id>/update_subscription", views.update_subscription),
-    path("v1/t/<uuid:team_id>/fetch_proration", views.fetch_proration),
-    path("v1/t/<uuid:team_id>/cancel_subscription", views.cancel_subscription),
     path("v1/t/<uuid:team_id>/start_checkout", views.start_checkout),
-    path("v1/t/<uuid:team_id>/modify_payment_details", views.modify_payment_details),
     path(
         "v1/t/<uuid:team_id>/update_stripe_customer_info",
         views.update_stripe_customer_info,

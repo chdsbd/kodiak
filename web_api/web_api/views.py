@@ -1,5 +1,5 @@
+import datetime
 import logging
-import time
 from dataclasses import asdict, dataclass
 from typing import Optional, Union, cast
 from urllib.parse import parse_qsl
@@ -20,14 +20,13 @@ from django.views.decorators.http import require_http_methods
 from typing_extensions import Literal
 from yarl import URL
 
-from web_api import auth
-from web_api.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
+from web_api import auth, billing
+from web_api.exceptions import BadRequest, PermissionDenied
 from web_api.models import (
     Account,
     Address,
     AnonymousUser,
     PullRequestActivity,
-    StripeCustomerInformation,
     SyncAccountsError,
     User,
     UserPullRequestActivity,
@@ -70,7 +69,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                 profileImgUrl=account.trial_started_by.profile_image(),
             ),
         )
-    stripe_customer_info = account.stripe_customer_info()
+    stripe_customer_info = account.get_stripe_customer_info()
     if stripe_customer_info:
         customer_address = None
         if stripe_customer_info.customer_address_line1 is not None:
@@ -88,10 +87,19 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
-            expired=stripe_customer_info.expired,
+            expired=False,
+            cancelAt=datetime.datetime.fromtimestamp(
+                stripe_customer_info.subscription_cancel_at
+            )
+            if stripe_customer_info.subscription_cancel_at
+            else None,
+            canceledAt=datetime.datetime.fromtimestamp(
+                stripe_customer_info.subscription_canceled_at
+            )
+            if stripe_customer_info.subscription_canceled_at
+            else None,
             cost=dict(
-                totalCents=stripe_customer_info.plan_amount
-                * stripe_customer_info.subscription_quantity,
+                totalCents=stripe_customer_info.upcoming_invoice_total or 0,
                 perSeatCents=stripe_customer_info.plan_amount,
                 # currency is deprecated
                 currency="usd",
@@ -101,7 +109,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             contactEmails=account.contact_emails,
             customerName=stripe_customer_info.customer_name,
             customerAddress=customer_address,
-            cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
+            cardInfo="",
             viewerIsOrgOwner=request.user.is_admin(account),
             viewerCanModify=request.user.can_edit_subscription(account),
             limitBillingAccessToOwners=account.limit_billing_access_to_owners,
@@ -221,65 +229,6 @@ def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     billing_email = request.POST["billingEmail"]
     account.start_trial(request.user, billing_email=billing_email)
-    return HttpResponse(status=204)
-
-
-class UpdateSubscriptionModel(pydantic.BaseModel):
-    seats: int
-    prorationTimestamp: int
-    planPeriod: Literal["month", "year"] = "month"
-
-
-@auth.login_required
-def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
-    payload = UpdateSubscriptionModel.parse_obj(request.POST.dict())
-    account = get_account_or_404(team_id=team_id, user=request.user)
-    if not request.user.can_edit_subscription(account):
-        raise PermissionDenied
-    stripe_customer_info = account.stripe_customer_info()
-    if stripe_customer_info is None:
-        raise UnprocessableEntity("Subscription does not exist to modify.")
-
-    subscription = stripe.Subscription.retrieve(stripe_customer_info.subscription_id)
-    updated_subscription = stripe.Subscription.modify(
-        subscription.id,
-        items=[
-            {
-                "id": subscription["items"]["data"][0].id,
-                "plan": plan_id_from_period(period=payload.planPeriod),
-                "quantity": payload.seats,
-            }
-        ],
-        proration_date=payload.prorationTimestamp,
-    )
-    # we only need to manually created invoices when a user modifies their
-    # subscription within the same billing period.
-    if payload.planPeriod == subscription.plan.interval:
-        # when we upgrade a users plan Stripe will charge them on their next billing
-        # cycle. To make Stripe charge for the upgrade immediately we must create an
-        # invoice and pay it. If we don't pay the invoice Stripe will wait 1 hour
-        # before attempting to charge user.
-        invoice = stripe.Invoice.create(
-            customer=stripe_customer_info.customer_id, auto_advance=True
-        )
-        # we must specify the payment method because our Stripe customers don't have
-        # a default payment method, so the default invoicing will fail.
-        stripe.Invoice.pay(
-            invoice.id, payment_method=subscription.default_payment_method
-        )
-    stripe_customer_info.plan_amount = updated_subscription.plan.amount
-    stripe_customer_info.plan_interval = updated_subscription.plan.interval
-
-    stripe_customer_info.subscription_quantity = updated_subscription.quantity
-    stripe_customer_info.subscription_current_period_end = (
-        updated_subscription.current_period_end
-    )
-    stripe_customer_info.subscription_current_period_start = (
-        updated_subscription.current_period_start
-    )
-    stripe_customer_info.save()
-    account.update_bot()
-
     return HttpResponse(status=204)
 
 
@@ -407,39 +356,6 @@ def redirect_to_stripe_self_serve_portal(
 
 
 @auth.login_required
-def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_account_or_404(team_id=team_id, user=request.user)
-    if not request.user.can_edit_subscription(account):
-        raise PermissionDenied
-    session = stripe.checkout.Session.create(
-        client_reference_id=account.id,
-        customer=account.stripe_customer_id or None,
-        mode="setup",
-        payment_method_types=["card"],
-        success_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?install_complete=1",
-        cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?modify_subscription=1",
-    )
-    return JsonResponse(
-        dict(
-            stripeCheckoutSessionId=session.id,
-            stripePublishableApiKey=settings.STRIPE_PUBLISHABLE_API_KEY,
-        )
-    )
-
-
-@auth.login_required
-def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
-    account = get_account_or_404(team_id=team_id, user=request.user)
-    if not request.user.can_edit_subscription(account):
-        raise PermissionDenied
-
-    customer_info = account.stripe_customer_info()
-    if customer_info is not None:
-        customer_info.cancel_subscription()
-    return HttpResponse(status=204)
-
-
-@auth.login_required
 @require_http_methods(["GET"])
 def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
@@ -451,7 +367,7 @@ def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
             return JsonResponse({"type": "TRIAL_EXPIRED"})
 
         if subscription_status.kind == "seats_exceeded":
-            stripe_info = account.stripe_customer_info()
+            stripe_info = account.get_stripe_customer_info()
             license_count = 0
             if stripe_info and stripe_info.subscription_quantity:
                 license_count = stripe_info.subscription_quantity
@@ -480,34 +396,6 @@ def plan_id_from_period(period: Literal["month", "year"]) -> str:
     if period == "year":
         return cast(str, settings.STRIPE_ANNUAL_PLAN_ID)
     return None
-
-
-class FetchProrationModal(pydantic.BaseModel):
-    subscriptionQuantity: int
-    subscriptionPeriod: Literal["month", "year"] = "month"
-
-
-@auth.login_required
-def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
-    payload = FetchProrationModal.parse_obj(request.POST.dict())
-    account = get_account_or_404(user=request.user, team_id=team_id)
-
-    stripe_plan_id = plan_id_from_period(period=payload.subscriptionPeriod)
-
-    customer_info = account.stripe_customer_info()
-    if customer_info is not None:
-        proration_date = int(time.time())
-        return JsonResponse(
-            dict(
-                proratedCost=customer_info.preview_proration(
-                    timestamp=proration_date,
-                    subscription_quantity=payload.subscriptionQuantity,
-                    plan_id=stripe_plan_id,
-                ),
-                prorationTime=proration_date,
-            )
-        )
-    return HttpResponse(status=500)
 
 
 def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
@@ -540,72 +428,52 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
     if event.type == "checkout.session.completed":
         # Stripe will wait until this webhook handler returns to redirect from checkout
         checkout_session = event.data.object
-        if checkout_session.mode == "setup":
-            # a setup checkout session occurs when a user updates their payment
-            # method or billing email. We update the associated account and
-            # stripe_customer_info on this event. Setup should occur after a
-            # subscription has been created.
-            account = Account.objects.get(id=checkout_session.client_reference_id)
-            account.update_customer(checkout_session.customer)
-            stripe_customer_info = account.stripe_customer_info()
-            if stripe_customer_info is None:
-                logger.warning("expected account %s to have customer info", account)
-                return HttpResponse(status=200)
-            stripe_customer_info.update_from_stripe()
-        elif checkout_session.mode == "subscription":
-            # subscription occurs after a user creates a subscription through
-            # the checkout.
-            account = Account.objects.get(id=checkout_session.client_reference_id)
-            account.update_customer(checkout_session.customer)
-
-            try:
-                stripe_customer_info = StripeCustomerInformation.objects.get(
-                    customer_id=account.stripe_customer_id
-                )
-            except StripeCustomerInformation.DoesNotExist:
-                stripe_customer_info = StripeCustomerInformation(
-                    customer_id=account.stripe_customer_id
-                )
-            stripe_customer_info.update_from_stripe()
-        else:
-            raise BadRequest
-        # Then define and call a method to handle the successful payment intent.
-        # handle_payment_intent_succeeded(payment_intent)
-    elif event.type == "invoice.payment_succeeded":
-        # triggered whenever a subscription is paid. We need to update the
-        # subscription to have the correct period information.
-        invoice = event.data.object
-        if not invoice.paid:
-            logger.warning("invoice not paid %s", event)
-            return HttpResponse(status=200)
-        stripe_customer: Optional[
-            StripeCustomerInformation
-        ] = StripeCustomerInformation.objects.filter(
-            customer_id=invoice.customer
-        ).first()
-        if stripe_customer is None:
+        if checkout_session.mode != "subscription":
             logger.warning(
-                "expected invoice to have corresponding StripeCustomerInformation"
+                "expected checkout_session.mode=subscription, found %s",
+                checkout_session.mode,
             )
-            raise BadRequest
-        stripe_customer.update_from_stripe()
-    elif event.type == "customer.subscription.deleted":
-        # I don't think we need to do anything on subscription deletion. We can
-        # let the subscription time run out.
-        pass
-    elif event.type == "invoice.payment_action_required":
-        logger.warning("more action required for payment %s", event)
-    elif event.type == "invoice.payment_failed":
-        logger.warning("invoice.payment_failed %s", event)
-    elif event.type == "customer.updated":
-        stripe_customer_info = StripeCustomerInformation.objects.filter(
-            customer_id=event.data.object.id
-        ).first()
-        if stripe_customer_info is None:
-            logger.warning("customer.update event for unknown customer %s", event)
-            raise BadRequest
-        stripe_customer_info.update_from_stripe()
+        # subscription occurs after a user creates a subscription through
+        # the checkout.
+        billing.handle_checkout_complete(
+            account_id=checkout_session.client_reference_id,
+            customer_id=checkout_session.customer,
+        )
 
+    # triggered whenever a subscription is paid. We need to update the
+    # subscription to have the correct period information.
+    elif event.type == "invoice.paid":
+        invoice = event.data.object
+        billing.handle_subscription_update(customer_id=invoice.customer)
+
+    # Occurs whenever an invoice payment attempt fails, due either to a declined
+    # payment or to the lack of a stored payment method.
+    #
+    # When a payment fails the user will get an email and Stripe will send a
+    # push notification.
+    elif event.type == "invoice.payment_failed":
+        logger.error("invoice.payment_failed %s", event)
+
+    # Occurs whenever a subscription changes (e.g., switching from one plan to
+    # another, or changing the status from trial to active).
+    elif event.type == "customer.updated":
+        customer = event.data.object
+        billing.update_customer(customer_id=customer.id)
+    elif event.type == "customer.subscription.updated":
+        subscription = event.data.object
+        billing.handle_subscription_update(customer_id=subscription.customer)
+    # Occurs whenever a customer's subscription ends.
+    elif event.type == "customer.subscription.deleted":
+        subscription = event.data.object
+        billing.cancel_subscription(customer_id=event.data.object.customer)
+
+    elif event.type in {
+        "customer.discount.created",
+        "customer.discount.updated",
+        "customer.discount.deleted",
+    }:
+        discount = event.data.object
+        billing.handle_subscription_update(customer_id=discount.customer)
     else:
         # Unexpected event type
         raise BadRequest

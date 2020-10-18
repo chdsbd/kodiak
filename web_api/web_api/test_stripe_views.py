@@ -40,14 +40,9 @@ def create_stripe_customer_info() -> StripeCustomerInformation:
             customer_id="cus_H2pvQ2kt7nk0JY",
             subscription_id="sub_Gu1xedsfo1",
             plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
             customer_email="accounting@acme-corp.com",
             customer_balance=0,
             customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
             plan_amount=499,
             subscription_quantity=3,
             subscription_start_date=1585781784,
@@ -211,33 +206,6 @@ def test_get_subscription_info_view_trial_expired(mocker: MockFixture) -> None:
 
 
 @pytest.mark.django_db
-def test_get_subscription_info_view_subscription_expired(mocker: MockFixture) -> None:
-    """
-    response when user's account subscription has expired
-    """
-    user, account = create_account()
-    stripe_customer_info = create_stripe_customer_info()
-    account.stripe_customer_id = stripe_customer_info.customer_id
-    account.github_account_type = AccountType.organization
-    account.save()
-
-    # bunch of checks to ensure we don't hit the other subscription cases
-    customer_info = account.stripe_customer_info()
-    assert customer_info is not None
-    assert customer_info.expired is True
-    assert account.active_trial() is False
-    assert account.github_account_type != AccountType.user
-
-    client = Client()
-    client.login(user)
-    res = client.get(f"/v1/t/{account.id}/subscription_info")
-    assert res.status_code == 200
-    assert res.json() == {
-        "type": "SUBSCRIPTION_EXPIRED",
-    }
-
-
-@pytest.mark.django_db
 def test_get_subscription_info_view_subscription_overage(mocker: MockFixture) -> None:
     """
     check the API response when a user's account has exceeded the number of
@@ -252,7 +220,7 @@ def test_get_subscription_info_view_subscription_overage(mocker: MockFixture) ->
 
     assert account.github_account_type != AccountType.user
     assert account.active_trial() is False
-    stripe_customer_info = account.stripe_customer_info()
+    stripe_customer_info = account.get_stripe_customer_info()
     assert stripe_customer_info is not None
     assert stripe_customer_info.subscription_quantity < len(
         UserPullRequestActivity.get_active_users_in_last_30_days(account=account)

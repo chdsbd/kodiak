@@ -11,16 +11,23 @@ from django.http import HttpResponse
 from django.utils import timezone
 from typing_extensions import Literal
 
+import web_api.billing
 from web_api.models import (
     Account,
     AccountMembership,
     AccountType,
     PullRequestActivity,
-    StripeCustomerInformation,
     User,
     UserPullRequestActivity,
 )
 from web_api.testutils import TestClient as Client
+from web_api.testutils import (
+    create_account,
+    create_org_account,
+    create_stripe_customer,
+    create_stripe_customer_info,
+    create_stripe_subscription,
+)
 
 
 @pytest.fixture
@@ -44,162 +51,6 @@ def other_user() -> User:
             github_login="bear",
             github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
         ),
-    )
-
-
-PRIMARY_KEYS = iter(range(1000, 100000))
-
-
-def create_pk() -> int:
-    return next(PRIMARY_KEYS)
-
-
-def create_account(
-    *,
-    stripe_customer_id: str = "cus_523405923045",
-    github_account_login: str = "acme-corp",
-    github_account_type: Literal["User", "Organization"] = "User",
-) -> Account:
-
-    return cast(
-        Account,
-        Account.objects.create(
-            github_installation_id=create_pk(),
-            github_account_id=create_pk(),
-            github_account_login=github_account_login,
-            github_account_type=github_account_type,
-            stripe_customer_id=stripe_customer_id,
-        ),
-    )
-
-
-def create_org_account(
-    user: User,
-    role: Literal["member", "admin"] = "member",
-    limit_billing_access_to_owners: bool = False,
-) -> Tuple[Account, AccountMembership]:
-    account_id = create_pk()
-    account = Account.objects.create(
-        github_installation_id=create_pk(),
-        github_account_id=account_id,
-        github_account_login=f"Acme-corp-{account_id}",
-        github_account_type="Organization",
-        stripe_customer_id=f"cus_Ged32s2xnx12-{account_id}",
-        limit_billing_access_to_owners=limit_billing_access_to_owners,
-    )
-    membership = AccountMembership.objects.create(account=account, user=user, role=role)
-    return (account, membership)
-
-
-def create_stripe_customer_info(
-    customer_id: str = "cus_eG4134df",
-    subscription_id: str = "sub_Gu1xedsfo1",
-    subscription_current_period_start: int = 1650581784,
-    subscription_current_period_end: int = 1658357784,
-) -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id=customer_id,
-            subscription_id=subscription_id,
-            plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
-            plan_amount=499,
-            plan_interval="month",
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            subscription_current_period_start=subscription_current_period_start,
-            subscription_current_period_end=subscription_current_period_end,
-        ),
-    )
-
-
-def create_stripe_payment_method() -> stripe.PaymentMethod:
-    return stripe.PaymentMethod.construct_from(
-        dict(
-            object="payment_method",
-            id="pm_55yfgbc6",
-            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
-        ),
-        "fake-key",
-    )
-
-
-def create_stripe_product() -> stripe.PaymentMethod:
-    return stripe.Product.construct_from(
-        dict(
-            active=True,
-            attributes=[],
-            created=1584327796,
-            description=None,
-            id="prod_GuzCMVKonQIp2l",
-            images=[],
-            livemode=False,
-            metadata={},
-            name="Kodiak Seat License",
-            object="product",
-            statement_descriptor=None,
-            type="service",
-            unit_label="seat",
-            updated=1602001699,
-        ),
-        "fake-key",
-    )
-
-
-def create_stripe_invoice() -> stripe.PaymentMethod:
-    return stripe.Invoice.construct_from(
-        dict(
-            collection_method="charge_automatically",
-            created=1604199554,
-            discounts=["di_1HYCfYCoyKa1V9Y6KoYbNjUl"],
-            object="invoice",
-            subscription="sub_HwIIwYw13iV6Jk",
-            subtotal=1996,
-            total=998,
-        ),
-        "fake-key",
-    )
-
-
-class Unset:
-    pass
-
-
-def create_stripe_customer(
-    *,
-    id: str = "cus_Gz7jQFKdh4KirU",
-    address: Optional[Union[dict, Type[Unset]]] = Unset,
-) -> stripe.Customer:
-    if address == Unset:
-        address = dict(
-            line1="123 Main St",
-            line2="Apt 2B",
-            city="Cambridge",
-            state="Massachusetts",
-            postal_code="02139",
-            country="United States",
-        )
-    return stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=id,
-            address=address,
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
-        ),
-        "fake-key",
     )
 
 
@@ -433,11 +284,9 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["seats"] == 3
     assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
-    assert res.json()["subscription"]["cost"]["currency"] == "usd"
     assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"
     assert res.json()["subscription"]["contactEmails"] == ""
-    assert res.json()["subscription"]["cardInfo"] == "Mastercard (4242)"
     assert res.json()["subscription"]["customerName"] is None
     assert res.json()["subscription"]["customerAddress"] is None
 
@@ -445,9 +294,6 @@ def test_usage_billing_subscription_started(
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
-    assert (
-        res.json()["subscription"]["cost"]["currency"] == "usd"
-    ), "should default to usd if we cannot find a currency"
     assert res.json()["subscription"]["cost"]["planInterval"] == "year"
 
     stripe_customer_information.customer_name = "Acme-corp"
@@ -536,413 +382,10 @@ def test_usage_billing_subscription_exemption(
     assert res.json()["accountCanSubscribe"] is False
 
 
-@pytest.mark.django_db
-def test_fetch_proration(authed_client: Client, user: User, mocker: Any) -> None:
-    """
-    Verify that our proration endpoint correctly handles proration.
-    """
-    account, _membership = create_org_account(user)
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    patched_stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve",
-        spec=stripe.Subscription.retrieve,
-        return_value=create_stripe_subscription(),
-    )
-    fake_invoice = stripe.Invoice.construct_from(
-        {
-            "id": "in_1GN9MwCoyKa1V9Y6Ox2tehjN",
-            "object": "invoice",
-            "lines": {
-                "data": [
-                    {
-                        "id": "il_tmp_aad05f08b40091",
-                        "object": "line_item",
-                        "amount": 4990,
-                        "period": {"end": 1623632393, "start": 1592096393},
-                    }
-                ],
-                "object": "list",
-            },
-        },
-        "fake-key",
-    )
-    patched_stripe_invoice_upcoming = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming",
-        spec=stripe.Invoice.upcoming,
-        return_value=fake_invoice,
-    )
-    res = authed_client.post(
-        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
-    )
-    assert res.status_code == 200
-    assert res.json()["proratedCost"] == 4990
-    assert isinstance(res.json()["prorationTime"], int)
-    assert patched_stripe_subscription_retrieve.call_count == 1
-    assert patched_stripe_invoice_upcoming.call_count == 1
-
-
-@pytest.mark.django_db
-def test_fetch_proration_different_plans(
-    authed_client: Client, user: User, mocker: Any
-) -> None:
-    """
-    Check support for different plans.
-    """
-    patched_stripe_customer_information = mocker.patch(
-        "web_api.models.StripeCustomerInformation.preview_proration",
-        spec=StripeCustomerInformation.preview_proration,
-        return_value=4567,
-    )
-    account, _membership = create_org_account(user)
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-
-    # we should default to the "monthly" plan period.
-    res = authed_client.post(
-        f"/v1/t/{account.id}/fetch_proration", {"subscriptionQuantity": 4}
-    )
-    assert res.status_code == 200
-    assert res.json()["proratedCost"] == 4567
-    assert isinstance(res.json()["prorationTime"], int)
-    assert patched_stripe_customer_information.call_count == 1
-    _args, kwargs = patched_stripe_customer_information.call_args
-    assert kwargs["subscription_quantity"] == 4
-    assert kwargs["plan_id"] == settings.STRIPE_PLAN_ID
-
-    # verify we respect the `subscriptionPeriod` argument for proration.
-    for index, period_plan in enumerate(
-        [("year", settings.STRIPE_ANNUAL_PLAN_ID), ("month", settings.STRIPE_PLAN_ID)]
-    ):
-        period, plan = period_plan
-        seats = index + 5
-        res = authed_client.post(
-            f"/v1/t/{account.id}/fetch_proration",
-            {"subscriptionQuantity": seats, "subscriptionPeriod": period},
-        )
-        assert res.status_code == 200
-        assert res.json()["proratedCost"] == 4567
-        _args, kwargs = patched_stripe_customer_information.call_args
-        assert kwargs["subscription_quantity"] == seats
-        assert kwargs["plan_id"] == plan
-        assert patched_stripe_customer_information.call_count == index + 2
-
-
-@pytest.mark.django_db
-def test_update_subscription(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    Verify that updating an Account's subscription updates Stripe.
-    """
-    ONE_DAY_SEC = 60 * 60 * 24
-    period_start = int(time.time())
-    period_end = period_start + 30 * ONE_DAY_SEC  # start plus one month.
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-
-    fake_subscription = create_stripe_subscription()
-    stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
-    )
-    stripe_subscription_modify = mocker.patch(
-        "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
-    )
-    fake_invoice = stripe.Invoice.construct_from(
-        dict(object="invoice", id="in_00000000000000"), "fake-key",
-    )
-    stripe_invoice_create = mocker.patch(
-        "web_api.models.stripe.Invoice.create", return_value=fake_invoice
-    )
-    stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
-    account = create_account(
-        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
-    )
-    AccountMembership.objects.create(account=account, user=user, role="admin")
-    create_stripe_customer_info(
-        customer_id=account.stripe_customer_id,
-        subscription_current_period_start=period_start,
-        subscription_current_period_end=period_end,
-    )
-    assert stripe_subscription_retrieve.call_count == 0
-    assert stripe_subscription_modify.call_count == 0
-    assert update_bot.call_count == 0
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=24),
-    )
-    assert res.status_code == 204
-    assert stripe_subscription_retrieve.call_count == 1
-    assert update_bot.call_count == 1
-    assert stripe_subscription_modify.call_count == 1
-    _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
-    assert stripe_invoice_create.call_count == 1
-    assert stripe_invoice_pay.call_count == 1
-
-    # verify we can specify the monthly planPeriod and that the API calls Stripe
-    # with the correct plan id.
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(
-            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
-            seats=8,
-            planPeriod="month",
-        ),
-    )
-    assert res.status_code == 204
-    assert stripe_subscription_retrieve.call_count == 2
-    assert update_bot.call_count == 2
-    assert stripe_subscription_modify.call_count == 2
-    _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
-    assert stripe_invoice_create.call_count == 2
-    assert stripe_invoice_pay.call_count == 2
-
-    # verify we can specify the yearly planPeriod and that the API calls Stripe
-    # with the correct plan id.
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(
-            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
-            seats=4,
-            planPeriod="year",
-        ),
-    )
-    assert res.status_code == 204
-    assert stripe_subscription_retrieve.call_count == 3
-    assert update_bot.call_count == 3
-    assert stripe_subscription_modify.call_count == 3
-    _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
-    assert stripe_invoice_create.call_count == 2, "not hit because we're changing plans"
-    assert stripe_invoice_pay.call_count == 2, "not hit because we're changing plans"
-
-
-def create_stripe_subscription(
-    interval: Literal["month", "year"] = "month"
-) -> stripe.Subscription:
-    return stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id=settings.STRIPE_ANNUAL_PLAN_ID,
-                object="plan",
-                amount=499,
-                interval=interval,
-                interval_count=1,
-                product="prod_GuzCMVKonQIp2l",
-            ),
-            quantity=4,
-            start_date=1443556775,
-            default_payment_method="pm_22dldxf3",
-        ),
-        "fake-key",
-    )
-
-
-@pytest.mark.django_db
-def test_update_subscription_switch_plans(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    When we switch between plans we do _not_ want to manually create an invoice
-    because Stripe already charges the user. If we attempt to invoice like we do
-    for intra-plan upgrades we'll get an API exception from Stripe saying
-    nothing to change.
-    """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-
-    stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve",
-        return_value=create_stripe_subscription(interval="month"),
-    )
-    stripe_subscription_modify = mocker.patch(
-        "web_api.models.stripe.Subscription.modify",
-        return_value=create_stripe_subscription(interval="year"),
-    )
-    fake_invoice = stripe.Invoice.construct_from(
-        dict(object="invoice", id="in_00000000000000"), "fake-key",
-    )
-    stripe_invoice_create = mocker.patch(
-        "web_api.models.stripe.Invoice.create", return_value=fake_invoice
-    )
-    stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
-    account, _membership = create_org_account(user=user, role="admin")
-    stripe_customer_info = create_stripe_customer_info(
-        customer_id=account.stripe_customer_id
-    )
-    assert stripe_subscription_retrieve.call_count == 0
-    assert stripe_subscription_modify.call_count == 0
-    assert update_bot.call_count == 0
-    assert stripe_customer_info.plan_interval == "month"
-
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=123456789, seats=4, planPeriod="year"),
-    )
-    assert res.status_code == 204
-    assert stripe_subscription_retrieve.call_count == 1
-    assert update_bot.call_count == 1
-    assert stripe_subscription_modify.call_count == 1
-    _args, kwargs = stripe_subscription_modify.call_args
-    assert kwargs["items"][0]["plan"] == settings.STRIPE_ANNUAL_PLAN_ID
-    assert stripe_invoice_create.call_count == 0, "not hit because we're changing plans"
-    assert stripe_invoice_pay.call_count == 0, "not hit because we're changing plans"
-    stripe_customer_info.refresh_from_db()
-    assert stripe_customer_info.plan_interval == "year"
-
-
-@pytest.mark.django_db
-def test_update_subscription_missing_customer(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    We should get an error when we try to update a subscription for an Account
-    that doesn't have an associated subscription.
-    """
-    fake_subscription = create_stripe_subscription()
-
-    stripe_subscription_retrieve = mocker.patch(
-        "web_api.models.stripe.Subscription.retrieve", return_value=fake_subscription
-    )
-    stripe_subscription_modify = mocker.patch(
-        "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
-    )
-    account = create_account(
-        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
-    )
-    AccountMembership.objects.create(account=account, user=user, role="admin")
-    assert (
-        StripeCustomerInformation.objects.count() == 0
-    ), "we shouldn't have an associated subscription for this test."
-    assert stripe_subscription_retrieve.call_count == 0
-    assert stripe_subscription_modify.call_count == 0
-    res = authed_client.post(
-        f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=1650581784, seats=24),
-    )
-    assert res.status_code == 422
-    assert res.json()["message"] == "Subscription does not exist to modify."
-    assert stripe_subscription_retrieve.call_count == 0
-    assert stripe_subscription_modify.call_count == 0
-
-
-@pytest.mark.django_db
-def test_update_subscription_permissions(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    By default any member can edit a subscription, but if
-    `limit_billing_access_to_owners` is enabled on an account, only admins a.k.a
-    owners can modify a subscription.
-    """
-    account, membership = create_org_account(user=user, role="member")
-    payload = dict(prorationTimestamp=1650581784, seats=24)
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
-    assert (
-        res.status_code == 422
-    ), "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
-
-    account.limit_billing_access_to_owners = True
-    account.save()
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
-    assert res.status_code == 403, "we're a member so we shouldn't be allowed"
-
-    membership.role = "admin"
-    membership.save()
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
-    assert res.status_code == 422, "we're an admin so we should be okay"
-
-
-@pytest.mark.django_db
-def test_cancel_subscription(
-    authed_client: Client, user: User, other_user: User, mocker: Any
-) -> None:
-    """
-    Canceling a subscription should immediately cancel the subscription in Stripe.
-    """
-    patched_stripe_subscription_delete = mocker.patch(
-        "web_api.models.stripe.Subscription.delete"
-    )
-    patched_account_update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account, membership = create_org_account(user=user, role="admin")
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    assert patched_stripe_subscription_delete.call_count == 0
-    assert StripeCustomerInformation.objects.count() == 1
-    assert patched_account_update_bot.call_count == 0
-    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
-    assert res.status_code == 204
-    assert patched_account_update_bot.call_count == 1
-    assert patched_stripe_subscription_delete.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 0
-
-
 @pytest.fixture
 def patch_cancel_subscription(mocker: Any) -> None:
     mocker.patch("web_api.models.stripe.Subscription.delete")
     mocker.patch("web_api.models.Account.update_bot")
-
-
-@pytest.mark.django_db
-def test_cancel_subscription_member(
-    authed_client: Client,
-    user: User,
-    other_user: User,
-    patch_cancel_subscription: object,
-) -> None:
-    """
-    By default all members can cancel a subscription.
-    """
-    account, membership = create_org_account(user=user, role="member")
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    assert StripeCustomerInformation.objects.count() == 1
-    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
-    assert res.status_code == 204
-    assert StripeCustomerInformation.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_cancel_subscription_member_limit_billing_access_to_owners(
-    authed_client: Client,
-    user: User,
-    other_user: User,
-    patch_cancel_subscription: object,
-) -> None:
-    """
-    If limit_billing_access_to_owners is enabled members cannot cancel a
-    subscription.
-    """
-    account, membership = create_org_account(
-        user=user, role="member", limit_billing_access_to_owners=True
-    )
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    assert StripeCustomerInformation.objects.count() == 1
-    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
-    assert res.status_code == 403
-    assert StripeCustomerInformation.objects.count() == 1
-
-
-@pytest.mark.django_db
-def test_cancel_subscription_admin_limit_billing_access_to_owners(
-    authed_client: Client,
-    user: User,
-    other_user: User,
-    patch_cancel_subscription: object,
-) -> None:
-    """
-    If limit_billing_access_to_owners is enabled admins can cancel a
-    subscription.
-    """
-    account, membership = create_org_account(
-        user=user, role="admin", limit_billing_access_to_owners=True
-    )
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    assert StripeCustomerInformation.objects.count() == 1
-    res = authed_client.post(f"/v1/t/{account.id}/cancel_subscription")
-    assert res.status_code == 204
-    assert StripeCustomerInformation.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -1041,57 +484,8 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) -> None:
-    """
-    Start a new checkout session in "setup" mode to update the payment information.
-    """
-    account, _membership = create_org_account(user=user, role="member",)
-
-    class FakeCheckoutSession:
-        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
-
-    mocker.patch(
-        "web_api.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
-    )
-    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
-    assert res.status_code == 200
-    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
-    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
-
-@pytest.mark.django_db
-def test_modify_payment_details_limit_billing_access_to_owners(
-    authed_client: Client, user: User, mocker: Any
-) -> None:
-    account, membership = create_org_account(
-        user=user, role="member", limit_billing_access_to_owners=True
-    )
-
-    class FakeCheckoutSession:
-        id = "cs_tgn3bJHRrXhqgdVSc4tsY"
-
-    mocker.patch(
-        "web_api.views.stripe.checkout.Session.create", return_value=FakeCheckoutSession
-    )
-    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
-    assert res.status_code == 403
-
-    membership.role = "admin"
-    membership.save()
-    res = authed_client.post(f"/v1/t/{account.id}/modify_payment_details")
-    assert res.status_code == 200
-    assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
-    assert res.json()["stripePublishableApiKey"] == settings.STRIPE_PUBLISHABLE_API_KEY
-
-
-@pytest.fixture
-def patch_stripe_customer_modify(mocker: Any) -> None:
-    mocker.patch("web_api.models.stripe.Customer.modify", spec=stripe.Customer.modify)
-
-
-@pytest.mark.django_db
 def test_update_stripe_customer_info_permission(
-    authed_client: Client, user: User, patch_stripe_customer_modify: object
+    authed_client: Client, user: User
 ) -> None:
     account, membership = create_org_account(user, role="member")
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
@@ -1121,8 +515,14 @@ def test_update_stripe_customer_info_permission(
 
 @pytest.mark.django_db
 def test_update_stripe_customer_info_limit_billing_access_to_owners(
-    authed_client: Client, user: User, patch_stripe_customer_modify: object
+    authed_client: Client, user: User, mocker: Any
 ) -> None:
+    fake_customer = create_stripe_customer(email="billing@kodiakhq.com")
+    patch_stripe_customer_modify = mocker.patch(
+        "web_api.models.stripe.Customer.modify",
+        spec=stripe.Customer.modify,
+        return_value=fake_customer,
+    )
     account, membership = create_org_account(user, role="member")
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
@@ -1156,15 +556,20 @@ def test_update_stripe_customer_info_limit_billing_access_to_owners(
     account.refresh_from_db()
     stripe_customer_info.refresh_from_db()
     assert stripe_customer_info.customer_email == payload["email"]
+    assert patch_stripe_customer_modify.call_count == 1
 
 
 @pytest.mark.django_db
-def test_update_billing_email(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
-) -> None:
+def test_update_billing_email(authed_client: Client, user: User, mocker: Any) -> None:
     """
     A user should be able to modifying billing email.
     """
+    fake_customer = create_stripe_customer(email="billing@kodiakhq.com")
+    patch_stripe_customer_modify = mocker.patch(
+        "web_api.models.stripe.Customer.modify",
+        spec=stripe.Customer.modify,
+        return_value=fake_customer,
+    )
     account, _membership = create_org_account(user)
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
@@ -1182,11 +587,12 @@ def test_update_billing_email(
     assert res.status_code == 204
     stripe_customer_info.refresh_from_db()
     assert stripe_customer_info.customer_email == payload["email"]
+    assert patch_stripe_customer_modify.call_count == 1
 
 
 @pytest.mark.django_db
 def test_update_billing_email_empty(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+    authed_client: Client, user: User, mocker: Any
 ) -> None:
     """
     We should error if the user tries to update an email to empty string
@@ -1212,9 +618,7 @@ def test_update_billing_email_empty(
 
 
 @pytest.mark.django_db
-def test_update_contact_emails(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
-) -> None:
+def test_update_contact_emails(authed_client: Client, user: User, mocker: Any) -> None:
     """
     User should be able to set contact emails
     """
@@ -1260,12 +664,15 @@ def test_update_contact_emails(
 
 
 @pytest.mark.django_db
-def test_update_company_name(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
-) -> None:
+def test_update_company_name(authed_client: Client, user: User, mocker: Any) -> None:
     """
     A user should be able to modify the company name.
     """
+    patch_stripe_customer_modify = mocker.patch(
+        "web_api.models.stripe.Customer.modify",
+        spec=stripe.Customer.modify,
+        return_value=create_stripe_customer(name="Kodiak Bait & Tackle"),
+    )
     account, _membership = create_org_account(user)
     stripe_customer_info = create_stripe_customer_info(
         customer_id=account.stripe_customer_id
@@ -1283,12 +690,11 @@ def test_update_company_name(
     assert res.status_code == 204
     stripe_customer_info.refresh_from_db()
     assert stripe_customer_info.customer_name == payload["name"]
+    assert patch_stripe_customer_modify.call_count == 1
 
 
 @pytest.mark.django_db
-def test_update_address(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
-) -> None:
+def test_update_address(authed_client: Client, user: User, mocker: Any) -> None:
     """
     A user should be able to modifying postal address.
     """
@@ -1315,6 +721,20 @@ def test_update_address(
             country="United States",
         )
     )
+    patch_stripe_customer_modify = mocker.patch(
+        "web_api.models.stripe.Customer.modify",
+        spec=stripe.Customer.modify,
+        return_value=create_stripe_customer(
+            address=dict(
+                line1="123 Main St",
+                line2="Apt 3B",
+                city="Anytown",
+                postal_code="12345",
+                state="Massachusetts",
+                country="United States",
+            )
+        ),
+    )
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1333,11 +753,12 @@ def test_update_address(
         == payload["address"]["postalCode"]
     )
     assert stripe_customer_info.customer_address_state == payload["address"]["state"]
+    assert patch_stripe_customer_modify.call_count == 1
 
 
 @pytest.mark.django_db
 def test_update_limit_billing_access_to_owners(
-    authed_client: Client, user: User, mocker: Any, patch_stripe_customer_modify: object
+    authed_client: Client, user: User, mocker: Any
 ) -> None:
     """
     Only GitHub organization Owners should be able to modify this field
@@ -1617,193 +1038,18 @@ def post_webhook(event: Union[dict, str]) -> HttpResponse:
 
 
 @pytest.mark.django_db
-def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> None:
-    """
-    Verify our webhook handler updates our subscription on this event.
-    """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = create_account()
-    fake_customer = create_stripe_customer(id=account.stripe_customer_id, address=None)
-    customer_retrieve = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
-    )
-    fake_subscription = create_stripe_subscription()
-    subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
-    )
-    fake_payment_method = create_stripe_payment_method()
-    payment_method_retrieve = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
-    )
-    patched_retrieve_product = mocker.patch(
-        "web_api.models.stripe.Product.retrieve", return_value=create_stripe_product(),
-    )
-    patched_retrieve_invoice = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming", return_value=create_stripe_invoice(),
-    )
-
-    assert patched_retrieve_product.call_count == 0
-    assert patched_retrieve_invoice.call_count == 0
-    stripe_customer_info = create_stripe_customer_info(
-        customer_id=account.stripe_customer_id
-    )
-    assert StripeCustomerInformation.objects.count() == 1
-    assert account.stripe_customer_info() == stripe_customer_info
-    res = post_webhook(
-        """
-{
-  "id": "evt_1GTJLPCoyKa1V9Y6dIfvIuva",
-  "object": "event",
-  "api_version": "2020-03-02",
-  "created": 1585796631,
-  "data": {
-    "object": {
-      "id": "cs_test_Enc3u2mzp4vowbDcwrSneOhGOLwoYHX4UJGmUh6f4b3fnS88LTZgsJZT",
-      "object": "checkout.session",
-      "billing_address_collection": null,
-      "cancel_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?start_subscription=1",
-      "client_reference_id": "%s",
-      "customer": "%s",
-      "customer_email": null,
-      "display_items": [
-      ],
-      "livemode": false,
-      "locale": null,
-      "metadata": {
-      },
-      "mode": "setup",
-      "payment_intent": null,
-      "payment_method_types": [
-        "card"
-      ],
-      "setup_intent": "seti_1GTJKRCoyKa1V9Y6M41eERR5",
-      "shipping": null,
-      "shipping_address_collection": null,
-      "submit_type": null,
-      "subscription": null,
-      "success_url": "http://app.localhost.kodiakhq.com:3000/t/8f5b095f-9a11-4183-aa00-2152e2001a34/usage?install_complete=1"
-    }
-  },
-  "livemode": false,
-  "pending_webhooks": 1,
-  "request": {
-    "id": null,
-    "idempotency_key": null
-  },
-  "type": "checkout.session.completed"
-}
-"""
-        % (account.id, account.stripe_customer_id)
-    )
-    assert res.status_code == 200
-    assert customer_retrieve.call_count == 1
-    assert subscription_retrieve.call_count == 1
-    assert payment_method_retrieve.call_count == 1
-    assert patched_retrieve_product.call_count == 1
-    assert patched_retrieve_invoice.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 1
-
-    assert update_bot.call_count == 1
-
-    stripe_customer_info_updated = StripeCustomerInformation.objects.get()
-    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
-    assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
-    assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
-    assert stripe_customer_info_updated.customer_email == fake_customer.email
-    assert stripe_customer_info_updated.customer_balance == fake_customer.balance
-    assert stripe_customer_info_updated.customer_created == fake_customer.created
-
-    assert (
-        stripe_customer_info_updated.payment_method_card_brand
-        == fake_payment_method.card.brand
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_exp_month
-        == fake_payment_method.card.exp_month
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_exp_year
-        == fake_payment_method.card.exp_year
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_last4
-        == fake_payment_method.card.last4
-    )
-    assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
-    assert (
-        stripe_customer_info_updated.plan_interval_count
-        == fake_subscription.plan.interval_count
-    )
-    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
-    assert (
-        stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
-    )
-    assert (
-        stripe_customer_info_updated.subscription_start_date
-        == fake_subscription.start_date
-    )
-    assert (
-        stripe_customer_info_updated.subscription_current_period_end
-        == fake_subscription.current_period_end
-    )
-    assert (
-        stripe_customer_info_updated.subscription_current_period_start
-        == fake_subscription.current_period_start
-    )
-
-
-def equal_subscriptions(
-    a: StripeCustomerInformation, b: StripeCustomerInformation
-) -> bool:
-    for field_name in (
-        field.attname for field in StripeCustomerInformation._meta.fields
-    ):
-        if getattr(a, field_name) != getattr(b, field_name):
-            return False
-    return True
-
-
-@pytest.mark.django_db
 def test_stripe_webhook_handler_checkout_session_complete_subscription(
     mocker: Any,
 ) -> None:
     """
-    Verify our webhook handler creates a subscription on this event.
+    Verify our webhook handler triggers checkout code
     """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    fake_customer = create_stripe_customer()
-    customer_retrieve = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
+    customer_id = "cus_Gz7jQFKdh4KirU"
+    patched_handle_checkout_complete = mocker.patch(
+        "web_api.views.billing.handle_checkout_complete",
+        spec=web_api.billing.handle_checkout_complete,
     )
-    fake_subscription = create_stripe_subscription()
-    subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
-    )
-    fake_payment_method = create_stripe_payment_method()
-    payment_method_retrieve = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
-    )
-    patched_retrieve_product = mocker.patch(
-        "web_api.models.stripe.Product.retrieve", return_value=create_stripe_product(),
-    )
-    patched_retrieve_invoice = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming", return_value=create_stripe_invoice(),
-    )
-
-    account = create_account(stripe_customer_id="")
-    other_account = create_account(
-        github_account_login="delos-engineering",
-        github_account_type="Organization",
-        stripe_customer_id="cus_354HjLriodop21",
-    )
-    other_subscription = create_stripe_customer_info(
-        customer_id=other_account.stripe_customer_id,
-        subscription_id="sub_L43DyAEVGwzt32",
-    )
-    assert StripeCustomerInformation.objects.count() == 1
-    assert update_bot.call_count == 0
-    assert patched_retrieve_product.call_count == 0
-    assert patched_retrieve_invoice.call_count == 0
+    assert patched_handle_checkout_complete.call_count == 0
     res = post_webhook(
         """
 {
@@ -1876,270 +1122,10 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
   },
   "type": "checkout.session.completed"
 }"""
-        % account.id
+        % customer_id
     )
-
     assert res.status_code == 200
-    assert update_bot.call_count == 1
-    assert customer_retrieve.call_count == 1
-    assert subscription_retrieve.call_count == 1
-    assert payment_method_retrieve.call_count == 1
-    assert patched_retrieve_product.call_count == 1
-    assert patched_retrieve_invoice.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 2
-
-    # verify `other_subscription` hasn't been modified
-    other_subscription_refreshed = StripeCustomerInformation.objects.filter(
-        subscription_id=other_subscription.subscription_id
-    ).get()
-    assert equal_subscriptions(other_subscription_refreshed, other_subscription) is True
-
-    stripe_customer_info_updated = StripeCustomerInformation.objects.filter(
-        customer_id="cus_Gz7jQFKdh4KirU"
-    ).get()
-    assert stripe_customer_info_updated.subscription_id == fake_subscription.id
-    assert stripe_customer_info_updated.plan_id == fake_subscription.plan.id
-    assert stripe_customer_info_updated.payment_method_id == fake_payment_method.id
-    assert stripe_customer_info_updated.customer_email == fake_customer.email
-    assert stripe_customer_info_updated.customer_balance == fake_customer.balance
-    assert stripe_customer_info_updated.customer_created == fake_customer.created
-
-    assert (
-        stripe_customer_info_updated.payment_method_card_brand
-        == fake_payment_method.card.brand
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_exp_month
-        == fake_payment_method.card.exp_month
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_exp_year
-        == fake_payment_method.card.exp_year
-    )
-    assert (
-        stripe_customer_info_updated.payment_method_card_last4
-        == fake_payment_method.card.last4
-    )
-    assert stripe_customer_info_updated.plan_amount == fake_subscription.plan.amount
-    assert (
-        stripe_customer_info_updated.plan_interval_count
-        == fake_subscription.plan.interval_count
-    )
-    assert stripe_customer_info_updated.plan_interval == fake_subscription.plan.interval
-    assert (
-        stripe_customer_info_updated.subscription_quantity == fake_subscription.quantity
-    )
-    assert (
-        stripe_customer_info_updated.subscription_start_date
-        == fake_subscription.start_date
-    )
-    assert (
-        stripe_customer_info_updated.subscription_current_period_end
-        == fake_subscription.current_period_end
-    )
-    assert (
-        stripe_customer_info_updated.subscription_current_period_start
-        == fake_subscription.current_period_start
-    )
-
-
-@pytest.mark.django_db
-def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
-    """
-    Verify our webhook handler updates our subscription on this event.
-
-    This event will get sent when a subscription is updated.
-    """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = create_account()
-
-    stripe_customer_info = create_stripe_customer_info(
-        customer_id=account.stripe_customer_id
-    )
-    retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=create_stripe_customer(),
-    )
-    retrieve_subscription = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve",
-        return_value=create_stripe_subscription(),
-    )
-    retrieve_payment_method = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve",
-        return_value=create_stripe_payment_method(),
-    )
-    patched_retrieve_product = mocker.patch(
-        "web_api.models.stripe.Product.retrieve", return_value=create_stripe_product(),
-    )
-    patched_retrieve_invoice = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming", return_value=create_stripe_invoice(),
-    )
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    assert StripeCustomerInformation.objects.count() == 1
-    assert update_bot.call_count == 0
-    assert retrieve_subscription.call_count == 0
-    assert retrieve_customer.call_count == 0
-    assert retrieve_payment_method.call_count == 0
-    assert patched_retrieve_product.call_count == 0
-    assert patched_retrieve_invoice.call_count == 0
-    res = post_webhook(
-        """
-{
-  "created": 1326853478,
-  "livemode": false,
-  "id": "evt_00000000000000",
-  "type": "invoice.payment_succeeded",
-  "object": "event",
-  "request": null,
-  "pending_webhooks": 1,
-  "api_version": "2020-03-02",
-  "data": {
-    "object": {
-      "id": "in_00000000000000",
-      "object": "invoice",
-      "account_country": "US",
-      "account_name": "Kodiakhq",
-      "amount_due": 9980,
-      "amount_paid": 9980,
-      "amount_remaining": 0,
-      "application_fee_amount": null,
-      "attempt_count": 1,
-      "attempted": true,
-      "auto_advance": false,
-      "billing_reason": "subscription_create",
-      "charge": "_00000000000000",
-      "collection_method": "charge_automatically",
-      "created": 1584328318,
-      "currency": "usd",
-      "custom_fields": null,
-      "customer": "%s",
-      "customer_address": null,
-      "customer_email": "j.doe@example.com",
-      "customer_name": null,
-      "customer_phone": null,
-      "customer_shipping": null,
-      "customer_tax_exempt": "none",
-      "customer_tax_ids": [
-      ],
-      "default_payment_method": null,
-      "default_source": null,
-      "default_tax_rates": [
-      ],
-      "description": null,
-      "discount": null,
-      "due_date": null,
-      "ending_balance": 0,
-      "footer": null,
-      "hosted_invoice_url": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T",
-      "invoice_pdf": "https://pay.stripe.com/invoice/acct_1GN6r2CoyKa1V9Y6/invst_GuzL5pfiHFXemcitpnDzhVLbrgrHk3T/pdf",
-      "lines": {
-        "data": [
-          {
-            "id": "il_00000000000000",
-            "object": "line_item",
-            "amount": 4990,
-            "currency": "usd",
-            "description": "10 seat × Kodiak Seat License (at $4.99 / month)",
-            "discountable": true,
-            "livemode": false,
-            "metadata": {
-            },
-            "period": {
-              "end": 1660949784,
-              "start": 1653173784
-            },
-            "plan": {
-              "id": "plan_00000000000000",
-              "object": "plan",
-              "active": true,
-              "aggregate_usage": null,
-              "amount": 499,
-              "amount_decimal": "499",
-              "billing_scheme": "per_unit",
-              "created": 1584327811,
-              "currency": "usd",
-              "interval": "month",
-              "interval_count": 1,
-              "livemode": false,
-              "metadata": {
-              },
-              "nickname": "Monthly",
-              "product": "prod_00000000000000",
-              "tiers": null,
-              "tiers_mode": null,
-              "transform_usage": null,
-              "trial_period_days": null,
-              "usage_type": "licensed"
-            },
-            "proration": false,
-            "quantity": 10,
-            "subscription": "sub_00000000000000",
-            "subscription_item": "si_00000000000000",
-            "tax_amounts": [
-            ],
-            "tax_rates": [
-            ],
-            "type": "subscription"
-          }
-        ],
-        "has_more": false,
-        "object": "list",
-        "url": "/v1/invoices/in_1GN9MwCoyKa1V9Y6Ox2tehjN/lines"
-      },
-      "livemode": false,
-      "metadata": {
-      },
-      "next_payment_attempt": null,
-      "number": "E5700931-0001",
-      "paid": true,
-      "payment_intent": "pi_00000000000000",
-      "period_end": 1660949784,
-      "period_start": 1653173784,
-      "post_payment_credit_notes_amount": 0,
-      "pre_payment_credit_notes_amount": 0,
-      "receipt_number": "2421-2035",
-      "starting_balance": 0,
-      "statement_descriptor": null,
-      "status": "paid",
-      "status_transitions": {
-        "finalized_at": 1584328319,
-        "marked_uncollectible_at": null,
-        "paid_at": 1584328320,
-        "voided_at": null
-      },
-      "subscription": "sub_00000000000000",
-      "subtotal": 9980,
-      "tax": null,
-      "tax_percent": null,
-      "total": 9980,
-      "total_tax_amounts": [
-      ],
-      "webhooks_delivered_at": 1584328320,
-      "closed": true
-    }
-  }
-}"""
-        % account.stripe_customer_id
-    )
-
-    assert res.status_code == 200
-    assert update_bot.call_count == 1
-    assert retrieve_subscription.call_count == 1
-    assert retrieve_customer.call_count == 1
-    assert retrieve_payment_method.call_count == 1
-    assert patched_retrieve_product.call_count == 1
-    assert patched_retrieve_invoice.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 1
-    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
-    assert (
-        updated_stripe_customer_info.subscription_current_period_start
-        > stripe_customer_info.subscription_current_period_start
-    )
-    assert (
-        updated_stripe_customer_info.subscription_current_period_end
-        > stripe_customer_info.subscription_current_period_end
-    )
-    assert updated_stripe_customer_info.subscription_current_period_end == 1690982549
-    assert updated_stripe_customer_info.subscription_current_period_start == 1688304149
+    assert patched_handle_checkout_complete.call_count == 1
 
 
 def make_customer_updated_event(customer_id: str) -> str:
@@ -2217,167 +1203,14 @@ def make_customer_updated_event(customer_id: str) -> str:
 @pytest.mark.django_db
 def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     """
-    Verify our webhook handler updates our customer when we get a customer.updated event
+    Verify our webhook handler triggers call to update our customer
     """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = create_account()
-
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    fake_customer = create_stripe_customer(id=account.stripe_customer_id, address=None)
-    patched_retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
+    patched_update_customer = mocker.patch(
+        "web_api.views.billing.update_customer", spec=web_api.billing.update_customer,
     )
-    patched_retrieve_subscription = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve",
-        return_value=create_stripe_subscription(),
-    )
-    patched_retrieve_payment_method = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve",
-        return_value=create_stripe_payment_method(),
-    )
-    patched_retrieve_product = mocker.patch(
-        "web_api.models.stripe.Product.retrieve", return_value=create_stripe_product(),
-    )
-    patched_retrieve_invoice = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming", return_value=create_stripe_invoice(),
-    )
-    patched_update_bot = mocker.patch(
-        "web_api.models.Account.update_bot", spec=Account.update_bot
-    )
-    assert StripeCustomerInformation.objects.count() == 1
-    assert update_bot.call_count == 0
-    assert patched_retrieve_customer.call_count == 0
-    assert patched_retrieve_subscription.call_count == 0
-    assert patched_retrieve_payment_method.call_count == 0
-    assert patched_retrieve_product.call_count == 0
-    assert patched_retrieve_invoice.call_count == 0
-    res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
-
+    res = post_webhook(make_customer_updated_event("cus_Gxfda4f23"))
     assert res.status_code == 200
-    assert patched_update_bot.call_count == 1
-    assert patched_retrieve_customer.call_count == 1
-    assert patched_retrieve_subscription.call_count == 1
-    assert patched_retrieve_payment_method.call_count == 1
-    assert patched_retrieve_product.call_count == 1
-    assert patched_retrieve_invoice.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 1
-    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
-    assert updated_stripe_customer_info.customer_email == fake_customer.email
-    assert updated_stripe_customer_info.customer_balance == fake_customer.balance
-    assert updated_stripe_customer_info.customer_created == fake_customer.created
-    assert updated_stripe_customer_info.customer_name == fake_customer.name
-
-    assert fake_customer.address is None
-    assert updated_stripe_customer_info.customer_address_line1 is None
-    assert updated_stripe_customer_info.customer_address_city is None
-    assert updated_stripe_customer_info.customer_address_country is None
-    assert updated_stripe_customer_info.customer_address_line2 is None
-    assert updated_stripe_customer_info.customer_address_postal_code is None
-    assert updated_stripe_customer_info.customer_address_state is None
-
-
-@pytest.mark.django_db
-def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> None:
-    """
-    Verify our webhook handler updates our customer when we get a customer.updated event
-
-    This is basically the same as the previous test but with the address provided.
-    """
-    update_bot = mocker.patch("web_api.models.Account.update_bot")
-    account = create_account()
-
-    create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    fake_customer = create_stripe_customer(id=account.stripe_customer_id,)
-    patched_retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
-    )
-    patched_retrieve_subscription = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve",
-        return_value=create_stripe_subscription(),
-    )
-    patched_retrieve_payment_method = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve",
-        return_value=create_stripe_payment_method(),
-    )
-    patched_retrieve_product = mocker.patch(
-        "web_api.models.stripe.Product.retrieve", return_value=create_stripe_product(),
-    )
-    patched_retrieve_invoice = mocker.patch(
-        "web_api.models.stripe.Invoice.upcoming", return_value=create_stripe_invoice(),
-    )
-    patched_update_bot = mocker.patch(
-        "web_api.models.Account.update_bot", spec=Account.update_bot
-    )
-    assert StripeCustomerInformation.objects.count() == 1
-    assert update_bot.call_count == 0
-    assert patched_retrieve_customer.call_count == 0
-    assert patched_retrieve_subscription.call_count == 0
-    assert patched_retrieve_payment_method.call_count == 0
-    assert patched_retrieve_product.call_count == 0
-    assert patched_retrieve_invoice.call_count == 0
-    res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
-
-    assert res.status_code == 200
-    assert patched_update_bot.call_count == 1
-    assert patched_retrieve_customer.call_count == 1
-    assert patched_retrieve_subscription.call_count == 1
-    assert patched_retrieve_payment_method.call_count == 1
-    assert patched_retrieve_product.call_count == 1
-    assert patched_retrieve_invoice.call_count == 1
-    assert StripeCustomerInformation.objects.count() == 1
-    updated_stripe_customer_info = StripeCustomerInformation.objects.get()
-    assert updated_stripe_customer_info.customer_email == fake_customer.email
-    assert updated_stripe_customer_info.customer_balance == fake_customer.balance
-    assert updated_stripe_customer_info.customer_created == fake_customer.created
-    assert updated_stripe_customer_info.customer_name == fake_customer.name
-
-    assert fake_customer.address is not None
-    assert (
-        updated_stripe_customer_info.customer_address_line1
-        == fake_customer.address.line1
-    )
-    assert (
-        updated_stripe_customer_info.customer_address_city == fake_customer.address.city
-    )
-    assert (
-        updated_stripe_customer_info.customer_address_country
-        == fake_customer.address.country
-    )
-    assert (
-        updated_stripe_customer_info.customer_address_line2
-        == fake_customer.address.line2
-    )
-    assert (
-        updated_stripe_customer_info.customer_address_postal_code
-        == fake_customer.address.postal_code
-    )
-    assert (
-        updated_stripe_customer_info.customer_address_state
-        == fake_customer.address.state
-    )
-
-
-@pytest.mark.django_db
-def test_stripe_webhook_handler_customer_updated_no_matching_customer(
-    mocker: Any,
-) -> None:
-    """
-    If we get a customer.updated event for a non existent customer we should error.
-    """
-    account = create_account()
-
-    patched_update_from_stripe = mocker.patch(
-        "web_api.models.StripeCustomerInformation.update_from_stripe",
-        spec=StripeCustomerInformation.update_from_stripe,
-    )
-    mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
-    assert StripeCustomerInformation.objects.count() == 0
-    assert patched_update_from_stripe.call_count == 0
-    res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
-
-    assert res.status_code == 400
-    assert StripeCustomerInformation.objects.count() == 0
-    assert patched_update_from_stripe.call_count == 0
+    assert patched_update_customer.call_count == 1
 
 
 @pytest.mark.django_db

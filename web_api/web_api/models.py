@@ -326,7 +326,7 @@ class Account(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
-    def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
+    def get_stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
         return cast(
             Optional[StripeCustomerInformation],
             StripeCustomerInformation.objects.filter(
@@ -393,7 +393,7 @@ class Account(BaseModel):
         if self.active_trial():
             return None
 
-        customer_info = self.stripe_customer_info()
+        customer_info = self.get_stripe_customer_info()
 
         subscription_quantity = (
             customer_info.subscription_quantity if customer_info else 0
@@ -408,8 +408,6 @@ class Account(BaseModel):
             return SeatsExceeded(allowed_user_ids=allowed_user_ids)
 
         if customer_info:
-            if customer_info.expired:
-                return SubscriptionExpired()
             # active subscription within active user limits.
             return None
 
@@ -420,10 +418,6 @@ class Account(BaseModel):
         # active users.
         return None
 
-    def update_customer(self, customer_id: str) -> None:
-        self.stripe_customer_id = customer_id
-        self.save()
-
     def update_billing_info(
         self,
         email: Optional[str] = None,
@@ -432,7 +426,7 @@ class Account(BaseModel):
     ) -> None:
         if not self.stripe_customer_id:
             return None
-        stripe.Customer.modify(
+        stripe_customer = stripe.Customer.modify(
             self.stripe_customer_id,
             email=email,
             name=name,
@@ -449,21 +443,9 @@ class Account(BaseModel):
                 else None
             ),
         )
-        stripe_customer_info = self.stripe_customer_info()
+        stripe_customer_info = self.get_stripe_customer_info()
         if stripe_customer_info:
-            if email is not None:
-                stripe_customer_info.customer_email = email
-            if name is not None:
-                stripe_customer_info.customer_name = name
-            if address is not None:
-                stripe_customer_info.customer_address_line1 = address.line1
-                stripe_customer_info.customer_address_city = address.city
-                stripe_customer_info.customer_address_country = address.country
-                stripe_customer_info.customer_address_line2 = address.line2
-                stripe_customer_info.customer_address_postal_code = address.postal_code
-                stripe_customer_info.customer_address_state = address.state
-
-            stripe_customer_info.save()
+            stripe_customer_info.update_from(customer=stripe_customer)
         return None
 
     def update_bot(self) -> None:
@@ -909,22 +891,6 @@ class StripeCustomerInformation(models.Model):
         db_index=True,
         help_text="Unique identifier for Stripe Customer object.",
     )
-    subscription_id = models.CharField(
-        max_length=255,
-        unique=True,
-        db_index=True,
-        help_text="Unique identifier for Stripe Subscription object.",
-    )
-    plan_id = models.CharField(
-        max_length=255,
-        db_index=True,
-        help_text="Unique identifier for Stripe Plan object.",
-    )
-    payment_method_id = models.CharField(
-        max_length=255,
-        db_index=True,
-        help_text="Unique identifier for Stripe PaymentMethod object.",
-    )
 
     # https://stripe.com/docs/api/customers/object
     customer_email = models.CharField(
@@ -967,27 +933,12 @@ class StripeCustomerInformation(models.Model):
         max_length=255, null=True, help_text="State, county, province, or region."
     )
 
-    # https://stripe.com/docs/api/payment_methods/object
-    payment_method_card_brand = models.CharField(
-        max_length=255,
-        null=True,
-        help_text="Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
-    )
-    payment_method_card_exp_month = models.CharField(
-        null=True,
-        help_text="Two-digit number representing the card’s expiration month.",
-        max_length=255,
-    )
-    payment_method_card_exp_year = models.CharField(
-        null=True,
-        help_text="Four-digit number representing the card’s expiration year.",
-        max_length=255,
-    )
-    payment_method_card_last4 = models.CharField(
-        max_length=255, null=True, help_text="The last four digits of the card."
-    )
-
     # https://stripe.com/docs/api/plans/object
+    plan_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Unique identifier for Stripe Plan object.",
+    )
     plan_amount = models.IntegerField(
         help_text="The amount in cents to be charged on the interval specified."
     )
@@ -1010,6 +961,12 @@ class StripeCustomerInformation(models.Model):
     )
 
     # https://stripe.com/docs/api/subscriptions/object
+    subscription_id = models.CharField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text="Unique identifier for Stripe Subscription object.",
+    )
     subscription_quantity = models.IntegerField(
         help_text="The quantity of the plan to which the customer is subscribed. For example, if your plan is $10/user/month, and your customer has 5 users, you could pass 5 as the quantity to have the customer charged $50 (5 x $10) monthly. Only set if the subscription contains a single plan."
     )
@@ -1022,123 +979,74 @@ class StripeCustomerInformation(models.Model):
     subscription_current_period_start = models.IntegerField(
         help_text="Start of the current period that the subscription has been invoiced for."
     )
+    subscription_cancel_at_period_end = models.BooleanField(
+        null=True,
+        help_text="If the subscription has been canceled with the at_period_end flag set to true, cancel_at_period_end on the subscription will be true.",
+    )
+    subscription_cancel_at = models.IntegerField(
+        null=True,
+        help_text="A date in the future at which the subscription will automatically get canceled.",
+    )
+    subscription_canceled_at = models.IntegerField(
+        null=True,
+        help_text="If the subscription has been canceled, the date of that cancellation. If the subscription was canceled with cancel_at_period_end, canceled_at will still reflect the date of the initial cancellation request, not the end of the subscription period when the subscription is automatically moved to a canceled state.",
+    )
 
     class Meta:
         db_table = "stripe_customer_information"
 
-    def update_from_stripe(self) -> None:
-        customer = stripe.Customer.retrieve(self.customer_id)
-        subscription = stripe.Subscription.retrieve(customer.subscriptions.data[0].id)
-        payment_method = stripe.PaymentMethod.retrieve(
-            subscription.default_payment_method
-        )
-        product = stripe.Product.retrieve(subscription.plan.product)
-        upcoming_invoice = stripe.Invoice.upcoming(subscription=subscription.id)
+    def update_from(
+        self,
+        customer: Optional[stripe.Customer] = None,
+        subscription: Optional[stripe.Subscription] = None,
+        product: Optional[stripe.Product] = None,
+        upcoming_invoice: Optional[stripe.Invoice] = None,
+    ) -> None:
+        if customer:
+            self.customer_email = customer.email
+            self.customer_balance = customer.balance
+            self.customer_created = customer.created
+            self.customer_name = customer.name
+            self.customer_address_line1 = (
+                customer.address.line1 if customer.address else None
+            )
+            self.customer_address_city = (
+                customer.address.city if customer.address else None
+            )
+            self.customer_address_country = (
+                customer.address.country if customer.address else None
+            )
+            self.customer_address_line2 = (
+                customer.address.line2 if customer.address else None
+            )
+            self.customer_address_postal_code = (
+                customer.address.postal_code if customer.address else None
+            )
+            self.customer_address_state = (
+                customer.address.state if customer.address else None
+            )
+        if subscription:
+            self.subscription_id = subscription.id
+            self.subscription_quantity = subscription.quantity
+            self.subscription_start_date = subscription.start_date
+            self.subscription_current_period_end = subscription.current_period_end
+            self.subscription_current_period_start = subscription.current_period_start
+            self.subscription_cancel_at = subscription.cancel_at
+            self.subscription_canceled_at = subscription.canceled_at
 
-        self.customer_email = customer.email
-        self.customer_balance = customer.balance
-        self.customer_created = customer.created
-        self.customer_name = customer.name
-        self.customer_address_line1 = (
-            customer.address.line1 if customer.address else None
-        )
-        self.customer_address_city = customer.address.city if customer.address else None
-        self.customer_address_country = (
-            customer.address.country if customer.address else None
-        )
-        self.customer_address_line2 = (
-            customer.address.line2 if customer.address else None
-        )
-        self.customer_address_postal_code = (
-            customer.address.postal_code if customer.address else None
-        )
-        self.customer_address_state = (
-            customer.address.state if customer.address else None
-        )
+            self.plan_id = subscription.plan.id
+            self.plan_amount = subscription.plan.amount
+            self.plan_interval = subscription.plan.interval
+            self.plan_interval_count = subscription.plan.interval_count
 
-        self.payment_method_id = payment_method.id
-        self.payment_method_card_brand = payment_method.card.brand
-        self.payment_method_card_exp_month = payment_method.card.exp_month
-        self.payment_method_card_exp_year = payment_method.card.exp_year
-        self.payment_method_card_last4 = payment_method.card.last4
+        if product:
+            self.plan_product_name = product.name
 
-        self.plan_id = subscription.plan.id
-        self.plan_amount = subscription.plan.amount
-        self.plan_interval = subscription.plan.interval
-        self.plan_interval_count = subscription.plan.interval_count
-        self.plan_product_name = product.name
-
-        self.subscription_id = subscription.id
-        self.subscription_quantity = subscription.quantity
-        self.subscription_start_date = subscription.start_date
-        self.subscription_current_period_end = subscription.current_period_end
-        self.subscription_current_period_start = subscription.current_period_start
-
-        self.upcoming_invoice_total = upcoming_invoice.total
+        if upcoming_invoice:
+            self.upcoming_invoice_total = upcoming_invoice.total
 
         self.save()
-        self.get_account().update_bot()
-
-    def get_account(self) -> Account:
-        return cast(Account, Account.objects.get(stripe_customer_id=self.customer_id))
-
-    @property
-    def expired(self) -> bool:
-        # provide two days of leeway for good measure
-        two_days = 60 * 60 * 24 * 2
-        now = int(time.time())
-        return cast(bool, now > (self.subscription_current_period_end + two_days))
 
     @property
     def next_billing_date(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
-
-    def cancel_subscription(self) -> None:
-        """
-        Cancel the Account's subscription in Stripe and remove the
-        StripeCustomerInformation object.
-        """
-        # Calling delete on a subscription cancels it. If a user wants to
-        # resubscribe they must create a new subscription.
-        # https://stripe.com/docs/billing/subscriptions/canceling
-        stripe.Subscription.delete(self.subscription_id)
-        # we delete all the associated subscription info because the
-        # subscription is no longer valid. We leave the Stripe Customer and keep
-        # Account.customer_id alone. If a user resubscribes we can use their
-        # existing Stripe Customer to improve their Stripe Checkout flow with a
-        # prefilled email.
-        account = self.get_account()
-        self.delete()
-        account.update_bot()
-
-    def preview_proration(
-        self, *, timestamp: int, subscription_quantity: int, plan_id: str
-    ) -> int:
-        proration_date = timestamp
-
-        subscription = stripe.Subscription.retrieve(self.subscription_id)
-
-        # See what the next invoice would look like with a plan switch
-        # and proration set:
-        subscription_items = [
-            {
-                "id": subscription["items"]["data"][0].id,
-                "plan": plan_id,
-                "quantity": subscription_quantity,
-            }
-        ]
-
-        invoice = stripe.Invoice.upcoming(
-            customer=self.customer_id,
-            subscription=self.subscription_id,
-            subscription_items=subscription_items,
-            subscription_proration_date=proration_date,
-        )
-
-        # Calculate the proration cost:
-
-        return sum(
-            proration.amount
-            for proration in invoice.lines.data
-            if proration.period.start - proration_date <= 1
-        )
