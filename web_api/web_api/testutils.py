@@ -116,6 +116,7 @@ def create_stripe_customer_info(
             plan_interval="month",
             subscription_quantity=3,
             subscription_start_date=1585781784,
+            upcoming_invoice_total=1122,
             subscription_current_period_start=subscription_current_period_start,
             subscription_current_period_end=subscription_current_period_end,
         ),

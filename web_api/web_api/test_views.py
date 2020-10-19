@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Optional, Tuple, Type, Union, cast
+from typing import Any, Union, cast
 
 import pytest
 import responses
@@ -9,7 +9,6 @@ import stripe
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
-from typing_extensions import Literal
 
 import web_api.billing
 from web_api.models import (
@@ -26,7 +25,6 @@ from web_api.testutils import (
     create_org_account,
     create_stripe_customer,
     create_stripe_customer_info,
-    create_stripe_subscription,
 )
 
 
@@ -282,7 +280,10 @@ def test_usage_billing_subscription_started(
     )
     assert res.json()["subscription"]["expired"] is False
     assert res.json()["subscription"]["seats"] == 3
-    assert res.json()["subscription"]["cost"]["totalCents"] == 3 * 499
+    assert (
+        res.json()["subscription"]["cost"]["totalCents"]
+        == stripe_customer_information.upcoming_invoice_total
+    )
     assert res.json()["subscription"]["cost"]["perSeatCents"] == 499
     assert res.json()["subscription"]["cost"]["planInterval"] == "month"
     assert res.json()["subscription"]["billingEmail"] == "accounting@acme-corp.com"

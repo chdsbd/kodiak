@@ -105,7 +105,7 @@ def test_get_subscription_blocker_seats_exceeded(
     patched_get_active_users_in_last_30_days: Any,
 ) -> None:
     account = create_account(trial_expiration=None)
-    stripe_customer_information = StripeCustomerInformation.objects.create(
+    StripeCustomerInformation.objects.create(
         customer_id="cus_H2pvQ2kt7nk0JY",
         subscription_id="sub_Gu1xedsfo1",
         plan_id="plan_G2df31A4G5JzQ",

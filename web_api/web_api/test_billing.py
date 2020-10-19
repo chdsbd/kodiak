@@ -233,9 +233,6 @@ def test_handle_checkout_complete(mocker: Any) -> None:
 @pytest.mark.django_db
 def test_handle_checkout_complete_existing_subscription(mocker: Any) -> None:
     """
-    Gracefully update an existing subscription if the customer already has one.
-    """
-    """
     Create a subscription and sync customer.
     """
     customer_id = "cus_i8Pfx3h"
