@@ -932,6 +932,14 @@ class StripeCustomerInformation(models.Model):
     customer_address_state = models.CharField(
         max_length=255, null=True, help_text="State, county, province, or region."
     )
+    customer_discount_id = models.CharField(max_length=255, null=True)
+    customer_discount_coupon_id = models.CharField(max_length=255, null=True)
+    customer_discount_coupon_amount_off = models.IntegerField(null=True)
+    customer_discount_coupon_duration = models.CharField(max_length=255, null=True)
+    customer_discount_coupon_duration_in_months = models.IntegerField(null=True)
+    customer_discount_coupon_name = models.CharField(max_length=255, null=True)
+    customer_discount_coupon_percent_off = models.FloatField(null=True)
+
     _deprecated_customer_currency = models.CharField(
         max_length=255,
         null=True,
@@ -1062,6 +1070,29 @@ class StripeCustomerInformation(models.Model):
             )
             self.customer_address_state = (
                 customer.address.state if customer.address else None
+            )
+            self.customer_discount_id = (
+                customer.discount.id if customer.discount else None
+            )
+            self.customer_discount_coupon_id = (
+                customer.discount.coupon.id if customer.discount else None
+            )
+            self.customer_discount_coupon_amount_off = (
+                customer.discount.coupon.amount_off if customer.discount else None
+            )
+            self.customer_discount_coupon_duration = (
+                customer.discount.coupon.duration if customer.discount else None
+            )
+            self.customer_discount_coupon_duration_in_months = (
+                customer.discount.coupon.duration_in_months
+                if customer.discount
+                else None
+            )
+            self.customer_discount_coupon_name = (
+                customer.discount.coupon.name if customer.discount else None
+            )
+            self.customer_discount_coupon_percent_off = (
+                customer.discount.coupon.percent_off if customer.discount else None
             )
         if subscription:
             self.subscription_id = subscription.id

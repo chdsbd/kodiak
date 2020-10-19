@@ -60,9 +60,14 @@ interface IUsageBillingData {
     readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
+      readonly subTotalCents: number
       readonly perSeatCents: number
       readonly planProductName: string
       readonly planInterval: "month" | "year"
+      readonly discount?: {
+        readonly name: string
+        readonly discountCents: number
+      }
     }
     readonly billingEmail: string
     readonly contactEmails?: string
@@ -926,6 +931,51 @@ function LimitBillingAccessForm({
     </Card>
   )
 }
+function CostDetails({
+  planName,
+  seatCount,
+  subtotalCents,
+  perSeatCents,
+  discount,
+  totalCents,
+}: {
+  planName: string
+  seatCount: number
+  subtotalCents: number
+  perSeatCents: number
+  discount?: {
+    name: string
+    discountCents: number
+  }
+  totalCents: number
+}) {
+  return (
+    <div className="bg-light w-fit-content rounded p-2 mt-1">
+      <div className="d-flex">
+        <div className="mr-4">
+          {planName} ({seatCount})
+        </div>
+        <div className="ml-auto">{formatCents(subtotalCents)}</div>
+      </div>
+      <div className="d-flex small text-muted">
+        <div className="mr-4" />
+        <div className="ml-auto">{formatCents(perSeatCents)} each</div>
+      </div>
+
+      {discount && (
+        <div className="d-flex">
+          <div className="mr-4">{discount.name}</div>
+          <div className="ml-auto">{formatCents(-discount.discountCents)}</div>
+        </div>
+      )}
+
+      <div className="d-flex border-top mt-2 font-weight-bold">
+        <div className="mr-4">Total</div>
+        <div className="ml-auto">{formatCents(totalCents)}</div>
+      </div>
+    </div>
+  )
+}
 function formatRenewalCancelDate(x: string): string {
   return formatDate(new Date(x), "MMMM do, y")
 }
@@ -941,9 +991,14 @@ function Subscription({
     readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
+      readonly subTotalCents: number
       readonly perSeatCents: number
       readonly planProductName: string
       readonly planInterval: "month" | "year"
+      readonly discount?: {
+        readonly name: string
+        readonly discountCents: number
+      }
     }
     readonly billingEmail: string
     readonly contactEmails?: string
@@ -962,6 +1017,7 @@ function Subscription({
   }
   readonly teamId: string
 }) {
+  const [showCostDetails, setShowCostDetails] = React.useState(false)
   const totalCostFormatted = formatCents(subscription.cost.totalCents)
   const planIntervalFormatted =
     subscription.cost.planInterval === "month" ? "Month" : "Year"
@@ -969,6 +1025,9 @@ function Subscription({
   const renewalDateFormatted = formatRenewalCancelDate(
     subscription.nextBillingDate,
   )
+  const toggleCostDetails = () => {
+    setShowCostDetails(s => !s)
+  }
 
   return (
     <Row>
@@ -1009,6 +1068,23 @@ function Subscription({
                   Renews on{" "}
                   <span className="text-body">{renewalDateFormatted}</span>.
                 </Form.Text>
+              )}
+              <Button
+                className="p-0"
+                variant="link"
+                size="sm"
+                onClick={toggleCostDetails}>
+                {showCostDetails ? "Hide" : "Show"} cost details
+              </Button>
+              {showCostDetails && (
+                <CostDetails
+                  perSeatCents={subscription.cost.perSeatCents}
+                  seatCount={subscription.seats}
+                  totalCents={subscription.cost.totalCents}
+                  planName={subscription.cost.planProductName}
+                  subtotalCents={subscription.cost.subTotalCents}
+                  discount={subscription.cost.discount}
+                />
               )}
             </Form.Group>
             <Form.Group>

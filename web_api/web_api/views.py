@@ -52,6 +52,16 @@ def ping(request: HttpRequest) -> HttpResponse:
 DEFAULT_CURRENCY = "usd"
 
 
+def get_discount_cents(
+    sub_total: int, amount_off: Optional[int], percent_off: Optional[float],
+) -> Optional[int]:
+    if amount_off is not None:
+        return amount_off
+    if percent_off is not None:
+        return int(sub_total * percent_off / 100)
+    return None
+
+
 @auth.login_required
 def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(user=request.user, team_id=team_id)
@@ -84,6 +94,23 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         plan_interval = (
             "year" if stripe_customer_info.plan_interval == "year" else "month"
         )
+        sub_total = (
+            stripe_customer_info.plan_amount
+            * stripe_customer_info.subscription_quantity
+        )
+
+        discount_cents = get_discount_cents(
+            sub_total=sub_total,
+            amount_off=stripe_customer_info.customer_discount_coupon_amount_off,
+            percent_off=stripe_customer_info.customer_discount_coupon_percent_off,
+        )
+        if discount_cents and stripe_customer_info.customer_discount_coupon_name:
+            discount = dict(
+                name=stripe_customer_info.customer_discount_coupon_name,
+                discountCents=discount_cents,
+            )
+        else:
+            discount = None
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
@@ -105,10 +132,14 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
                     stripe_customer_info.plan_amount
                     * stripe_customer_info.subscription_quantity
                 ),
+                subTotalCents=sub_total,
                 perSeatCents=stripe_customer_info.plan_amount,
                 # currency is deprecated
                 currency="usd",
                 planInterval=plan_interval,
+                planProductName=stripe_customer_info.plan_product_name
+                or "Kodiak Seat License",
+                discount=discount,
             ),
             billingEmail=stripe_customer_info.customer_email,
             contactEmails=account.contact_emails,

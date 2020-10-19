@@ -22,7 +22,7 @@ def forward(apps: Any, schema_editor: Any) -> None:
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("web_api", "0026_auto_20201019_0117"),
+        ("web_api", "0026_auto_20201019_0257"),
     ]
 
     operations = [migrations.RunPython(forward, migrations.RunPython.noop)]

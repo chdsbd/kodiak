@@ -42,9 +42,14 @@ export interface IUsageBillingPageApiResponse {
     readonly canceledAt?: string
     readonly cost: {
       readonly totalCents: number
+      readonly subTotalCents: number
       readonly perSeatCents: number
       readonly planProductName: string
       readonly planInterval: "month" | "year"
+      readonly discount?: {
+        readonly name: string
+        readonly discountCents: number
+      }
     }
     readonly billingEmail: string
     readonly customerName?: string
