@@ -932,6 +932,44 @@ class StripeCustomerInformation(models.Model):
     customer_address_state = models.CharField(
         max_length=255, null=True, help_text="State, county, province, or region."
     )
+    _deprecated_customer_currency = models.CharField(
+        max_length=255,
+        null=True,
+        db_column="customer_currency",
+        help_text="Three-letter ISO code for the currency the customer can be charged in for recurring billing purposes.",
+    )
+
+    _deprecated_payment_method_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        db_column="payment_method_id",
+        help_text="Unique identifier for Stripe PaymentMethod object.",
+    )
+    # https://stripe.com/docs/api/payment_methods/object
+    _deprecated_payment_method_card_brand = models.CharField(
+        max_length=255,
+        null=True,
+        db_column="payment_method_card_brand",
+        help_text="Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
+    )
+    _deprecated_payment_method_card_exp_month = models.CharField(
+        null=True,
+        db_column="payment_method_card_exp_month",
+        help_text="Two-digit number representing the card’s expiration month.",
+        max_length=255,
+    )
+    _deprecated_payment_method_card_exp_year = models.CharField(
+        null=True,
+        db_column="payment_method_card_exp_year",
+        help_text="Four-digit number representing the card’s expiration year.",
+        max_length=255,
+    )
+    _deprecated_payment_method_card_last4 = models.CharField(
+        max_length=255,
+        db_column="payment_method_card_last4",
+        null=True,
+        help_text="The last four digits of the card.",
+    )
 
     # https://stripe.com/docs/api/plans/object
     plan_id = models.CharField(

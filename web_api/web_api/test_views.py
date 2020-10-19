@@ -292,10 +292,16 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"]["customerAddress"] is None
 
     stripe_customer_information.plan_interval = "year"
+    stripe_customer_information.upcoming_invoice_total = None
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"]["cost"]["planInterval"] == "year"
+    assert (
+        res.json()["subscription"]["cost"]["totalCents"]
+        == 3 * 499
+        != stripe_customer_information.upcoming_invoice_total
+    )
 
     stripe_customer_information.customer_name = "Acme-corp"
     stripe_customer_information.customer_address_line1 = "123 Main Street"

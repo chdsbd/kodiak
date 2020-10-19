@@ -99,7 +99,12 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             if stripe_customer_info.subscription_canceled_at
             else None,
             cost=dict(
-                totalCents=stripe_customer_info.upcoming_invoice_total or 0,
+                totalCents=stripe_customer_info.upcoming_invoice_total
+                if stripe_customer_info.upcoming_invoice_total
+                else (
+                    stripe_customer_info.plan_amount
+                    * stripe_customer_info.subscription_quantity
+                ),
                 perSeatCents=stripe_customer_info.plan_amount,
                 # currency is deprecated
                 currency="usd",
