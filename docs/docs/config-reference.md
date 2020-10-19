@@ -373,9 +373,9 @@ Here's a table of all the options:
 
 | merge method | label                             |
 | ------------ | --------------------------------- |
-| merge        | `kodiak: merge.method = "merge"`  |
-| squash       | `kodiak: merge.method = "squash"` |
-| rebase       | `kodiak: merge.method = "rebase"` |
+| merge        | `kodiak: merge.method = 'merge'`  |
+| squash       | `kodiak: merge.method = 'squash'` |
+| rebase       | `kodiak: merge.method = 'rebase'` |
 
 ## full examples
 
