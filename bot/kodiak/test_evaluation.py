@@ -3545,6 +3545,8 @@ async def test_mergeable_update_autoupdate_label() -> None:
 
     config.update.autoupdate_label = "update me please!"
 
+    # create a pull requests that's behind and failing checks. We should still
+    # update on failing checks.
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
@@ -3558,8 +3560,11 @@ async def test_mergeable_update_autoupdate_label() -> None:
         branch_protection=branch_protection,
         check_runs=[check_run],
     )
-    assert api.update_branch.call_count == 0
+    assert (
+        api.update_branch.call_count == 0
+    ), "we shouldn't update when update.autoupdate_label isn't available on the PR"
 
+    # PR should be updated when set on the PR
     pull_request.labels = [config.update.autoupdate_label]
     api = create_api()
     await mergeable(
