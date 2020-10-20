@@ -50,6 +50,7 @@
       "default": {
         "always": false,
         "require_automerge_label": true,
+        "autoupdate_label": null,
         "blacklist_usernames": [],
         "ignored_usernames": []
       },
@@ -273,6 +274,10 @@
           "title": "Require Automerge Label",
           "default": true,
           "type": "boolean"
+        },
+        "autoupdate_label": {
+          "title": "Autoupdate Label",
+          "type": "string"
         },
         "blacklist_usernames": {
           "title": "Blacklist Usernames",
