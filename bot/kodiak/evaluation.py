@@ -625,16 +625,16 @@ async def mergeable(
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
     meets_label_requirement = (
-        has_automerge_label
-        or not config.update.require_automerge_label
-        or config.update.autoupdate_label in pull_request_labels
+        has_automerge_label or not config.update.require_automerge_label
     )
 
     if (
         need_branch_update
         and not merging
-        and config.update.always
-        and meets_label_requirement
+        and (
+            (config.update.always and meets_label_requirement)
+            or config.update.autoupdate_label in pull_request_labels
+        )
     ):
         if pull_request.author.login in config.update.blacklist_usernames:
             await set_status(

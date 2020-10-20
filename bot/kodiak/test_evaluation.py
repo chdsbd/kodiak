@@ -3532,6 +3532,55 @@ async def test_mergeable_update_always() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_update_autoupdate_label() -> None:
+    """
+    Kodiak should update the PR when the autoupdate_label is set on the PR.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    check_run = create_check_run()
+
+    config.update.autoupdate_label = "update me please!"
+
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
+
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[check_run],
+    )
+    assert api.update_branch.call_count == 0
+
+    pull_request.labels = [config.update.autoupdate_label]
+    api = create_api()
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[check_run],
+    )
+
+    assert api.update_branch.call_count == 1
+    assert api.set_status.call_count == 1
+    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert "branch updated because" in api.set_status.calls[0]["markdown_content"]
+
+    assert api.queue_for_merge.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_mergeable_update_always_require_automerge_label_missing_label() -> None:
     """
     Kodiak should not update branch if update.require_automerge_label is True and we're missing the automerge label.
