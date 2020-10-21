@@ -201,6 +201,7 @@ def create_stripe_customer(
             email=email,
             name=name,
             subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
+            discount=None,
         ),
         "fake-key",
     )
