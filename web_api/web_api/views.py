@@ -105,7 +105,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             percent_off=stripe_customer_info.customer_discount_coupon_percent_off,
         )
         if discount_cents and stripe_customer_info.customer_discount_coupon_name:
-            discount = dict(
+            discount: Optional[dict] = dict(
                 name=stripe_customer_info.customer_discount_coupon_name,
                 discountCents=discount_cents,
             )
