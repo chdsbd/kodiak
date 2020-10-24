@@ -319,6 +319,27 @@ When disable, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 
+### `update.autoupdate_label`
+
+- **type:** `string`
+- **default:** `null`
+
+Pull requests with the `update.autoupdate_label` will be updated when they are out-of-date with their base branch.
+
+This configuration option is similar to `update.always`, but only pull requests with the configured label are affected.
+
+#### example
+
+```toml
+version = 1
+
+[merge]
+automerge_label = "ship it!"
+
+[update]
+autoupdate_label = "update me please!"
+```
+
 <span id="updateblacklist_usernames"/> <!-- handle old links -->
 
 ### `update.ignored_usernames`
