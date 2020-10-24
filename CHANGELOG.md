@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.31.0 - 2020-10-24
+
+### Added
+- Added `update.autoupdate_label` configuration option to support immediate updates of specific PRs. (#529, #536, #538)
+
 ## 0.30.0 - 2020-10-10
 
 ### Added
