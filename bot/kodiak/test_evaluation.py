@@ -3335,8 +3335,17 @@ async def test_mergeable_update_username_blacklist() -> None:
     """
     Kodiak should not update PR if user is blacklisted.
     """
-    # tag
     mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+    check_run = create_check_run()
+
+    pull_request.author.login = "mr-test"
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+    check_run.name = "ci/test-api"
+    check_run.conclusion = CheckConclusionState.FAILURE
 
     blacklist_config = create_config()
     blacklist_config.update.always = True
@@ -3347,18 +3356,6 @@ async def test_mergeable_update_username_blacklist() -> None:
     ignored_config.update.always = True
     ignored_config.update.ignored_usernames = ["mr-test"]
     ignored_config.update.require_automerge_label = True
-
-    pull_request = create_pull_request()
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-
-    branch_protection = create_branch_protection()
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-
-    check_run = create_check_run()
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.FAILURE
 
     for config in (blacklist_config, ignored_config):
         api = create_api()
