@@ -400,7 +400,7 @@ class PRReviewAuthor:
 class PRReviewSchema(BaseModel):
     state: PRReviewState
     createdAt: datetime
-    author: PRReviewAuthorSchema
+    author: Optional[PRReviewAuthorSchema]
 
 
 @dataclass
