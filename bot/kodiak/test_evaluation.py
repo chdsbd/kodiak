@@ -3335,40 +3335,47 @@ async def test_mergeable_update_username_blacklist() -> None:
     """
     Kodiak should not update PR if user is blacklisted.
     """
+    # tag
     mergeable = create_mergeable()
-    api = create_api()
-    config = create_config()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    check_run = create_check_run()
 
-    config.update.always = True
-    config.update.blacklist_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
+    blacklist_config = create_config()
+    blacklist_config.update.always = True
+    blacklist_config.update.blacklist_usernames = ["mr-test"]
+    blacklist_config.update.require_automerge_label = True
+
+    ignored_config = create_config()
+    ignored_config.update.always = True
+    ignored_config.update.ignored_usernames = ["mr-test"]
+    ignored_config.update.require_automerge_label = True
+
+    pull_request = create_pull_request()
     pull_request.author.login = "mr-test"
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    branch_protection = create_branch_protection()
     branch_protection.requiresStatusChecks = True
     branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
+
+    check_run = create_check_run()
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.FAILURE
 
-    await mergeable(
-        api=api,
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        check_runs=[check_run],
-    )
-    assert api.update_branch.call_count == 0
-    assert api.set_status.call_count == 1
-    assert (
-        "not auto updating for update.blacklist_usernames"
-        in api.set_status.calls[0]["msg"]
-    )
+    for config in (blacklist_config, ignored_config):
+        api = create_api()
+        await mergeable(
+            api=api,
+            config=config,
+            pull_request=pull_request,
+            branch_protection=branch_protection,
+            check_runs=[check_run],
+        )
+        assert api.update_branch.call_count == 0
+        assert api.set_status.call_count == 1
+        assert "not auto updating for update." in api.set_status.calls[0]["msg"]
 
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
+        assert api.queue_for_merge.call_count == 0
+        assert api.merge.call_count == 0
+        assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -3377,91 +3384,8 @@ async def test_mergeable_update_username_blacklist_merging() -> None:
     When the PR is merging, Kodiak should ignore update.username_blacklist and
     update the PR as necessary for GitHub branch protections.
     """
+    # tag
     mergeable = create_mergeable()
-    api = create_api()
-    config = create_config()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    check_run = create_check_run()
-
-    config.update.always = True
-    config.update.blacklist_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.SUCCESS
-
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
-    assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_update_ignored_usernames() -> None:
-    api = create_api()
-    mergeable = create_mergeable()
-
-    config = create_config()
-    config.update.always = True
-    config.update.ignored_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
-
-    pull_request = create_pull_request()
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-
-    branch_protection = create_branch_protection()
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-
-    check_run = create_check_run()
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.FAILURE
-
-    await mergeable(
-        api=api,
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        check_runs=[check_run],
-    )
-    assert api.update_branch.call_count == 0
-    assert api.set_status.call_count == 1
-    assert (
-        "not auto updating for update.ignored_usernames"
-        in api.set_status.calls[0]["msg"]
-    )
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_update_ignored_usernames_merging() -> None:
-    api = create_api()
-    mergeable = create_mergeable()
-
-    config = create_config()
-    config.update.always = True
-    config.update.ignored_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
 
     pull_request = create_pull_request()
     pull_request.author.login = "mr-test"
@@ -3475,22 +3399,35 @@ async def test_mergeable_update_ignored_usernames_merging() -> None:
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.SUCCESS
 
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
-    assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
+    # update.blacklist_usernames is an alias of update.ignored_usernames. We
+    # need to test with both.
+    blacklist_config = create_config()
+    blacklist_config.update.always = True
+    blacklist_config.update.blacklist_usernames = ["mr-test"]
+    blacklist_config.update.require_automerge_label = True
 
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
+    ignored_config = create_config()
+    ignored_config.update.always = True
+    ignored_config.update.ignored_usernames = ["mr-test"]
+    ignored_config.update.require_automerge_label = True
+    for config in (blacklist_config, ignored_config):
+        api = create_api()
+        with pytest.raises(PollForever):
+            await mergeable(
+                api=api,
+                config=config,
+                pull_request=pull_request,
+                branch_protection=branch_protection,
+                check_runs=[check_run],
+                merging=True,
+            )
+        assert api.update_branch.call_count == 1
+        assert api.set_status.call_count == 1
+        assert "updating branch" in api.set_status.calls[0]["msg"]
+
+        assert api.queue_for_merge.call_count == 0
+        assert api.merge.call_count == 0
+        assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
