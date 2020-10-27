@@ -3365,10 +3365,10 @@ async def test_mergeable_update_username_blacklist() -> None:
         "not auto updating for update.blacklist_usernames"
         in api.set_status.calls[0]["msg"]
     )
+    assert api.dequeue.call_count == 1
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -3394,22 +3394,24 @@ async def test_mergeable_update_username_blacklist_merging() -> None:
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.SUCCESS
 
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[check_run],
+        merging=True,
+    )
+    assert api.update_branch.call_count == 0
     assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert (
+        "not auto updating for update.blacklist_usernames"
+        in api.set_status.calls[0]["msg"]
+    )
+    assert api.dequeue.call_count == 1
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -3447,14 +3449,14 @@ async def test_mergeable_update_ignored_usernames() -> None:
         "not auto updating for update.ignored_usernames"
         in api.set_status.calls[0]["msg"]
     )
+    assert api.dequeue.call_count == 1
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
-async def test_mergeable_update_ignored_usernames_merging() -> None:
+async def test_mergeable_update_ignored_usernames_merging_behind() -> None:
     api = create_api()
     mergeable = create_mergeable()
 
@@ -3475,22 +3477,24 @@ async def test_mergeable_update_ignored_usernames_merging() -> None:
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.SUCCESS
 
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[check_run],
+        merging=True,
+    )
+    assert api.update_branch.call_count == 0
     assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
+    assert (
+        "not auto updating for update.ignored_usernames"
+        in api.set_status.calls[0]["msg"]
+    )
+    assert api.dequeue.call_count == 1
 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
