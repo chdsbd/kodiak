@@ -3335,7 +3335,6 @@ async def test_mergeable_update_username_blacklist() -> None:
     """
     Kodiak should not update PR if user is blacklisted.
     """
-    # tag
     mergeable = create_mergeable()
 
     blacklist_config = create_config()
@@ -3384,7 +3383,6 @@ async def test_mergeable_update_username_blacklist_merging() -> None:
     When the PR is merging, Kodiak should ignore update.username_blacklist and
     update the PR as necessary for GitHub branch protections.
     """
-    # tag
     mergeable = create_mergeable()
 
     pull_request = create_pull_request()
