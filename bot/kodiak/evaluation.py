@@ -624,10 +624,24 @@ async def mergeable(
         branch_protection.requiresStrictStatusChecks
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
+
+    if need_branch_update:
+        if pull_request.author.login in config.update.blacklist_usernames:
+            await set_status(
+                f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+            )
+            await api.dequeue()
+            return
+        if pull_request.author.login in config.update.ignored_usernames:
+            await set_status(
+                f"🛑 not auto updating for update.ignored_usernames: {config.update.ignored_usernames!r}"
+            )
+            await api.dequeue()
+            return
+
     meets_label_requirement = (
         has_automerge_label or not config.update.require_automerge_label
     )
-
     if (
         need_branch_update
         and not merging
@@ -636,16 +650,6 @@ async def mergeable(
             or config.update.autoupdate_label in pull_request_labels
         )
     ):
-        if pull_request.author.login in config.update.blacklist_usernames:
-            await set_status(
-                f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
-            )
-            return
-        if pull_request.author.login in config.update.ignored_usernames:
-            await set_status(
-                f"🛑 not auto updating for update.ignored_usernames: {config.update.ignored_usernames!r}"
-            )
-            return
         await set_status(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
