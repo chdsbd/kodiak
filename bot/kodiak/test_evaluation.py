@@ -3372,7 +3372,7 @@ async def test_mergeable_update_username_blacklist() -> None:
             )
             assert api.update_branch.call_count == 0
             assert api.set_status.call_count == 1
-            assert "not auto updating for update." in api.set_status.calls[0]["msg"]
+            assert "updates blocked by update." in api.set_status.calls[0]["msg"]
             assert api.dequeue.call_count == 1
 
             assert api.queue_for_merge.call_count == 0

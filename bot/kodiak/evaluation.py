@@ -624,32 +624,32 @@ async def mergeable(
         branch_protection.requiresStrictStatusChecks
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
+    update_always = config.update.always and (
+        has_automerge_label or not config.update.require_automerge_label
+    )
+    has_autoupdate_label = config.update.autoupdate_label in pull_request_labels
+    auto_update_enabled = update_always or has_autoupdate_label
 
-    if need_branch_update:
+    # Dequeue pull request if out-of-date and author in
+    # `update.ignored_usernames`. We cannot update or merge it.
+    #
+    # If `update.autoupdate_label` is applied to the pull request, bypass
+    # `update.ignored_usernames` and let the pull request update.
+    if need_branch_update and not has_autoupdate_label:
         if pull_request.author.login in config.update.blacklist_usernames:
             await set_status(
-                f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+                f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}"
             )
             await api.dequeue()
             return
         if pull_request.author.login in config.update.ignored_usernames:
             await set_status(
-                f"🛑 not auto updating for update.ignored_usernames: {config.update.ignored_usernames!r}"
+                f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}"
             )
             await api.dequeue()
             return
 
-    meets_label_requirement = (
-        has_automerge_label or not config.update.require_automerge_label
-    )
-    if (
-        need_branch_update
-        and not merging
-        and (
-            (config.update.always and meets_label_requirement)
-            or config.update.autoupdate_label in pull_request_labels
-        )
-    ):
+    if need_branch_update and not merging and auto_update_enabled:
         await set_status(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
