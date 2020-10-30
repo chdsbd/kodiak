@@ -816,11 +816,15 @@ class Client:
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
         reviewer_names: Set[str] = {
-            review.author.login for review in reviews if review.author.type != Actor.Bot
+            review.author.login
+            for review in reviews
+            if review.author and review.author.type != Actor.Bot
         }
 
         bot_reviews: List[PRReview] = []
         for review in reviews:
+            if not review.author:
+                continue
             if review.author.type == Actor.User:
                 reviewer_names.add(review.author.login)
             elif review.author.type == Actor.Bot:
@@ -859,7 +863,7 @@ class Client:
                     ),
                 )
                 for review in reviews
-                if review.author.type == Actor.User
+                if review.author and review.author.type == Actor.User
             ],
             key=lambda x: x.createdAt,
         )
