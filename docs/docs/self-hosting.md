@@ -60,6 +60,9 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     # configure app environment (this can also be done through the Heroku web ui)
     heroku config:set -a $APP_NAME GITHUB_APP_ID='<GH_APP_ID>' SECRET_KEY='<GH_APP_SECRET>' GITHUB_PRIVATE_KEY="$(cat github_private_key.pem)" GITHUB_APP_NAME='<GH_APP_NAME>'
 
+    # (optional) configure your Sentry DSN to report any errors Kodiak encounters
+    heroku config:set -a $APP_NAME SENTRY_DSN='<SENTRY_DSN>' 
+
     # Redis v5 is required and provided by RedisCloud
     heroku addons:create -a $APP_NAME rediscloud:30 --wait
 
