@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.32.0 - 2020-10-31
+
+### Changed
+- `update.ignored_usernames` now blocks all pull request updates. `update.autoupdate_label` can be used to override this setting. (#544, #547, #537)
+
+### Fixed
+- Handle null pull request review author (#541)
+
 ## 0.31.0 - 2020-10-24
 
 ### Added
