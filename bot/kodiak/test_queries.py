@@ -765,4 +765,3 @@ async def test_get_reviewers_and_permissions_empty_author(
             author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
         )
     ]
-
