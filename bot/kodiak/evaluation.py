@@ -635,19 +635,26 @@ async def mergeable(
     #
     # If `update.autoupdate_label` is applied to the pull request, bypass
     # `update.ignored_usernames` and let the pull request update.
-    if need_branch_update and not has_autoupdate_label:
-        if pull_request.author.login in config.update.blacklist_usernames:
-            await set_status(
-                f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}"
-            )
-            await api.dequeue()
-            return
-        if pull_request.author.login in config.update.ignored_usernames:
-            await set_status(
-                f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}"
-            )
-            await api.dequeue()
-            return
+    if (
+        need_branch_update
+        and not has_autoupdate_label
+        and pull_request.author.login in config.update.blacklist_usernames
+    ):
+        await set_status(
+            f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+        )
+        await api.dequeue()
+        return
+    if (
+        need_branch_update
+        and not has_autoupdate_label
+        and pull_request.author.login in config.update.ignored_usernames
+    ):
+        await set_status(
+            f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}"
+        )
+        await api.dequeue()
+        return
 
     if need_branch_update and not merging and auto_update_enabled:
         await set_status(
