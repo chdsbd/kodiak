@@ -641,7 +641,8 @@ async def mergeable(
         and pull_request.author.login in config.update.blacklist_usernames
     ):
         await set_status(
-            f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+            f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}",
+            markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
         )
         await api.dequeue()
         return
@@ -651,7 +652,8 @@ async def mergeable(
         and pull_request.author.login in config.update.ignored_usernames
     ):
         await set_status(
-            f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}"
+            f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}",
+            markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
         )
         await api.dequeue()
         return
