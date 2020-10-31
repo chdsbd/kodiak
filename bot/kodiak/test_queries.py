@@ -11,6 +11,7 @@ from requests_async import Response
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
+    Actor,
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
@@ -24,7 +25,9 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewAuthor,
+    PRReviewAuthorSchema,
     PRReviewRequest,
+    PRReviewSchema,
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
@@ -720,3 +723,45 @@ def test_get_commit_authors_error_handling_missing_response() -> None:
     pull_request_data = {"commitHistory": None}
     res = get_commit_authors(pr=pull_request_data)
     assert res == []
+
+
+@pytest.mark.asyncio
+async def test_get_reviewers_and_permissions_empty_author(
+    mocker: Any, api_client: Client
+) -> None:
+    """
+    We should ignore reviews with missing authors.
+
+    `author` becomes null if the GitHub user's account is deleted. This is shown
+    in the GitHub UI as the "ghost" user.
+    """
+
+    async def get_permissions_for_username_patch(username: str) -> Permission:
+        if username == "jdoe":
+            return Permission.WRITE
+        raise Exception
+
+    mocker.patch.object(
+        api_client, "get_permissions_for_username", get_permissions_for_username_patch
+    )
+    res = await api_client.get_reviewers_and_permissions(
+        reviews=[
+            PRReviewSchema(
+                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                state=PRReviewState.COMMENTED,
+                author=PRReviewAuthorSchema(login="jdoe", type=Actor.User),
+            ),
+            PRReviewSchema(
+                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                state=PRReviewState.APPROVED,
+                author=None,
+            ),
+        ]
+    )
+    assert res == [
+        PRReview(
+            createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+            state=PRReviewState.COMMENTED,
+            author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
+        )
+    ]
