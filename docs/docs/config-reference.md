@@ -348,11 +348,9 @@ autoupdate_label = "update me please!"
 - **default:** `[]`
 - **alias:** `update.blacklist_usernames`
 
-When `update.always` is enabled, pull requests opened by a user with a username in the `update.ignored_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+When a pull request's author matches `update.ignored_usernames`, Kodiak will never update the pull request, unless `update.autoupdate_label` is applied to the pull request.
 
 If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
-
-This setting has no effect when `update.always` is disabled.
 
 #### example
 
