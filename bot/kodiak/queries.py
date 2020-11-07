@@ -792,7 +792,7 @@ class Client:
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            logger.error("could not fetch default branch name", res=res)
+            self.log.error("could not fetch default branch name", res=res)
             return None
         return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
