@@ -31,6 +31,7 @@ class WebhookEvent(BaseModel):
     repo_name: str
     pull_request_number: int
     installation_id: str
+    target_name: str
 
     def get_merge_queue_name(self) -> str:
         return get_merge_queue_name(self)
@@ -270,7 +271,9 @@ class RedisWebhookQueue:
         log.info("enqueue webhook event")
         self.start_webhook_worker(queue_name=queue_name)
 
-    async def enqueue_for_repo(self, *, event: WebhookEvent) -> Optional[int]:
+    async def enqueue_for_repo(
+        self, *, event: WebhookEvent, insert_at_start: bool = False
+    ) -> Optional[int]:
         """
         1. get the corresponding repo queue for event
         2. add key to MERGE_QUEUE_NAMES so on restart we can recreate the
@@ -283,9 +286,12 @@ class RedisWebhookQueue:
         queue_name = get_merge_queue_name(event)
         transaction = await self.connection.multi()
         await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
-        await transaction.zadd(
-            queue_name, {event.json(): time.time()}, only_if_not_exists=True
-        )
+        if insert_at_start:
+            await transaction.zadd(queue_name, {event.json(): 0})
+        else:
+            await transaction.zadd(
+                queue_name, {event.json(): time.time()}, only_if_not_exists=True
+            )
         future_results = await transaction.zrange(queue_name, 0, 1000)
         await transaction.exec()
         log = logger.bind(
@@ -306,7 +312,7 @@ class RedisWebhookQueue:
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
-    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}"
+    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}/{event.target_name}"
 
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
