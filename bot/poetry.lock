@@ -52,6 +52,7 @@ version = "0.1.0"
 reference = "319c3aa80f40eccd730ae72e52064874d4428551"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
+
 [[package]]
 category = "dev"
 description = "Atomic file writes."
@@ -273,8 +274,8 @@ category = "main"
 description = "A port of Ruby on Rails inflector to Python"
 name = "inflection"
 optional = false
-python-versions = "*"
-version = "0.3.1"
+python-versions = ">=3.5"
+version = "0.5.1"
 
 [[package]]
 category = "dev"
@@ -518,7 +519,7 @@ category = "main"
 description = "C parser in Python"
 name = "pycparser"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+python-versions = "*"
 version = "2.19"
 
 [[package]]
@@ -850,7 +851,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "cdda3758338739ac6b919d6aba02c957d95001f1a53726badd854366293466d1"
+content-hash = "86b69dc2f8591d653b13bac5829a21bbeb4c5f6151ab70ca3bed0591207406fd"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -881,7 +882,7 @@ httpcore = ["e3d5d110f49012dd3f1980ba5779f91170457cde43851e531e56e6eb08f05357"]
 httptools = ["e00cbd7ba01ff748e494248183abc6e153f49181169d8a3d41bb49132ca01dfc"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 importlib-metadata = ["6dfd58dfe281e8d240937776065dd3624ad5469c835248219bd16cf2e12dbeb7", "cb6ee23b46173539939964df59d3d72c3e0c1b5d54b84f1d8a7e912fe43612db"]
-inflection = ["18ea7fb7a7d152853386523def08736aa8c32636b047ade55f7578c4edeb16ca"]
+inflection = ["1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417", "f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"]
 iniconfig = ["80cf40c597eb564e86346103f609d74efce0f6b4d4f30ec8ce9e2c26411ba437", "e5f92f89355a67de0595932a6c6c02ab4afddc6fcdc0bfc5becd0d60884d3f69"]
 ipdb = ["dce2112557edfe759742ca2d0fee35c59c97b0cc7a05398b791079d78f1519ce"]
 ipython = ["54c5a8aa1eadd269ac210b96923688ccf01ebb2d0f21c18c3c717909583579a8", "e840810029224b56cd0d9e7719dc3b39cf84d577f8ac686547c8ba7a06eeab26"]
