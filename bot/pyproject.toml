@@ -16,7 +16,7 @@ colorama = "^0.4.1"
 databases = "0.3.2"
 asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git"}
 inflection = "0.5.1"
-markdown-html-finder = "^0.2.0"
+markdown-html-finder = "0.2.1"
 markupsafe = "^1.1"
 fastapi = "^0.47.0"
 sentry-sdk = "^0.10.2"
