@@ -34,7 +34,7 @@ responses = "^0.10.9"
 mypy_extensions = "^0.4.3"
 typing_extensions = "^3.7"
 pytest-env = "^0.6.2"
-pytest-mock = "^2.0"
+pytest-mock = "3.3.1"
 ipdb = "^0.12.3"
 pytest-cov = "^2.10"
 

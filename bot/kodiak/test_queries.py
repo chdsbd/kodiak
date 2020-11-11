@@ -1,8 +1,8 @@
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, cast
 
-import arrow
 import asyncio_redis
 import pytest
 from pytest_mock import MockFixture
@@ -170,32 +170,32 @@ method = "squash"
         ],
         reviews=[
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
                 state=PRReviewState.COMMENTED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
                 state=PRReviewState.CHANGES_REQUESTED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:30:52+00:00"),
                 state=PRReviewState.COMMENTED,
                 author=PRReviewAuthor(login="kodiak", permission=Permission.ADMIN),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:43:17+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-23T15:13:29+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="walrus", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-24T10:21:32Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-24T10:21:32+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="kodiakhq", permission=Permission.WRITE),
             ),
@@ -747,12 +747,12 @@ async def test_get_reviewers_and_permissions_empty_author(
     res = await api_client.get_reviewers_and_permissions(
         reviews=[
             PRReviewSchema(
-                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
                 state=PRReviewState.COMMENTED,
                 author=PRReviewAuthorSchema(login="jdoe", type=Actor.User),
             ),
             PRReviewSchema(
-                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
                 state=PRReviewState.APPROVED,
                 author=None,
             ),
@@ -760,7 +760,7 @@ async def test_get_reviewers_and_permissions_empty_author(
     )
     assert res == [
         PRReview(
-            createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+            createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
             state=PRReviewState.COMMENTED,
             author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
         )
