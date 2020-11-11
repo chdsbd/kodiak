@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
-import arrow
 import jwt
 import pydantic
 import requests_async as http
@@ -1071,7 +1070,7 @@ class Client:
             name=CHECK_RUN_NAME,
             head_sha=head_sha,
             status="completed",
-            completed_at=arrow.utcnow().isoformat(),
+            completed_at=datetime.utcnow().isoformat(),
             conclusion="neutral",
             output=dict(title=message, summary=summary or ""),
         )

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from pathlib import Path
 from typing import Tuple
@@ -25,12 +27,7 @@ def client() -> TestClient:
 
 
 def get_body_and_hash(data: dict) -> Tuple[bytes, str]:
-    import hmac
-    import hashlib
-
-    import ujson
-
-    body = ujson.dumps(data).encode()
+    body = json.dumps(data).encode()
     sha = hmac.new(
         key=conf.SECRET_KEY.encode(), msg=body, digestmod=hashlib.sha1
     ).hexdigest()
