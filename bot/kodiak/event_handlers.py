@@ -18,7 +18,7 @@ from kodiak.events import (
     StatusEvent,
 )
 from kodiak.events.status import Branch
-from kodiak.queries import Client, GetOpenPullRequestsResponse
+from kodiak.queries import Client, GetOpenPullRequestsResponseSchema
 from kodiak.queue import WebhookEvent, redis_webhook_queue
 
 logger = structlog.get_logger()
@@ -33,6 +33,7 @@ async def pr_event(pr: PullRequestEvent) -> None:
             repo_owner=pr.repository.owner.login,
             repo_name=pr.repository.name,
             pull_request_number=pr.number,
+            target_name=pr.pull_request.base.ref,
             installation_id=str(pr.installation.id),
         )
     )
@@ -51,6 +52,7 @@ async def check_run(check_run_event: CheckRunEvent) -> None:
                 repo_owner=check_run_event.repository.owner.login,
                 repo_name=check_run_event.repository.name,
                 pull_request_number=pr.number,
+                target_name=pr.base.ref,
                 installation_id=str(check_run_event.installation.id),
             )
         )
@@ -101,7 +103,7 @@ async def status_event(status_event: StatusEvent) -> None:
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
             pr_results = cast(
-                List[Optional[List[GetOpenPullRequestsResponse]]],
+                List[Optional[List[GetOpenPullRequestsResponseSchema]]],
                 await asyncio.gather(*pr_requests),
             )
 
@@ -115,6 +117,7 @@ async def status_event(status_event: StatusEvent) -> None:
                         repo_owner=owner,
                         repo_name=repo,
                         pull_request_number=pr.number,
+                        target_name=pr.base.ref,
                         installation_id=str(installation_id),
                     )
                 )
@@ -131,6 +134,7 @@ async def pr_review(review: PullRequestReviewEvent) -> None:
             repo_owner=review.repository.owner.login,
             repo_name=review.repository.name,
             pull_request_number=review.pull_request.number,
+            target_name=review.pull_request.base.ref,
             installation_id=str(review.installation.id),
         )
     )
@@ -173,6 +177,7 @@ async def push(push_event: PushEvent) -> None:
                     repo_owner=owner,
                     repo_name=repo,
                     pull_request_number=pr.number,
+                    target_name=pr.base.ref,
                     installation_id=installation_id,
                 )
             )

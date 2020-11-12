@@ -15,7 +15,7 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Literal, Protocol
+from typing_extensions import Literal
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
@@ -695,12 +695,13 @@ def create_github_config_file_expression(branch: str) -> str:
     return f"{branch}:.github/{CONFIG_FILE_NAME}"
 
 
-class GetOpenPullRequestsResponse(Protocol):
-    number: int
+class Ref:
+    ref: str
 
 
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
+    base: Ref
 
 
 class SubscriptionExpired(pydantic.BaseModel):
@@ -977,7 +978,7 @@ class Client:
 
     async def get_open_pull_requests(
         self, base: Optional[str] = None, head: Optional[str] = None
-    ) -> Optional[List[GetOpenPullRequestsResponse]]:
+    ) -> Optional[List[GetOpenPullRequestsResponseSchema]]:
         """
         https://developer.github.com/v3/pulls/#list-pull-requests
         """
