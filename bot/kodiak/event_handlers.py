@@ -198,7 +198,7 @@ async def get_redis() -> asyncio_redis.Connection:
 
 def compress_payload(data: dict) -> bytes:
     cctx = zstd.ZstdCompressor()
-    return cast(bytes, cctx.compress(json.dumps(data).encode()))
+    return cctx.compress(json.dumps(data).encode())
 
 
 async def handle_webhook_event(event_name: str, payload: dict) -> None:
