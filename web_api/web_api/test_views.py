@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Optional, Tuple, Type, Union, cast
+from typing import Any, Iterator, Optional, Tuple, Type, Union, cast
 
 import pytest
 import responses
@@ -167,7 +167,7 @@ def create_stripe_customer(
 
 
 @pytest.fixture
-def mocked_responses() -> Any:
+def mocked_responses() -> Iterator[responses.RequestsMock]:
     with responses.RequestsMock() as rsps:
         yield rsps
 
@@ -2322,7 +2322,7 @@ def test_oauth_login(client: Client, state_token: str) -> None:
 
 
 @pytest.fixture
-def successful_sync_accounts_response(mocked_responses: Any) -> None:
+def successful_sync_accounts_response(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.GET,
         "https://api.github.com/user/installations",
@@ -2387,7 +2387,7 @@ def successful_sync_accounts_response(mocked_responses: Any) -> None:
 
 
 @pytest.fixture
-def successful_responses(mocked_responses: Any) -> None:
+def successful_responses(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.POST,
         "https://github.com/login/oauth/access_token",
@@ -2508,7 +2508,7 @@ def test_oauth_complete_success_existing_account(
 
 
 @pytest.fixture
-def failing_sync_accounts_response(mocked_responses: Any) -> None:
+def failing_sync_accounts_response(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.GET,
         "https://api.github.com/user/installations",
