@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
+"""
+Skip job if there are no changes against master within path.
+
+With this utility, changes to docs don't require running the bot tests.
+"""
+
 import subprocess
 import sys
 
 
 def main(path: str) -> None:
-    """
-
-    - if the branch doesn't have a pull request
-    """
-
-    res = subprocess.run(["git", "diff", "--name-only", "--exit-code", "master...", path], capture_output=True)
+    res = subprocess.run(
+        ["git", "diff", "--name-only", "--exit-code", "master...", path]
+    )
     # if we have changes, return now
     if res.returncode == 0:
+        print("no changes found, halting circleci job")
         subprocess.run(["circleci", "step", "halt"], check=True)
         return
     if res.returncode == 1:
+        print("changes found, continuing with build")
         return
     raise ValueError("Unexpected return code {}".format(res.returncode))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     progname = sys.argv[0]
     path = sys.argv[1]
     main(path)
