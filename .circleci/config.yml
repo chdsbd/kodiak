@@ -13,6 +13,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes bot
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -48,6 +51,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes bot
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -94,6 +100,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes docs
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -120,6 +129,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes docs
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -144,6 +156,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes docs
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -181,6 +196,9 @@ jobs:
       DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes web_api
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -216,6 +234,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes web_api
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -256,6 +277,9 @@ jobs:
       DATABASE_URL: postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes web_api
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -307,6 +331,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes web_ui
       - restore_cache:
           keys:
             - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
@@ -331,6 +358,9 @@ jobs:
           password: $DOCKER_PASS
     steps:
       - checkout
+      - run:
+          name: check for changes
+          command: ./s/exit_circleci_if_no_changes web_ui
       - restore_cache:
           keys:
             - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
