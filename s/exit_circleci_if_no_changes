@@ -16,7 +16,7 @@ def main(path: str) -> None:
         return
     if res.returncode == 1:
         return
-    raise ValueError(f"Unexpected return code {res.returncode}")
+    raise ValueError("Unexpected return code {}".format(res.returncode))
 
 
 if __name__ == '__main__':
