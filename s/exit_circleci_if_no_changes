@@ -11,7 +11,9 @@ import sys
 
 def main(path: str) -> None:
     # fix refs: https://steve.dignam.xyz/2020/05/03/faster-ci-builds-in-a-monorepo/
+    print("updating master ref")
     subprocess.run(["git", "branch", "-f", "master", "origin/master"], check=True)
+    print("checking for changes")
     res = subprocess.run(
         ["git", "diff", "--name-only", "--exit-code", "master...", path]
     )
