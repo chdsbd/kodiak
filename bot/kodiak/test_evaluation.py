@@ -3207,27 +3207,24 @@ def test_get_merge_body_include_pull_request_author_mannequin() -> None:
 
 def test_get_merge_body_include_pull_request_author_invalid_body_style() -> None:
     """
-    We only include trailers MergeBodyStyle.pull_request_body. Verify we don't
-    include trailers for MergeBodyStyle.github_default or MergeBodyStyle.empty.
+    We only include trailers MergeBodyStyle.pull_request_body and
+    MergeBodyStyle.empty. Verify we don't include trailers for
+    MergeBodyStyle.github_default.
     """
     pull_request = create_pull_request()
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_pull_request_author = True
 
-    for body_style, commit_message in (
-        (MergeBodyStyle.github_default, None),
-        (MergeBodyStyle.empty, ""),
-    ):
-        config.merge.message.body = body_style
-        actual = get_merge_body(
-            config=config,
-            pull_request=pull_request,
-            merge_method=MergeMethod.merge,
-            commit_authors=[],
-        )
-        expected = MergeBody(merge_method="merge", commit_message=commit_message)
-        assert actual == expected
+    config.merge.message.body = MergeBodyStyle.github_default
+    actual = get_merge_body(
+        config=config,
+        pull_request=pull_request,
+        merge_method=MergeMethod.merge,
+        commit_authors=[],
+    )
+    expected = MergeBody(merge_method="merge", commit_message=None)
+    assert actual == expected
 
 
 def test_get_merge_body_include_coauthors() -> None:
@@ -3266,33 +3263,26 @@ def test_get_merge_body_include_coauthors() -> None:
 
 def test_get_merge_body_include_coauthors_invalid_body_style() -> None:
     """
-    We only include trailers for MergeBodyStyle.pull_request_body. Verify we
-    don't add coauthor trailers for MergeBodyStyle.github_default or
-    MergeBodyStyle.empty.
+    We only include trailers for MergeBodyStyle.pull_request_body and MergeBodyStyle.empty. Verify we don't add coauthor trailers for MergeBodyStyle.github_default.
     """
     pull_request = create_pull_request()
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_coauthors = True
-
-    for (body_style, commit_message) in (
-        (MergeBodyStyle.github_default, None),
-        (MergeBodyStyle.empty, ""),
-    ):
-        config.merge.message.body = body_style
-        actual = get_merge_body(
-            config=config,
-            pull_request=pull_request,
-            merge_method=MergeMethod.merge,
-            commit_authors=[
-                CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
-                CommitAuthor(
-                    databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
-                ),
-            ],
-        )
-        expected = MergeBody(merge_method="merge", commit_message=commit_message)
-        assert actual == expected
+    config.merge.message.body = MergeBodyStyle.github_default
+    actual = get_merge_body(
+        config=config,
+        pull_request=pull_request,
+        merge_method=MergeMethod.merge,
+        commit_authors=[
+            CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
+            CommitAuthor(
+                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            ),
+        ],
+    )
+    expected = MergeBody(merge_method="merge", commit_message=None)
+    assert actual == expected
 
 
 @pytest.mark.asyncio
@@ -3301,33 +3291,37 @@ async def test_mergeable_include_coauthors() -> None:
     Include coauthors should attach coauthor when `merge.message.body = "pull_request_body"`
     """
     mergeable = create_mergeable()
-    api = create_api()
     config = create_config()
     config.merge.message.include_coauthors = True
-    config.merge.message.body = MergeBodyStyle.pull_request_body
 
-    await mergeable(
-        api=api,
-        config=config,
-        commit_authors=[
-            CommitAuthor(
-                databaseId=73213123, name="Barry Block", login="b-block", type="User"
-            )
-        ],
-        merging=True,
-    )
-    assert api.set_status.call_count == 2
-    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
-    assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
+    for body_style in (MergeBodyStyle.pull_request_body, MergeBodyStyle.empty):
+        config.merge.message.body = body_style
+        api = create_api()
+        await mergeable(
+            api=api,
+            config=config,
+            commit_authors=[
+                CommitAuthor(
+                    databaseId=73213123,
+                    name="Barry Block",
+                    login="b-block",
+                    type="User",
+                )
+            ],
+            merging=True,
+        )
+        assert api.set_status.call_count == 2
+        assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+        assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
 
-    assert api.merge.call_count == 1
-    assert (
-        "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
-        in api.merge.calls[0]["commit_message"]
-    )
-    assert api.update_branch.call_count == 0
-    assert api.queue_for_merge.call_count == 0
-    assert api.dequeue.call_count == 0
+        assert api.merge.call_count == 1
+        assert (
+            "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
+            in api.merge.calls[0]["commit_message"]
+        )
+        assert api.update_branch.call_count == 0
+        assert api.queue_for_merge.call_count == 0
+        assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
