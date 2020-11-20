@@ -25,6 +25,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -60,6 +61,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -193,6 +195,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -228,6 +231,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -268,6 +272,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
