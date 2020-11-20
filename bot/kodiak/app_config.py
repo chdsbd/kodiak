@@ -35,6 +35,19 @@ USAGE_REPORTING_QUEUE_LENGTH = config(
 
 SUBSCRIPTIONS_ENABLED = config("SUBSCRIPTIONS_ENABLED", cast=bool, default=False)
 
+# change the API root for self-hosted GitHub instances
+GITHUB_API_ROOT = config("GITHUB_API_ROOT", default="https://api.github.com")
+
+# additional path to github api
+GITHUB_API_PATH = config("GITHUB_API_PATH", default=None)
+
+# additional path to github graphql endpoint
+GITHUB_API_GRAPHQL_PATH = config("GITHUB_API_GRAPHQL_PATH", default=None)
+
+# an extra header to send with API requests.
+GITHUB_API_HEADER_NAME = config("GITHUB_API_HEADER_NAME", default=None)
+GITHUB_API_HEADER_VALUE = config("GITHUB_API_HEADER_VALUE", default=None)
+
 if GITHUB_PRIVATE_KEY is not None:
     PRIVATE_KEY = GITHUB_PRIVATE_KEY
 elif GITHUB_PRIVATE_KEY_PATH is not None:
