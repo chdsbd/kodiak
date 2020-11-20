@@ -197,6 +197,10 @@ disable=print-statement,
         cyclic-import,
         # black handles this
         multiple-statements,
+        # doesn't understand .pyi files
+        function-redefined,
+        # can't find imports in .pyi files
+        import-error
 
 
 # Enable the message, report, category or checker with the given id(s). You can
