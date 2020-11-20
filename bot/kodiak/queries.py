@@ -1129,7 +1129,9 @@ class Client:
             # to be backwards compatible we must handle the case of `data` missing.
             try:
                 subscription_blocker = SeatsExceeded.parse_raw(
-                    real_response.get(b"data")
+                    # Pydantic says it doesn't allow Nones, but passing a None
+                    # raises a ValidationError which is fine.
+                    real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
                 logger.warning("failed to parse seats_exceeded data", exc_info=True)
