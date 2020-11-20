@@ -6,6 +6,7 @@ The web API for the Kodiak dashboard.
 
 ```console
 # install dependencies
+poetry config settings.virtualenvs.in-project true
 poetry install
 
 # copy & modify example .env file
