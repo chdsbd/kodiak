@@ -194,7 +194,9 @@ disable=print-statement,
 
         # kodiak
         # doesn't seem to work 100%.
-        cyclic-import
+        cyclic-import,
+        # black handles this
+        multiple-statements,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
