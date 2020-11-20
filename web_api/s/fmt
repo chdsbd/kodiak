@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 set -eu
-poetry run black .
+./.venv/bin/black .
