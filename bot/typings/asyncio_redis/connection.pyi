@@ -21,7 +21,7 @@ class Connection:
         host: str = ...,
         port: int = ...,
         *,
-        password: Optional[str] = ...,
+        password: Optional[Union[str, bytes]] = ...,
         db: int = ...,
         encoder: Optional[BaseEncoder] = ...,
         auto_reconnect: bool = ...,

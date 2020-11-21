@@ -185,8 +185,8 @@ async def get_redis() -> asyncio_redis.Connection:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname,
-            port=conf.REDIS_URL.port,
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
             password=(
                 conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
             ),
