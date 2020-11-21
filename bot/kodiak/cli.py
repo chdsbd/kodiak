@@ -37,7 +37,7 @@ def list_installs() -> None:
         Accept="application/vnd.github.machine-man-preview+json",
         Authorization=f"Bearer {app_token}",
     )
-    url = f"https://{conf.GITHUB_API_ROOT}{conf.GITHUB_API_PATH}/app/installations"
+    url = f"{conf.GITHUB_V3_API_ROOT}/app/installations"
     while True:
         res = requests.get(url, headers=headers)
         res.raise_for_status()
