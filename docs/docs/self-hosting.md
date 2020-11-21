@@ -94,8 +94,6 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     #
     heroku config:set -a $APP_NAME GITHUB_API_HEADER_NAME="<GITHUB_API_HEADER_NAME>"
     heroku config:set -a $APP_NAME GITHUB_API_HEADER_VALUE="<GITHUB_API_HEADER_VALUE>"
-    ```
-
 
     # Redis v5 is required and provided by RedisCloud
     heroku addons:create -a $APP_NAME rediscloud:30 --wait
