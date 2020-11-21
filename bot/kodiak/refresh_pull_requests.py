@@ -124,7 +124,7 @@ async def refresh_pull_requests_for_installation(
     login = await get_login_for_install(installation_id=installation_id)
     token = await get_token_for_install(installation_id=installation_id)
     res = await http.post(
-        {conf.GITHUB_V4_API_URL},
+        conf.GITHUB_V4_API_URL,
         json=dict(query=QUERY, variables=dict(login=login)),
         headers=dict(Authorization=f"Bearer {token}"),
     )
