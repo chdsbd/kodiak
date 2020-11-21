@@ -1082,7 +1082,7 @@ class Client:
             name=CHECK_RUN_NAME,
             head_sha=head_sha,
             status="completed",
-            completed_at=datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+            completed_at=datetime.now(timezone.utc).isoformat(),
             conclusion="neutral",
             output=dict(title=message, summary=summary or ""),
         )
