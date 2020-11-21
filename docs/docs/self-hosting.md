@@ -63,6 +63,17 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     # (optional) configure your Sentry DSN to report any errors Kodiak encounters
     heroku config:set -a $APP_NAME SENTRY_DSN='<SENTRY_DSN>'
 
+    # (optional) GitHub Enterprise users should set their v3 and v4 GitHub API URLs
+    #
+    # GITHUB_V3_API_ROOT
+    #   http(s)://[hostname]/api/v3, instead of https://api.github.com.
+    #
+    # GITHUB_V4_API_URL
+    #   http(s)://[hostname]/api/graphql, instead of https://api.github.com/graphql.
+    heroku config:set -a $APP_NAME GITHUB_V3_API_ROOT="https://github.acme-corp.intern/api/v3"
+    heroku config:set -a $APP_NAME GITHUB_V4_API_URL="https://github.acme-corp.intern/api/graphql"
+
+
     # Redis v5 is required and provided by RedisCloud
     heroku addons:create -a $APP_NAME rediscloud:30 --wait
 
