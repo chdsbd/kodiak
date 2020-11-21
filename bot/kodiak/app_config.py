@@ -5,6 +5,7 @@ from typing import Any, Optional, Type, TypeVar, overload
 import databases
 from starlette.config import Config, undefined
 from starlette.datastructures import CommaSeparatedStrings
+from yarl import URL
 
 from kodiak.logging import get_logging_level
 
@@ -82,3 +83,7 @@ else:
     raise ValueError(
         "Either GITHUB_PRIVATE_KEY_PATH, GITHUB_PRIVATE_KEY, or GITHUB_PRIVATE_KEY_BASE64 must be set"
     )
+
+
+def v3_url(path: str) -> str:
+    return str(URL(GITHUB_V3_API_ROOT).with_path(path))

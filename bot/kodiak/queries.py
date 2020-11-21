@@ -16,7 +16,6 @@ from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
 from typing_extensions import Literal, Protocol
-from yarl import URL
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
@@ -27,10 +26,6 @@ logger = structlog.get_logger()
 CHECK_RUN_NAME = "kodiakhq: status"
 APPLICATION_ID = "kodiak"
 CONFIG_FILE_NAME = ".kodiak.toml"
-
-
-def v3_url(path: str) -> str:
-    return str(URL(conf.GITHUB_v3_url_ROOT).with_path(path))
 
 
 class ErrorLocation(TypedDict):
@@ -810,7 +805,7 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
-                v3_url(
+                conf.v3_url(
                     f"/repos/{self.owner}/{self.repo}/collaborators/{username}/permission"
                 ),
                 headers=headers,
@@ -1003,7 +998,7 @@ class Client:
             params["head"] = head
         async with self.throttler:
             res = await self.session.get(
-                v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
                 params=params,
                 headers=headers,
             )
@@ -1022,7 +1017,7 @@ class Client:
         ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
-                v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/{ref}"),
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/{ref}"),
                 headers=headers,
             )
 
@@ -1030,7 +1025,7 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.put(
-                v3_url(
+                conf.v3_url(
                     f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch"
                 ),
                 headers=headers,
@@ -1044,14 +1039,16 @@ class Client:
         body = dict(event="APPROVE")
         async with self.throttler:
             return await self.session.post(
-                v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews"),
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews"
+                ),
                 headers=headers,
                 json=body,
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
         async with self.throttler:
             return await self.session.get(url, headers=headers)
 
@@ -1072,7 +1069,7 @@ class Client:
         if commit_message is not None:
             body["commit_message"] = commit_message
         headers = await get_headers(installation_id=self.installation_id)
-        url = v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
 
@@ -1080,7 +1077,7 @@ class Client:
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
         body = dict(
             name=CHECK_RUN_NAME,
             head_sha=head_sha,
@@ -1096,7 +1093,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                v3_url(f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels"),
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels"
+                ),
                 json=dict(labels=[label]),
                 headers=headers,
             )
@@ -1106,7 +1105,7 @@ class Client:
         escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
-                v3_url(
+                conf.v3_url(
                     f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}"
                 ),
                 headers=headers,
@@ -1116,7 +1115,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                v3_url("/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"),
+                conf.v3_url(
+                    "/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
+                ),
                 json=dict(body=body),
                 headers=headers,
             )
@@ -1193,7 +1194,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     )
     async with throttler:
         res = await http.post(
-            v3_url(f"/app/installations/{installation_id}/access_tokens"),
+            conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
             headers=dict(
                 Accept="application/vnd.github.machine-man-preview+json",
                 Authorization=f"Bearer {app_token}",
