@@ -1106,7 +1106,7 @@ class Client:
         async with self.throttler:
             return await self.session.delete(
                 conf.v3_url(
-                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{label}"
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}"
                 ),
                 headers=headers,
             )
