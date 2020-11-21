@@ -200,7 +200,9 @@ disable=print-statement,
         # doesn't understand .pyi files
         function-redefined,
         # can't find imports in .pyi files
-        import-error
+        import-error,
+        # mypy already does this
+        signature-differs,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
