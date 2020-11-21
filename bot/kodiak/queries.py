@@ -1116,7 +1116,7 @@ class Client:
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
-                    "/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
                 ),
                 json=dict(body=body),
                 headers=headers,
