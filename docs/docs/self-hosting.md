@@ -78,7 +78,7 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     heroku config:set -a $APP_NAME GITHUB_V4_API_URL="<GITHUB_V4_API_URL>"
 
     # (optional) Some GitHub Enterprise users require an extra header for API requests.
-    #   
+    #
     # GITHUB_API_HEADER_NAME
     #   default: null
     #
@@ -87,13 +87,14 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     #
     #   If your API required the following `X-Acme-Api` header,
     #   X-Acme-Api: MyAcmeToken
-    #   
+    #
     #   Your headers would be the following
     #   GITHUB_API_HEADER_NAME='X-Acme-Api'
     #   GITHUB_API_HEADER_VALUE='MyAcmeToken'
-    # 
+    #
     heroku config:set -a $APP_NAME GITHUB_API_HEADER_NAME="<GITHUB_API_HEADER_NAME>"
     heroku config:set -a $APP_NAME GITHUB_API_HEADER_VALUE="<GITHUB_API_HEADER_VALUE>"
+    ```
 
 
     # Redis v5 is required and provided by RedisCloud
