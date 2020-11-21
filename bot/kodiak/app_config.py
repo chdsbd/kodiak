@@ -64,7 +64,9 @@ GITHUB_V3_API_ROOT = config("GITHUB_V3_API_ROOT", default="https://api.github.co
 
 # For GitHub Enterprise, the v4 API has the form:
 # http(s)://[hostname]/api/graphql, instead of https://api.github.com/graphql.
-GITHUB_V4_API_URL = config("GITHUB_V4_API_URL", default="https://api.github.com/graphql")
+GITHUB_V4_API_URL = config(
+    "GITHUB_V4_API_URL", default="https://api.github.com/graphql"
+)
 
 # An extra header to send with git API requests.
 GITHUB_API_HEADER_NAME = config("GITHUB_API_HEADER_NAME", default=None)

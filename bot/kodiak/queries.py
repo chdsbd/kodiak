@@ -742,8 +742,13 @@ class Client:
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
-        if conf.GITHUB_API_HEADER_NAME is not None and conf.GITHUB_API_HEADER_VALUE is not None:
-            self.session.headers[conf.GITHUB_API_HEADER_NAME] = conf.GITHUB_API_HEADER_VALUE
+        if (
+            conf.GITHUB_API_HEADER_NAME is not None
+            and conf.GITHUB_API_HEADER_VALUE is not None
+        ):
+            self.session.headers[
+                conf.GITHUB_API_HEADER_NAME
+            ] = conf.GITHUB_API_HEADER_VALUE
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
@@ -770,8 +775,7 @@ class Client:
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                {conf.GITHUB_V4_API_URL},
-                json=(dict(query=query, variables=variables)),
+                {conf.GITHUB_V4_API_URL}, json=(dict(query=query, variables=variables))
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
