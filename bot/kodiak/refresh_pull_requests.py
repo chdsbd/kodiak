@@ -108,7 +108,7 @@ async def get_login_for_install(*, installation_id: str) -> str:
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
     res = await http.get(
-        f"{conf.GITHUB_V3_API_ROOT}/app/installations/{installation_id}",
+        conf.v3_url(f"/app/installations/{installation_id}"),
         headers=dict(
             Accept="application/vnd.github.machine-man-preview+json",
             Authorization=f"Bearer {app_token}",
