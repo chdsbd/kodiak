@@ -263,7 +263,7 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
-    async def queue_for_merge(self, first: bool = False) -> Optional[int]:
+    async def queue_for_merge(self, first: bool) -> Optional[int]:
         ...
 
     async def update_branch(self) -> None:
