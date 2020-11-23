@@ -4041,12 +4041,12 @@ async def test_mergeable_merge_failure_label() -> None:
     assert "kodiak disabled by disable_bot_label" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
 
-    assert api.update_branch.call_count == 0
     assert api.merge.call_count == 0
     assert api.remove_label.call_count == 0
     assert api.add_label.call_count == 0
     assert api.create_comment.call_count == 0
     assert api.queue_for_merge.call_count == 0
+    assert api.update_branch.call_count == 0
 
 
 @pytest.mark.asyncio
