@@ -145,7 +145,7 @@ async def evaluate_pr(
 
 
 class QueueForMergeCallback(Protocol):
-    async def __call__(self, first: bool) -> Optional[int]:
+    async def __call__(self, *, first: bool) -> Optional[int]:
         ...
 
 

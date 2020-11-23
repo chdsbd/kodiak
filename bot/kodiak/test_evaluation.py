@@ -157,7 +157,7 @@ class MockQueueForMerge(BaseMockFunc):
     # `3` is an arbitrary position.
     return_value: Optional[int] = 3
 
-    async def __call__(self, first: bool) -> Optional[int]:
+    async def __call__(self, *, first: bool) -> Optional[int]:
         self.log_call(dict(first=first))
         return self.return_value
 
