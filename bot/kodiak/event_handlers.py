@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import List, Optional, Set, cast
+from typing import List, Optional, Set
 
 import asyncio_redis
 import structlog
@@ -18,7 +18,7 @@ from kodiak.events import (
     StatusEvent,
 )
 from kodiak.events.status import Branch
-from kodiak.queries import Client, GetOpenPullRequestsResponseSchema
+from kodiak.queries import Client
 from kodiak.queue import WebhookEvent, redis_webhook_queue
 
 logger = structlog.get_logger()
