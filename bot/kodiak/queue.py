@@ -78,8 +78,8 @@ async def process_webhook_event(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge() -> Optional[int]:
-        return await webhook_queue.enqueue_for_repo(event=webhook_event)
+    async def queue_for_merge(*, first: bool) -> Optional[int]:
+        return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
     await evaluate_pr(
@@ -144,7 +144,7 @@ async def process_repo_queue(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge() -> Optional[int]:
+    async def queue_for_merge(*, first: bool) -> Optional[int]:
         raise NotImplementedError
 
     log.info("evaluate PR for merging")
@@ -272,7 +272,7 @@ class RedisWebhookQueue:
         self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(
-        self, *, event: WebhookEvent, insert_at_start: bool = False
+        self, *, event: WebhookEvent, first: bool
     ) -> Optional[int]:
         """
         1. get the corresponding repo queue for event
@@ -286,9 +286,13 @@ class RedisWebhookQueue:
         queue_name = get_merge_queue_name(event)
         transaction = await self.connection.multi()
         await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
-        if insert_at_start:
-            await transaction.zadd(queue_name, {event.json(): 0})
+        if first:
+            # place at front of queue. To allow us to always place this PR at
+            # the front, we should not pass only_if_not_exists.
+            await transaction.zadd(queue_name, {event.json(): 1.0})
         else:
+            # use only_if_not_exists to prevent changing queue positions on new
+            # webhook events.
             await transaction.zadd(
                 queue_name, {event.json(): time.time()}, only_if_not_exists=True
             )

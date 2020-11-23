@@ -8,7 +8,7 @@ from typing_extensions import Protocol
 
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.errors import ApiCallException
-from kodiak.pull_request import PRV2, EventInfoResponse
+from kodiak.pull_request import PRV2, EventInfoResponse, QueueForMergeCallback
 from kodiak.queries import (
     BranchProtectionRule,
     Client,
@@ -89,7 +89,7 @@ method = "squash"
     )
 
 
-async def noop() -> None:
+async def noop(*args: object, **kwargs: object) -> None:
     return None
 
 
@@ -150,7 +150,7 @@ def create_prv2(
     repo: str = "incite",
     number: int = 8634,
     dequeue_callback: Callable[[], Awaitable] = noop,
-    queue_for_merge_callback: Callable[[], Awaitable] = noop,
+    queue_for_merge_callback: QueueForMergeCallback = noop,
     requeue_callback: Callable[[], Awaitable] = noop,
     client: Optional[Type[FakeClientProtocol]] = None,
 ) -> PRV2:
