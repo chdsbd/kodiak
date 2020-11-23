@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- add new config option (`merge.priority_merge_label`) to place PR at front of merge queue. (#573, #555)
+
 ## 0.33.0 - 2020-11-22
 
 ### Added
