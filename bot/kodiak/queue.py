@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import typing
+import urllib
 from typing import Optional
 
 import asyncio_redis
@@ -316,7 +317,8 @@ class RedisWebhookQueue:
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
-    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}/{event.target_name}"
+    escaped_target = urllib.parse.quote(event.target_name)
+    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}/{escaped_target}"
 
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
