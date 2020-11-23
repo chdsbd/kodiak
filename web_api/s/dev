@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eux
 
-poetry run ./manage.py runserver
+./.venv/bin/python ./manage.py runserver

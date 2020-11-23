@@ -185,8 +185,8 @@ async def get_redis() -> asyncio_redis.Connection:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname,
-            port=conf.REDIS_URL.port,
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
             password=(
                 conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
             ),
@@ -198,7 +198,7 @@ async def get_redis() -> asyncio_redis.Connection:
 
 def compress_payload(data: dict) -> bytes:
     cctx = zstd.ZstdCompressor()
-    return cast(bytes, cctx.compress(json.dumps(data).encode()))
+    return cctx.compress(json.dumps(data).encode())
 
 
 async def handle_webhook_event(event_name: str, payload: dict) -> None:
