@@ -695,7 +695,7 @@ def create_github_config_file_expression(branch: str) -> str:
     return f"{branch}:.github/{CONFIG_FILE_NAME}"
 
 
-class Ref:
+class Ref(pydantic.BaseModel):
     ref: str
 
 

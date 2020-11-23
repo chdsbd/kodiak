@@ -12,11 +12,11 @@ class Repository(pydantic.BaseModel):
     owner: Owner
 
 
-class Ref:
+class Ref(pydantic.BaseModel):
     ref: str
 
 
-class PullRequest:
+class PullRequest(pydantic.BaseModel):
     base: Ref
 
 

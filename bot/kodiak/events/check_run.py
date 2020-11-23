@@ -5,7 +5,7 @@ import pydantic
 from kodiak.events.base import GithubEvent
 
 
-class Ref:
+class Ref(pydantic.BaseModel):
     ref: str
 
 
