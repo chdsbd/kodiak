@@ -285,10 +285,12 @@ class RedisWebhookQueue:
         queue_name = get_merge_queue_name(event)
         transaction = await self.connection.multi()
         await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
-        position = 1.0 if first else time.time()
-        await transaction.zadd(
-            queue_name, {event.json(): position}, only_if_not_exists=True
-        )
+        if first:
+            await transaction.zadd(queue_name, {event.json(): 1.0})
+        else:
+            await transaction.zadd(
+                queue_name, {event.json(): time.time()}, only_if_not_exists=True
+            )
         future_results = await transaction.zrange(queue_name, 0, 1000)
         await transaction.exec()
         log = logger.bind(
