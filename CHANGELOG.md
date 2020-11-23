@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.33.0 - 2020-11-22
+
+### Added
+- Added support for GitHub Enterprise. API paths can now be specified via environment variables. See the [self hosting docs](https://kodiakhq.com/docs/self-hosting) for more information. (#566)
+
+### Changed
+- `merge.message.body` no longer overrides `merge.message.include_coauthors`. (#561)
+
 ## 0.32.0 - 2020-10-31
 
 ### Changed
