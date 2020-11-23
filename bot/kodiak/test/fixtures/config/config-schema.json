@@ -37,6 +37,7 @@
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
         "prioritize_ready_to_merge": false,
+        "priority_merge_label": null,
         "do_not_merge": false
       },
       "allOf": [
@@ -253,6 +254,10 @@
           "title": "Prioritize Ready To Merge",
           "default": false,
           "type": "boolean"
+        },
+        "priority_merge_label": {
+          "title": "Priority Merge Label",
+          "type": "string"
         },
         "do_not_merge": {
           "title": "Do Not Merge",

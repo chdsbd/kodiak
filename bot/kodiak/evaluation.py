@@ -263,7 +263,7 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
-    async def queue_for_merge(self) -> Optional[int]:
+    async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         ...
 
     async def update_branch(self) -> None:
@@ -1033,7 +1033,8 @@ branch protection requirements.
             await set_status("merge complete 🎉")
 
     else:
-        position_in_queue = await api.queue_for_merge()
+        priority_merge = config.merge.priority_merge_label in pull_request.labels
+        position_in_queue = await api.queue_for_merge(first=priority_merge)
         if position_in_queue is None:
             # this case should be rare/impossible.
             log.warning("couldn't find position for enqueued PR")
