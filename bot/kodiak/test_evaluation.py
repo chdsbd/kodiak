@@ -157,8 +157,8 @@ class MockQueueForMerge(BaseMockFunc):
     # `3` is an arbitrary position.
     return_value: Optional[int] = 3
 
-    async def __call__(self) -> Optional[int]:
-        self.log_call(dict())
+    async def __call__(self, first: bool = False) -> Optional[int]:
+        self.log_call(dict(first=first))
         return self.return_value
 
 
@@ -4053,4 +4053,45 @@ async def test_mergeable_merge_failure_label() -> None:
     assert api.add_label.call_count == 0
     assert api.create_comment.call_count == 0
     assert api.queue_for_merge.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_priority_merge_label() -> None:
+    """
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    config.merge.priority_merge_label = "merge this PR stat!"
+
+    # check default case.
+    await mergeable(api=api, config=config)
+    assert api.set_status.call_count == 1
+    assert "enqueued" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert (
+        api.queue_for_merge.calls[0]["first"] is False
+    ), "by default we should place PR at end of queue (first=False)"
+
+    assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0
+
+    # check merge.priority_merge_label.
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.labels.append(config.merge.priority_merge_label)
+    await mergeable(api=api, config=config, pull_request=pull_request)
+
+    assert api.set_status.call_count == 1
+    assert "enqueued" in api.set_status.calls[0]["msg"]
+
+    assert api.queue_for_merge.call_count == 1
+    assert (
+        api.queue_for_merge.calls[0]["first"] is True
+    ), "when merge.priority_merge_label is configured we should place PR at front of queue"
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0
