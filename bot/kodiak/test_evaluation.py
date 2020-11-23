@@ -4058,6 +4058,8 @@ async def test_mergeable_merge_failure_label() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_priority_merge_label() -> None:
     """
+    When a PR has merge.priority_merge_label, we should place it at the front of
+    the merge queue.
     """
     api = create_api()
     mergeable = create_mergeable()
