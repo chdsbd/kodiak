@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import typing
+import urllib
 from typing import Optional
 
 import asyncio_redis
@@ -18,7 +19,7 @@ from kodiak.pull_request import evaluate_pr
 logger = structlog.get_logger()
 
 
-MERGE_QUEUE_NAMES = "kodiak_merge_queue_names"
+MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 
 WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}
@@ -31,6 +32,7 @@ class WebhookEvent(BaseModel):
     repo_name: str
     pull_request_number: int
     installation_id: str
+    target_name: str
 
     def get_merge_queue_name(self) -> str:
         return get_merge_queue_name(self)
@@ -315,7 +317,8 @@ class RedisWebhookQueue:
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
-    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}"
+    escaped_target = urllib.parse.quote(event.target_name)
+    return f"merge_queue:{event.installation_id}.{event.repo_owner}/{event.repo_name}/{escaped_target}"
 
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:

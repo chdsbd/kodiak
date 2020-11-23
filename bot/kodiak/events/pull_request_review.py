@@ -3,8 +3,13 @@ import pydantic
 from kodiak.events.base import GithubEvent
 
 
+class Ref(pydantic.BaseModel):
+    ref: str
+
+
 class PullRequest(pydantic.BaseModel):
     number: int
+    base: Ref
 
 
 class Owner(pydantic.BaseModel):

@@ -150,6 +150,7 @@ async def refresh_pull_requests_for_installation(
                 WebhookEvent(
                     repo_owner=login,
                     repo_name=repo_name,
+                    target_name=pull_request["base"]["ref"],
                     pull_request_number=pull_request["number"],
                     installation_id=installation_id,
                 )
