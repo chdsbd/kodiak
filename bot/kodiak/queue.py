@@ -286,8 +286,12 @@ class RedisWebhookQueue:
         transaction = await self.connection.multi()
         await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
         if first:
+            # place at front of queue. To allow us to always place this PR at
+            # the front, we should not pass only_if_not_exists.
             await transaction.zadd(queue_name, {event.json(): 1.0})
         else:
+            # use only_if_not_exists to prevent changing queue positions on new
+            # webhook events.
             await transaction.zadd(
                 queue_name, {event.json(): time.time()}, only_if_not_exists=True
             )
