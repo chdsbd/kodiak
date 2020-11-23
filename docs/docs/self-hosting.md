@@ -63,6 +63,38 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     # (optional) configure your Sentry DSN to report any errors Kodiak encounters
     heroku config:set -a $APP_NAME SENTRY_DSN='<SENTRY_DSN>'
 
+    # (optional) GitHub Enterprise users should set their v3 and v4 GitHub API URLs
+    #
+    # GITHUB_V3_API_ROOT
+    #   default: https://api.github.com
+    #   examples: https://github.acme-corp.intern/api/v3
+    #             http(s)://[hostname]/api/v3
+    #
+    # GITHUB_V4_API_URL
+    #   default: https://api.github.com/graphql
+    #   examples: https://github.acme-corp.intern/api/graphql
+    #             http(s)://[hostname]/api/graphql
+    heroku config:set -a $APP_NAME GITHUB_V3_API_ROOT="<GITHUB_V3_API_ROOT>"
+    heroku config:set -a $APP_NAME GITHUB_V4_API_URL="<GITHUB_V4_API_URL>"
+
+    # (optional) Some GitHub Enterprise users require an extra header for API requests.
+    #
+    # GITHUB_API_HEADER_NAME
+    #   default: null
+    #
+    # GITHUB_API_HEADER_VALUE
+    #   default: null
+    #
+    #   If your API required the following `X-Acme-Api` header,
+    #   X-Acme-Api: MyAcmeToken
+    #
+    #   Your headers would be the following
+    #   GITHUB_API_HEADER_NAME='X-Acme-Api'
+    #   GITHUB_API_HEADER_VALUE='MyAcmeToken'
+    #
+    heroku config:set -a $APP_NAME GITHUB_API_HEADER_NAME="<GITHUB_API_HEADER_NAME>"
+    heroku config:set -a $APP_NAME GITHUB_API_HEADER_VALUE="<GITHUB_API_HEADER_VALUE>"
+
     # Redis v5 is required and provided by RedisCloud
     heroku addons:create -a $APP_NAME rediscloud:30 --wait
 

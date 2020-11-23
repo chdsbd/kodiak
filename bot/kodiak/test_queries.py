@@ -225,9 +225,12 @@ method = "squash"
 @pytest.fixture  # type: ignore
 @pytest.mark.asyncio
 async def setup_redis(github_installation_id: str) -> None:
+    host = conf.REDIS_URL.hostname
+    port = conf.REDIS_URL.port
+    assert host and port
     r = await asyncio_redis.Connection.create(
-        host=conf.REDIS_URL.hostname,
-        port=conf.REDIS_URL.port,
+        host=host,
+        port=port,
         password=(
             conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
         ),

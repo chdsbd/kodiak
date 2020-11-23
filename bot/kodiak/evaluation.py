@@ -191,9 +191,9 @@ def get_merge_body(
                 )
             )
 
-    if (
-        coauthor_trailers
-        and config.merge.message.body == MergeBodyStyle.pull_request_body
+    if coauthor_trailers and config.merge.message.body in (
+        MergeBodyStyle.pull_request_body,
+        MergeBodyStyle.empty,
     ):
         # comment_message should never be None when using
         # MergeBodyStyle.pull_request_body, but I'm not going to assert on that!

@@ -743,6 +743,13 @@ class Client:
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+        if (
+            conf.GITHUB_API_HEADER_NAME is not None
+            and conf.GITHUB_API_HEADER_VALUE is not None
+        ):
+            self.session.headers[
+                conf.GITHUB_API_HEADER_NAME
+            ] = conf.GITHUB_API_HEADER_VALUE
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
@@ -769,8 +776,7 @@ class Client:
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                "https://api.github.com/graphql",
-                json=(dict(query=query, variables=variables)),
+                conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
@@ -800,7 +806,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/collaborators/{username}/permission"
+                ),
                 headers=headers,
             )
         try:
@@ -991,7 +999,7 @@ class Client:
             params["head"] = head
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls",
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
                 params=params,
                 headers=headers,
             )
@@ -1010,7 +1018,7 @@ class Client:
         ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/{ref}"),
                 headers=headers,
             )
 
@@ -1018,7 +1026,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.put(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch"
+                ),
                 headers=headers,
             )
 
@@ -1030,14 +1040,16 @@ class Client:
         body = dict(event="APPROVE")
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews"
+                ),
                 headers=headers,
                 json=body,
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
         async with self.throttler:
             return await self.session.get(url, headers=headers)
 
@@ -1058,7 +1070,7 @@ class Client:
         if commit_message is not None:
             body["commit_message"] = commit_message
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
 
@@ -1066,12 +1078,12 @@ class Client:
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
         body = dict(
             name=CHECK_RUN_NAME,
             head_sha=head_sha,
             status="completed",
-            completed_at=datetime.utcnow().isoformat(),
+            completed_at=datetime.now(timezone.utc).isoformat(),
             conclusion="neutral",
             output=dict(title=message, summary=summary or ""),
         )
@@ -1082,7 +1094,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels"
+                ),
                 json=dict(labels=[label]),
                 headers=headers,
             )
@@ -1092,7 +1106,9 @@ class Client:
         escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}"
+                ),
                 headers=headers,
             )
 
@@ -1100,7 +1116,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
+                ),
                 json=dict(body=body),
                 headers=headers,
             )
@@ -1130,7 +1148,9 @@ class Client:
             # to be backwards compatible we must handle the case of `data` missing.
             try:
                 subscription_blocker = SeatsExceeded.parse_raw(
-                    real_response.get(b"data")
+                    # Pydantic says it doesn't allow Nones, but passing a None
+                    # raises a ValidationError which is fine.
+                    real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
                 logger.warning("failed to parse seats_exceeded data", exc_info=True)
@@ -1175,7 +1195,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     )
     async with throttler:
         res = await http.post(
-            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+            conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
             headers=dict(
                 Accept="application/vnd.github.machine-man-preview+json",
                 Authorization=f"Bearer {app_token}",

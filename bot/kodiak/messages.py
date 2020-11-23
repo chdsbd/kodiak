@@ -54,7 +54,7 @@ You have an invalid Kodiak configuration file.
 
 def get_markdown_for_paywall() -> str:
     return format(
-        f"""\
+        """\
 You can start a 30 day trial or update your subscription on the Kodiak dashboard at https://app.kodiakhq.com.
 
 Kodiak is free to use on public repositories, but requires a subscription to use with private repositories.
