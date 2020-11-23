@@ -311,7 +311,7 @@ class PRV2:
                 # we raise an exception to retry this request.
                 raise ApiCallException("merge")
 
-    async def queue_for_merge(self, first: bool) -> Optional[int]:
+    async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback(first=first)
 

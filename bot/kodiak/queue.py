@@ -77,7 +77,7 @@ async def process_webhook_event(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge(first: bool) -> Optional[int]:
+    async def queue_for_merge(*, first: bool) -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
@@ -143,7 +143,7 @@ async def process_repo_queue(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge(first: bool) -> Optional[int]:
+    async def queue_for_merge(*, first: bool) -> Optional[int]:
         raise NotImplementedError
 
     log.info("evaluate PR for merging")
