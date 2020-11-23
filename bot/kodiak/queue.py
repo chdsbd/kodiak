@@ -19,7 +19,7 @@ from kodiak.pull_request import evaluate_pr
 logger = structlog.get_logger()
 
 
-MERGE_QUEUE_NAMES = "kodiak_merge_queue_names"
+MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 
 WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}

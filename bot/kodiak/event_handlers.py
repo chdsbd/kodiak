@@ -102,10 +102,7 @@ async def status_event(status_event: StatusEvent) -> None:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
-            pr_results = cast(
-                List[Optional[List[GetOpenPullRequestsResponseSchema]]],
-                await asyncio.gather(*pr_requests),
-            )
+            pr_results = await asyncio.gather(*pr_requests)
 
         all_events: Set[WebhookEvent] = set()
         for prs in pr_results:
