@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional, Protocol, Type
+from typing import Awaitable, Callable, Optional, Type
 
 import structlog
 from requests_async import HTTPError
+from typing_extensions import Protocol
 
 import kodiak.app_config as conf
 from kodiak.errors import (
