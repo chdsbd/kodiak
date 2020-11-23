@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional, Type
+from typing import Awaitable, Callable, Optional, Protocol, Type
 
 import structlog
 from requests_async import HTTPError
@@ -30,7 +30,7 @@ async def get_pr(
     number: int,
     dequeue_callback: Callable[[], Awaitable],
     requeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+    queue_for_merge_callback: QueueForMergeCallback,
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     async with Client(installation_id=install, owner=owner, repo=repo) as api_client:
@@ -64,7 +64,7 @@ async def evaluate_pr(
     merging: bool,
     dequeue_callback: Callable[[], Awaitable],
     requeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+    queue_for_merge_callback: QueueForMergeCallback,
     is_active_merging: bool,
 ) -> None:
     skippable_check_timeout = 4
@@ -143,6 +143,11 @@ async def evaluate_pr(
             await requeue_callback()
 
 
+class QueueForMergeCallback(Protocol):
+    async def __call__(self, first: bool = False) -> Optional[int]:
+        ...
+
+
 class PRV2:
     """
     Representation of a PR for Kodiak.
@@ -161,7 +166,7 @@ class PRV2:
         number: int,
         dequeue_callback: Callable[[], Awaitable],
         requeue_callback: Callable[[], Awaitable],
-        queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+        queue_for_merge_callback: QueueForMergeCallback,
         client: Optional[Type[Client]] = None,
     ):
         self.install = install
@@ -305,9 +310,9 @@ class PRV2:
                 # we raise an exception to retry this request.
                 raise ApiCallException("merge")
 
-    async def queue_for_merge(self) -> Optional[int]:
+    async def queue_for_merge(self, first: bool = False) -> Optional[int]:
         self.log.info("queue_for_merge")
-        return await self.queue_for_merge_callback()
+        return await self.queue_for_merge_callback(first=first)
 
     async def add_label(self, label: str) -> None:
         """
