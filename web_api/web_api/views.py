@@ -687,7 +687,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     if request.POST.get("error"):
         return Error(
             error=request.POST["error"],
-            error_description=request.POST["error_description"],
+            error_description=request.POST.get("error_description") or "",
         )
 
     code = request.POST.get("code")
