@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- add new config option (`merge.priority_merge_label`) to place PR at front of merge queue. (#573, #555)
+
+## 0.33.0 - 2020-11-22
+
+### Added
+- [@rdmulford](https://github.com/rdmulford) added support for GitHub Enterprise. Thanks! API paths can now be specified via environment variables. See the [self hosting docs](https://kodiakhq.com/docs/self-hosting) for more information. (#566)
+
+### Changed
+- `merge.message.body` no longer overrides `merge.message.include_coauthors`. (#561)
+
 ## 0.32.0 - 2020-10-31
 
 ### Changed

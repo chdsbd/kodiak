@@ -58,6 +58,20 @@ USAGE_REPORTING_QUEUE_LENGTH = config(
 
 SUBSCRIPTIONS_ENABLED = config("SUBSCRIPTIONS_ENABLED", cast=bool, default=False)
 
+# For GitHub Enterprise, the v3 API root has the form:
+# http(s)://[hostname]/api/v3, instead of https://api.github.com.
+GITHUB_V3_API_ROOT = config("GITHUB_V3_API_ROOT", default="https://api.github.com")
+
+# For GitHub Enterprise, the v4 API has the form:
+# http(s)://[hostname]/api/graphql, instead of https://api.github.com/graphql.
+GITHUB_V4_API_URL = config(
+    "GITHUB_V4_API_URL", default="https://api.github.com/graphql"
+)
+
+# An extra header to send with git API requests.
+GITHUB_API_HEADER_NAME = config("GITHUB_API_HEADER_NAME", default=None)
+GITHUB_API_HEADER_VALUE = config("GITHUB_API_HEADER_VALUE", default=None)
+
 if GITHUB_PRIVATE_KEY is not None:
     PRIVATE_KEY = GITHUB_PRIVATE_KEY
 elif GITHUB_PRIVATE_KEY_PATH is not None:
@@ -68,3 +82,7 @@ else:
     raise ValueError(
         "Either GITHUB_PRIVATE_KEY_PATH, GITHUB_PRIVATE_KEY, or GITHUB_PRIVATE_KEY_BASE64 must be set"
     )
+
+
+def v3_url(path: str) -> str:
+    return GITHUB_V3_API_ROOT + path
