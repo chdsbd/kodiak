@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import logging
 import sys
-from typing import Dict, Optional, cast
+from typing import Any, Dict, Optional, cast
 
 import sentry_sdk
 import structlog
@@ -62,7 +62,7 @@ async def root() -> str:
 
 @app.post("/api/github/hook")
 async def webhook_event(
-    event: Dict[str, object],
+    event: Dict[str, Any],
     *,
     request: Request,
     x_github_event: str = Header(None),
