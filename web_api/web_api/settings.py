@@ -9,6 +9,10 @@ from yarl import URL
 
 load_dotenv()
 
+from web_api.patches import patch_django
+
+patch_django()
+
 
 sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)
 
