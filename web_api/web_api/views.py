@@ -21,6 +21,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from web_api import auth
+from web_api.auth import AuthedHttpRequest
 from web_api.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
 from web_api.models import (
     Account,
@@ -39,10 +40,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def get_account_or_404(*, team_id: str, user: User) -> Account:
-    return cast(
-        Account,
-        get_object_or_404(Account.objects.filter(memberships__user=user), id=team_id),
-    )
+    return get_object_or_404(Account.objects.filter(memberships__user=user), id=team_id)
 
 
 @auth.login_required
@@ -54,7 +52,7 @@ DEFAULT_CURRENCY = "usd"
 
 
 @auth.login_required
-def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
+def usage_billing(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(user=request.user, team_id=team_id)
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
     subscription = None
@@ -85,6 +83,11 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
         plan_interval = (
             "year" if stripe_customer_info.plan_interval == "year" else "month"
         )
+        brand_title = (
+            stripe_customer_info.payment_method_card_brand.title()
+            if stripe_customer_info.payment_method_card_brand is not None
+            else None
+        )
         subscription = dict(
             seats=stripe_customer_info.subscription_quantity,
             nextBillingDate=stripe_customer_info.next_billing_date,
@@ -100,7 +103,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             contactEmails=account.contact_emails,
             customerName=stripe_customer_info.customer_name,
             customerAddress=customer_address,
-            cardInfo=f"{stripe_customer_info.payment_method_card_brand.title()} ({stripe_customer_info.payment_method_card_last4})",
+            cardInfo=f"{brand_title} ({stripe_customer_info.payment_method_card_last4})",
             viewerIsOrgOwner=request.user.is_admin(account),
             viewerCanModify=request.user.can_edit_subscription(account),
             limitBillingAccessToOwners=account.limit_billing_access_to_owners,
@@ -145,7 +148,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def activity(request: HttpRequest, team_id: str) -> HttpResponse:
+def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     kodiak_activity_labels = []
     kodiak_activity_approved = []
@@ -189,7 +192,7 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
+def current_account(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     return JsonResponse(
         dict(
@@ -216,7 +219,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
+def start_trial(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     billing_email = request.POST["billingEmail"]
     account.start_trial(request.user, billing_email=billing_email)
@@ -230,7 +233,7 @@ class UpdateSubscriptionModel(pydantic.BaseModel):
 
 
 @auth.login_required
-def update_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
+def update_subscription(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     payload = UpdateSubscriptionModel.parse_obj(request.POST.dict())
     account = get_account_or_404(team_id=team_id, user=request.user)
     if not request.user.can_edit_subscription(account):
@@ -300,7 +303,9 @@ class UpdateBillingInfoModel(pydantic.BaseModel):
 
 
 @auth.login_required
-def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpResponse:
+def update_stripe_customer_info(
+    request: AuthedHttpRequest, team_id: str
+) -> HttpResponse:
     """
     Endpoint to allow users to update Stripe customer info.
     """
@@ -350,7 +355,7 @@ class StartCheckoutModal(pydantic.BaseModel):
 
 
 @auth.login_required
-def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
+def start_checkout(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     payload = StartCheckoutModal.parse_obj(request.POST.dict())
     account = get_account_or_404(team_id=team_id, user=request.user)
     # if available, using the existing customer_id allows us to pre-fill the
@@ -386,7 +391,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def redirect_to_stripe_self_serve_portal(
-    request: HttpRequest, team_id: str
+    request: AuthedHttpRequest, team_id: str
 ) -> HttpResponse:
     """
     Redirect the user to the temp URL so they can access the stripe self serve portal
@@ -406,7 +411,7 @@ def redirect_to_stripe_self_serve_portal(
 
 
 @auth.login_required
-def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
+def modify_payment_details(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     if not request.user.can_edit_subscription(account):
         raise PermissionDenied
@@ -427,7 +432,7 @@ def modify_payment_details(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
+def cancel_subscription(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     if not request.user.can_edit_subscription(account):
         raise PermissionDenied
@@ -440,7 +445,7 @@ def cancel_subscription(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 @require_http_methods(["GET"])
-def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
+def get_subscription_info(request: AuthedHttpRequest, team_id: str) -> JsonResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
 
     subscription_status = account.get_subscription_blocker()
@@ -487,7 +492,7 @@ class FetchProrationModal(pydantic.BaseModel):
 
 
 @auth.login_required
-def fetch_proration(request: HttpRequest, team_id: str) -> HttpResponse:
+def fetch_proration(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     payload = FetchProrationModal.parse_obj(request.POST.dict())
     account = get_account_or_404(user=request.user, team_id=team_id)
 
@@ -613,7 +618,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 
 
 @auth.login_required
-def accounts(request: HttpRequest) -> HttpResponse:
+def accounts(request: AuthedHttpRequest) -> HttpResponse:
     return JsonResponse(
         [
             dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image())
@@ -681,8 +686,8 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # handle errors
     if request.POST.get("error"):
         return Error(
-            error=request.POST.get("error"),
-            error_description=request.POST.get("error_description"),
+            error=request.POST["error"],
+            error_description=request.POST.get("error_description") or "",
         )
 
     code = request.POST.get("code")
@@ -786,13 +791,13 @@ def oauth_complete(request: HttpRequest) -> HttpResponse:
 
 def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
-    request.user = AnonymousUser()
+    request.user = AnonymousUser()  # type: ignore [assignment]
     return HttpResponse(status=201)
 
 
 @auth.login_required
 @require_http_methods(["POST"])
-def sync_accounts(request: HttpRequest) -> HttpResponse:
+def sync_accounts(request: AuthedHttpRequest) -> HttpResponse:
     try:
         request.user.sync_accounts()
     except SyncAccountsError:

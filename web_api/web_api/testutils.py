@@ -1,7 +1,7 @@
 from importlib import import_module
+from typing import Any, cast
 
 from django.conf import settings
-from django.contrib.sessions.backends.base import SessionBase as SessionStore
 from django.http import HttpRequest, SimpleCookie
 from django.test.client import Client as DjangoTestClient
 
@@ -10,8 +10,8 @@ from web_api.models import User
 
 
 class TestClient(DjangoTestClient):
-    def login(self, user: User) -> None:
-        engine: SessionStore = import_module(settings.SESSION_ENGINE)
+    def login(self, user: User) -> None:  # type: ignore [override]
+        engine = cast(Any, import_module(settings.SESSION_ENGINE))
 
         # Create a fake request to store login details.
         request = HttpRequest()
@@ -40,10 +40,10 @@ class TestClient(DjangoTestClient):
     def logout(self) -> None:
         """Log out the user by removing the cookies and session object."""
         request = HttpRequest()
-        engine: SessionStore = import_module(settings.SESSION_ENGINE)
+        engine = cast(Any, import_module(settings.SESSION_ENGINE))
         if self.session:
             request.session = self.session
-            request.user = auth.get_user(request)
+            request.user = auth.get_user(request)  # type: ignore [assignment]
         else:
             request.session = engine.SessionStore()
         auth.logout(request)

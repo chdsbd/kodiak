@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 import pytest
 import responses
@@ -8,13 +8,10 @@ from web_api.models import Account, AccountMembership, SyncAccountsError, User
 
 @pytest.fixture
 def user() -> User:
-    return cast(
-        User,
-        User.objects.create(
-            github_id=10137,
-            github_login="ghost",
-            github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
-        ),
+    return User.objects.create(
+        github_id=10137,
+        github_login="ghost",
+        github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
     )
 
 

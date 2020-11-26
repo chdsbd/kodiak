@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Iterator, Optional, Tuple, Type, Union, cast
+from typing import Any, Iterator, Optional, Tuple, Type, Union
 
 import pytest
 import responses
@@ -25,25 +25,19 @@ from web_api.testutils import TestClient as Client
 
 @pytest.fixture
 def user() -> User:
-    return cast(
-        User,
-        User.objects.create(
-            github_id=10137,
-            github_login="ghost",
-            github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
-        ),
+    return User.objects.create(
+        github_id=10137,
+        github_login="ghost",
+        github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
     )
 
 
 @pytest.fixture
 def other_user() -> User:
-    return cast(
-        User,
-        User.objects.create(
-            github_id=67647,
-            github_login="bear",
-            github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
-        ),
+    return User.objects.create(
+        github_id=67647,
+        github_login="bear",
+        github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
     )
 
 
@@ -61,15 +55,12 @@ def create_account(
     github_account_type: Literal["User", "Organization"] = "User",
 ) -> Account:
 
-    return cast(
-        Account,
-        Account.objects.create(
-            github_installation_id=create_pk(),
-            github_account_id=create_pk(),
-            github_account_login=github_account_login,
-            github_account_type=github_account_type,
-            stripe_customer_id=stripe_customer_id,
-        ),
+    return Account.objects.create(
+        github_installation_id=create_pk(),
+        github_account_id=create_pk(),
+        github_account_login=github_account_login,
+        github_account_type=github_account_type,
+        stripe_customer_id=stripe_customer_id,
     )
 
 
@@ -97,27 +88,24 @@ def create_stripe_customer_info(
     subscription_current_period_start: int = 1650581784,
     subscription_current_period_end: int = 1658357784,
 ) -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id=customer_id,
-            subscription_id=subscription_id,
-            plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
-            plan_amount=499,
-            plan_interval="month",
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            subscription_current_period_start=subscription_current_period_start,
-            subscription_current_period_end=subscription_current_period_end,
-        ),
+    return StripeCustomerInformation.objects.create(
+        customer_id=customer_id,
+        subscription_id=subscription_id,
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        plan_interval="month",
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=subscription_current_period_start,
+        subscription_current_period_end=subscription_current_period_end,
     )
 
 
@@ -616,6 +604,7 @@ def test_update_subscription(
         "web_api.models.stripe.Invoice.create", return_value=fake_invoice
     )
     stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
@@ -773,6 +762,7 @@ def test_update_subscription_missing_customer(
     stripe_subscription_modify = mocker.patch(
         "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
     )
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
     )
@@ -910,6 +900,7 @@ def test_cancel_subscription_admin_limit_billing_access_to_owners(
 
 @pytest.mark.django_db
 def test_activity(authed_client: Client, user: User,) -> None:
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
@@ -940,6 +931,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 @pytest.mark.django_db
 def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
+    assert other_user.github_login is not None
     user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
@@ -953,6 +945,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Start a Stripe checkout session and return the required credentials to the frontend.
     """
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
@@ -1184,7 +1177,7 @@ def test_update_contact_emails(
     account, membership = create_org_account(user)
 
     original_email = "j.doe@acme-inc.corp"
-    account.original_email = original_email
+    account.contact_emails = original_email
     account.save()
 
     # by default a user should be able to set the contact emails fields.
@@ -1394,6 +1387,7 @@ def test_sync_accounts_failure(
 
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = create_account(
@@ -1430,6 +1424,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
 def test_current_account_authentication(
     authed_client: Client, other_user: User,
 ) -> None:
+    assert other_user.github_login is not None
     user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
@@ -1440,6 +1435,7 @@ def test_current_account_authentication(
 
 @pytest.mark.django_db
 def test_accounts(authed_client: Client, user: User) -> None:
+    assert user.github_login is not None
     user_account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
@@ -1476,6 +1472,7 @@ def test_start_trial(
     When a user starts a trial we should update their account.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
@@ -1503,11 +1500,14 @@ def test_start_trial(
     assert account.trial_email == "b.lowe@example.com"
 
 
-def similar_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
+def similar_dates(
+    a: Optional[datetime.datetime], b: Optional[datetime.datetime]
+) -> bool:
     """
     Dates are equal if they are within 5 minutes of each other. This should
     hopefully reduce flakiness is tests.
     """
+    assert a is not None and b is not None
     return abs(int(a.timestamp()) - int(b.timestamp())) < 60 * 5
 
 
@@ -1519,6 +1519,7 @@ def test_start_trial_existing_trial(
     Starting a trial when there is already an existing trial shouldn't alter
     current trial.
     """
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
