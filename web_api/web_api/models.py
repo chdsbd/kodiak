@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union, cast
+from typing import Callable, List, Optional, Union
 
 import pydantic
 import redis
@@ -14,6 +14,7 @@ import stripe
 from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
+from django.db.models.manager import Manager
 from django.utils import timezone
 from typing_extensions import Literal
 
@@ -84,6 +85,8 @@ class User(BaseModel):
         max_length=255, help_text="OAuth token for the GitHub user."
     )
 
+    objects = Manager["User"]()
+
     class Meta:
         db_table = "user"
 
@@ -102,12 +105,9 @@ class User(BaseModel):
         )
 
     def is_admin(self, account: Account) -> bool:
-        return cast(
-            bool,
-            AccountMembership.objects.filter(
-                account=account, user=self, role=AccountRole.admin
-            ).exists(),
-        )
+        return AccountMembership.objects.filter(
+            account=account, user=self, role=AccountRole.admin
+        ).exists()
 
     def sync_accounts(self) -> None:
         """
@@ -220,6 +220,8 @@ class GitHubEvent(BaseModel):
     event_name = models.CharField(max_length=255, db_index=True)
     payload = pg_fields.JSONField(default=dict)
 
+    objects = Manager["GitHubEvent"]()
+
     class Meta:
         db_table = "github_event"
 
@@ -306,6 +308,8 @@ class Account(BaseModel):
         help_text="Explanation for the subscription exemption to be displayed in the Usage & Billing page.",
     )
 
+    objects = Manager["Account"]()
+
     class Meta:
         db_table = "account"
         constraints = [
@@ -327,12 +331,9 @@ class Account(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
     def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
-        return cast(
-            Optional[StripeCustomerInformation],
-            StripeCustomerInformation.objects.filter(
-                customer_id=self.stripe_customer_id
-            ).first(),
-        )
+        return StripeCustomerInformation.objects.filter(
+            customer_id=self.stripe_customer_id
+        ).first()
 
     def start_trial(
         self, actor: User, billing_email: str, length_days: int = 30
@@ -361,13 +362,15 @@ class Account(BaseModel):
         self.update_bot()
 
     def trial_expired(self) -> bool:
-        return self.trial_expiration is not None and cast(
-            bool, (self.trial_expiration - timezone.now()).total_seconds() < 0
+        return (
+            self.trial_expiration is not None
+            and (self.trial_expiration - timezone.now()).total_seconds() < 0
         )
 
     def active_trial(self) -> bool:
-        return self.trial_expiration is not None and cast(
-            bool, (self.trial_expiration - timezone.now()).total_seconds() > 0
+        return (
+            self.trial_expiration is not None
+            and (self.trial_expiration - timezone.now()).total_seconds() > 0
         )
 
     def can_subscribe(self) -> bool:
@@ -491,7 +494,7 @@ class Account(BaseModel):
         r.rpush(
             "kodiak:refresh_pull_requests_for_installation",
             RefreshPullRequestsMessage(
-                installation_id=self.github_installation_id
+                installation_id=str(self.github_installation_id)
             ).json(),
         )
 
@@ -518,6 +521,8 @@ class AccountMembership(BaseModel):
         choices=AccountRole.choices,
         help_text="User's GitHub-defined role for the associated account.",
     )
+
+    objects = Manager["AccountMembership"]()
 
     class Meta:
         db_table = "account_membership"
@@ -551,6 +556,8 @@ class PullRequestActivity(BaseModel):
     kodiak_updated = models.IntegerField()
 
     github_installation_id = models.IntegerField(db_index=True)
+
+    objects = Manager["PullRequestActivity"]()
 
     class Meta:
         db_table = "pull_request_activity"
@@ -589,7 +596,7 @@ class PullRequestActivity(BaseModel):
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
                 )
-            )
+            )  # type: Optional[datetime.datetime]
             events_aggregated = GitHubEvent.objects.filter(
                 created_at__gte=min_date
             ).count()
@@ -727,6 +734,8 @@ class PullRequestActivityProgress(BaseModel):
         help_text="Date we should use as our minimum date for future aggregation jobs. Anything before this date is 'locked'."
     )
 
+    objects = Manager["PullRequestActivityProgress"]()
+
     class Meta:
         db_table = "pull_request_activity_progress"
 
@@ -756,6 +765,8 @@ class UserPullRequestActivity(BaseModel):
     is_private_repository = models.BooleanField(db_index=True)
     opened_pull_request = models.BooleanField(db_index=True)
     activity_date = models.DateField(db_index=True)
+
+    objects = Manager["UserPullRequestActivity"]()
 
     class Meta:
         db_table = "user_pull_request_activity"
@@ -897,6 +908,8 @@ class UserPullRequestActivityProgress(BaseModel):
         db_index=True,
     )
 
+    objects = Manager["UserPullRequestActivityProgress"]()
+
     class Meta:
         db_table = "user_pull_request_activity_progress"
 
@@ -1020,6 +1033,8 @@ class StripeCustomerInformation(models.Model):
         help_text="Start of the current period that the subscription has been invoiced for."
     )
 
+    objects = Manager["StripeCustomerInformation"]()
+
     class Meta:
         db_table = "stripe_customer_information"
 
@@ -1072,14 +1087,14 @@ class StripeCustomerInformation(models.Model):
         self.get_account().update_bot()
 
     def get_account(self) -> Account:
-        return cast(Account, Account.objects.get(stripe_customer_id=self.customer_id))
+        return Account.objects.get(stripe_customer_id=self.customer_id)
 
     @property
     def expired(self) -> bool:
         # provide two days of leeway for good measure
         two_days = 60 * 60 * 24 * 2
         now = int(time.time())
-        return cast(bool, now > (self.subscription_current_period_end + two_days))
+        return now > (self.subscription_current_period_end + two_days)
 
     @property
     def next_billing_date(self) -> datetime.datetime:

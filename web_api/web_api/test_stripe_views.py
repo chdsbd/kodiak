@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Tuple, cast
+from typing import Tuple
 
 import pytest
 import stripe
@@ -34,26 +34,23 @@ def create_account() -> Tuple[User, Account]:
 
 
 def create_stripe_customer_info() -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id="cus_H2pvQ2kt7nk0JY",
-            subscription_id="sub_Gu1xedsfo1",
-            plan_id="plan_G2df31A4G5JzQ",
-            payment_method_id="pm_22dldxf3",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            payment_method_card_brand="mastercard",
-            payment_method_card_exp_month="03",
-            payment_method_card_exp_year="32",
-            payment_method_card_last4="4242",
-            plan_amount=499,
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            subscription_current_period_start=0,
-            subscription_current_period_end=100,
-        ),
+    return StripeCustomerInformation.objects.create(
+        customer_id="cus_H2pvQ2kt7nk0JY",
+        subscription_id="sub_Gu1xedsfo1",
+        plan_id="plan_G2df31A4G5JzQ",
+        payment_method_id="pm_22dldxf3",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        payment_method_card_brand="mastercard",
+        payment_method_card_exp_month="03",
+        payment_method_card_exp_year="32",
+        payment_method_card_last4="4242",
+        plan_amount=499,
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        subscription_current_period_start=0,
+        subscription_current_period_end=100,
     )
 
 
