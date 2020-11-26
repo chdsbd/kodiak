@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Iterator, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterator, Optional, Tuple, Type, Union
 
 import pytest
 import responses
@@ -127,7 +127,7 @@ class Unset:
 def create_stripe_customer(
     *,
     id: str = "cus_Gz7jQFKdh4KirU",
-    address: Optional[Union[dict, Type[Unset]]] = Unset,
+    address: Optional[Union[Dict[str, Any], Type[Unset]]] = Unset,
 ) -> stripe.Customer:
     if address == Unset:
         address = dict(
@@ -1563,7 +1563,7 @@ def test_generate_header() -> None:
     assert isinstance(event, stripe.Event)
 
 
-def post_webhook(event: Union[dict, str]) -> HttpResponse:
+def post_webhook(event: Union[Dict[str, Any], str]) -> HttpResponse:
     """
     Send a signed payload to our stripe webhook endpoint
     """

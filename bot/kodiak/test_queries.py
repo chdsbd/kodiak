@@ -78,9 +78,9 @@ async def test_get_default_branch_name_error(
 
 
 @pytest.fixture
-def blocked_response() -> dict:
+def blocked_response() -> Dict[str, Any]:
     return cast(
-        dict,
+        Dict[str, Any],
         json.loads(
             (
                 Path(__file__).parent
@@ -247,7 +247,7 @@ async def setup_redis(github_installation_id: str) -> None:
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
     api_client: Client,
-    blocked_response: dict,
+    blocked_response: Dict[str, Any],
     block_event: EventInfoResponse,
     mocker: MockFixture,
     setup_redis: object,
@@ -730,7 +730,7 @@ def test_get_commit_authors_error_handling_missing_response() -> None:
 
 @pytest.mark.asyncio
 async def test_get_reviewers_and_permissions_empty_author(
-    mocker: Any, api_client: Client
+    mocker: MockFixture, api_client: Client
 ) -> None:
     """
     We should ignore reviews with missing authors.

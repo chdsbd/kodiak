@@ -103,7 +103,9 @@ class SentryProcessor:
 ################################################################################
 
 
-def add_request_info_processor(_: Any, __: Any, event_dict: dict) -> dict:
+def add_request_info_processor(
+    _: Any, __: Any, event_dict: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Structlog processor for adding more information to log events that provide
     `res` with a requests Response object.

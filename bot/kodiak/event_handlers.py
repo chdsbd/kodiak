@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 import asyncio_redis
 import structlog
@@ -198,12 +198,12 @@ async def get_redis() -> asyncio_redis.Connection:
     return _redis
 
 
-def compress_payload(data: dict) -> bytes:
+def compress_payload(data: Dict[str, object]) -> bytes:
     cctx = zstd.ZstdCompressor()
     return cctx.compress(json.dumps(data).encode())
 
 
-async def handle_webhook_event(event_name: str, payload: dict) -> None:
+async def handle_webhook_event(event_name: str, payload: Dict[str, object]) -> None:
     log = logger.bind(event_name=event_name)
 
     if conf.USAGE_REPORTING and event_name in conf.USAGE_REPORTING_EVENTS:

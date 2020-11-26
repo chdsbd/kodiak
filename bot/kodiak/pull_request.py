@@ -29,8 +29,8 @@ async def get_pr(
     owner: str,
     repo: str,
     number: int,
-    dequeue_callback: Callable[[], Awaitable],
-    requeue_callback: Callable[[], Awaitable],
+    dequeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: Callable[[], Awaitable[None]],
     queue_for_merge_callback: QueueForMergeCallback,
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
@@ -63,8 +63,8 @@ async def evaluate_pr(
     repo: str,
     number: int,
     merging: bool,
-    dequeue_callback: Callable[[], Awaitable],
-    requeue_callback: Callable[[], Awaitable],
+    dequeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: Callable[[], Awaitable[None]],
     queue_for_merge_callback: QueueForMergeCallback,
     is_active_merging: bool,
 ) -> None:
@@ -165,8 +165,8 @@ class PRV2:
         owner: str,
         repo: str,
         number: int,
-        dequeue_callback: Callable[[], Awaitable],
-        requeue_callback: Callable[[], Awaitable],
+        dequeue_callback: Callable[[], Awaitable[None]],
+        requeue_callback: Callable[[], Awaitable[None]],
         queue_for_merge_callback: QueueForMergeCallback,
         client: Optional[Type[Client]] = None,
     ):

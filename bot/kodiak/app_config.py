@@ -12,7 +12,7 @@ T = TypeVar("T")
 
 
 class TypedConfig(Config):
-    @overload  # type: ignore [override]
+    @overload
     def __call__(self, key: str, cast: Type[T], default: T = ...) -> T:
         ...
 
@@ -26,8 +26,10 @@ class TypedConfig(Config):
     ) -> Optional[str]:
         ...
 
-    def __call__(self, key: str, cast: type = None, default: Any = undefined) -> Any:
-        return super().get(key, cast=cast, default=default)
+    def __call__(
+        self, key: str, cast: Optional[type] = None, default: Any = undefined
+    ) -> Any:
+        return super().get(key, cast=cast, default=default)  # type: ignore [arg-type]
 
 
 config = TypedConfig(".env")
