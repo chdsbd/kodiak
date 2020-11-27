@@ -22,7 +22,7 @@ logger = structlog.get_logger()
 MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 
-WORKER_TASKS: typing.MutableMapping[str, asyncio.Task] = {}
+WORKER_TASKS: typing.MutableMapping[str, asyncio.Task[None]] = {}
 
 RETRY_RATE_SECONDS = 2
 
@@ -238,7 +238,7 @@ class RedisWebhookQueue:
             repo_queue_consumer(queue_name=queue_name, connection=self.connection),
         )
 
-    def _start_worker(self, key: str, fut: typing.Coroutine) -> None:
+    def _start_worker(self, key: str, fut: typing.Coroutine[None, None, None]) -> None:
         worker_task = WORKER_TASKS.get(key)
         if worker_task is not None:
             if not worker_task.done():

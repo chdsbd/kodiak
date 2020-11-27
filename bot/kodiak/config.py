@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 import toml
 from pydantic import BaseModel, ValidationError, validator
@@ -153,6 +153,6 @@ class V1(BaseModel):
         cls, content: str
     ) -> Union[V1, toml.TomlDecodeError, ValidationError]:
         try:
-            return cls.parse_obj(cast(dict, toml.loads(content)))
+            return cls.parse_obj(cast(Dict[str, Any], toml.loads(content)))
         except (toml.TomlDecodeError, ValidationError) as e:
             return e

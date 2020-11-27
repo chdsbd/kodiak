@@ -479,36 +479,36 @@ installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
 
-def get_repo(*, data: dict) -> Optional[dict]:
+def get_repo(*, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        return cast(dict, data["repository"])
+        return cast(Dict[str, Any], data["repository"])
     except (KeyError, TypeError):
         return None
 
 
-def get_root_config_str(*, repo: dict) -> Optional[str]:
+def get_root_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, repo["rootConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_github_config_str(*, repo: dict) -> Optional[str]:
+def get_github_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, repo["githubConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_pull_request(*, repo: dict) -> Optional[dict]:
+def get_pull_request(*, repo: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        return cast(dict, repo["pullRequest"])
+        return cast(Dict[str, Any], repo["pullRequest"])
     except (KeyError, TypeError):
         logger.warning("Could not find PR", exc_info=True)
         return None
 
 
-def get_labels(*, pr: dict) -> List[str]:
+def get_labels(*, pr: Dict[str, Any]) -> List[str]:
     try:
         nodes = pr["labels"]["nodes"]
         get_names = (node.get("name") for node in nodes)
@@ -517,14 +517,14 @@ def get_labels(*, pr: dict) -> List[str]:
         return []
 
 
-def get_sha(*, pr: dict) -> Optional[str]:
+def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
 
 
-def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
+def get_commit_authors(*, pr: Dict[str, Any]) -> List[CommitAuthor]:
     """
     Extract the commit authors from the pull request commits.
     """
@@ -546,15 +546,15 @@ def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
         return []
 
 
-def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
+def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        return cast(List[dict], repo["branchProtectionRules"]["nodes"])
+        return cast(List[Dict[str, Any]], repo["branchProtectionRules"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
 def get_branch_protection(
-    *, repo: dict, ref_name: str
+    *, repo: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     for rule in get_branch_protection_dicts(repo=repo):
         try:
@@ -571,14 +571,14 @@ def get_branch_protection(
     return None
 
 
-def get_review_requests_dicts(*, pr: dict) -> List[dict]:
+def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        return cast(List[dict], pr["reviewRequests"]["nodes"])
+        return cast(List[Dict[str, Any]], pr["reviewRequests"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
+def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     """
     parse from: https://developer.github.com/v4/union/requestedreviewer/
     """
@@ -597,14 +597,14 @@ def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
     return review_requests
 
 
-def get_review_dicts(*, pr: dict) -> List[dict]:
+def get_review_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        return cast(List[dict], pr["reviews"]["nodes"])
+        return cast(List[Dict[str, Any]], pr["reviews"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
+def get_reviews(*, pr: Dict[str, Any]) -> List[PRReviewSchema]:
     review_dicts = get_review_dicts(pr=pr)
     reviews: List[PRReviewSchema] = []
     for review_dict in review_dicts:
@@ -615,11 +615,11 @@ def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
     return reviews
 
 
-def get_status_contexts(*, pr: dict) -> List[StatusContext]:
+def get_status_contexts(*, pr: Dict[str, Any]) -> List[StatusContext]:
     try:
-        commit_status_dicts: List[dict] = pr["commits"]["nodes"][0]["commit"]["status"][
-            "contexts"
-        ]
+        commit_status_dicts: List[Dict[str, Any]] = pr["commits"]["nodes"][0]["commit"][
+            "status"
+        ]["contexts"]
     except (IndexError, KeyError, TypeError):
         commit_status_dicts = []
 
@@ -633,8 +633,8 @@ def get_status_contexts(*, pr: dict) -> List[StatusContext]:
     return status_contexts
 
 
-def get_check_runs(*, pr: dict) -> List[CheckRun]:
-    check_run_dicts: List[dict] = []
+def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
+    check_run_dicts: List[Dict[str, Any]] = []
     try:
         for commit_node in pr["commits"]["nodes"]:
             check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
@@ -654,21 +654,21 @@ def get_check_runs(*, pr: dict) -> List[CheckRun]:
     return check_runs
 
 
-def get_valid_signature(*, pr: dict) -> bool:
+def get_valid_signature(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
     except (IndexError, KeyError, TypeError):
         return False
 
 
-def get_head_exists(*, pr: dict) -> bool:
+def get_head_exists(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["headRef"]["id"])
     except (KeyError, TypeError):
         return False
 
 
-def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
+def get_valid_merge_methods(*, repo: Dict[str, Any]) -> List[MergeMethod]:
     valid_merge_methods: List[MergeMethod] = []
     if repo.get("mergeCommitAllowed"):
         valid_merge_methods.append(MergeMethod.merge)

@@ -27,7 +27,7 @@ r = redis.Redis.from_url(settings.REDIS_URL)
 models.TextField.register_lookup(models.functions.Length)
 
 
-def sane_repr(*attrs: str) -> Callable:
+def sane_repr(*attrs: str) -> Callable[[object], str]:
     """
     Copyright (c) 2019 Sentry (https://sentry.io) and individual contributors.
     All rights reserved.

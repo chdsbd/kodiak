@@ -149,9 +149,9 @@ def create_prv2(
     owner: str = "delos",
     repo: str = "incite",
     number: int = 8634,
-    dequeue_callback: Callable[[], Awaitable] = noop,
+    dequeue_callback: Callable[[], Awaitable[None]] = noop,
     queue_for_merge_callback: QueueForMergeCallback = noop,
-    requeue_callback: Callable[[], Awaitable] = noop,
+    requeue_callback: Callable[[], Awaitable[None]] = noop,
     client: Optional[Type[FakeClientProtocol]] = None,
 ) -> PRV2:
     return PRV2(

@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import json
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import pytest
 from pytest_mock import MockFixture
@@ -26,7 +26,7 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-def get_body_and_hash(data: dict) -> Tuple[bytes, str]:
+def get_body_and_hash(data: Dict[str, Any]) -> Tuple[bytes, str]:
     body = json.dumps(data).encode()
     sha = hmac.new(
         key=conf.SECRET_KEY.encode(), msg=body, digestmod=hashlib.sha1

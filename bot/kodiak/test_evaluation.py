@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 
 import pydantic
 import pytest
@@ -59,7 +59,7 @@ class BaseMockFunc:
     def __init__(self) -> None:
         self.calls = []
 
-    def log_call(self, args: dict) -> None:
+    def log_call(self, args: Dict[str, Any]) -> None:
         self.calls.append(args)
 
     @property
