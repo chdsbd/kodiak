@@ -6,10 +6,6 @@ import structlog
 logger = structlog.get_logger()
 
 
-class CommitConnection(pydantic.BaseModel):
-    totalCount: int
-
-
 class User(pydantic.BaseModel):
     databaseId: Optional[int]
     login: str
@@ -26,7 +22,6 @@ class GitActor(pydantic.BaseModel):
 
 
 class Commit(pydantic.BaseModel):
-    parents: CommitConnection
     author: Optional[GitActor]
 
 
