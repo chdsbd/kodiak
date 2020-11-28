@@ -26,7 +26,6 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommitAuthor,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -37,6 +36,7 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
+    PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
@@ -342,7 +342,7 @@ class MergeableType(Protocol):
         reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
-        commit_authors: List[CommitAuthor] = ...,
+        commit_authors: List[PullRequestCommitUser] = ...,
         valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
@@ -370,7 +370,7 @@ def create_mergeable() -> MergeableType:
         reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
-        commit_authors: List[CommitAuthor] = [],
+        commit_authors: List[PullRequestCommitUser] = [],
         valid_signature: bool = False,
         valid_merge_methods: List[MergeMethod] = [
             MergeMethod.merge,
@@ -3242,16 +3242,20 @@ def test_get_merge_body_include_coauthors() -> None:
         merge_method=MergeMethod.merge,
         pull_request=pull_request,
         commit_authors=[
-            CommitAuthor(
+            PullRequestCommitUser(
                 databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
             ),
-            CommitAuthor(
+            PullRequestCommitUser(
                 databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
             # we default to the login when name is None.
-            CommitAuthor(databaseId=771233, name=None, login="d-abernathy", type="Bot"),
+            PullRequestCommitUser(
+                databaseId=771233, name=None, login="d-abernathy", type="Bot"
+            ),
             # without a databaseID the commit author will be ignored.
-            CommitAuthor(databaseId=None, name=None, login="william", type="User"),
+            PullRequestCommitUser(
+                databaseId=None, name=None, login="william", type="User"
+            ),
         ],
     )
     expected = MergeBody(
@@ -3275,8 +3279,10 @@ def test_get_merge_body_include_coauthors_invalid_body_style() -> None:
         pull_request=pull_request,
         merge_method=MergeMethod.merge,
         commit_authors=[
-            CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
-            CommitAuthor(
+            PullRequestCommitUser(
+                databaseId=9023904, name="", login="b-lowe", type="User"
+            ),
+            PullRequestCommitUser(
                 databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
         ],
@@ -3301,7 +3307,7 @@ async def test_mergeable_include_coauthors() -> None:
             api=api,
             config=config,
             commit_authors=[
-                CommitAuthor(
+                PullRequestCommitUser(
                     databaseId=73213123,
                     name="Barry Block",
                     login="b-block",
