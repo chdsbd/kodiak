@@ -197,7 +197,7 @@ def get_merge_body(
     ):
         trailer_block = "\n".join(coauthor_trailers)
         if merge_body.commit_message:
-            merge_body.commit_message += "\n\n"
+            merge_body.commit_message += "\n\n" + trailer_block
         else:
             merge_body.commit_message = trailer_block
 
