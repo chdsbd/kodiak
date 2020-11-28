@@ -202,6 +202,10 @@ def get_merge_body(
             commit_message + "\n\n" + "\n".join(coauthor_trailers)
         )
 
+    # remove extraneous whitespace.
+    if merge_body.commit_message is not None:
+        merge_body.commit_message = merge_body.commit_message.strip()
+
     return merge_body
 
 
