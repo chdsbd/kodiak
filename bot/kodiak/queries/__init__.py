@@ -19,6 +19,8 @@ from typing_extensions import Literal
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.queries.commits import User as PullRequestCommitUser
+from kodiak.queries.commits import get_commit_authors
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -315,7 +317,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
-    commit_authors: List[CommitAuthor] = field(default_factory=list)
+    commit_authors: List[PullRequestCommitUser] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -463,17 +465,6 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-class CommitAuthor(BaseModel):
-    databaseId: Optional[int]
-    login: str
-    name: Optional[str]
-    type: str
-
-    def __hash__(self) -> int:
-        # defining a hash method allows us to deduplicate CommitAuthors easily.
-        return hash(self.databaseId) + hash(self.login) + hash(self.name)
-
-
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
@@ -522,28 +513,6 @@ def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
         return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
-
-
-def get_commit_authors(*, pr: Dict[str, Any]) -> List[CommitAuthor]:
-    """
-    Extract the commit authors from the pull request commits.
-    """
-    # we use a dict as an ordered set.
-    commit_authors = {}
-    try:
-        for node in pr["commitHistory"]["nodes"]:
-            try:
-                user = node["commit"]["author"]["user"]
-                if user is None:
-                    continue
-                commit_authors[CommitAuthor.parse_obj(user)] = True
-            except (pydantic.ValidationError, IndexError, KeyError, TypeError):
-                logger.warning("problem parsing commit author", exc_info=True)
-                continue
-        return list(commit_authors.keys())
-    except (IndexError, KeyError, TypeError):
-        logger.warning("problem parsing commit authors", exc_info=True)
-        return []
 
 
 def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
