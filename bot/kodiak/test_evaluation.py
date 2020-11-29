@@ -3300,7 +3300,16 @@ async def test_mergeable_include_coauthors() -> None:
     config = create_config()
     config.merge.message.include_coauthors = True
 
-    for body_style in (MergeBodyStyle.pull_request_body, MergeBodyStyle.empty):
+    for body_style, commit_message in (
+        (
+            MergeBodyStyle.pull_request_body,
+            "# some description\n\nCo-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>",
+        ),
+        (
+            MergeBodyStyle.empty,
+            "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>",
+        ),
+    ):
         config.merge.message.body = body_style
         api = create_api()
         await mergeable(
@@ -3321,10 +3330,7 @@ async def test_mergeable_include_coauthors() -> None:
         assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
 
         assert api.merge.call_count == 1
-        assert (
-            "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
-            in api.merge.calls[0]["commit_message"]
-        )
+        assert commit_message == api.merge.calls[0]["commit_message"]
         assert api.update_branch.call_count == 0
         assert api.queue_for_merge.call_count == 0
         assert api.dequeue.call_count == 0
