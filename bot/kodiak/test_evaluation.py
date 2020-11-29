@@ -3236,6 +3236,7 @@ def test_get_merge_body_include_coauthors() -> None:
     config = create_config()
     config.merge.message.body = MergeBodyStyle.pull_request_body
     config.merge.message.include_coauthors = True
+    config.merge.message.include_pull_request_author = False
 
     actual = get_merge_body(
         config=config,
@@ -3256,11 +3257,59 @@ def test_get_merge_body_include_coauthors() -> None:
             PullRequestCommitUser(
                 databaseId=None, name=None, login="william", type="User"
             ),
+            # duplicate should be ignored.
+            PullRequestCommitUser(
+                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            # pull request author should be ignored when
+            # include_pull_request_author is not enabled
+            PullRequestCommitUser(
+                databaseId=pull_request.author.databaseId,
+                name="Joe PR Author",
+                login="j-author",
+                type="User",
+            ),
         ],
     )
     expected = MergeBody(
         merge_method="merge",
         commit_message="hello world\n\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>\nCo-authored-by: Maeve Millay <590434+maeve-m[bot]@users.noreply.github.com>\nCo-authored-by: d-abernathy[bot] <771233+d-abernathy[bot]@users.noreply.github.com>",
+    )
+    assert actual == expected
+
+
+def test_get_merge_body_include_coauthors_include_pr_author() -> None:
+    """
+    We should include the pull request author when configured.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello world"
+    config = create_config()
+    config.merge.message.body = MergeBodyStyle.pull_request_body
+    config.merge.message.include_coauthors = True
+    config.merge.message.include_pull_request_author = True
+
+    actual = get_merge_body(
+        config=config,
+        merge_method=MergeMethod.merge,
+        pull_request=pull_request,
+        commit_authors=[
+            PullRequestCommitUser(
+                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            # we should ignore a duplicate entry for the PR author when
+            # include_pull_request_author is enabled.
+            PullRequestCommitUser(
+                databaseId=pull_request.author.databaseId,
+                name=pull_request.author.name,
+                login=pull_request.author.login,
+                type=pull_request.author.type,
+            ),
+        ],
+    )
+    expected = MergeBody(
+        merge_method="merge",
+        commit_message=f"hello world\n\nCo-authored-by: {pull_request.author.name} <{pull_request.author.databaseId}+{pull_request.author.login}@users.noreply.github.com>\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>",
     )
     assert actual == expected
 
