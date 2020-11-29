@@ -19,6 +19,7 @@ from typing_extensions import Literal
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commit_authors
 from kodiak.throttle import Throttler, get_thottler_for_installation
@@ -159,6 +160,9 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
                 login
                 type: __typename
               }
+            }
+            parents {
+              totalCount
             }
           }
         }
@@ -1182,3 +1186,7 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
         Authorization=f"token {token}",
         Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
     )
+
+
+__all__ = ["Commit", "GitActor", "CommitConnection"]
+
