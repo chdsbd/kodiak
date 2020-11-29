@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.34.0 - 2020-11-29
+
 ### Added
 - add new config option (`merge.priority_merge_label`) to place PR at front of merge queue. (#573, #555)
-- add merge queue per target branch (#572, #556)
+- add merge queue per target branch (#572, #556)
 
 ### Changed
 - merge commits are now excluded when calculating pull request coauthors for `merge.message.include_coauthors`. (#581, #576)
+- coauthor trailers are now only prefixed with new lines if the commit message is non empty. (#578, #577)
 
 ## 0.33.0 - 2020-11-22
 
