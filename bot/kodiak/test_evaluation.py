@@ -27,8 +27,6 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Commit,
-    CommitConnection,
-    GitActor,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -39,7 +37,6 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
-    PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
@@ -52,6 +49,7 @@ from kodiak.queries import (
     SubscriptionExpired,
     TrialExpired,
 )
+from tests.fixtures import create_commit
 
 log = logging.getLogger(__name__)
 
@@ -3228,24 +3226,6 @@ def test_get_merge_body_include_pull_request_author_invalid_body_style() -> None
     )
     expected = MergeBody(merge_method="merge", commit_message=None)
     assert actual == expected
-
-
-def create_commit(
-    *,
-    database_id: Optional[int],
-    name: Optional[str],
-    login: str,
-    type: str,
-    parents: int = 1,
-) -> Commit:
-    return Commit(
-        parents=CommitConnection(totalCount=parents),
-        author=GitActor(
-            user=PullRequestCommitUser(
-                databaseId=database_id, name=name, login=login, type=type
-            )
-        ),
-    )
 
 
 def test_get_merge_body_include_coauthors() -> None:

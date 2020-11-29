@@ -21,7 +21,7 @@ import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
-from kodiak.queries.commits import get_commit_authors
+from kodiak.queries.commits import get_commits
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -321,7 +321,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
-    commit_authors: List[PullRequestCommitUser] = field(default_factory=list)
+    commits: List[Commit] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -950,7 +950,7 @@ class Client:
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
-            commit_authors=get_commit_authors(pr=pull_request),
+            commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),
@@ -1188,4 +1188,4 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
     )
 
 
-__all__ = ["Commit", "GitActor", "CommitConnection"]
+__all__ = ["Commit", "GitActor", "CommitConnection", "PullRequestCommitUser"]
