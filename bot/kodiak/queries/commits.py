@@ -42,7 +42,6 @@ def get_commit_authors(*, pr: Dict[str, Any]) -> List[User]:
     Extract the commit authors from the pull request commits.
     """
     # we use a dict as an ordered set.
-    commit_authors = {}
     try:
         pull_request = PullRequest.parse_obj(pr)
     except pydantic.ValidationError:
@@ -51,8 +50,9 @@ def get_commit_authors(*, pr: Dict[str, Any]) -> List[User]:
     nodes = pull_request.commitHistory.nodes
     if not nodes:
         return []
+    commit_authors = []
     for node in nodes:
         if node.commit.author is None or node.commit.author.user is None:
             continue
-        commit_authors[node.commit.author.user] = True
-    return list(commit_authors.keys())
+        commit_authors.append(node.commit.author.user)
+    return commit_authors

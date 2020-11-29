@@ -2,7 +2,7 @@ import asyncio
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, MutableMapping, Optional, Set, Union
+from typing import Dict, List, MutableMapping, Optional, Set, Union
 
 import inflection
 import pydantic
@@ -42,6 +42,7 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAuthor,
     PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
@@ -86,32 +87,60 @@ class CommitAuthorName:
     login: str
 
 
-def get_commit_author_info(
-    *, login: str, databaseId: int, name: Optional[str], type_: str
-) -> CommitAuthorName:
-    """
-    Generate a name and github login for a user.
-    """
-    author_name = login
-    author_login = login
-    if type_ == "Bot":
-        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
-        author_name += "[bot]"
-        author_login += "[bot]"
-    if name:
-        author_name = name
-    return CommitAuthorName(name=author_name, login=author_login)
-
-
-def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
+def get_coauthor_trailer(
+    *, user_id: int, login: str, name: Optional[str], type: str
+) -> str:
     """
     Build a coauthor trailer given user information.
     """
+    display_name = login
+    display_login = login
+    if type == "Bot":
+        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
+        display_name += "[bot]"
+        display_login += "[bot]"
+    if name:
+        display_name = name
+
     # GitHub does not allow our GitHub App to view the email addresses of
     # pull request authors, so we generate a noreply GitHub email address
     # instead which works the same for the GitHub UI.
-    author_email = f"{user_id}+{login}@users.noreply.github.com"
-    return f"Co-authored-by: {name} <{author_email}>"
+    author_email = f"{user_id}+{display_login}@users.noreply.github.com"
+    return f"Co-authored-by: {display_name} <{author_email}>"
+
+
+def get_coauthor_trailers(
+    *,
+    coauthors: List[PullRequestCommitUser],
+    include_pull_request_author: bool,
+    pull_request_author_id: int,
+) -> List[str]:
+    """
+    Deduplicate coauthors and convert to strings.
+    """
+    coauthor_trailers = []
+    deduped_coauthors: Dict[PullRequestCommitUser, bool] = {}
+    for dupe_coauthor in coauthors:
+        deduped_coauthors[dupe_coauthor] = True
+
+    for coauthor in deduped_coauthors:
+        if coauthor.databaseId is None:
+            continue
+        if (
+            not include_pull_request_author
+            and coauthor.databaseId == pull_request_author_id
+        ):
+            continue
+
+        coauthor_trailers.append(
+            get_coauthor_trailer(
+                user_id=coauthor.databaseId,
+                login=coauthor.login,
+                name=coauthor.name,
+                type=coauthor.type,
+            )
+        )
+    return coauthor_trailers
 
 
 @dataclass
@@ -152,44 +181,24 @@ def get_merge_body(
 
     # we share coauthor logic between include_pull_request_author and
     # include_coauthors.
-    coauthor_trailers = []
+    coauthors = []  # type: List[PullRequestCommitUser]
     if config.merge.message.include_pull_request_author:
-        author = get_commit_author_info(
-            login=pull_request.author.login,
-            databaseId=pull_request.author.databaseId,
-            name=pull_request.author.name,
-            type_=pull_request.author.type,
-        )
-        coauthor_trailers.append(
-            get_coauthor_trailer(
-                user_id=pull_request.author.databaseId,
-                login=author.login,
-                name=author.name,
+        coauthors.append(
+            PullRequestCommitUser(
+                login=pull_request.author.login,
+                databaseId=pull_request.author.databaseId,
+                name=pull_request.author.name,
+                type=pull_request.author.type,
             )
         )
     if config.merge.message.include_coauthors:
-        for commit_author in commit_authors:
-            if (
-                commit_author.databaseId is None
-                # don't add trailers for pull request author.
-                # TODO(chdsbd): Should we remove this?
-                or commit_author.databaseId == pull_request.author.databaseId
-            ):
-                continue
-            author = get_commit_author_info(
-                login=commit_author.login,
-                databaseId=commit_author.databaseId,
-                name=commit_author.name,
-                type_=commit_author.type,
-            )
+        coauthors += commit_authors
 
-            coauthor_trailers.append(
-                get_coauthor_trailer(
-                    user_id=commit_author.databaseId,
-                    login=author.login,
-                    name=author.name,
-                )
-            )
+    coauthor_trailers = get_coauthor_trailers(
+        coauthors=coauthors,
+        include_pull_request_author=config.merge.message.include_pull_request_author,
+        pull_request_author_id=pull_request.author.databaseId,
+    )
 
     if coauthor_trailers and config.merge.message.body in (
         MergeBodyStyle.pull_request_body,
