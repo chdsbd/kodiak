@@ -81,6 +81,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            base {
+                ref
+            }
           }
         }
       }
@@ -93,6 +96,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            base {
+                ref
+            }
           }
         }
       }
