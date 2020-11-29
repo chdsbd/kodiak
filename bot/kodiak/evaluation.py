@@ -35,6 +35,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    Commit,
     MergeableState,
     MergeStateStatus,
     Permission,
@@ -153,7 +154,7 @@ def get_merge_body(
     config: V1,
     merge_method: MergeMethod,
     pull_request: PullRequest,
-    commit_authors: List[PullRequestCommitUser],
+    commits: List[Commit],
 ) -> MergeBody:
     """
     Get merge options for a pull request to call GitHub API.
@@ -191,7 +192,16 @@ def get_merge_body(
             )
         )
     if config.merge.message.include_coauthors:
-        coauthors += commit_authors
+        for commit in commits:
+            if (
+                # only use commits that have identified authors.
+                commit.author is None
+                or commit.author.user is None
+                # ignore merge commits. They will have more than one parent.
+                or commit.parents.totalCount > 1
+            ):
+                continue
+            coauthors.append(commit.author.user)
 
     coauthor_trailers = get_coauthor_trailers(
         coauthors=coauthors,
@@ -429,7 +439,7 @@ async def mergeable(
     reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
-    commit_authors: List[PullRequestCommitUser],
+    commits: List[Commit],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
@@ -1000,7 +1010,7 @@ branch protection requirements.
     # okay to merge if we reach this point.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
-        merge_args = get_merge_body(config, merge_method, pull_request, commit_authors)
+        merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
             await api.merge(

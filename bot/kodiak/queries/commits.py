@@ -6,6 +6,10 @@ import structlog
 logger = structlog.get_logger()
 
 
+class CommitConnection(pydantic.BaseModel):
+    totalCount: int
+
+
 class User(pydantic.BaseModel):
     databaseId: Optional[int]
     login: str
@@ -22,6 +26,7 @@ class GitActor(pydantic.BaseModel):
 
 
 class Commit(pydantic.BaseModel):
+    parents: CommitConnection
     author: Optional[GitActor]
 
 
@@ -37,7 +42,7 @@ class PullRequest(pydantic.BaseModel):
     commitHistory: PullRequestCommitConnection
 
 
-def get_commit_authors(*, pr: Dict[str, Any]) -> List[User]:
+def get_commits(*, pr: Dict[str, Any]) -> List[Commit]:
     """
     Extract the commit authors from the pull request commits.
     """
@@ -50,9 +55,4 @@ def get_commit_authors(*, pr: Dict[str, Any]) -> List[User]:
     nodes = pull_request.commitHistory.nodes
     if not nodes:
         return []
-    commit_authors = []
-    for node in nodes:
-        if node.commit.author is None or node.commit.author.user is None:
-            continue
-        commit_authors.append(node.commit.author.user)
-    return commit_authors
+    return [node.commit for node in nodes]

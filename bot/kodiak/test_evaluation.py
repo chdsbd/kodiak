@@ -26,6 +26,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    Commit,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -36,7 +37,6 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
-    PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
@@ -49,6 +49,7 @@ from kodiak.queries import (
     SubscriptionExpired,
     TrialExpired,
 )
+from kodiak.tests.fixtures import create_commit
 
 log = logging.getLogger(__name__)
 
@@ -342,7 +343,7 @@ class MergeableType(Protocol):
         reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
-        commit_authors: List[PullRequestCommitUser] = ...,
+        commits: List[Commit] = ...,
         valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
@@ -370,7 +371,7 @@ def create_mergeable() -> MergeableType:
         reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
-        commit_authors: List[PullRequestCommitUser] = [],
+        commits: List[Commit] = [],
         valid_signature: bool = False,
         valid_merge_methods: List[MergeMethod] = [
             MergeMethod.merge,
@@ -401,7 +402,7 @@ def create_mergeable() -> MergeableType:
             reviews=reviews,
             contexts=contexts,
             check_runs=check_runs,
-            commit_authors=commit_authors,
+            commits=commits,
             valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
             repository=repository,
@@ -3005,7 +3006,7 @@ def test_pr_get_merge_body_full() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3021,7 +3022,7 @@ def test_pr_get_merge_body_empty() -> None:
         config=V1(version=1),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash")
     assert actual == expected
@@ -3041,7 +3042,7 @@ def test_get_merge_body_strip_html_comments() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="hello world")
     assert actual == expected
@@ -3056,7 +3057,7 @@ def test_get_merge_body_empty() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="")
     assert actual == expected
@@ -3079,7 +3080,7 @@ def test_get_merge_body_includes_pull_request_url() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3109,7 +3110,7 @@ def test_get_merge_body_includes_pull_request_url_with_coauthor() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3139,7 +3140,7 @@ def test_get_merge_body_include_pull_request_author_user() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3166,7 +3167,7 @@ def test_get_merge_body_include_pull_request_author_bot() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3196,7 +3197,7 @@ def test_get_merge_body_include_pull_request_author_mannequin() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3221,7 +3222,7 @@ def test_get_merge_body_include_pull_request_author_invalid_body_style() -> None
         config=config,
         pull_request=pull_request,
         merge_method=MergeMethod.merge,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="merge", commit_message=None)
     assert actual == expected
@@ -3242,29 +3243,36 @@ def test_get_merge_body_include_coauthors() -> None:
         config=config,
         merge_method=MergeMethod.merge,
         pull_request=pull_request,
-        commit_authors=[
-            PullRequestCommitUser(
-                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+        commits=[
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
             ),
-            PullRequestCommitUser(
-                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            create_commit(
+                database_id=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
             # we default to the login when name is None.
-            PullRequestCommitUser(
-                databaseId=771233, name=None, login="d-abernathy", type="Bot"
+            create_commit(
+                database_id=771233, name=None, login="d-abernathy", type="Bot"
             ),
             # without a databaseID the commit author will be ignored.
-            PullRequestCommitUser(
-                databaseId=None, name=None, login="william", type="User"
-            ),
+            create_commit(database_id=None, name=None, login="william", type="User"),
             # duplicate should be ignored.
-            PullRequestCommitUser(
-                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            # merge commits should be ignored. merge commits will have more than
+            # one parent.
+            create_commit(
+                database_id=1,
+                name="Arnold Weber",
+                login="arnold",
+                type="User",
+                parents=2,
             ),
             # pull request author should be ignored when
             # include_pull_request_author is not enabled
-            PullRequestCommitUser(
-                databaseId=pull_request.author.databaseId,
+            create_commit(
+                database_id=pull_request.author.databaseId,
                 name="Joe PR Author",
                 login="j-author",
                 type="User",
@@ -3293,14 +3301,14 @@ def test_get_merge_body_include_coauthors_include_pr_author() -> None:
         config=config,
         merge_method=MergeMethod.merge,
         pull_request=pull_request,
-        commit_authors=[
-            PullRequestCommitUser(
-                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+        commits=[
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
             ),
             # we should ignore a duplicate entry for the PR author when
             # include_pull_request_author is enabled.
-            PullRequestCommitUser(
-                databaseId=pull_request.author.databaseId,
+            create_commit(
+                database_id=pull_request.author.databaseId,
                 name=pull_request.author.name,
                 login=pull_request.author.login,
                 type=pull_request.author.type,
@@ -3327,12 +3335,10 @@ def test_get_merge_body_include_coauthors_invalid_body_style() -> None:
         config=config,
         pull_request=pull_request,
         merge_method=MergeMethod.merge,
-        commit_authors=[
-            PullRequestCommitUser(
-                databaseId=9023904, name="", login="b-lowe", type="User"
-            ),
-            PullRequestCommitUser(
-                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+        commits=[
+            create_commit(database_id=9023904, name="", login="b-lowe", type="User"),
+            create_commit(
+                database_id=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
         ],
     )
@@ -3364,9 +3370,9 @@ async def test_mergeable_include_coauthors() -> None:
         await mergeable(
             api=api,
             config=config,
-            commit_authors=[
-                PullRequestCommitUser(
-                    databaseId=73213123,
+            commits=[
+                create_commit(
+                    database_id=73213123,
                     name="Barry Block",
                     login="b-block",
                     type="User",

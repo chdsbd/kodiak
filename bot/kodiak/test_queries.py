@@ -16,6 +16,7 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Client,
+    Commit,
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
@@ -30,7 +31,6 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
-    PullRequestCommitUser,
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
@@ -39,9 +39,11 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
     Subscription,
-    get_commit_authors,
+    get_commits,
 )
+from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
+from kodiak.tests.fixtures import create_commit
 
 
 @pytest.fixture
@@ -578,7 +580,7 @@ async def test_get_subscription_unknown_blocker(
     )
 
 
-def test_get_commit_authors() -> None:
+def test_get_commits() -> None:
     """
     Verify we parse commit authors correctly. We should handle the nullability
     of name and databaseId.
@@ -588,6 +590,7 @@ def test_get_commit_authors() -> None:
             "nodes": [
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -595,11 +598,12 @@ def test_get_commit_authors() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "b-lowe",
@@ -607,11 +611,12 @@ def test_get_commit_authors() -> None:
                                 "login": "b-lowe",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": None,
@@ -619,12 +624,13 @@ def test_get_commit_authors() -> None:
                                 "login": "kodiakhq",
                                 "type": "Bot",
                             }
-                        }
+                        },
                     }
                 },
-                {"commit": {"author": {"user": None}}},
+                {"commit": {"parents": {"totalCount": 1}, "author": {"user": None}}},
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -632,11 +638,12 @@ def test_get_commit_authors() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": None,
@@ -644,43 +651,39 @@ def test_get_commit_authors() -> None:
                                 "login": "j-doe",
                                 "type": "SomeGitActor",
                             }
-                        }
+                        },
                     }
                 },
             ]
         }
     }
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == [
-        PullRequestCommitUser(
-            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        create_commit(
+            name="Christopher Dignam", database_id=1929960, login="chdsbd", type="User"
         ),
-        PullRequestCommitUser(
-            name="b-lowe", databaseId=5345234, login="b-lowe", type="User"
+        create_commit(name="b-lowe", database_id=5345234, login="b-lowe", type="User"),
+        create_commit(name=None, database_id=435453, login="kodiakhq", type="Bot"),
+        Commit(parents=CommitConnection(totalCount=1), author=GitActor(user=None)),
+        create_commit(
+            name="Christopher Dignam", database_id=1929960, login="chdsbd", type="User"
         ),
-        PullRequestCommitUser(
-            name=None, databaseId=435453, login="kodiakhq", type="Bot"
-        ),
-        PullRequestCommitUser(
-            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
-        ),
-        PullRequestCommitUser(
-            name=None, databaseId=None, login="j-doe", type="SomeGitActor"
-        ),
+        create_commit(name=None, database_id=None, login="j-doe", type="SomeGitActor"),
     ]
 
 
-def test_get_commit_authors_error_handling() -> None:
+def test_get_commits_error_handling() -> None:
     """
     We should handle parsing errors without raising an exception.
     """
     pull_request_data = {
         "commitHistory": {
             "nodes": [
-                {"commit": {"author": {"user": None}}},
-                {"commit": {"author": None}},
+                {"commit": {"parents": {"totalCount": 1}, "author": {"user": None}}},
+                {"commit": {"parents": {"totalCount": 1}, "author": None}},
                 {
                     "commit": {
+                        "parents": {"totalCount": 3},
                         "author": {
                             "user": {
                                 "name": None,
@@ -688,11 +691,12 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "kodiakhq",
                                 "type": "Bot",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -700,11 +704,12 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 2},
                         "author": {
                             "user": {
                                 "name": None,
@@ -712,32 +717,38 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "j-doe",
                                 "type": "SomeGitActor",
                             }
-                        }
+                        },
                     }
                 },
             ]
         }
     }
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == [
-        PullRequestCommitUser(
-            name=None, databaseId=435453, login="kodiakhq", type="Bot"
+        Commit(parents=CommitConnection(totalCount=1), author=GitActor(user=None)),
+        Commit(parents=CommitConnection(totalCount=1), author=None),
+        create_commit(
+            name=None, database_id=435453, login="kodiakhq", type="Bot", parents=3
         ),
-        PullRequestCommitUser(
-            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        create_commit(
+            name="Christopher Dignam",
+            database_id=1929960,
+            login="chdsbd",
+            type="User",
+            parents=1,
         ),
-        PullRequestCommitUser(
-            name=None, databaseId=None, login="j-doe", type="SomeGitActor"
+        create_commit(
+            name=None, database_id=None, login="j-doe", type="SomeGitActor", parents=2
         ),
     ]
 
 
-def test_get_commit_authors_error_handling_missing_response() -> None:
+def test_get_commits_error_handling_missing_response() -> None:
     """
     We should handle parsing errors without raising an exception.
     """
     pull_request_data = {"commitHistory": None}
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == []
 
 
