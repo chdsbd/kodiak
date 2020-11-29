@@ -81,6 +81,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            baseRef {
+              name
+            }
           }
         }
       }
@@ -93,6 +96,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            baseRef {
+              name
+            }
           }
         }
       }
@@ -150,7 +156,7 @@ async def refresh_pull_requests_for_installation(
                 WebhookEvent(
                     repo_owner=login,
                     repo_name=repo_name,
-                    target_name=pull_request["base"]["ref"],
+                    target_name=pull_request["baseRef"]["name"],
                     pull_request_number=pull_request["number"],
                     installation_id=installation_id,
                 )
