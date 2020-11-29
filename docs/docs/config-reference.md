@@ -189,6 +189,15 @@ placing it in the merge queue.
 
 This option adds some unfairness where PRs waiting in the queue the longest are not served first.
 
+### `merge.priority_merge_label`
+
+- **type:** `string`
+- **default:** null
+
+When the label is applied to a pull request, the pull request will be placed at the front of the merge queue.
+
+If two PRs have the `merge.priority_merge_label` label, either one may be first in queue.
+
 ### `merge.do_not_merge`
 
 - **type:** `boolean`
