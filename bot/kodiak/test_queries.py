@@ -16,7 +16,6 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Client,
-    CommitAuthor,
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
@@ -31,6 +30,7 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
+    PullRequestCommitUser,
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
@@ -652,12 +652,18 @@ def test_get_commit_authors() -> None:
     }
     res = get_commit_authors(pr=pull_request_data)
     assert res == [
-        CommitAuthor(
+        PullRequestCommitUser(
             name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
         ),
-        CommitAuthor(name="b-lowe", databaseId=5345234, login="b-lowe", type="User"),
-        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
-        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+        PullRequestCommitUser(
+            name="b-lowe", databaseId=5345234, login="b-lowe", type="User"
+        ),
+        PullRequestCommitUser(
+            name=None, databaseId=435453, login="kodiakhq", type="Bot"
+        ),
+        PullRequestCommitUser(
+            name=None, databaseId=None, login="j-doe", type="SomeGitActor"
+        ),
     ]
 
 
@@ -668,8 +674,8 @@ def test_get_commit_authors_error_handling() -> None:
     pull_request_data = {
         "commitHistory": {
             "nodes": [
-                {"commit": {"author": {"user": {}}}},
-                {"commit": {"author": {}}},
+                {"commit": {"author": {"user": None}}},
+                {"commit": {"author": None}},
                 {
                     "commit": {
                         "author": {
@@ -711,11 +717,15 @@ def test_get_commit_authors_error_handling() -> None:
     }
     res = get_commit_authors(pr=pull_request_data)
     assert res == [
-        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
-        CommitAuthor(
+        PullRequestCommitUser(
+            name=None, databaseId=435453, login="kodiakhq", type="Bot"
+        ),
+        PullRequestCommitUser(
             name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
         ),
-        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+        PullRequestCommitUser(
+            name=None, databaseId=None, login="j-doe", type="SomeGitActor"
+        ),
     ]
 
 

@@ -35,7 +35,6 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommitAuthor,
     MergeableState,
     MergeStateStatus,
     Permission,
@@ -43,6 +42,7 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
@@ -125,7 +125,7 @@ def get_merge_body(
     config: V1,
     merge_method: MergeMethod,
     pull_request: PullRequest,
-    commit_authors: List[CommitAuthor],
+    commit_authors: List[PullRequestCommitUser],
 ) -> MergeBody:
     """
     Get merge options for a pull request to call GitHub API.
@@ -421,7 +421,7 @@ async def mergeable(
     reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
-    commit_authors: List[CommitAuthor],
+    commit_authors: List[PullRequestCommitUser],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
