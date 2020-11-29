@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - add new config option (`merge.priority_merge_label`) to place PR at front of merge queue. (#573, #555)
+- add queue per target branch (#572, #556)
 
 ### Changed
 - merge commits are now excluded when calculating pull request coauthors for `merge.message.include_coauthors`. (#581, #576)
