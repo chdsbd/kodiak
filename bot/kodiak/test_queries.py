@@ -43,7 +43,7 @@ from kodiak.queries import (
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
-from tests.fixtures import create_commit
+from kodiak.tests.fixtures import create_commit
 
 
 @pytest.fixture

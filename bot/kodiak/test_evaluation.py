@@ -49,7 +49,7 @@ from kodiak.queries import (
     SubscriptionExpired,
     TrialExpired,
 )
-from tests.fixtures import create_commit
+from kodiak.tests.fixtures import create_commit
 
 log = logging.getLogger(__name__)
 
