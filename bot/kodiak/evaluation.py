@@ -42,7 +42,6 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
-    PullRequestAuthor,
     PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
