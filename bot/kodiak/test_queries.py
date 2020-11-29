@@ -674,8 +674,8 @@ def test_get_commit_authors_error_handling() -> None:
     pull_request_data = {
         "commitHistory": {
             "nodes": [
-                {"commit": {"author": {"user": {}}}},
-                {"commit": {"author": {}}},
+                {"commit": {"author": {"user": None}}},
+                {"commit": {"author": None}},
                 {
                     "commit": {
                         "author": {
