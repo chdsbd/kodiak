@@ -1189,4 +1189,3 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
 
 
 __all__ = ["Commit", "GitActor", "CommitConnection"]
-
