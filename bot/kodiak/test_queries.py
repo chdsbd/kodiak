@@ -662,6 +662,9 @@ def test_get_commit_authors() -> None:
             name=None, databaseId=435453, login="kodiakhq", type="Bot"
         ),
         PullRequestCommitUser(
+            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        ),
+        PullRequestCommitUser(
             name=None, databaseId=None, login="j-doe", type="SomeGitActor"
         ),
     ]
