@@ -64,7 +64,10 @@ logger = structlog.get_logger()
 
 
 def get_body_content(
-    body_type: BodyText, strip_html_comments: bool, cut_body_before: str, pull_request: PullRequest
+    body_type: BodyText,
+    strip_html_comments: bool,
+    cut_body_before: str,
+    pull_request: PullRequest,
 ) -> str:
     if body_type == BodyText.markdown:
         body = pull_request.body
