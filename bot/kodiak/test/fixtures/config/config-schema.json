@@ -83,26 +83,61 @@
     "version"
   ],
   "definitions": {
+    "MergeMethod": {
+      "title": "MergeMethod",
+      "description": "An enumeration.",
+      "enum": [
+        "merge",
+        "squash",
+        "rebase"
+      ],
+      "type": "string"
+    },
+    "MergeTitleStyle": {
+      "title": "MergeTitleStyle",
+      "description": "An enumeration.",
+      "enum": [
+        "github_default",
+        "pull_request_title"
+      ]
+    },
+    "MergeBodyStyle": {
+      "title": "MergeBodyStyle",
+      "description": "An enumeration.",
+      "enum": [
+        "github_default",
+        "pull_request_body",
+        "empty"
+      ]
+    },
+    "BodyText": {
+      "title": "BodyText",
+      "description": "An enumeration.",
+      "enum": [
+        "plain_text",
+        "markdown",
+        "html"
+      ]
+    },
     "MergeMessage": {
       "title": "MergeMessage",
       "description": "https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button",
       "type": "object",
       "properties": {
         "title": {
-          "title": "Title",
           "default": "github_default",
-          "enum": [
-            "github_default",
-            "pull_request_title"
+          "allOf": [
+            {
+              "$ref": "#/definitions/MergeTitleStyle"
+            }
           ]
         },
         "body": {
-          "title": "Body",
           "default": "github_default",
-          "enum": [
-            "github_default",
-            "pull_request_body",
-            "empty"
+          "allOf": [
+            {
+              "$ref": "#/definitions/MergeBodyStyle"
+            }
           ]
         },
         "include_pr_number": {
@@ -111,12 +146,11 @@
           "type": "boolean"
         },
         "body_type": {
-          "title": "Body Type",
           "default": "markdown",
-          "enum": [
-            "plain_text",
-            "markdown",
-            "html"
+          "allOf": [
+            {
+              "$ref": "#/definitions/BodyText"
+            }
           ]
         },
         "strip_html_comments": {
@@ -140,7 +174,7 @@
           "type": "boolean"
         },
         "cut_body_before": {
-          "title": "Cut Pull Request Body",
+          "title": "Cut Body Before",
           "default": "",
           "type": "string"
         }
@@ -197,13 +231,7 @@
           }
         },
         "method": {
-          "title": "Method",
-          "enum": [
-            "merge",
-            "squash",
-            "rebase"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/MergeMethod"
         },
         "delete_branch_on_merge": {
           "title": "Delete Branch On Merge",
