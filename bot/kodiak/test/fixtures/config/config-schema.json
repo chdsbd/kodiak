@@ -140,7 +140,7 @@
           "type": "boolean"
         },
         "cut_body_before": {
-          "title": "Cut Pull Request Body"
+          "title": "Cut Pull Request Body",
           "default": "",
           "type": "string"
         }
