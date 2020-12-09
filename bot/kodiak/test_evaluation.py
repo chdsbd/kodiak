@@ -3055,7 +3055,7 @@ def test_get_merge_body_cut_body_before() -> None:
             version=1,
             merge=Merge(
                 message=MergeMessage(
-                    body=MergeBodyStyle.pull_request_body, strip_html_comments=True
+                    body=MergeBodyStyle.pull_request_body, cut_body_before="<!-- testing -->"
                 )
             ),
         ),
