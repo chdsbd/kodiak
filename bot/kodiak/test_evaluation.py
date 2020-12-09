@@ -3047,6 +3047,7 @@ def test_get_merge_body_strip_html_comments() -> None:
     expected = MergeBody(merge_method="squash", commit_message="hello world")
     assert actual == expected
 
+
 def test_get_merge_body_cut_body_before() -> None:
     pull_request = create_pull_request()
     pull_request.body = "hello <!-- testing -->world"
@@ -3055,7 +3056,8 @@ def test_get_merge_body_cut_body_before() -> None:
             version=1,
             merge=Merge(
                 message=MergeMessage(
-                    body=MergeBodyStyle.pull_request_body, cut_body_before="<!-- testing -->"
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
                 )
             ),
         ),
@@ -3065,6 +3067,7 @@ def test_get_merge_body_cut_body_before() -> None:
     )
     expected = MergeBody(merge_method="squash", commit_message="world")
     assert actual == expected
+
 
 def test_get_merge_body_empty() -> None:
     pull_request = create_pull_request()
