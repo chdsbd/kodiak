@@ -64,10 +64,13 @@ logger = structlog.get_logger()
 
 
 def get_body_content(
-    body_type: BodyText, strip_html_comments: bool, pull_request: PullRequest
+    body_type: BodyText, strip_html_comments: bool, cut_body_before: str, pull_request: PullRequest
 ) -> str:
     if body_type == BodyText.markdown:
         body = pull_request.body
+        if cut_body_before != "":
+            start_index = body.find(cut_body_before) + len(cut_body_before)
+            body = body[start_index:]
         if strip_html_comments:
             return strip_html_comments_from_markdown(body)
         return body
@@ -164,6 +167,7 @@ def get_merge_body(
         body = get_body_content(
             config.merge.message.body_type,
             config.merge.message.strip_html_comments,
+            config.merge.message.cut_body_before,
             pull_request,
         )
         merge_body.commit_message = body
