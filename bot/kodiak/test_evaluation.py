@@ -3069,6 +3069,56 @@ def test_get_merge_body_cut_body_before() -> None:
     assert actual == expected
 
 
+def test_get_merge_body_cut_body_before_strip_html() -> None:
+    """
+    We should be able to use strip_html_comments with cut_body_before.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="world")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_before_multiple_markers() -> None:
+    """
+    We should choose the first substring matching cut_body_before.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world<!-- testing --> 123"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="world 123")
+    assert actual == expected
+
+
 def test_get_merge_body_empty() -> None:
     pull_request = create_pull_request()
     pull_request.body = "hello world"
