@@ -36,7 +36,7 @@ merge.automerge_label = "🚀 merge it!"
 If multiple labels are specified in an array, any of the specified labels will trigger merge.
 
 ```toml
-merge.automerge_labels = ["🚢 it!", "merge it!"]
+merge.automerge_label = ["🚢 it!", "merge it!"]
 ```
 
 ### `merge.require_automerge_label`
