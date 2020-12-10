@@ -596,7 +596,7 @@ async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
 async def test_mergeable_requires_commit_signatures_rebase() -> None:
     """
     requiresCommitSignatures doesn't work with Kodiak when rebase is configured
-
+    
     https://github.com/chdsbd/kodiak/issues/89
     """
     api = create_api()
@@ -629,7 +629,7 @@ async def test_mergeable_requires_commit_signatures_rebase() -> None:
 async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
     """
     requiresCommitSignatures works with merge commits and squash
-
+    
     https://github.com/chdsbd/kodiak/issues/89
     """
     api = create_api()
@@ -2822,7 +2822,7 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update() -> None:
     """
-    merge.do_not_merge is only useful with merge.update_branch_immediately,
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
     Test when PR doesn't need update.
     """
     mergeable = create_mergeable()
@@ -2844,7 +2844,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update()
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for_checks() -> None:
     """
-    merge.do_not_merge is only useful with merge.update_branch_immediately,
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
     Test when PR doesn't need update but is waiting for checks to finish.
     """
     mergeable = create_mergeable()
@@ -2883,7 +2883,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update() -> None:
     """
-    merge.do_not_merge is only useful with merge.update_branch_immediately,
+    merge.do_not_merge is only useful with merge.update_branch_immediately, 
     Test when PR needs update.
     """
     mergeable = create_mergeable()
