@@ -43,6 +43,7 @@ class MergeMessage(BaseModel):
     include_pull_request_author: bool = False
     include_coauthors: bool = False
     include_pull_request_url: bool = False
+    cut_body_before: str = ""
 
 
 # this pattern indicates that the user has the field unset.
