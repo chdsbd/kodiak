@@ -567,9 +567,10 @@ body_type = "markdown" # default: "markdown", options: "plain_text", "markdown",
 # This option only applies when `merge.message.body_type = "markdown"`.
 strip_html_comments = false # default: false
 
-# Removes all the content before the specified pattern in the pull request body
-# to create the body of the commit message. This settings is useful, when
-# we want to include only a part of the pull request description as commit message.
+# Remove all content before the configured string in the pull request body.
+# This setting is useful when we want to include only a part of the pull request
+# description as the commit message.
+# This option only applies when `merge.message.body_type = "markdown"`.
 cut_body_before = "<!-- commit body -->"
 
 [update]
