@@ -192,7 +192,7 @@ This option adds some unfairness where PRs waiting in the queue the longest are 
 ### `merge.priority_merge_label`
 
 - **type:** `string`
-- **default:** null
+- **default:** `null`
 
 When the label is applied to a pull request, the pull request will be placed at the front of the merge queue.
 
@@ -258,11 +258,11 @@ This option only applies when `merge.message.body_type = "markdown"`.
 ### `merge.message.cut_body_before`
 
 - **type:** `string`
-- **default:** ``
+- **default:** `null`
 
-Removes all the content before the specified pattern in the pull request body to create the body of the commit message.
+Remove all content before the configured string in the pull request body.
 
-This settings is useful, when we want to include only a part of the pull request description as commit message.
+This setting is useful when we want to include only a part of the pull request description as the commit message.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
