@@ -3068,6 +3068,7 @@ def test_get_merge_body_cut_body_before() -> None:
     expected = MergeBody(merge_method="squash", commit_message="<!-- testing -->world")
     assert actual == expected
 
+
 def test_get_merge_body_empty() -> None:
     pull_request = create_pull_request()
     pull_request.body = "hello world"
