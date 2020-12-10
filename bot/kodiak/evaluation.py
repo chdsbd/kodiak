@@ -72,7 +72,7 @@ def get_body_content(
     if body_type == BodyText.markdown:
         body = pull_request.body
         if cut_body_before != "":
-            start_index = body.find(cut_body_before) + len(cut_body_before)
+            start_index = body.find(cut_body_before)
             body = body[start_index:]
         if strip_html_comments:
             return strip_html_comments_from_markdown(body)
