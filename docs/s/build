@@ -1,7 +1,5 @@
 #!/bin/sh
-yarn_bin_path=$(yarn bin)
-npm_bin_path=$(npm bin)
-echo "|$yarn_bin_path|"
-echo "|$npm_bin_path|"
-exec "${yarn_bin_path}/docusaurus-build"
-g
+# Netlify sets FORCE_COLOR=true and a bug in Yarn causes `yarn bin` to return an
+# invalid path: `[2K[1G/opt/build/repo/docs/node_modules/.bin`
+# https://github.com/yarnpkg/yarn/issues/5945
+exec "$(FORCE_COLOR=0 yarn bin)/docusaurus-build"
