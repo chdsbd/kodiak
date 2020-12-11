@@ -1,2 +1,6 @@
 #!/bin/sh
-exec ./node_modules/.bin/docusaurus-build
+yarn_bin_path=$(yarn bin)
+npm_bin_path=$(npm bin)
+echo "|$yarn_bin_path|"
+echo "|$npm_bin_path|"
+exec "${yarn_bin_path}/docusaurus-build"
