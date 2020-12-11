@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "$(yarn bin)/docusaurus-build"
+exec "$(npm bin)/docusaurus-build"
