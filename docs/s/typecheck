@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "$(yarn bin)/tsc" --project tsconfig.json
+exec "$(yarn bin)/tsc" --project tsconfig.json "$@"
