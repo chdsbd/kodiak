@@ -3,9 +3,5 @@ yarn_bin_path=$(yarn bin)
 npm_bin_path=$(npm bin)
 echo "|$yarn_bin_path|"
 echo "|$npm_bin_path|"
-echo "${yarn_bin_path}/docusaurus-build"
-echo "${npm_bin_path}/docusaurus-build"
-ls "$yarn_bin_path"
-ls "$npm_bin_path"
-diff  <(echo "$yarn_bin_path" ) <(echo "$npm_bin_path")
 exec "${yarn_bin_path}/docusaurus-build"
+g
