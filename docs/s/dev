@@ -1,2 +1,2 @@
 #!/bin/sh
-exec $(yarn bin)/docusaurus-start
+exec $(npm bin)/docusaurus-start
