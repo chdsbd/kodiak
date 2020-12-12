@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Optional, Type, cast
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Type, cast
 
 import pytest
 import requests
@@ -93,8 +93,76 @@ async def noop(*args: object, **kwargs: object) -> None:
     return None
 
 
+class BaseMockFunc:
+    calls: List[Mapping[str, Any]]
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def log_call(self, args: Dict[str, Any]) -> None:
+        self.calls.append(args)
+
+    @property
+    def call_count(self) -> int:
+        return len(self.calls)
+
+    @property
+    def called(self) -> bool:
+        return self.call_count > 0
+
+    def __str__(self) -> str:
+        return repr(self)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}: id={id(self)} call_count={self.call_count!r} called={self.called!r} calls={self.calls!r}>"
+
+
+class MockMergePullRequest(BaseMockFunc):
+    response: requests.Response
+
+    async def __call__(
+        self, number: int, merge_method: str, commit_title: str, commit_message: str
+    ) -> requests.Response:
+        self.log_call(
+            dict(
+                number=number,
+                merge_method=merge_method,
+                commit_title=commit_title,
+                commit_message=commit_message,
+            )
+        )
+        return self.response
+
+
+class MockDeleteLabel(BaseMockFunc):
+    response: requests.Response
+
+    async def __call__(self, label: str, pull_number: int) -> requests.Response:
+        self.log_call(dict(label=label, pull_number=pull_number))
+        return self.response
+
+
+class MockAddLabel(BaseMockFunc):
+    response: requests.Response
+
+    async def __call__(self, label: str, pull_number: int) -> requests.Response:
+        self.log_call(dict(label=label, pull_number=pull_number))
+        return self.response
+
+
+class MockUpdateBranch(BaseMockFunc):
+    response: requests.Response
+
+    async def __call__(self, pull_number: int) -> requests.Response:
+        self.log_call(dict(pull_number=pull_number))
+        return self.response
+
+
 class FakeClientProtocol(Protocol):
-    merge_pull_request_response: requests.Response
+    merge_pull_request: MockMergePullRequest
+    delete_label: MockDeleteLabel
+    add_label: MockAddLabel
+    update_branch: MockUpdateBranch
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         ...
@@ -107,15 +175,13 @@ class FakeClientProtocol(Protocol):
     ) -> None:
         ...
 
-    async def merge_pull_request(
-        self, number: int, merge_method: str, commit_title: str, commit_message: str
-    ) -> requests.Response:
-        ...
-
 
 def create_client() -> Type[FakeClientProtocol]:
     class FakeClient:
-        merge_pull_request_response: requests.Response = requests.Response()
+        merge_pull_request = MockMergePullRequest()
+        delete_label = MockDeleteLabel()
+        add_label = MockAddLabel()
+        update_branch = MockUpdateBranch()
 
         def __init__(self, *args: object, **kwargs: object) -> None:
             pass
@@ -127,11 +193,6 @@ def create_client() -> Type[FakeClientProtocol]:
             self, exc_type: object, exc_value: object, traceback: object
         ) -> None:
             pass
-
-        async def merge_pull_request(
-            self, number: int, merge_method: str, commit_title: str, commit_message: str
-        ) -> requests.Response:
-            return self.merge_pull_request_response
 
     return FakeClient
 
@@ -170,7 +231,7 @@ def create_prv2(
 @pytest.mark.asyncio
 async def test_pr_v2_merge() -> None:
     client = create_client()
-    client.merge_pull_request_response = create_response(
+    client.merge_pull_request.response = create_response(
         content=b"""{
       "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e",
       "merged": true,
@@ -186,7 +247,7 @@ async def test_pr_v2_merge() -> None:
 @pytest.mark.asyncio
 async def test_pr_v2_merge_rebase_error() -> None:
     client = create_client()
-    client.merge_pull_request_response = create_response(
+    client.merge_pull_request.response = create_response(
         content=b"""{"message":"This branch can't be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}""",
         status_code=405,
     )
@@ -200,7 +261,7 @@ async def test_pr_v2_merge_rebase_error() -> None:
 @pytest.mark.asyncio
 async def test_pr_v2_merge_service_unavailable() -> None:
     client = create_client()
-    client.merge_pull_request_response = create_response(
+    client.merge_pull_request.response = create_response(
         content=b"""<html>Service Unavailable</html>""", status_code=503
     )
 
@@ -208,3 +269,76 @@ async def test_pr_v2_merge_service_unavailable() -> None:
     with pytest.raises(ApiCallException) as e:
         await pr_v2.merge("squash", commit_title="", commit_message="")
     assert e.value.method == "merge"
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_update_branch_ok() -> None:
+    client = create_client()
+    client.update_branch.response = create_response(content=b"", status_code=204)
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.update_branch()
+    assert client.update_branch.call_count == 1
+    assert client.update_branch.calls[0]["pull_number"] == pr_v2.number
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_update_branch_service_unavailable() -> None:
+    client = create_client()
+    client.update_branch.response = create_response(
+        content=b"<html>Service Unavailable</html>", status_code=503
+    )
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.update_branch()
+    assert client.update_branch.call_count == 1
+    assert client.update_branch.calls[0]["pull_number"] == pr_v2.number
+    assert e.value.method == "update branch"
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_add_label_ok() -> None:
+    client = create_client()
+    client.add_label.response = create_response(content=b"", status_code=204)
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.add_label(label="some-label-to-delete")
+    assert client.add_label.call_count == 1
+    assert client.add_label.calls[0]["label"] == "some-label-to-delete"
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_add_label_service_unavailable() -> None:
+    client = create_client()
+    client.add_label.response = create_response(
+        content=b"<html>Service Unavailable</html>", status_code=503
+    )
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.add_label(label="some-label-to-delete")
+    assert client.add_label.call_count == 1
+    assert client.add_label.calls[0]["label"] == "some-label-to-delete"
+    assert e.value.method == "add label"
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_remove_label_ok() -> None:
+    client = create_client()
+    client.delete_label.response = create_response(content=b"", status_code=204)
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.remove_label(label="some-label-to-delete")
+    assert client.delete_label.call_count == 1
+    assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
+
+
+@pytest.mark.asyncio
+async def test_pr_v2_remove_label_service_unavailable() -> None:
+    client = create_client()
+    client.delete_label.response = create_response(
+        content=b"<html>Service Unavailable</html>", status_code=503
+    )
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.remove_label(label="some-label-to-delete")
+    assert client.delete_label.call_count == 1
+    assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
+    assert e.value.method == "delete label"
+
