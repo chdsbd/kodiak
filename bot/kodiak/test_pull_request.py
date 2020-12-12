@@ -194,7 +194,9 @@ async def test_pr_v2_merge_rebase_error() -> None:
     pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
         await pr_v2.merge("squash", commit_title="", commit_message="")
-    assert e.value.method == "merge"
+    assert e.value.method == "pull_request/merge"
+    assert e.value.status_code == 405
+    assert b"merge-a-pull-request-merge-button" in e.value.response
 
 
 @pytest.mark.asyncio
@@ -207,4 +209,6 @@ async def test_pr_v2_merge_service_unavailable() -> None:
     pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
         await pr_v2.merge("squash", commit_title="", commit_message="")
-    assert e.value.method == "merge"
+    assert e.value.method == "pull_request/merge"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response
