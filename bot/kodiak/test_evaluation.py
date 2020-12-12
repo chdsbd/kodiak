@@ -2914,7 +2914,9 @@ async def test_mergeable_api_call_retry_timeout() -> None:
     api_call_error = APICallError(
         api_name="pull_request/merge",
         http_status="405",
-        response_body=b'{"message":"This branch can\'t be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}',
+        response_body=str(
+            b'{"message":"This branch can\'t be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}'
+        ),
     )
     await mergeable(
         api=api,
