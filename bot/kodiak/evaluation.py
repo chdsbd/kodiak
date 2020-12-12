@@ -491,8 +491,9 @@ async def mergeable(
     if api_call_retries_remaining == 0:
         log.warning("timeout reached for api calls to GitHub")
         if api_call_errors:
+            first_error = api_call_errors[0]
             await set_status(
-                "⚠️ problem contacting GitHub API",
+                f"⚠️ problem contacting GitHub API with method {first_error.api_name!r}",
                 markdown_content=get_markdown_for_api_call_errors(
                     errors=api_call_errors
                 ),

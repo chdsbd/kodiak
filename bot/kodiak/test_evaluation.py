@@ -2928,7 +2928,10 @@ async def test_mergeable_api_call_retry_timeout() -> None:
         "problem contacting GitHub API with method 'pull_request/merge'"
         in api.set_status.calls[0]["msg"]
     )
-    assert api_call_error.response_body in api.set_status.calls[0]["markdown_content"]
+    assert (
+        "merge-a-pull-request-merge-button"
+        in api.set_status.calls[0]["markdown_content"]
+    )
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
@@ -2949,6 +2952,7 @@ async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
 
     assert api.set_status.called is True
     assert "problem contacting GitHub API" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[0]["markdown_content"] is None
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
