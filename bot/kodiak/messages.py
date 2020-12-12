@@ -83,10 +83,8 @@ class APICallRetry(Protocol):
 
 def get_markdown_for_api_call_errors(*, errors: Sequence[APICallRetry]) -> str:
     formatted_errors = "\n".join(
-        [
-            f"- API call {error.api_name!r} failed with HTTP status {error.http_status!r} and response: {error.response_body!r}"
-            for error in errors
-        ]
+        f"- API call {error.api_name!r} failed with HTTP status {error.http_status!r} and response: {error.response_body!r}"
+        for error in errors
     )
     return format(
         f"""\

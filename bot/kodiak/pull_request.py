@@ -58,7 +58,7 @@ async def get_pr(
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class APICallError:
     api_name: str
     http_status: str
