@@ -48,6 +48,10 @@ def ping(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
 
 
+def healthcheck(request: HttpRequest) -> HttpResponse:
+    return JsonResponse({"ok": True})
+
+
 DEFAULT_CURRENCY = "usd"
 
 

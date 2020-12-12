@@ -28,5 +28,6 @@ urlpatterns = [
     path("v1/stripe_webhook", views.stripe_webhook_handler),
     path("v1/accounts", views.accounts),
     path("v1/ping", views.ping),
+    path("v1/healthcheck", views.healthcheck),
     path("v1/debug_sentry", views.debug_sentry),
 ]
