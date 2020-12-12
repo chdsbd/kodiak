@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "$(yarn bin)/prettier" '**/*.{md,js,json}' --write
