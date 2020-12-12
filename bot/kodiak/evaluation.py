@@ -2,7 +2,7 @@ import asyncio
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, MutableMapping, Optional, Set, Union
+from typing import Dict, List, MutableMapping, Optional, Sequence, Set, Union
 
 import inflection
 import pydantic
@@ -27,6 +27,8 @@ from kodiak.errors import (
     RetryForSkippableChecks,
 )
 from kodiak.messages import (
+    APICallRetry,
+    get_markdown_for_api_call_errors,
     get_markdown_for_config,
     get_markdown_for_paywall,
     get_markdown_for_push_allowance_error,
@@ -453,8 +455,8 @@ async def mergeable(
     merging: bool,
     is_active_merge: bool,
     skippable_check_timeout: int,
-    api_call_retry_timeout: int,
-    api_call_retry_method_name: Optional[str],
+    api_call_retries_remaining: int,
+    api_call_errors: Sequence[APICallRetry],
     subscription: Optional[Subscription],
     app_id: Optional[str] = None,
 ) -> None:
@@ -486,11 +488,14 @@ async def mergeable(
         await api.dequeue()
         return
 
-    if api_call_retry_timeout == 0:
+    if api_call_retries_remaining == 0:
         log.warning("timeout reached for api calls to GitHub")
-        if api_call_retry_method_name is not None:
+        if api_call_errors:
             await set_status(
-                f"⚠️ problem contacting GitHub API with method {api_call_retry_method_name!r}"
+                "⚠️ problem contacting GitHub API",
+                markdown_content=get_markdown_for_api_call_errors(
+                    errors=api_call_errors
+                ),
             )
         else:
             await set_status("⚠️ problem contacting GitHub API")
