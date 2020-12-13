@@ -260,7 +260,18 @@ This option only applies when `merge.message.body_type = "markdown"`.
 - **type:** `string`
 - **default:** `null`
 
-Remove all content before the configured string in the pull request body.
+Remove all content _before_ the configured string in the pull request body.
+
+This setting is useful when we want to include only a part of the pull request description as the commit message.
+
+This option only applies when `merge.message.body_type = "markdown"`.
+
+### `merge.message.cut_body_after`
+
+- **type:** `string`
+- **default:** `null`
+
+Remove all content _after_ the configured string in the pull request body.
 
 This setting is useful when we want to include only a part of the pull request description as the commit message.
 
