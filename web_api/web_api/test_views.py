@@ -2313,6 +2313,16 @@ def test_logout(client: Client, user: User) -> None:
 
 
 @pytest.mark.django_db
+def test_healthcheck(client: Client) -> None:
+    """
+    We should return 200 even when logged out.
+    """
+    res = client.get("/v1/healthcheck")
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+
+
+@pytest.mark.django_db
 def test_oauth_login(client: Client, state_token: str) -> None:
     res = client.get("/v1/oauth_login", dict(state=state_token))
     assert res.status_code == 302
