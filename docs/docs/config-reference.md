@@ -192,7 +192,7 @@ This option adds some unfairness where PRs waiting in the queue the longest are 
 ### `merge.priority_merge_label`
 
 - **type:** `string`
-- **default:** null
+- **default:** `null`
 
 When the label is applied to a pull request, the pull request will be placed at the front of the merge queue.
 
@@ -252,6 +252,28 @@ This option only applies when `merge.message.body = "pull_request_body"`.
 Strip HTML comments (`<!-- some HTML comment -->`) from merge commit body.
 
 This setting is useful for stripping HTML comments created by PR templates.
+
+This option only applies when `merge.message.body_type = "markdown"`.
+
+### `merge.message.cut_body_before`
+
+- **type:** `string`
+- **default:** `null`
+
+Remove all content _before_ the configured string in the pull request body.
+
+This setting is useful when we want to include only a part of the pull request description as the commit message.
+
+This option only applies when `merge.message.body_type = "markdown"`.
+
+### `merge.message.cut_body_after`
+
+- **type:** `string`
+- **default:** `null`
+
+Remove all content _after_ the configured string in the pull request body.
+
+This setting is useful when we want to include only a part of the pull request description as the commit message.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
@@ -555,6 +577,12 @@ body_type = "markdown" # default: "markdown", options: "plain_text", "markdown",
 # This setting is useful for stripping HTML comments created by PR templates.
 # This option only applies when `merge.message.body_type = "markdown"`.
 strip_html_comments = false # default: false
+
+# Remove all content before the configured string in the pull request body.
+# This setting is useful when we want to include only a part of the pull request
+# description as the commit message.
+# This option only applies when `merge.message.body_type = "markdown"`.
+cut_body_before = "<!-- commit body -->"
 
 [update]
 

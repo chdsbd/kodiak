@@ -57,6 +57,8 @@ The commit title and body of a comment can be customized with Kodiak via the `me
 - [`merge.message.include_pr_number`](config-reference.md#mergemessageinclude_pr_number) – include the pull request number in the title like GitHub does
 - [`merge.message.strip_html_comments`](config-reference.md#mergemessagestrip_html_comments) – remove HTML comments from the pull request body. This is good for removing pull request templates
 - [`merge.message.include_pull_request_url`](config-reference.md#mergemessageinclude_pull_request_url) – include the pull request URL at the bottom of the commit message
+- [`merge.message.cut_body_before`](config-reference.md#mergemessagecut_body_before) – remove content before `cut_body_before` string in pull request body
+- [`merge.message.cut_body_after`](config-reference.md#mergemessagecut_body_after) – remove content after `cut_body_after` string in pull request body
 
 ### Preventing Merge
 
