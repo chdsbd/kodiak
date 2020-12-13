@@ -230,6 +230,9 @@ def create_prv2(
 
 @pytest.mark.asyncio
 async def test_pr_v2_merge() -> None:
+    """
+    We should be able to merge successfully
+    """
     client = create_client()
     client.merge_pull_request.response = create_response(
         content=b"""{
@@ -241,11 +244,15 @@ async def test_pr_v2_merge() -> None:
     )
 
     pr_v2 = create_prv2(client=client)
-    await pr_v2.merge("squash", commit_title="", commit_message="")
+    await pr_v2.merge("squash", commit_title="my title", commit_message="my message")
+    assert client.merge_pull_request.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_pr_v2_merge_rebase_error() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
     client = create_client()
     client.merge_pull_request.response = create_response(
         content=b"""{"message":"This branch can't be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}""",
@@ -254,7 +261,10 @@ async def test_pr_v2_merge_rebase_error() -> None:
 
     pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
-        await pr_v2.merge("squash", commit_title="", commit_message="")
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
+    assert client.merge_pull_request.call_count == 1
     assert e.value.method == "pull_request/merge"
     assert e.value.status_code == 405
     assert b"merge-a-pull-request-merge-button" in e.value.response
@@ -262,6 +272,9 @@ async def test_pr_v2_merge_rebase_error() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_merge_service_unavailable() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
     client = create_client()
     client.merge_pull_request.response = create_response(
         content=b"""<html>Service Unavailable</html>""", status_code=503
@@ -269,10 +282,10 @@ async def test_pr_v2_merge_service_unavailable() -> None:
 
     pr_v2 = create_prv2(client=client)
     with pytest.raises(ApiCallException) as e:
-        await pr_v2.merge("squash", commit_title="", commit_message="")
-    assert e.value.method == "pull_request/merge"
-    assert e.value.status_code == 503
-    assert b"Service Unavailable" in e.value.response
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
+    assert client.merge_pull_request.call_count == 1
     assert e.value.method == "pull_request/merge"
     assert e.value.status_code == 503
     assert b"Service Unavailable" in e.value.response
@@ -280,6 +293,9 @@ async def test_pr_v2_merge_service_unavailable() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_update_branch_ok() -> None:
+    """
+    We should be able to update a branch.
+    """
     client = create_client()
     client.update_branch.response = create_response(content=b"", status_code=204)
     pr_v2 = create_prv2(client=client)
@@ -290,6 +306,9 @@ async def test_pr_v2_update_branch_ok() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_update_branch_service_unavailable() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
     client = create_client()
     client.update_branch.response = create_response(
         content=b"<html>Service Unavailable</html>", status_code=503
@@ -306,6 +325,9 @@ async def test_pr_v2_update_branch_service_unavailable() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_add_label_ok() -> None:
+    """
+    We should be able to add a label.
+    """
     client = create_client()
     client.add_label.response = create_response(content=b"", status_code=204)
     pr_v2 = create_prv2(client=client)
@@ -316,6 +338,9 @@ async def test_pr_v2_add_label_ok() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_add_label_service_unavailable() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
     client = create_client()
     client.add_label.response = create_response(
         content=b"<html>Service Unavailable</html>", status_code=503
@@ -332,6 +357,9 @@ async def test_pr_v2_add_label_service_unavailable() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_remove_label_ok() -> None:
+    """
+    Check that remove_label works when 
+    """
     client = create_client()
     client.delete_label.response = create_response(content=b"", status_code=204)
     pr_v2 = create_prv2(client=client)
@@ -342,6 +370,9 @@ async def test_pr_v2_remove_label_ok() -> None:
 
 @pytest.mark.asyncio
 async def test_pr_v2_remove_label_service_unavailable() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
     client = create_client()
     client.delete_label.response = create_response(
         content=b"<html>Service Unavailable</html>", status_code=503
