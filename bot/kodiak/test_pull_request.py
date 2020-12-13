@@ -264,8 +264,10 @@ async def test_pr_v2_merge_rebase_error() -> None:
         await pr_v2.merge(
             "squash", commit_title="my title", commit_message="my message"
         )
-    assert e.value.method == "merge"
     assert client.merge_pull_request.call_count == 1
+    assert e.value.method == "pull_request/merge"
+    assert e.value.status_code == 405
+    assert b"merge-a-pull-request-merge-button" in e.value.response
 
 
 @pytest.mark.asyncio
@@ -283,8 +285,10 @@ async def test_pr_v2_merge_service_unavailable() -> None:
         await pr_v2.merge(
             "squash", commit_title="my title", commit_message="my message"
         )
-    assert e.value.method == "merge"
     assert client.merge_pull_request.call_count == 1
+    assert e.value.method == "pull_request/merge"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response
 
 
 @pytest.mark.asyncio
@@ -314,7 +318,9 @@ async def test_pr_v2_update_branch_service_unavailable() -> None:
         await pr_v2.update_branch()
     assert client.update_branch.call_count == 1
     assert client.update_branch.calls[0]["pull_number"] == pr_v2.number
-    assert e.value.method == "update branch"
+    assert e.value.method == "pull_request/update_branch"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response
 
 
 @pytest.mark.asyncio
@@ -344,7 +350,9 @@ async def test_pr_v2_add_label_service_unavailable() -> None:
         await pr_v2.add_label(label="some-label-to-delete")
     assert client.add_label.call_count == 1
     assert client.add_label.calls[0]["label"] == "some-label-to-delete"
-    assert e.value.method == "add label"
+    assert e.value.method == "pull_request/add_label"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response
 
 
 @pytest.mark.asyncio
@@ -374,4 +382,6 @@ async def test_pr_v2_remove_label_service_unavailable() -> None:
         await pr_v2.remove_label(label="some-label-to-delete")
     assert client.delete_label.call_count == 1
     assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
-    assert e.value.method == "delete label"
+    assert e.value.method == "pull_request/delete_label"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response

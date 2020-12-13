@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import pydantic
 import pytest
@@ -22,6 +22,8 @@ from kodiak.errors import (
 )
 from kodiak.evaluation import PRAPI, MergeBody, get_merge_body
 from kodiak.evaluation import mergeable as mergeable_func
+from kodiak.messages import APICallRetry
+from kodiak.pull_request import APICallError
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
@@ -349,8 +351,8 @@ class MergeableType(Protocol):
         merging: bool = ...,
         is_active_merge: bool = ...,
         skippable_check_timeout: int = ...,
-        api_call_retry_timeout: int = ...,
-        api_call_retry_method_name: Optional[str] = ...,
+        api_call_retries_remaining: int = ...,
+        api_call_errors: Sequence[APICallRetry] = ...,
         repository: RepoInfo = ...,
         subscription: Optional[Subscription] = ...,
         app_id: Optional[str] = ...,
@@ -381,8 +383,8 @@ def create_mergeable() -> MergeableType:
         merging: bool = False,
         is_active_merge: bool = False,
         skippable_check_timeout: int = 5,
-        api_call_retry_timeout: int = 5,
-        api_call_retry_method_name: Optional[str] = None,
+        api_call_retries_remaining: int = 5,
+        api_call_errors: Sequence[APICallRetry] = [],
         repository: RepoInfo = create_repo_info(),
         subscription: Optional[Subscription] = None,
         app_id: Optional[str] = None,
@@ -409,8 +411,8 @@ def create_mergeable() -> MergeableType:
             merging=merging,
             is_active_merge=is_active_merge,
             skippable_check_timeout=skippable_check_timeout,
-            api_call_retry_timeout=api_call_retry_timeout,
-            api_call_retry_method_name=api_call_retry_method_name,
+            api_call_retries_remaining=api_call_retries_remaining,
+            api_call_errors=api_call_errors,
             subscription=subscription,
             app_id=app_id,
         )
@@ -2909,17 +2911,28 @@ async def test_mergeable_api_call_retry_timeout() -> None:
     """
     mergeable = create_mergeable()
     api = create_api()
+    api_call_error = APICallError(
+        api_name="pull_request/merge",
+        http_status="405",
+        response_body=str(
+            b'{"message":"This branch can\'t be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}'
+        ),
+    )
     await mergeable(
         api=api,
         #
-        api_call_retry_timeout=0,
-        api_call_retry_method_name="update branch",
+        api_call_retries_remaining=0,
+        api_call_errors=[api_call_error],
     )
 
     assert api.set_status.called is True
     assert (
-        "problem contacting GitHub API with method 'update branch'"
+        "problem contacting GitHub API with method 'pull_request/merge'"
         in api.set_status.calls[0]["msg"]
+    )
+    assert (
+        "merge-a-pull-request-merge-button"
+        in api.set_status.calls[0]["markdown_content"]
     )
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
@@ -2937,10 +2950,11 @@ async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
     mergeable = create_mergeable()
     api = create_api()
 
-    await mergeable(api=api, api_call_retry_timeout=0, api_call_retry_method_name=None)
+    await mergeable(api=api, api_call_retries_remaining=0, api_call_errors=[])
 
     assert api.set_status.called is True
     assert "problem contacting GitHub API" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[0]["markdown_content"] is None
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
