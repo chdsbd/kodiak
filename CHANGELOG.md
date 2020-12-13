@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.35.0 - 2020-12-13
+
+### Added
+- added `merge.message.cut_body_before` (thanks @scriptnull) and `merge.message.cut_body_after` config options. (#589, #595)
+- added better messaging for GitHub API failures. (#594)
+
+### Fixed
+- fixed typo in readme (thanks @scriptnull). (#587)
+- fixed typo in docs (thanks @yowainwright). (#590)
+
 ## 0.34.0 - 2020-11-29
 
 ### Added

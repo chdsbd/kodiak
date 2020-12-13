@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Sequence, Union
 
 import markupsafe
 import pydantic
 import toml
+from typing_extensions import Protocol
 
 FOOTER = """
 If you need help, you can open a GitHub issue, check the docs, or reach us privately at support@kodiakhq.com.
@@ -71,4 +72,32 @@ Your branch protection setting for `{branch_name}` has "Restrict who can push to
 
 See the Kodiak troubleshooting docs for more information: https://kodiakhq.com/docs/troubleshooting#restricting-pushes
 """
+    )
+
+
+class APICallRetry(Protocol):
+    @property
+    def api_name(self) -> str:
+        ...
+
+    @property
+    def http_status(self) -> str:
+        ...
+
+    @property
+    def response_body(self) -> str:
+        ...
+
+
+def get_markdown_for_api_call_errors(*, errors: Sequence[APICallRetry]) -> str:
+    formatted_errors = "\n".join(
+        f"- API call {error.api_name!r} failed with HTTP status {error.http_status!r} and response: {error.response_body!r}"
+        for error in errors
+    )
+    return format(
+        f"""\
+Errors encountered when contacting GitHub API.
+
+{formatted_errors}
+        """
     )

@@ -111,8 +111,7 @@ jobs:
       - run:
           name: run typechecker
           working_directory: docs
-          command: |
-            yarn typecheck
+          command: s/typecheck
 
   docs_fmt:
     docker:
@@ -136,7 +135,7 @@ jobs:
       - run:
           name: run fmt
           working_directory: docs
-          command: yarn fmt-ci
+          command: s/fmt-ci
 
   docs_build:
     docker:
@@ -160,7 +159,7 @@ jobs:
       - run:
           name: build
           working_directory: docs
-          command: yarn build
+          command: s/build
 
   web_api_test:
     docker:
