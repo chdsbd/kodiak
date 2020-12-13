@@ -341,4 +341,3 @@ async def test_pr_v2_remove_label_service_unavailable() -> None:
     assert client.delete_label.call_count == 1
     assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
     assert e.value.method == "delete label"
-
