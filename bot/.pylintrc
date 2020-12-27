@@ -203,6 +203,10 @@ disable=print-statement,
         import-error,
         # mypy already does this
         signature-differs,
+        # doesn't handle .pyi files
+        useless-import-alias,
+        # conflicts with type stubs for structlog
+        keyword-arg-before-vararg
 
 
 # Enable the message, report, category or checker with the given id(s). You can
