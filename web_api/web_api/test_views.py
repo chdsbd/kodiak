@@ -176,6 +176,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
+    today = datetime.datetime.now(timezone.utc)
+    two_days_from_today = today + datetime.timedelta(days=2)
+
     # this user opened a PR on a private repository that Kodiak also acted on,
     # so we should count it.
     UserPullRequestActivity.objects.create(
@@ -185,7 +188,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login=user.github_login,
         github_user_id=user.github_id,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=True,
     )
     UserPullRequestActivity.objects.create(
@@ -195,7 +198,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -207,7 +210,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="jdoe",
         github_user_id=6039209,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=False,
     )
     UserPullRequestActivity.objects.create(
@@ -217,7 +220,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -229,7 +232,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="sgoodman",
         github_user_id=4323112,
         is_private_repository=False,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=True,
     )
     UserPullRequestActivity.objects.create(
@@ -239,7 +242,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=False,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -251,7 +254,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="jpiccirillo",
         github_user_id=643453,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=True,
     )
 
@@ -260,14 +263,15 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     assert (
         res.json()["accountCanSubscribe"] is False
     ), "user accounts should not see subscription options"
+    today_str = today.strftime("%Y-%m-%d")
     assert res.json()["activeUsers"] == [
         dict(
             id=user.github_id,
             name=user.github_login,
             profileImgUrl=user.profile_image(),
             interactions=1,
-            firstActiveDate="2020-12-05",
-            lastActiveDate="2020-12-05",
+            firstActiveDate=today_str,
+            lastActiveDate=today_str,
             hasSeatLicense=False,
         )
     ]
