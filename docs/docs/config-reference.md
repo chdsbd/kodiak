@@ -211,13 +211,13 @@ Never merge a PR. This option can be used with `update.always` to automatically 
 - **default:** `"github_default"`
 - **options:** `"github_default"`, `"pull_request_title"`
 
-Default behaviour (`"github_default"`) depends on [merge.method](config-reference.md#mergemethod):
+By default (`"github_default"`), the title depends on [merge.method](config-reference.md#mergemethod):
 
-- In case of `merge` default message in format `Merge pull request #X from Y/Z` will be used
-- In case of `rebase` GitHub uses the title of a PR's first commit for the merge commit title
-- In case of `squash` it dependes on numbers of commits in the PR. In case the PR consists from only one commit, GitHub uses the title of the commit for the merge commit title. In case there is multiple commits it's used the pull request title. In both cases it's followed by PR number. [Follow official documentation of the behaviour](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
+- In case of `merge`, GitHub will create a merge commit title of the form, `Merge pull request #X from Y/Z`.
+- In case of `rebase`, there is no merge commit, and all commits of your pull request will be added to the target unchanged.
+- In case of `squash`, the squash commit title depends on the numbers of commits in the pull request. If the PR contains only one commit, GitHub uses the title of that commit for the squashed commit title. If there are multiple commits, GitHub uses the pull request's title. In both cases the PR number is appended to the title, like `(#543)`. [See the official GitHub documentation for more information](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
 
-Option `"pull_request_title"` uses the PR title for the merge commit.
+For `"pull_request_title"`, Kodiak uses the pull request title for both merge and squash commits.
 
 ### `merge.message.body`
 
