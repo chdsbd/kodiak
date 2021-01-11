@@ -211,7 +211,13 @@ Never merge a PR. This option can be used with `update.always` to automatically 
 - **default:** `"github_default"`
 - **options:** `"github_default"`, `"pull_request_title"`
 
-By default (`"github_default"`), GitHub uses the title of a PR's first commit for the merge commit title. `"pull_request_title"` uses the PR title for the merge commit.
+Default behaviour (`"github_default"`) depends on [merge.method](config-reference.md#mergemethod):
+
+- In case of `merge` default message in format `Merge pull request #X from Y/Z` will be used
+- In case of `rebase` GitHub uses the title of a PR's first commit for the merge commit title
+- In case of `squash` it dependes on numbers of commits in the PR. In case the PR consists from only one commit, GitHub uses the title of the commit for the merge commit title. In case there is multiple commits it's used the pull request title. In both cases it's followed by PR number. [Follow official documentation of the behaviour](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
+
+Option `"pull_request_title"` uses the PR title for the merge commit.
 
 ### `merge.message.body`
 
