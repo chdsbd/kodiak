@@ -215,7 +215,7 @@ By default (`"github_default"`), the title depends on [merge.method](config-refe
 
 - In case of `"merge"`, GitHub will create a merge commit title of the form, `Merge pull request #X from Y/Z`.
 - In case of `"rebase"`, there is no merge commit, and all commits of your pull request will be added to the target unchanged.
-- In case of `"squash"`, the squashed commit title depends on the numbers of commits in the pull request. If the PR contains only one commit, GitHub uses the title of that commit for the squashed commit title. If there are multiple commits, GitHub uses the pull request's title. In both cases the PR number is appended to the title, like `(#543)`. [See the official GitHub documentation for more information](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
+- In case of `"squash"`, the squashed commit title depends on the number of commits in the pull request. If the PR contains only one commit, GitHub uses the title of that commit for the squashed commit title. If there are multiple commits, GitHub uses the pull request's title. In both cases the PR number is appended to the title, like `(#543)`. [See the official GitHub documentation for more information](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
 
 For `"pull_request_title"`, Kodiak uses the pull request title for both merge and squash commits.
 
