@@ -281,7 +281,7 @@ class RedisWebhookQueue:
         worker for the queue.
         3. add event
         4. start worker (will create new worker if one does not exist)
-        
+
         returns position of event in queue
         """
         queue_name = get_merge_queue_name(event)

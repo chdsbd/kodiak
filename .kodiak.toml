@@ -3,3 +3,6 @@ version = 1
 [merge.message]
 title = "pull_request_title"
 body = "pull_request_body"
+
+[merge]
+method = "rebase-ff"

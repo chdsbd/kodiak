@@ -388,7 +388,7 @@ def get_blocking_title_regex(config: config.V1) -> BlockingTitleRegex:
 
 
 # merge methods ordered by preference for selection.
-MERGE_METHODS = (MergeMethod.merge, MergeMethod.squash, MergeMethod.rebase)
+MERGE_METHODS = (MergeMethod.merge, MergeMethod.squash, MergeMethod.rebase, MergeMethod.rebaseff)
 
 
 class MergeMethodValue(pydantic.BaseModel):

@@ -312,6 +312,8 @@ class PRV2:
             res = await api_client.merge_pull_request(
                 number=self.number,
                 merge_method=merge_method,
+                base=self.event.pull_request.baseRefName,
+                branch=self.event.pull_request.headRefName,
                 commit_title=commit_title,
                 commit_message=commit_message,
             )
