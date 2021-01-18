@@ -154,11 +154,11 @@ sqlparse = ">=0.2.2"
 
 [[package]]
 category = "dev"
-description = "Type subs for Django"
+description = "Type stubs for Django"
 name = "django-types"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.1.0"
+version = "0.3.0"
 
 [[package]]
 category = "main"
@@ -769,7 +769,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "1767f08b03154650a89320df62035192ffe390f0a6e285d4f97cfb7ba4d0a174"
+content-hash = "9d387da178ea7203cfa481acac9af1532e4950f035f244be8d162122c5f86e02"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -789,7 +789,7 @@ coverage = ["00f1d23f4336efc3b311ed0d807feb45098fc86dee1ca13b3d6768cdab187c8a", 
 decorator = ["54c38050039232e1db4ad7375cfce6748d7b41c29e95a081c8a6d2c30364a2ce", "5d19b92a3c8f7f101c8dd86afd86b0f061a8ce4540ab8cd401fa2542756bce6d"]
 dj-database-url = ["4aeaeb1f573c74835b0686a2b46b85990571159ffc21aa57ecd4d1e1cb334163", "851785365761ebe4994a921b433062309eb882fedd318e1b0fcecc607ed02da9"]
 django = ["2f1ba1db8648484dd5c238fb62504777b7ad090c81c5f1fd8d5eb5ec21b5f283", "c91c91a7ad6ef67a874a4f76f58ba534f9208412692a840e1d125eb5c279cb0a"]
-django-types = ["bebd7e71cad62aec2d73e3371831b1ed68824c1297158568e0d5b3343fe7e97e", "e75b97f32eb2bacc726aa0880d6ff86045b4efa4d3628b67e29291c7fc0818db"]
+django-types = ["570b7cc3609d73453755bca9069ace6f493b381fe8cb18cd7b689a561028fbe9", "c24cc75e568f7389801cfd1b481b4e7fc6fe78cff4905850bfe0c70839273849"]
 dnspython = ["36c5e8e38d4369a08b6780b7f27d790a292b2b08eea01607865bf0936c558e01", "f69c21288a962f4da86e56c4905b49d11aba7938d3d740e80d9e366ee4f1632d"]
 email-validator = ["5f246ae8d81ce3000eade06595b7bb55a4cf350d559e890182a1466a21f25067", "63094045c3e802c3d3d575b18b004a531c36243ca8d1cec785ff6bfcb04185bb"]
 flake8 = ["749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839", "aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b"]
