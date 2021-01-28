@@ -9,7 +9,7 @@ import pydantic
 import rure as re
 import structlog
 import toml
-from typing_extensions import Protocol
+from typing_extensions import Literal, Protocol
 
 from kodiak import app_config, config, messages
 from kodiak.config import (
@@ -21,6 +21,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
+from kodiak.dependencies import _extract_versions, dep_version_from_title
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
@@ -611,6 +612,12 @@ async def mergeable(
     )
     has_automerge_label = len(pull_request_automerge_labels) > 0
 
+    should_dependency_automerge = (
+        pull_request.author.login in config.merge.automerge_dependencies.usernames
+        and dep_version_from_title(pull_request.title)
+        in config.merge.automerge_dependencies.versions
+    )
+
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
     #
     # I don't foresee conflicts with checking configuration errors,
@@ -697,7 +704,11 @@ async def mergeable(
         await api.update_branch()
         return
 
-    if config.merge.require_automerge_label and not has_automerge_label:
+    if (
+        config.merge.require_automerge_label
+        and not has_automerge_label
+        and not should_dependency_automerge
+    ):
         await block_merge(
             api,
             pull_request,
