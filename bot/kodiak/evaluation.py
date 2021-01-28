@@ -160,7 +160,7 @@ def get_coauthor_trailers(
 
 @dataclass
 class MergeBody:
-    merge_method: str
+    merge_method: MergeMethod
     commit_title: Optional[str] = None
     commit_message: Optional[str] = None
 
@@ -295,6 +295,9 @@ class PRAPI(Protocol):
         commit_title: Optional[str],
         commit_message: Optional[str],
     ) -> None:
+        ...
+
+    async def update_ref(self, *, ref: str, sha: str) -> None:
         ...
 
     async def queue_for_merge(self, *, first: bool) -> Optional[int]:
@@ -1034,11 +1037,16 @@ branch protection requirements.
         merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
-            await api.merge(
-                merge_method=merge_args.merge_method,
-                commit_title=merge_args.commit_title,
-                commit_message=merge_args.commit_message,
-            )
+            if merge_args.merge_method is MergeMethod.rebase_fast_forward:
+                await api.update_ref(
+                    ref=pull_request.baseRefName, sha=pull_request.latest_sha
+                )
+            else:
+                await api.merge(
+                    merge_method=merge_args.merge_method,
+                    commit_title=merge_args.commit_title,
+                    commit_message=merge_args.commit_message,
+                )
         # if we encounter an internal server error (status code 500), it is
         # _not_ safe to retry. Instead we mark the pull request as unmergable
         # and require a user to re-enable Kodiak on the pull request.

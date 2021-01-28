@@ -1047,6 +1047,16 @@ class Client:
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
 
+    async def update_ref(self, *, ref: str, sha: str) -> http.Response:
+        # we must not pass the keys for commit_title or commit_message when they
+        # are null because GitHub will error saying the title/message cannot be
+        # null. When the keys are not passed, GitHub creates a title and
+        # message.
+        headers = await get_headers(installation_id=self.installation_id)
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{ref}")
+        async with self.throttler:
+            return await self.session.patch(url, headers=headers, json=dict(sha=sha))
+
     async def create_notification(
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
