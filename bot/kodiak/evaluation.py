@@ -9,7 +9,7 @@ import pydantic
 import rure as re
 import structlog
 import toml
-from typing_extensions import Literal, Protocol
+from typing_extensions import Protocol
 
 from kodiak import app_config, config, messages
 from kodiak.config import (
@@ -21,7 +21,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
-from kodiak.dependencies import _extract_versions, dep_version_from_title
+from kodiak.dependencies import dep_version_from_title
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
