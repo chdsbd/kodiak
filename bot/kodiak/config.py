@@ -55,7 +55,7 @@ DEFAULT_TITLE_REGEX = "^WIP:.*"
 
 class AutomergeDependencies(BaseModel):
     versions: List[Literal["major", "minor", "patch"]] = []
-    usernames: List[str] = ["snyk-bot", "dependabot"]
+    usernames: List[str] = []
 
 
 class Merge(BaseModel):

@@ -16,10 +16,7 @@
         "automerge_label": "automerge",
         "automerge_dependencies": {
           "versions": [],
-          "usernames": [
-            "snyk-bot",
-            "dependabot"
-          ]
+          "usernames": []
         },
         "require_automerge_label": true,
         "blacklist_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
@@ -119,10 +116,7 @@
         },
         "usernames": {
           "title": "Usernames",
-          "default": [
-            "snyk-bot",
-            "dependabot"
-          ],
+          "default": [],
           "type": "array",
           "items": {
             "type": "string"
@@ -221,10 +215,7 @@
           "title": "Automerge Dependencies",
           "default": {
             "versions": [],
-            "usernames": [
-              "snyk-bot",
-              "dependabot"
-            ]
+            "usernames": []
           },
           "allOf": [
             {
