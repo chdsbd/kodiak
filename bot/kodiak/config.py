@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 import toml
 from pydantic import BaseModel, ValidationError, validator
+from typing_extensions import Literal
 
 
 class MergeMethod(str, Enum):
@@ -52,9 +53,15 @@ UNSET_TITLE_REGEX = ":::|||kodiak|||internal|||reserved|||:::"
 DEFAULT_TITLE_REGEX = "^WIP:.*"
 
 
+class AutomergeDependencies(BaseModel):
+    versions: List[Literal["major", "minor", "patch"]] = []
+    usernames: List[str] = []
+
+
 class Merge(BaseModel):
     # label or labels to enable merging of pull request.
     automerge_label: Union[str, List[str]] = "automerge"
+    automerge_dependencies: AutomergeDependencies = AutomergeDependencies()
     # if disabled, kodiak won't require a label to queue a PR for merge
     require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to

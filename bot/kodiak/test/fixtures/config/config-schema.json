@@ -14,6 +14,10 @@
       "title": "Merge",
       "default": {
         "automerge_label": "automerge",
+        "automerge_dependencies": {
+          "versions": [],
+          "usernames": []
+        },
         "require_automerge_label": true,
         "blacklist_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blocking_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
@@ -84,6 +88,42 @@
     "version"
   ],
   "definitions": {
+    "AutomergeDependencies": {
+      "title": "AutomergeDependencies",
+      "type": "object",
+      "properties": {
+        "versions": {
+          "title": "Versions",
+          "default": [],
+          "type": "array",
+          "items": {
+            "title": " Versions",
+            "anyOf": [
+              {
+                "const": "major",
+                "type": "string"
+              },
+              {
+                "const": "minor",
+                "type": "string"
+              },
+              {
+                "const": "patch",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "usernames": {
+          "title": "Usernames",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "MergeMessage": {
       "title": "MergeMessage",
       "description": "https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button",
@@ -168,6 +208,18 @@
               "items": {
                 "type": "string"
               }
+            }
+          ]
+        },
+        "automerge_dependencies": {
+          "title": "Automerge Dependencies",
+          "default": {
+            "versions": [],
+            "usernames": []
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AutomergeDependencies"
             }
           ]
         },
