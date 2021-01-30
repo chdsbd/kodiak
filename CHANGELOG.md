@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.36.0 - 2021-01-30
+
+### Added
+- added `merge.automerge_dependencies` to support auto merging Dependabot pull requests by upgrade type ("major", "minor", "patch"). See the ["Configuring automerge by upgrade type"](https://kodiakhq.com/docs/recipes#configuring-automerge-by-upgrade-type) recipe for more information.
+
 ## 0.35.0 - 2020-12-13
 
 ### Added
