@@ -48,6 +48,54 @@ Require that the automerge label (`merge.automerge_label`) be set for Kodiak to 
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
 
+### `merge.automerge_dependencies.versions`
+
+- **type:** `string[]`
+- **options:** `"major"`, `"minor"`, `"patch"`
+- **default:** `[]`
+
+Kodiak will only automerge version upgrade types in this list. The author of the pull request must also be listed in [`merge.automerge_dependencies.usernames`](#mergeautomerge_dependenciesusernames).
+
+See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-by-upgrade-type) for a full example.
+
+```toml
+# .kodiak.toml
+[merge.automerge_dependencies]
+# only auto merge "minor" and "patch" version upgrades.
+# do not automerge "major" version upgrades.
+versions = ["minor", "patch"]
+usernames = ["dependabot"]
+```
+
+Dependency upgrade types are parsed from the pull request title. The following table shows version upgrade examples:
+
+| title                           | upgrade |
+| ------------------------------- | ------- |
+| Bump lodash from 1.0.0 to 1.0.1 | patch   |
+| Bump lodash from 2.5.1 to 2.8.0 | minor   |
+| Bump lodash from 4.2.1 to 5.0.0 | major   |
+
+If Kodiak cannot determine the upgrade type from the pull request title, Kodiak will not automerge the pull request.
+
+See the [tests file](https://github.com/chdsbd/kodiak/blob/b1893ee6add4a1533bdac77999aad698e0b2e74c/bot/kodiak/test_dependencies.py#L10-L35) for more examples.
+
+### `merge.automerge_dependencies.usernames`
+
+- **type:** `string[]`
+- **default:** `[]`
+
+Kodiak will only automerge dependency upgrades for pull request authors in this list.
+
+See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-by-upgrade-type) for a full example.
+
+```toml
+# .kodiak.toml
+[merge.automerge_dependencies]
+versions = ["minor", "patch"]
+# only automerge by upgrade version for pull requests authored by dependabot.
+usernames = ["dependabot"]
+```
+
 <span id="mergeblacklist_title_regex"/> <!-- handle old links -->
 
 ### `merge.blocking_title_regex`

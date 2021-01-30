@@ -21,7 +21,7 @@ require_automerge_label = false # default: true
 
 Kodiak can automerge all Dependabot PRs if you configure Dependabot to open pull requests with our [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label.
 
-If you want to only merge specific upgrade types, like "major", "minor", "patch", you can configure `merge.automerge_dependencies`.
+If you want to only merge specific upgrade types, like "major", "minor", "patch", you can configure [`merge.automerge_dependencies`](#configuring-automerge-by-upgrade-type).
 
 ### Configuring automerge by upgrade type
 
