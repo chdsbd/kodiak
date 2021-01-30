@@ -40,7 +40,7 @@ automerge_label = "ship it!"
 versions = ["minor", "patch"]
 usernames = ["dependabot"]
 
-# if using `update.always`, add dependabot to the blacklist to allow
+# if using `update.always`, add dependabot to `update.ignore_usernames` to allow
 # dependabot to update and close stale dependency upgrades.
 [update]
 ignored_usernames = ["dependabot"]
@@ -87,7 +87,7 @@ version = 1
 # Instead of "dependabot[bot]" use "dependabot".
 auto_approve_usernames = ["dependabot"]
 
-# if using `update.always`, add dependabot to the blacklist to allow
+# if using `update.always`, add dependabot to `update.ignore_usernames` to allow
 # dependabot to update and close stale dependency upgrades.
 [update]
 ignored_usernames = ["dependabot"]
