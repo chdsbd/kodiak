@@ -29,6 +29,8 @@ Label to enable Kodiak to merge a PR.
 
 By default, Kodiak will only act on PRs that have this label. You can disable this requirement via `merge.require_automerge_label`.
 
+Kodiak can only merge pull requests passing your GitHub branch protection rules.
+
 ```toml
 merge.automerge_label = "🚀 merge it!"
 ```
@@ -55,6 +57,8 @@ When disabled, Kodiak will immediately attempt to merge any PR that passes all G
 - **default:** `[]`
 
 Kodiak will only automerge version upgrade types in this list. The author of the pull request must also be listed in [`merge.automerge_dependencies.usernames`](#mergeautomerge_dependenciesusernames).
+
+Like [`merge.automerge_label`](#mergeautomerge_label), your pull request can only be merged if it passes your GitHub branch protection rules.
 
 See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-by-upgrade-type) for a full example.
 
