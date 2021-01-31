@@ -23,7 +23,7 @@ class AuthenticationMiddleware(MiddlewareMixin):
     """
 
     def process_request(self, request: HttpRequest) -> None:
-        request.user = SimpleLazyObject(lambda: get_user(request))
+        request.user = SimpleLazyObject(lambda: get_user(request))  # type: ignore [assignment]
 
 
 class ExceptionMiddleware(MiddlewareMixin):

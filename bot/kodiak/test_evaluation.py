@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import pydantic
 import pytest
@@ -22,11 +22,13 @@ from kodiak.errors import (
 )
 from kodiak.evaluation import PRAPI, MergeBody, get_merge_body
 from kodiak.evaluation import mergeable as mergeable_func
+from kodiak.messages import APICallRetry
+from kodiak.pull_request import APICallError
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommitAuthor,
+    Commit,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -49,6 +51,7 @@ from kodiak.queries import (
     SubscriptionExpired,
     TrialExpired,
 )
+from kodiak.tests.fixtures import create_commit
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +62,7 @@ class BaseMockFunc:
     def __init__(self) -> None:
         self.calls = []
 
-    def log_call(self, args: dict) -> None:
+    def log_call(self, args: Dict[str, Any]) -> None:
         self.calls.append(args)
 
     @property
@@ -157,8 +160,8 @@ class MockQueueForMerge(BaseMockFunc):
     # `3` is an arbitrary position.
     return_value: Optional[int] = 3
 
-    async def __call__(self) -> Optional[int]:
-        self.log_call(dict())
+    async def __call__(self, *, first: bool) -> Optional[int]:
+        self.log_call(dict(first=first))
         return self.return_value
 
 
@@ -342,14 +345,14 @@ class MergeableType(Protocol):
         reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
-        commit_authors: List[CommitAuthor] = ...,
+        commits: List[Commit] = ...,
         valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
         is_active_merge: bool = ...,
         skippable_check_timeout: int = ...,
-        api_call_retry_timeout: int = ...,
-        api_call_retry_method_name: Optional[str] = ...,
+        api_call_retries_remaining: int = ...,
+        api_call_errors: Sequence[APICallRetry] = ...,
         repository: RepoInfo = ...,
         subscription: Optional[Subscription] = ...,
         app_id: Optional[str] = ...,
@@ -370,7 +373,7 @@ def create_mergeable() -> MergeableType:
         reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
-        commit_authors: List[CommitAuthor] = [],
+        commits: List[Commit] = [],
         valid_signature: bool = False,
         valid_merge_methods: List[MergeMethod] = [
             MergeMethod.merge,
@@ -380,8 +383,8 @@ def create_mergeable() -> MergeableType:
         merging: bool = False,
         is_active_merge: bool = False,
         skippable_check_timeout: int = 5,
-        api_call_retry_timeout: int = 5,
-        api_call_retry_method_name: Optional[str] = None,
+        api_call_retries_remaining: int = 5,
+        api_call_errors: Sequence[APICallRetry] = [],
         repository: RepoInfo = create_repo_info(),
         subscription: Optional[Subscription] = None,
         app_id: Optional[str] = None,
@@ -401,15 +404,15 @@ def create_mergeable() -> MergeableType:
             reviews=reviews,
             contexts=contexts,
             check_runs=check_runs,
-            commit_authors=commit_authors,
+            commits=commits,
             valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
             repository=repository,
             merging=merging,
             is_active_merge=is_active_merge,
             skippable_check_timeout=skippable_check_timeout,
-            api_call_retry_timeout=api_call_retry_timeout,
-            api_call_retry_method_name=api_call_retry_method_name,
+            api_call_retries_remaining=api_call_retries_remaining,
+            api_call_errors=api_call_errors,
             subscription=subscription,
             app_id=app_id,
         )
@@ -2908,17 +2911,28 @@ async def test_mergeable_api_call_retry_timeout() -> None:
     """
     mergeable = create_mergeable()
     api = create_api()
+    api_call_error = APICallError(
+        api_name="pull_request/merge",
+        http_status="405",
+        response_body=str(
+            b'{"message":"This branch can\'t be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}'
+        ),
+    )
     await mergeable(
         api=api,
         #
-        api_call_retry_timeout=0,
-        api_call_retry_method_name="update branch",
+        api_call_retries_remaining=0,
+        api_call_errors=[api_call_error],
     )
 
     assert api.set_status.called is True
     assert (
-        "problem contacting GitHub API with method 'update branch'"
+        "problem contacting GitHub API with method 'pull_request/merge'"
         in api.set_status.calls[0]["msg"]
+    )
+    assert (
+        "merge-a-pull-request-merge-button"
+        in api.set_status.calls[0]["markdown_content"]
     )
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
@@ -2936,10 +2950,11 @@ async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
     mergeable = create_mergeable()
     api = create_api()
 
-    await mergeable(api=api, api_call_retry_timeout=0, api_call_retry_method_name=None)
+    await mergeable(api=api, api_call_retries_remaining=0, api_call_errors=[])
 
     assert api.set_status.called is True
     assert "problem contacting GitHub API" in api.set_status.calls[0]["msg"]
+    assert api.set_status.calls[0]["markdown_content"] is None
     assert api.update_branch.called is False
     assert api.queue_for_merge.called is False
     assert api.merge.called is False
@@ -3005,7 +3020,7 @@ def test_pr_get_merge_body_full() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3021,7 +3036,7 @@ def test_pr_get_merge_body_empty() -> None:
         config=V1(version=1),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash")
     assert actual == expected
@@ -3041,9 +3056,206 @@ def test_get_merge_body_strip_html_comments() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="hello world")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_after() -> None:
+    """
+    Basic check of cut_body_after removing content.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_after="<!-- testing -->",
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="hello <!-- testing -->")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_after_strip_html() -> None:
+    """
+    We should be able to use strip_html_comments with cut_body_after.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_after="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="hello ")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_after_multiple_markers() -> None:
+    """
+    We should choose the first substring matching cut_body_after.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world<!-- testing --> 123"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_after="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="hello ")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_after_no_match_found() -> None:
+    """
+    Ensure we don't edit the message if there isn't any match found with
+    cut_body_after.
+    """
+    pull_request = create_pull_request()
+    pr_body = "hello <!-- foo -->world<!-- bar --> 123"
+    pull_request.body = pr_body
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_after="<!-- buzz -->",
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message=pr_body)
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_before_no_match_found() -> None:
+    """
+    Ensure we don't edit the message if there isn't any match found with
+    cut_body_before.
+    """
+    pull_request = create_pull_request()
+    pr_body = "hello <!-- foo -->world<!-- bar --> 123"
+    pull_request.body = pr_body
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- buzz -->",
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message=pr_body)
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_before() -> None:
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="<!-- testing -->world")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_before_strip_html() -> None:
+    """
+    We should be able to use strip_html_comments with cut_body_before.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="world")
+    assert actual == expected
+
+
+def test_get_merge_body_cut_body_before_multiple_markers() -> None:
+    """
+    We should choose the first substring matching cut_body_before.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello <!-- testing -->world<!-- testing --> 123"
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.pull_request_body,
+                    cut_body_before="<!-- testing -->",
+                    strip_html_comments=True,
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message="world 123")
     assert actual == expected
 
 
@@ -3056,7 +3268,7 @@ def test_get_merge_body_empty() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(merge_method="squash", commit_message="")
     assert actual == expected
@@ -3079,7 +3291,7 @@ def test_get_merge_body_includes_pull_request_url() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3109,7 +3321,7 @@ def test_get_merge_body_includes_pull_request_url_with_coauthor() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3139,7 +3351,7 @@ def test_get_merge_body_include_pull_request_author_user() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3166,7 +3378,7 @@ def test_get_merge_body_include_pull_request_author_bot() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3196,7 +3408,7 @@ def test_get_merge_body_include_pull_request_author_mannequin() -> None:
         ),
         pull_request=pull_request,
         merge_method=MergeMethod.squash,
-        commit_authors=[],
+        commits=[],
     )
     expected = MergeBody(
         merge_method="squash",
@@ -3207,27 +3419,24 @@ def test_get_merge_body_include_pull_request_author_mannequin() -> None:
 
 def test_get_merge_body_include_pull_request_author_invalid_body_style() -> None:
     """
-    We only include trailers MergeBodyStyle.pull_request_body. Verify we don't
-    include trailers for MergeBodyStyle.github_default or MergeBodyStyle.empty.
+    We only include trailers MergeBodyStyle.pull_request_body and
+    MergeBodyStyle.empty. Verify we don't include trailers for
+    MergeBodyStyle.github_default.
     """
     pull_request = create_pull_request()
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_pull_request_author = True
 
-    for body_style, commit_message in (
-        (MergeBodyStyle.github_default, None),
-        (MergeBodyStyle.empty, ""),
-    ):
-        config.merge.message.body = body_style
-        actual = get_merge_body(
-            config=config,
-            pull_request=pull_request,
-            merge_method=MergeMethod.merge,
-            commit_authors=[],
-        )
-        expected = MergeBody(merge_method="merge", commit_message=commit_message)
-        assert actual == expected
+    config.merge.message.body = MergeBodyStyle.github_default
+    actual = get_merge_body(
+        config=config,
+        pull_request=pull_request,
+        merge_method=MergeMethod.merge,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="merge", commit_message=None)
+    assert actual == expected
 
 
 def test_get_merge_body_include_coauthors() -> None:
@@ -3239,22 +3448,46 @@ def test_get_merge_body_include_coauthors() -> None:
     config = create_config()
     config.merge.message.body = MergeBodyStyle.pull_request_body
     config.merge.message.include_coauthors = True
+    config.merge.message.include_pull_request_author = False
 
     actual = get_merge_body(
         config=config,
         merge_method=MergeMethod.merge,
         pull_request=pull_request,
-        commit_authors=[
-            CommitAuthor(
-                databaseId=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+        commits=[
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
             ),
-            CommitAuthor(
-                databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            create_commit(
+                database_id=590434, name="Maeve Millay", login="maeve-m", type="Bot"
             ),
             # we default to the login when name is None.
-            CommitAuthor(databaseId=771233, name=None, login="d-abernathy", type="Bot"),
+            create_commit(
+                database_id=771233, name=None, login="d-abernathy", type="Bot"
+            ),
             # without a databaseID the commit author will be ignored.
-            CommitAuthor(databaseId=None, name=None, login="william", type="User"),
+            create_commit(database_id=None, name=None, login="william", type="User"),
+            # duplicate should be ignored.
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            # merge commits should be ignored. merge commits will have more than
+            # one parent.
+            create_commit(
+                database_id=1,
+                name="Arnold Weber",
+                login="arnold",
+                type="User",
+                parents=2,
+            ),
+            # pull request author should be ignored when
+            # include_pull_request_author is not enabled
+            create_commit(
+                database_id=pull_request.author.databaseId,
+                name="Joe PR Author",
+                login="j-author",
+                type="User",
+            ),
         ],
     )
     expected = MergeBody(
@@ -3264,35 +3497,64 @@ def test_get_merge_body_include_coauthors() -> None:
     assert actual == expected
 
 
+def test_get_merge_body_include_coauthors_include_pr_author() -> None:
+    """
+    We should include the pull request author when configured.
+    """
+    pull_request = create_pull_request()
+    pull_request.body = "hello world"
+    config = create_config()
+    config.merge.message.body = MergeBodyStyle.pull_request_body
+    config.merge.message.include_coauthors = True
+    config.merge.message.include_pull_request_author = True
+
+    actual = get_merge_body(
+        config=config,
+        merge_method=MergeMethod.merge,
+        pull_request=pull_request,
+        commits=[
+            create_commit(
+                database_id=9023904, name="Bernard Lowe", login="b-lowe", type="User"
+            ),
+            # we should ignore a duplicate entry for the PR author when
+            # include_pull_request_author is enabled.
+            create_commit(
+                database_id=pull_request.author.databaseId,
+                name=pull_request.author.name,
+                login=pull_request.author.login,
+                type=pull_request.author.type,
+            ),
+        ],
+    )
+    expected = MergeBody(
+        merge_method="merge",
+        commit_message=f"hello world\n\nCo-authored-by: {pull_request.author.name} <{pull_request.author.databaseId}+{pull_request.author.login}@users.noreply.github.com>\nCo-authored-by: Bernard Lowe <9023904+b-lowe@users.noreply.github.com>",
+    )
+    assert actual == expected
+
+
 def test_get_merge_body_include_coauthors_invalid_body_style() -> None:
     """
-    We only include trailers for MergeBodyStyle.pull_request_body. Verify we
-    don't add coauthor trailers for MergeBodyStyle.github_default or
-    MergeBodyStyle.empty.
+    We only include trailers for MergeBodyStyle.pull_request_body and MergeBodyStyle.empty. Verify we don't add coauthor trailers for MergeBodyStyle.github_default.
     """
     pull_request = create_pull_request()
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.include_coauthors = True
-
-    for (body_style, commit_message) in (
-        (MergeBodyStyle.github_default, None),
-        (MergeBodyStyle.empty, ""),
-    ):
-        config.merge.message.body = body_style
-        actual = get_merge_body(
-            config=config,
-            pull_request=pull_request,
-            merge_method=MergeMethod.merge,
-            commit_authors=[
-                CommitAuthor(databaseId=9023904, name="", login="b-lowe", type="User"),
-                CommitAuthor(
-                    databaseId=590434, name="Maeve Millay", login="maeve-m", type="Bot"
-                ),
-            ],
-        )
-        expected = MergeBody(merge_method="merge", commit_message=commit_message)
-        assert actual == expected
+    config.merge.message.body = MergeBodyStyle.github_default
+    actual = get_merge_body(
+        config=config,
+        pull_request=pull_request,
+        merge_method=MergeMethod.merge,
+        commits=[
+            create_commit(database_id=9023904, name="", login="b-lowe", type="User"),
+            create_commit(
+                database_id=590434, name="Maeve Millay", login="maeve-m", type="Bot"
+            ),
+        ],
+    )
+    expected = MergeBody(merge_method="merge", commit_message=None)
+    assert actual == expected
 
 
 @pytest.mark.asyncio
@@ -3301,33 +3563,43 @@ async def test_mergeable_include_coauthors() -> None:
     Include coauthors should attach coauthor when `merge.message.body = "pull_request_body"`
     """
     mergeable = create_mergeable()
-    api = create_api()
     config = create_config()
     config.merge.message.include_coauthors = True
-    config.merge.message.body = MergeBodyStyle.pull_request_body
 
-    await mergeable(
-        api=api,
-        config=config,
-        commit_authors=[
-            CommitAuthor(
-                databaseId=73213123, name="Barry Block", login="b-block", type="User"
-            )
-        ],
-        merging=True,
-    )
-    assert api.set_status.call_count == 2
-    assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
-    assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
+    for body_style, commit_message in (
+        (
+            MergeBodyStyle.pull_request_body,
+            "# some description\n\nCo-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>",
+        ),
+        (
+            MergeBodyStyle.empty,
+            "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>",
+        ),
+    ):
+        config.merge.message.body = body_style
+        api = create_api()
+        await mergeable(
+            api=api,
+            config=config,
+            commits=[
+                create_commit(
+                    database_id=73213123,
+                    name="Barry Block",
+                    login="b-block",
+                    type="User",
+                )
+            ],
+            merging=True,
+        )
+        assert api.set_status.call_count == 2
+        assert "attempting to merge PR" in api.set_status.calls[0]["msg"]
+        assert api.set_status.calls[1]["msg"] == "merge complete 🎉"
 
-    assert api.merge.call_count == 1
-    assert (
-        "Co-authored-by: Barry Block <73213123+b-block@users.noreply.github.com>"
-        in api.merge.calls[0]["commit_message"]
-    )
-    assert api.update_branch.call_count == 0
-    assert api.queue_for_merge.call_count == 0
-    assert api.dequeue.call_count == 0
+        assert api.merge.call_count == 1
+        assert commit_message == api.merge.calls[0]["commit_message"]
+        assert api.update_branch.call_count == 0
+        assert api.queue_for_merge.call_count == 0
+        assert api.dequeue.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -3336,91 +3608,16 @@ async def test_mergeable_update_username_blacklist() -> None:
     Kodiak should not update PR if user is blacklisted.
     """
     mergeable = create_mergeable()
-    api = create_api()
-    config = create_config()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    check_run = create_check_run()
 
-    config.update.always = True
-    config.update.blacklist_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.FAILURE
+    blacklist_config = create_config()
+    blacklist_config.update.always = True
+    blacklist_config.update.blacklist_usernames = ["mr-test"]
+    blacklist_config.update.require_automerge_label = True
 
-    await mergeable(
-        api=api,
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        check_runs=[check_run],
-    )
-    assert api.update_branch.call_count == 0
-    assert api.set_status.call_count == 1
-    assert (
-        "not auto updating for update.blacklist_usernames"
-        in api.set_status.calls[0]["msg"]
-    )
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_update_username_blacklist_merging() -> None:
-    """
-    When the PR is merging, Kodiak should ignore update.username_blacklist and
-    update the PR as necessary for GitHub branch protections.
-    """
-    mergeable = create_mergeable()
-    api = create_api()
-    config = create_config()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    check_run = create_check_run()
-
-    config.update.always = True
-    config.update.blacklist_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.SUCCESS
-
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
-    assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_update_ignored_usernames() -> None:
-    api = create_api()
-    mergeable = create_mergeable()
-
-    config = create_config()
-    config.update.always = True
-    config.update.ignored_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
+    ignored_config = create_config()
+    ignored_config.update.always = True
+    ignored_config.update.ignored_usernames = ["mr-test"]
+    ignored_config.update.require_automerge_label = True
 
     pull_request = create_pull_request()
     pull_request.author.login = "mr-test"
@@ -3434,63 +3631,24 @@ async def test_mergeable_update_ignored_usernames() -> None:
     check_run.name = "ci/test-api"
     check_run.conclusion = CheckConclusionState.FAILURE
 
-    await mergeable(
-        api=api,
-        config=config,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        check_runs=[check_run],
-    )
-    assert api.update_branch.call_count == 0
-    assert api.set_status.call_count == 1
-    assert (
-        "not auto updating for update.ignored_usernames"
-        in api.set_status.calls[0]["msg"]
-    )
+    for is_merging in (True, False):
+        for config in (blacklist_config, ignored_config):
+            api = create_api()
+            await mergeable(
+                api=api,
+                config=config,
+                pull_request=pull_request,
+                branch_protection=branch_protection,
+                check_runs=[check_run],
+                merging=is_merging,
+            )
+            assert api.update_branch.call_count == 0
+            assert api.set_status.call_count == 1
+            assert "updates blocked by update." in api.set_status.calls[0]["msg"]
+            assert api.dequeue.call_count == 1
 
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
-
-
-@pytest.mark.asyncio
-async def test_mergeable_update_ignored_usernames_merging() -> None:
-    api = create_api()
-    mergeable = create_mergeable()
-
-    config = create_config()
-    config.update.always = True
-    config.update.ignored_usernames = ["mr-test"]
-    config.update.require_automerge_label = True
-
-    pull_request = create_pull_request()
-    pull_request.author.login = "mr-test"
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-
-    branch_protection = create_branch_protection()
-    branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["ci/test-api"]
-
-    check_run = create_check_run()
-    check_run.name = "ci/test-api"
-    check_run.conclusion = CheckConclusionState.SUCCESS
-
-    with pytest.raises(PollForever):
-        await mergeable(
-            api=api,
-            config=config,
-            pull_request=pull_request,
-            branch_protection=branch_protection,
-            check_runs=[check_run],
-            merging=True,
-        )
-    assert api.update_branch.call_count == 1
-    assert api.set_status.call_count == 1
-    assert "updating branch" in api.set_status.calls[0]["msg"]
-
-    assert api.queue_for_merge.call_count == 0
-    assert api.merge.call_count == 0
-    assert api.dequeue.call_count == 0
+            assert api.queue_for_merge.call_count == 0
+            assert api.merge.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -4161,10 +4319,53 @@ async def test_mergeable_merge_failure_label() -> None:
     assert "kodiak disabled by disable_bot_label" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
 
-    assert api.update_branch.call_count == 0
     assert api.merge.call_count == 0
     assert api.remove_label.call_count == 0
     assert api.add_label.call_count == 0
     assert api.create_comment.call_count == 0
     assert api.queue_for_merge.call_count == 0
     assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_priority_merge_label() -> None:
+    """
+    When a PR has merge.priority_merge_label, we should place it at the front of
+    the merge queue.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    config.merge.priority_merge_label = "merge this PR stat!"
+
+    # check default case.
+    await mergeable(api=api, config=config)
+    assert api.set_status.call_count == 1
+    assert "enqueued" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert (
+        api.queue_for_merge.calls[0]["first"] is False
+    ), "by default we should place PR at end of queue (first=False)"
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0
+
+    # check merge.priority_merge_label.
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.labels.append(config.merge.priority_merge_label)
+    await mergeable(api=api, config=config, pull_request=pull_request)
+
+    assert api.set_status.call_count == 1
+    assert "enqueued" in api.set_status.calls[0]["msg"]
+
+    assert api.queue_for_merge.call_count == 1
+    assert (
+        api.queue_for_merge.calls[0]["first"] is True
+    ), "when merge.priority_merge_label is configured we should place PR at front of queue"
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.call_count == 0
+    assert api.merge.call_count == 0

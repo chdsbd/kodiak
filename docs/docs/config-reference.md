@@ -36,7 +36,7 @@ merge.automerge_label = "🚀 merge it!"
 If multiple labels are specified in an array, any of the specified labels will trigger merge.
 
 ```toml
-merge.automerge_labels = ["🚢 it!", "merge it!"]
+merge.automerge_label = ["🚢 it!", "merge it!"]
 ```
 
 ### `merge.require_automerge_label`
@@ -47,6 +47,54 @@ merge.automerge_labels = ["🚢 it!", "merge it!"]
 Require that the automerge label (`merge.automerge_label`) be set for Kodiak to merge a PR.
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
+
+### `merge.automerge_dependencies.versions`
+
+- **type:** `string[]`
+- **options:** `"major"`, `"minor"`, `"patch"`
+- **default:** `[]`
+
+Kodiak will only automerge version upgrade types in this list. The author of the pull request must also be listed in [`merge.automerge_dependencies.usernames`](#mergeautomerge_dependenciesusernames).
+
+See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-by-upgrade-type) for a full example.
+
+```toml
+# .kodiak.toml
+[merge.automerge_dependencies]
+# only auto merge "minor" and "patch" version upgrades.
+# do not automerge "major" version upgrades.
+versions = ["minor", "patch"]
+usernames = ["dependabot"]
+```
+
+Dependency upgrade types are parsed from the pull request title. The following table shows version upgrade examples:
+
+| title                           | upgrade |
+| ------------------------------- | ------- |
+| Bump lodash from 1.0.0 to 1.0.1 | patch   |
+| Bump lodash from 2.5.1 to 2.8.0 | minor   |
+| Bump lodash from 4.2.1 to 5.0.0 | major   |
+
+If Kodiak cannot determine the upgrade type from the pull request title, Kodiak will not automerge the pull request.
+
+See the [tests file](https://github.com/chdsbd/kodiak/blob/b1893ee6add4a1533bdac77999aad698e0b2e74c/bot/kodiak/test_dependencies.py#L10-L35) for more examples.
+
+### `merge.automerge_dependencies.usernames`
+
+- **type:** `string[]`
+- **default:** `[]`
+
+Kodiak will only automerge dependency upgrades for pull request authors in this list.
+
+See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-by-upgrade-type) for a full example.
+
+```toml
+# .kodiak.toml
+[merge.automerge_dependencies]
+versions = ["minor", "patch"]
+# only automerge by upgrade version for pull requests authored by dependabot.
+usernames = ["dependabot"]
+```
 
 <span id="mergeblacklist_title_regex"/> <!-- handle old links -->
 
@@ -189,6 +237,15 @@ placing it in the merge queue.
 
 This option adds some unfairness where PRs waiting in the queue the longest are not served first.
 
+### `merge.priority_merge_label`
+
+- **type:** `string`
+- **default:** `null`
+
+When the label is applied to a pull request, the pull request will be placed at the front of the merge queue.
+
+If two PRs have the `merge.priority_merge_label` label, either one may be first in queue.
+
 ### `merge.do_not_merge`
 
 - **type:** `boolean`
@@ -202,7 +259,13 @@ Never merge a PR. This option can be used with `update.always` to automatically 
 - **default:** `"github_default"`
 - **options:** `"github_default"`, `"pull_request_title"`
 
-By default (`"github_default"`), GitHub uses the title of a PR's first commit for the merge commit title. `"pull_request_title"` uses the PR title for the merge commit.
+By default (`"github_default"`), the title depends on [merge.method](config-reference.md#mergemethod):
+
+- In case of `"merge"`, GitHub will create a merge commit title of the form, `Merge pull request #X from Y/Z`.
+- In case of `"rebase"`, there is no merge commit, and all commits of your pull request will be added to the target unchanged.
+- In case of `"squash"`, the squashed commit title depends on the number of commits in the pull request. If the PR contains only one commit, GitHub uses the title of that commit for the squashed commit title. If there are multiple commits, GitHub uses the pull request title. In both cases the PR number is appended to the title, like `(#543)`. [See the official GitHub documentation for more information](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/about-pull-request-merges#merge-message-for-a-squash-merge).
+
+For `"pull_request_title"`, Kodiak uses the pull request title for both merge and squash commits.
 
 ### `merge.message.body`
 
@@ -243,6 +306,28 @@ This option only applies when `merge.message.body = "pull_request_body"`.
 Strip HTML comments (`<!-- some HTML comment -->`) from merge commit body.
 
 This setting is useful for stripping HTML comments created by PR templates.
+
+This option only applies when `merge.message.body_type = "markdown"`.
+
+### `merge.message.cut_body_before`
+
+- **type:** `string`
+- **default:** `null`
+
+Remove all content _before_ the configured string in the pull request body.
+
+This setting is useful when we want to include only a part of the pull request description as the commit message.
+
+This option only applies when `merge.message.body_type = "markdown"`.
+
+### `merge.message.cut_body_after`
+
+- **type:** `string`
+- **default:** `null`
+
+Remove all content _after_ the configured string in the pull request body.
+
+This setting is useful when we want to include only a part of the pull request description as the commit message.
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
@@ -348,11 +433,9 @@ autoupdate_label = "update me please!"
 - **default:** `[]`
 - **alias:** `update.blacklist_usernames`
 
-When `update.always` is enabled, pull requests opened by a user with a username in the `update.ignored_usernames` list will be ignored for updates. However, when merging the PR, Kodiak will still update the PR if required by GitHub Branch Protection to merge the pull request.
+When a pull request's author matches `update.ignored_usernames`, Kodiak will never update the pull request, unless `update.autoupdate_label` is applied to the pull request.
 
 If the user is a bot user, remove the `[bot]` suffix from their username. So instead of `dependabot-preview[bot]`, use `dependabot-preview`.
-
-This setting has no effect when `update.always` is disabled.
 
 #### example
 
@@ -548,6 +631,12 @@ body_type = "markdown" # default: "markdown", options: "plain_text", "markdown",
 # This setting is useful for stripping HTML comments created by PR templates.
 # This option only applies when `merge.message.body_type = "markdown"`.
 strip_html_comments = false # default: false
+
+# Remove all content before the configured string in the pull request body.
+# This setting is useful when we want to include only a part of the pull request
+# description as the commit message.
+# This option only applies when `merge.message.body_type = "markdown"`.
+cut_body_before = "<!-- commit body -->"
 
 [update]
 

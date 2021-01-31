@@ -53,6 +53,7 @@ def handle_subscription_update(customer_id: str) -> None:
     account = Account.objects.get(stripe_customer_id=customer.id)
 
     stripe_customer_info = account.get_stripe_customer_info()
+    assert stripe_customer_info is not None
 
     update_subscription(
         account=account, customer=customer, stripe_customer_info=stripe_customer_info

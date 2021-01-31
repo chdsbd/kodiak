@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.36.0 - 2021-01-30
+
+### Added
+- added `merge.automerge_dependencies` to support auto merging Dependabot pull requests by upgrade type ("major", "minor", "patch"). See the ["Configuring automerge by upgrade type"](https://kodiakhq.com/docs/recipes#configuring-automerge-by-upgrade-type) recipe for more information.
+
+## 0.35.0 - 2020-12-13
+
+### Added
+- added `merge.message.cut_body_before` (thanks @scriptnull) and `merge.message.cut_body_after` config options. (#589, #595)
+- added better messaging for GitHub API failures. (#594)
+
+### Fixed
+- fixed typo in readme (thanks @scriptnull). (#587)
+- fixed typo in docs (thanks @yowainwright). (#590)
+
+## 0.34.0 - 2020-11-29
+
+### Added
+- add new config option (`merge.priority_merge_label`) to place PR at front of merge queue. (#573, #555)
+- add merge queue per target branch (#572, #556)
+
+### Changed
+- merge commits are now excluded when calculating pull request coauthors for `merge.message.include_coauthors`. (#581, #576)
+- coauthor trailers are now only prefixed with new lines if the commit message is non empty. (#578, #577)
+
+## 0.33.0 - 2020-11-22
+
+### Added
+- [@rdmulford](https://github.com/rdmulford) added support for GitHub Enterprise. Thanks! API paths can now be specified via environment variables. See the [self hosting docs](https://kodiakhq.com/docs/self-hosting) for more information. (#566)
+
+### Changed
+- `merge.message.body` no longer overrides `merge.message.include_coauthors`. (#561)
+
+## 0.32.0 - 2020-10-31
+
+### Changed
+- `update.ignored_usernames` now blocks all pull request updates. `update.autoupdate_label` can be used to override this setting. (#544, #547, #537)
+
+### Fixed
+- Handle null pull request review author (#541)
+
 ## 0.31.0 - 2020-10-24
 
 ### Added

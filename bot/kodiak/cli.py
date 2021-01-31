@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 import click
 import requests
@@ -32,12 +32,12 @@ def list_installs() -> None:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
-    results: List[dict] = []
+    results: List[Dict[str, Any]] = []
     headers = dict(
         Accept="application/vnd.github.machine-man-preview+json",
         Authorization=f"Bearer {app_token}",
     )
-    url = "https://api.github.com/app/installations"
+    url = conf.v3_url("/app/installations")
     while True:
         res = requests.get(url, headers=headers)
         res.raise_for_status()

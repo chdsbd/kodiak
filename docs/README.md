@@ -16,8 +16,8 @@ Add another markdown file to the `docs/` folder and update the
 ```shell
 # docs/
 yarn install
-yarn start
-yarn typecheck --watch
-yarn fmt
+s/dev
+s/typecheck --watch
+s/fmt
 AGOLIA_API_KEY= AGOLIA_INDEX_NAME= yarn build
 ```

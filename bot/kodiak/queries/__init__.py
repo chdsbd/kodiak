@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
-import arrow
 import jwt
 import pydantic
 import requests_async as http
@@ -16,10 +15,13 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Literal, Protocol
+from typing_extensions import Literal
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.queries.commits import Commit, CommitConnection, GitActor
+from kodiak.queries.commits import User as PullRequestCommitUser
+from kodiak.queries.commits import get_commits
 from kodiak.throttle import Throttler, get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -158,6 +160,9 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
                 login
                 type: __typename
               }
+            }
+            parents {
+              totalCount
             }
           }
         }
@@ -316,7 +321,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
-    commit_authors: List[CommitAuthor] = field(default_factory=list)
+    commits: List[Commit] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -400,7 +405,7 @@ class PRReviewAuthor:
 class PRReviewSchema(BaseModel):
     state: PRReviewState
     createdAt: datetime
-    author: PRReviewAuthorSchema
+    author: Optional[PRReviewAuthorSchema]
 
 
 @dataclass
@@ -464,52 +469,41 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-class CommitAuthor(BaseModel):
-    databaseId: Optional[int]
-    login: str
-    name: Optional[str]
-    type: str
-
-    def __hash__(self) -> int:
-        # defining a hash method allows us to deduplicate CommitAuthors easily.
-        return hash(self.databaseId) + hash(self.login) + hash(self.name)
-
-
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
 
-def get_repo(*, data: dict) -> Optional[dict]:
+def get_repo(*, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        return cast(dict, data["repository"])
+        return cast(Dict[str, Any], data["repository"])
     except (KeyError, TypeError):
         return None
 
 
-def get_root_config_str(*, repo: dict) -> Optional[str]:
+def get_root_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, repo["rootConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_github_config_str(*, repo: dict) -> Optional[str]:
+def get_github_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, repo["githubConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
 
-def get_pull_request(*, repo: dict) -> Optional[dict]:
+def get_pull_request(*, repo: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        return cast(dict, repo["pullRequest"])
+        return cast(Dict[str, Any], repo["pullRequest"])
     except (KeyError, TypeError):
         logger.warning("Could not find PR", exc_info=True)
         return None
 
 
-def get_labels(*, pr: dict) -> List[str]:
+def get_labels(*, pr: Dict[str, Any]) -> List[str]:
     try:
         nodes = pr["labels"]["nodes"]
         get_names = (node.get("name") for node in nodes)
@@ -518,44 +512,22 @@ def get_labels(*, pr: dict) -> List[str]:
         return []
 
 
-def get_sha(*, pr: dict) -> Optional[str]:
+def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
     try:
         return cast(str, pr["commits"]["nodes"][0]["commit"]["oid"])
     except (IndexError, KeyError, TypeError):
         return None
 
 
-def get_commit_authors(*, pr: dict) -> List[CommitAuthor]:
-    """
-    Extract the commit authors from the pull request commits.
-    """
-    # we use a dict as an ordered set.
-    commit_authors = {}
+def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        for node in pr["commitHistory"]["nodes"]:
-            try:
-                user = node["commit"]["author"]["user"]
-                if user is None:
-                    continue
-                commit_authors[CommitAuthor.parse_obj(user)] = True
-            except (pydantic.ValidationError, IndexError, KeyError, TypeError):
-                logger.warning("problem parsing commit author", exc_info=True)
-                continue
-        return list(commit_authors.keys())
-    except (IndexError, KeyError, TypeError):
-        logger.warning("problem parsing commit authors", exc_info=True)
-        return []
-
-
-def get_branch_protection_dicts(*, repo: dict) -> List[dict]:
-    try:
-        return cast(List[dict], repo["branchProtectionRules"]["nodes"])
+        return cast(List[Dict[str, Any]], repo["branchProtectionRules"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
 def get_branch_protection(
-    *, repo: dict, ref_name: str
+    *, repo: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     for rule in get_branch_protection_dicts(repo=repo):
         try:
@@ -572,14 +544,14 @@ def get_branch_protection(
     return None
 
 
-def get_review_requests_dicts(*, pr: dict) -> List[dict]:
+def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        return cast(List[dict], pr["reviewRequests"]["nodes"])
+        return cast(List[Dict[str, Any]], pr["reviewRequests"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
+def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     """
     parse from: https://developer.github.com/v4/union/requestedreviewer/
     """
@@ -598,14 +570,14 @@ def get_requested_reviews(*, pr: dict) -> List[PRReviewRequest]:
     return review_requests
 
 
-def get_review_dicts(*, pr: dict) -> List[dict]:
+def get_review_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
     try:
-        return cast(List[dict], pr["reviews"]["nodes"])
+        return cast(List[Dict[str, Any]], pr["reviews"]["nodes"])
     except (KeyError, TypeError):
         return []
 
 
-def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
+def get_reviews(*, pr: Dict[str, Any]) -> List[PRReviewSchema]:
     review_dicts = get_review_dicts(pr=pr)
     reviews: List[PRReviewSchema] = []
     for review_dict in review_dicts:
@@ -616,11 +588,11 @@ def get_reviews(*, pr: dict) -> List[PRReviewSchema]:
     return reviews
 
 
-def get_status_contexts(*, pr: dict) -> List[StatusContext]:
+def get_status_contexts(*, pr: Dict[str, Any]) -> List[StatusContext]:
     try:
-        commit_status_dicts: List[dict] = pr["commits"]["nodes"][0]["commit"]["status"][
-            "contexts"
-        ]
+        commit_status_dicts: List[Dict[str, Any]] = pr["commits"]["nodes"][0]["commit"][
+            "status"
+        ]["contexts"]
     except (IndexError, KeyError, TypeError):
         commit_status_dicts = []
 
@@ -634,8 +606,8 @@ def get_status_contexts(*, pr: dict) -> List[StatusContext]:
     return status_contexts
 
 
-def get_check_runs(*, pr: dict) -> List[CheckRun]:
-    check_run_dicts: List[dict] = []
+def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
+    check_run_dicts: List[Dict[str, Any]] = []
     try:
         for commit_node in pr["commits"]["nodes"]:
             check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
@@ -655,21 +627,21 @@ def get_check_runs(*, pr: dict) -> List[CheckRun]:
     return check_runs
 
 
-def get_valid_signature(*, pr: dict) -> bool:
+def get_valid_signature(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
     except (IndexError, KeyError, TypeError):
         return False
 
 
-def get_head_exists(*, pr: dict) -> bool:
+def get_head_exists(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["headRef"]["id"])
     except (KeyError, TypeError):
         return False
 
 
-def get_valid_merge_methods(*, repo: dict) -> List[MergeMethod]:
+def get_valid_merge_methods(*, repo: Dict[str, Any]) -> List[MergeMethod]:
     valid_merge_methods: List[MergeMethod] = []
     if repo.get("mergeCommitAllowed"):
         valid_merge_methods.append(MergeMethod.merge)
@@ -696,12 +668,13 @@ def create_github_config_file_expression(branch: str) -> str:
     return f"{branch}:.github/{CONFIG_FILE_NAME}"
 
 
-class GetOpenPullRequestsResponse(Protocol):
-    number: int
+class Ref(pydantic.BaseModel):
+    ref: str
 
 
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
+    base: Ref
 
 
 class SubscriptionExpired(pydantic.BaseModel):
@@ -743,6 +716,13 @@ class Client:
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+        if (
+            conf.GITHUB_API_HEADER_NAME is not None
+            and conf.GITHUB_API_HEADER_VALUE is not None
+        ):
+            self.session.headers[
+                conf.GITHUB_API_HEADER_NAME
+            ] = conf.GITHUB_API_HEADER_VALUE
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
@@ -769,8 +749,7 @@ class Client:
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                "https://api.github.com/graphql",
-                json=(dict(query=query, variables=variables)),
+                conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
@@ -792,7 +771,7 @@ class Client:
         data = res.get("data")
         errors = res.get("errors")
         if errors is not None or data is None:
-            logger.error("could not fetch default branch name", res=res)
+            self.log.error("could not fetch default branch name", res=res)
             return None
         return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
@@ -800,7 +779,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/collaborators/{username}/permission",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/collaborators/{username}/permission"
+                ),
                 headers=headers,
             )
         try:
@@ -816,11 +797,15 @@ class Client:
         self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
         reviewer_names: Set[str] = {
-            review.author.login for review in reviews if review.author.type != Actor.Bot
+            review.author.login
+            for review in reviews
+            if review.author and review.author.type != Actor.Bot
         }
 
         bot_reviews: List[PRReview] = []
         for review in reviews:
+            if not review.author:
+                continue
             if review.author.type == Actor.User:
                 reviewer_names.add(review.author.login)
             elif review.author.type == Actor.Bot:
@@ -859,7 +844,7 @@ class Client:
                     ),
                 )
                 for review in reviews
-                if review.author.type == Actor.User
+                if review.author and review.author.type == Actor.User
             ],
             key=lambda x: x.createdAt,
         )
@@ -965,7 +950,7 @@ class Client:
             review_requests=get_requested_reviews(pr=pull_request),
             reviews=reviews_with_permissions,
             status_contexts=get_status_contexts(pr=pull_request),
-            commit_authors=get_commit_authors(pr=pull_request),
+            commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
             valid_signature=get_valid_signature(pr=pull_request),
@@ -974,7 +959,7 @@ class Client:
 
     async def get_open_pull_requests(
         self, base: Optional[str] = None, head: Optional[str] = None
-    ) -> Optional[List[GetOpenPullRequestsResponse]]:
+    ) -> Optional[List[GetOpenPullRequestsResponseSchema]]:
         """
         https://developer.github.com/v3/pulls/#list-pull-requests
         """
@@ -987,7 +972,7 @@ class Client:
             params["head"] = head
         async with self.throttler:
             res = await self.session.get(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls",
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
                 params=params,
                 headers=headers,
             )
@@ -1006,7 +991,7 @@ class Client:
         ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/git/refs/{ref}",
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/{ref}"),
                 headers=headers,
             )
 
@@ -1014,7 +999,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.put(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/update-branch"
+                ),
                 headers=headers,
             )
 
@@ -1026,14 +1013,16 @@ class Client:
         body = dict(event="APPROVE")
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/pulls/{pull_number}/reviews"
+                ),
                 headers=headers,
                 json=body,
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
         async with self.throttler:
             return await self.session.get(url, headers=headers)
 
@@ -1054,7 +1043,7 @@ class Client:
         if commit_message is not None:
             body["commit_message"] = commit_message
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/merge"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
 
@@ -1062,12 +1051,12 @@ class Client:
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(installation_id=self.installation_id)
-        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/check-runs"
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
         body = dict(
             name=CHECK_RUN_NAME,
             head_sha=head_sha,
             status="completed",
-            completed_at=arrow.utcnow().isoformat(),
+            completed_at=datetime.now(timezone.utc).isoformat(),
             conclusion="neutral",
             output=dict(title=message, summary=summary or ""),
         )
@@ -1078,7 +1067,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels"
+                ),
                 json=dict(labels=[label]),
                 headers=headers,
             )
@@ -1088,7 +1079,9 @@ class Client:
         escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels/{escaped_label}"
+                ),
                 headers=headers,
             )
 
@@ -1096,7 +1089,9 @@ class Client:
         headers = await get_headers(installation_id=self.installation_id)
         async with self.throttler:
             return await self.session.post(
-                f"https://api.github.com/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments",
+                conf.v3_url(
+                    f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
+                ),
                 json=dict(body=body),
                 headers=headers,
             )
@@ -1126,7 +1121,9 @@ class Client:
             # to be backwards compatible we must handle the case of `data` missing.
             try:
                 subscription_blocker = SeatsExceeded.parse_raw(
-                    real_response.get(b"data")
+                    # Pydantic says it doesn't allow Nones, but passing a None
+                    # raises a ValidationError which is fine.
+                    real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
                 logger.warning("failed to parse seats_exceeded data", exc_info=True)
@@ -1171,7 +1168,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
     )
     async with throttler:
         res = await http.post(
-            f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+            conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
             headers=dict(
                 Accept="application/vnd.github.machine-man-preview+json",
                 Authorization=f"Bearer {app_token}",
@@ -1189,3 +1186,6 @@ async def get_headers(*, installation_id: str) -> Mapping[str, str]:
         Authorization=f"token {token}",
         Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
     )
+
+
+__all__ = ["Commit", "GitActor", "CommitConnection", "PullRequestCommitUser"]

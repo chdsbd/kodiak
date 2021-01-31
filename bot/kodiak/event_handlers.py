@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import List, Optional, Set, cast
+from typing import Dict, List, Optional, Set
 
 import asyncio_redis
 import structlog
@@ -18,7 +18,7 @@ from kodiak.events import (
     StatusEvent,
 )
 from kodiak.events.status import Branch
-from kodiak.queries import Client, GetOpenPullRequestsResponse
+from kodiak.queries import Client
 from kodiak.queue import WebhookEvent, redis_webhook_queue
 
 logger = structlog.get_logger()
@@ -33,6 +33,7 @@ async def pr_event(pr: PullRequestEvent) -> None:
             repo_owner=pr.repository.owner.login,
             repo_name=pr.repository.name,
             pull_request_number=pr.number,
+            target_name=pr.pull_request.base.ref,
             installation_id=str(pr.installation.id),
         )
     )
@@ -51,6 +52,7 @@ async def check_run(check_run_event: CheckRunEvent) -> None:
                 repo_owner=check_run_event.repository.owner.login,
                 repo_name=check_run_event.repository.name,
                 pull_request_number=pr.number,
+                target_name=pr.base.ref,
                 installation_id=str(check_run_event.installation.id),
             )
         )
@@ -100,10 +102,7 @@ async def status_event(status_event: StatusEvent) -> None:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
-            pr_results = cast(
-                List[Optional[List[GetOpenPullRequestsResponse]]],
-                await asyncio.gather(*pr_requests),
-            )
+            pr_results = await asyncio.gather(*pr_requests)
 
         all_events: Set[WebhookEvent] = set()
         for prs in pr_results:
@@ -115,6 +114,7 @@ async def status_event(status_event: StatusEvent) -> None:
                         repo_owner=owner,
                         repo_name=repo,
                         pull_request_number=pr.number,
+                        target_name=pr.base.ref,
                         installation_id=str(installation_id),
                     )
                 )
@@ -131,6 +131,7 @@ async def pr_review(review: PullRequestReviewEvent) -> None:
             repo_owner=review.repository.owner.login,
             repo_name=review.repository.name,
             pull_request_number=review.pull_request.number,
+            target_name=review.pull_request.base.ref,
             installation_id=str(review.installation.id),
         )
     )
@@ -173,6 +174,7 @@ async def push(push_event: PushEvent) -> None:
                     repo_owner=owner,
                     repo_name=repo,
                     pull_request_number=pr.number,
+                    target_name=pr.base.ref,
                     installation_id=installation_id,
                 )
             )
@@ -185,8 +187,8 @@ async def get_redis() -> asyncio_redis.Connection:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname,
-            port=conf.REDIS_URL.port,
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
             password=(
                 conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
             ),
@@ -196,12 +198,12 @@ async def get_redis() -> asyncio_redis.Connection:
     return _redis
 
 
-def compress_payload(data: dict) -> bytes:
+def compress_payload(data: Dict[str, object]) -> bytes:
     cctx = zstd.ZstdCompressor()
-    return cast(bytes, cctx.compress(json.dumps(data).encode()))
+    return cctx.compress(json.dumps(data).encode())
 
 
-async def handle_webhook_event(event_name: str, payload: dict) -> None:
+async def handle_webhook_event(event_name: str, payload: Dict[str, object]) -> None:
     log = logger.bind(event_name=event_name)
 
     if conf.USAGE_REPORTING and event_name in conf.USAGE_REPORTING_EVENTS:

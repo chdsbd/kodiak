@@ -1,8 +1,8 @@
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, cast
 
-import arrow
 import asyncio_redis
 import pytest
 from pytest_mock import MockFixture
@@ -11,11 +11,12 @@ from requests_async import Response
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
+    Actor,
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Client,
-    CommitAuthor,
+    Commit,
     EventInfoResponse,
     GraphQLResponse,
     MergeableState,
@@ -24,7 +25,9 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewAuthor,
+    PRReviewAuthorSchema,
     PRReviewRequest,
+    PRReviewSchema,
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
@@ -36,9 +39,11 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
     Subscription,
-    get_commit_authors,
+    get_commits,
 )
+from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
+from kodiak.tests.fixtures import create_commit
 
 
 @pytest.fixture
@@ -75,9 +80,9 @@ async def test_get_default_branch_name_error(
 
 
 @pytest.fixture
-def blocked_response() -> dict:
+def blocked_response() -> Dict[str, Any]:
     return cast(
-        dict,
+        Dict[str, Any],
         json.loads(
             (
                 Path(__file__).parent
@@ -167,32 +172,32 @@ method = "squash"
         ],
         reviews=[
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:34Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
                 state=PRReviewState.COMMENTED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:29:52Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
                 state=PRReviewState.CHANGES_REQUESTED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:30:52Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:30:52+00:00"),
                 state=PRReviewState.COMMENTED,
                 author=PRReviewAuthor(login="kodiak", permission=Permission.ADMIN),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-22T15:43:17Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-22T15:43:17+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-23T15:13:29Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-23T15:13:29+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="walrus", permission=Permission.WRITE),
             ),
             PRReview(
-                createdAt=arrow.get("2019-05-24T10:21:32Z").datetime,
+                createdAt=datetime.fromisoformat("2019-05-24T10:21:32+00:00"),
                 state=PRReviewState.APPROVED,
                 author=PRReviewAuthor(login="kodiakhq", permission=Permission.WRITE),
             ),
@@ -222,9 +227,12 @@ method = "squash"
 @pytest.fixture  # type: ignore
 @pytest.mark.asyncio
 async def setup_redis(github_installation_id: str) -> None:
+    host = conf.REDIS_URL.hostname
+    port = conf.REDIS_URL.port
+    assert host and port
     r = await asyncio_redis.Connection.create(
-        host=conf.REDIS_URL.hostname,
-        port=conf.REDIS_URL.port,
+        host=host,
+        port=port,
         password=(
             conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
         ),
@@ -241,7 +249,7 @@ async def setup_redis(github_installation_id: str) -> None:
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
     api_client: Client,
-    blocked_response: dict,
+    blocked_response: Dict[str, Any],
     block_event: EventInfoResponse,
     mocker: MockFixture,
     setup_redis: object,
@@ -572,7 +580,7 @@ async def test_get_subscription_unknown_blocker(
     )
 
 
-def test_get_commit_authors() -> None:
+def test_get_commits() -> None:
     """
     Verify we parse commit authors correctly. We should handle the nullability
     of name and databaseId.
@@ -582,6 +590,7 @@ def test_get_commit_authors() -> None:
             "nodes": [
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -589,11 +598,12 @@ def test_get_commit_authors() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "b-lowe",
@@ -601,11 +611,12 @@ def test_get_commit_authors() -> None:
                                 "login": "b-lowe",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": None,
@@ -613,12 +624,13 @@ def test_get_commit_authors() -> None:
                                 "login": "kodiakhq",
                                 "type": "Bot",
                             }
-                        }
+                        },
                     }
                 },
-                {"commit": {"author": {"user": None}}},
+                {"commit": {"parents": {"totalCount": 1}, "author": {"user": None}}},
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -626,11 +638,12 @@ def test_get_commit_authors() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": None,
@@ -638,34 +651,39 @@ def test_get_commit_authors() -> None:
                                 "login": "j-doe",
                                 "type": "SomeGitActor",
                             }
-                        }
+                        },
                     }
                 },
             ]
         }
     }
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == [
-        CommitAuthor(
-            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        create_commit(
+            name="Christopher Dignam", database_id=1929960, login="chdsbd", type="User"
         ),
-        CommitAuthor(name="b-lowe", databaseId=5345234, login="b-lowe", type="User"),
-        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
-        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+        create_commit(name="b-lowe", database_id=5345234, login="b-lowe", type="User"),
+        create_commit(name=None, database_id=435453, login="kodiakhq", type="Bot"),
+        Commit(parents=CommitConnection(totalCount=1), author=GitActor(user=None)),
+        create_commit(
+            name="Christopher Dignam", database_id=1929960, login="chdsbd", type="User"
+        ),
+        create_commit(name=None, database_id=None, login="j-doe", type="SomeGitActor"),
     ]
 
 
-def test_get_commit_authors_error_handling() -> None:
+def test_get_commits_error_handling() -> None:
     """
     We should handle parsing errors without raising an exception.
     """
     pull_request_data = {
         "commitHistory": {
             "nodes": [
-                {"commit": {"author": {"user": {}}}},
-                {"commit": {"author": {}}},
+                {"commit": {"parents": {"totalCount": 1}, "author": {"user": None}}},
+                {"commit": {"parents": {"totalCount": 1}, "author": None}},
                 {
                     "commit": {
+                        "parents": {"totalCount": 3},
                         "author": {
                             "user": {
                                 "name": None,
@@ -673,11 +691,12 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "kodiakhq",
                                 "type": "Bot",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 1},
                         "author": {
                             "user": {
                                 "name": "Christopher Dignam",
@@ -685,11 +704,12 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "chdsbd",
                                 "type": "User",
                             }
-                        }
+                        },
                     }
                 },
                 {
                     "commit": {
+                        "parents": {"totalCount": 2},
                         "author": {
                             "user": {
                                 "name": None,
@@ -697,26 +717,78 @@ def test_get_commit_authors_error_handling() -> None:
                                 "login": "j-doe",
                                 "type": "SomeGitActor",
                             }
-                        }
+                        },
                     }
                 },
             ]
         }
     }
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == [
-        CommitAuthor(name=None, databaseId=435453, login="kodiakhq", type="Bot"),
-        CommitAuthor(
-            name="Christopher Dignam", databaseId=1929960, login="chdsbd", type="User"
+        Commit(parents=CommitConnection(totalCount=1), author=GitActor(user=None)),
+        Commit(parents=CommitConnection(totalCount=1), author=None),
+        create_commit(
+            name=None, database_id=435453, login="kodiakhq", type="Bot", parents=3
         ),
-        CommitAuthor(name=None, databaseId=None, login="j-doe", type="SomeGitActor"),
+        create_commit(
+            name="Christopher Dignam",
+            database_id=1929960,
+            login="chdsbd",
+            type="User",
+            parents=1,
+        ),
+        create_commit(
+            name=None, database_id=None, login="j-doe", type="SomeGitActor", parents=2
+        ),
     ]
 
 
-def test_get_commit_authors_error_handling_missing_response() -> None:
+def test_get_commits_error_handling_missing_response() -> None:
     """
     We should handle parsing errors without raising an exception.
     """
     pull_request_data = {"commitHistory": None}
-    res = get_commit_authors(pr=pull_request_data)
+    res = get_commits(pr=pull_request_data)
     assert res == []
+
+
+@pytest.mark.asyncio
+async def test_get_reviewers_and_permissions_empty_author(
+    mocker: MockFixture, api_client: Client
+) -> None:
+    """
+    We should ignore reviews with missing authors.
+
+    `author` becomes null if the GitHub user's account is deleted. This is shown
+    in the GitHub UI as the "ghost" user.
+    """
+
+    async def get_permissions_for_username_patch(username: str) -> Permission:
+        if username == "jdoe":
+            return Permission.WRITE
+        raise Exception
+
+    mocker.patch.object(
+        api_client, "get_permissions_for_username", get_permissions_for_username_patch
+    )
+    res = await api_client.get_reviewers_and_permissions(
+        reviews=[
+            PRReviewSchema(
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
+                state=PRReviewState.COMMENTED,
+                author=PRReviewAuthorSchema(login="jdoe", type=Actor.User),
+            ),
+            PRReviewSchema(
+                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
+                state=PRReviewState.APPROVED,
+                author=None,
+            ),
+        ]
+    )
+    assert res == [
+        PRReview(
+            createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
+            state=PRReviewState.COMMENTED,
+            author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
+        )
+    ]

@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Union, cast
+from typing import Any, Dict, Iterator, Optional, Union
 
 import pytest
 import responses
@@ -30,30 +30,24 @@ from web_api.testutils import (
 
 @pytest.fixture
 def user() -> User:
-    return cast(
-        User,
-        User.objects.create(
-            github_id=10137,
-            github_login="ghost",
-            github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
-        ),
+    return User.objects.create(
+        github_id=10137,
+        github_login="ghost",
+        github_access_token="33149942-C986-42F8-9A45-AD83D5077776",
     )
 
 
 @pytest.fixture
 def other_user() -> User:
-    return cast(
-        User,
-        User.objects.create(
-            github_id=67647,
-            github_login="bear",
-            github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
-        ),
+    return User.objects.create(
+        github_id=67647,
+        github_login="bear",
+        github_access_token="D2F92D26-BC64-427C-93CC-13E7110F3EB7",
     )
 
 
 @pytest.fixture
-def mocked_responses() -> Any:
+def mocked_responses() -> Iterator[responses.RequestsMock]:
     with responses.RequestsMock() as rsps:
         yield rsps
 
@@ -74,6 +68,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
+    today = datetime.datetime.now(timezone.utc)
+    two_days_from_today = today + datetime.timedelta(days=2)
+
     # this user opened a PR on a private repository that Kodiak also acted on,
     # so we should count it.
     UserPullRequestActivity.objects.create(
@@ -83,7 +80,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login=user.github_login,
         github_user_id=user.github_id,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=True,
     )
     UserPullRequestActivity.objects.create(
@@ -93,7 +90,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -105,7 +102,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="jdoe",
         github_user_id=6039209,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=False,
     )
     UserPullRequestActivity.objects.create(
@@ -115,7 +112,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -127,7 +124,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="sgoodman",
         github_user_id=4323112,
         is_private_repository=False,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=True,
     )
     UserPullRequestActivity.objects.create(
@@ -137,7 +134,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="kodiakhq[bot]",
         github_user_id=11479,
         is_private_repository=False,
-        activity_date=datetime.date(2020, 12, 5),
+        activity_date=today,
         opened_pull_request=False,
     )
 
@@ -149,7 +146,7 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
         github_user_login="jpiccirillo",
         github_user_id=643453,
         is_private_repository=True,
-        activity_date=datetime.date(2020, 12, 7),
+        activity_date=two_days_from_today,
         opened_pull_request=True,
     )
 
@@ -158,14 +155,15 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     assert (
         res.json()["accountCanSubscribe"] is False
     ), "user accounts should not see subscription options"
+    today_str = today.strftime("%Y-%m-%d")
     assert res.json()["activeUsers"] == [
         dict(
             id=user.github_id,
             name=user.github_login,
             profileImgUrl=user.profile_image(),
             interactions=1,
-            firstActiveDate="2020-12-05",
-            lastActiveDate="2020-12-05",
+            firstActiveDate=today_str,
+            lastActiveDate=today_str,
             hasSeatLicense=False,
         )
     ]
@@ -397,6 +395,7 @@ def patch_cancel_subscription(mocker: Any) -> None:
 
 @pytest.mark.django_db
 def test_activity(authed_client: Client, user: User,) -> None:
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
@@ -427,6 +426,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 @pytest.mark.django_db
 def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
+    assert other_user.github_login is not None
     user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
@@ -440,6 +440,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     """
     Start a Stripe checkout session and return the required credentials to the frontend.
     """
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
@@ -632,7 +633,7 @@ def test_update_contact_emails(authed_client: Client, user: User, mocker: Any) -
     account, membership = create_org_account(user)
 
     original_email = "j.doe@acme-inc.corp"
-    account.original_email = original_email
+    account.contact_emails = original_email
     account.save()
 
     # by default a user should be able to set the contact emails fields.
@@ -859,6 +860,7 @@ def test_sync_accounts_failure(
 
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
+    assert user.github_login is not None
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = create_account(
@@ -895,6 +897,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
 def test_current_account_authentication(
     authed_client: Client, other_user: User,
 ) -> None:
+    assert other_user.github_login is not None
     user_account = create_account(github_account_login=other_user.github_login,)
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
@@ -905,6 +908,7 @@ def test_current_account_authentication(
 
 @pytest.mark.django_db
 def test_accounts(authed_client: Client, user: User) -> None:
+    assert user.github_login is not None
     user_account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
@@ -941,6 +945,7 @@ def test_start_trial(
     When a user starts a trial we should update their account.
     """
     update_bot = mocker.patch("web_api.models.Account.update_bot")
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
@@ -968,11 +973,14 @@ def test_start_trial(
     assert account.trial_email == "b.lowe@example.com"
 
 
-def similar_dates(a: datetime.datetime, b: datetime.datetime) -> bool:
+def similar_dates(
+    a: Optional[datetime.datetime], b: Optional[datetime.datetime]
+) -> bool:
     """
     Dates are equal if they are within 5 minutes of each other. This should
     hopefully reduce flakiness is tests.
     """
+    assert a is not None and b is not None
     return abs(int(a.timestamp()) - int(b.timestamp())) < 60 * 5
 
 
@@ -984,6 +992,7 @@ def test_start_trial_existing_trial(
     Starting a trial when there is already an existing trial shouldn't alter
     current trial.
     """
+    assert user.github_login is not None
     account = create_account(
         github_account_login=user.github_login, github_account_type="User",
     )
@@ -1027,7 +1036,7 @@ def test_generate_header() -> None:
     assert isinstance(event, stripe.Event)
 
 
-def post_webhook(event: Union[dict, str]) -> HttpResponse:
+def post_webhook(event: Union[Dict[str, Any], str]) -> HttpResponse:
     """
     Send a signed payload to our stripe webhook endpoint
     """
@@ -1236,6 +1245,16 @@ def test_logout(client: Client, user: User) -> None:
 
 
 @pytest.mark.django_db
+def test_healthcheck(client: Client) -> None:
+    """
+    We should return 200 even when logged out.
+    """
+    res = client.get("/v1/healthcheck")
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+
+
+@pytest.mark.django_db
 def test_oauth_login(client: Client, state_token: str) -> None:
     res = client.get("/v1/oauth_login", dict(state=state_token))
     assert res.status_code == 302
@@ -1246,7 +1265,7 @@ def test_oauth_login(client: Client, state_token: str) -> None:
 
 
 @pytest.fixture
-def successful_sync_accounts_response(mocked_responses: Any) -> None:
+def successful_sync_accounts_response(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.GET,
         "https://api.github.com/user/installations",
@@ -1311,7 +1330,7 @@ def successful_sync_accounts_response(mocked_responses: Any) -> None:
 
 
 @pytest.fixture
-def successful_responses(mocked_responses: Any) -> None:
+def successful_responses(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.POST,
         "https://github.com/login/oauth/access_token",
@@ -1432,7 +1451,7 @@ def test_oauth_complete_success_existing_account(
 
 
 @pytest.fixture
-def failing_sync_accounts_response(mocked_responses: Any) -> None:
+def failing_sync_accounts_response(mocked_responses: responses.RequestsMock) -> None:
     mocked_responses.add(
         responses.GET,
         "https://api.github.com/user/installations",

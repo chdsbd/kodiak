@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 import toml
 from pydantic import BaseModel, ValidationError, validator
+from typing_extensions import Literal
 
 
 class MergeMethod(str, Enum):
@@ -43,6 +44,8 @@ class MergeMessage(BaseModel):
     include_pull_request_author: bool = False
     include_coauthors: bool = False
     include_pull_request_url: bool = False
+    cut_body_before: str = ""
+    cut_body_after: str = ""
 
 
 # this pattern indicates that the user has the field unset.
@@ -50,9 +53,15 @@ UNSET_TITLE_REGEX = ":::|||kodiak|||internal|||reserved|||:::"
 DEFAULT_TITLE_REGEX = "^WIP:.*"
 
 
+class AutomergeDependencies(BaseModel):
+    versions: List[Literal["major", "minor", "patch"]] = []
+    usernames: List[str] = []
+
+
 class Merge(BaseModel):
     # label or labels to enable merging of pull request.
     automerge_label: Union[str, List[str]] = "automerge"
+    automerge_dependencies: AutomergeDependencies = AutomergeDependencies()
     # if disabled, kodiak won't require a label to queue a PR for merge
     require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to
@@ -95,6 +104,8 @@ class Merge(BaseModel):
     # placing it in the queue. This will introduce some unfairness where those
     # waiting in the queue the longest will not be served first.
     prioritize_ready_to_merge: bool = False
+    # when applied to a PR, add the PR to the front of the merge queue.
+    priority_merge_label: Optional[str] = None
     # never merge a PR. This can be used with merge.update_branch_immediately to
     # automatically update a PR without merging.
     do_not_merge: bool = False
@@ -151,6 +162,6 @@ class V1(BaseModel):
         cls, content: str
     ) -> Union[V1, toml.TomlDecodeError, ValidationError]:
         try:
-            return cls.parse_obj(cast(dict, toml.loads(content)))
+            return cls.parse_obj(cast(Dict[str, Any], toml.loads(content)))
         except (toml.TomlDecodeError, ValidationError) as e:
             return e

@@ -7,7 +7,12 @@ from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from yarl import URL
 
+from web_api.patches import patch_django
+
 load_dotenv()
+
+
+patch_django()
 
 
 sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)

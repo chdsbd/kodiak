@@ -1,7 +1,7 @@
 import datetime
 import logging
 from dataclasses import asdict, dataclass
-from typing import Optional, Union, cast
+from typing import Any, Dict, Optional, Union, cast
 from urllib.parse import parse_qsl
 
 import pydantic
@@ -21,6 +21,7 @@ from typing_extensions import Literal
 from yarl import URL
 
 from web_api import auth, billing
+from web_api.auth import AuthedHttpRequest
 from web_api.exceptions import BadRequest, PermissionDenied
 from web_api.models import (
     Account,
@@ -38,14 +39,15 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def get_account_or_404(*, team_id: str, user: User) -> Account:
-    return cast(
-        Account,
-        get_object_or_404(Account.objects.filter(memberships__user=user), id=team_id),
-    )
+    return get_object_or_404(Account.objects.filter(memberships__user=user), id=team_id)
 
 
 @auth.login_required
 def ping(request: HttpRequest) -> HttpResponse:
+    return JsonResponse({"ok": True})
+
+
+def healthcheck(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"ok": True})
 
 
@@ -63,7 +65,7 @@ def get_discount_cents(
 
 
 @auth.login_required
-def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
+def usage_billing(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(user=request.user, team_id=team_id)
     active_users = UserPullRequestActivity.get_active_users_in_last_30_days(account)
     subscription = None
@@ -105,7 +107,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
             percent_off=stripe_customer_info.customer_discount_coupon_percent_off,
         )
         if discount_cents and stripe_customer_info.customer_discount_coupon_name:
-            discount: Optional[dict] = dict(
+            discount: Optional[Dict[str, Any]] = dict(
                 name=stripe_customer_info.customer_discount_coupon_name,
                 discountCents=discount_cents,
             )
@@ -190,7 +192,7 @@ def usage_billing(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def activity(request: HttpRequest, team_id: str) -> HttpResponse:
+def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     kodiak_activity_labels = []
     kodiak_activity_approved = []
@@ -234,7 +236,7 @@ def activity(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
+def current_account(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     return JsonResponse(
         dict(
@@ -261,7 +263,7 @@ def current_account(request: HttpRequest, team_id: str) -> HttpResponse:
 
 
 @auth.login_required
-def start_trial(request: HttpRequest, team_id: str) -> HttpResponse:
+def start_trial(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     billing_email = request.POST["billingEmail"]
     account.start_trial(request.user, billing_email=billing_email)
@@ -286,7 +288,9 @@ class UpdateBillingInfoModel(pydantic.BaseModel):
 
 
 @auth.login_required
-def update_stripe_customer_info(request: HttpRequest, team_id: str) -> HttpResponse:
+def update_stripe_customer_info(
+    request: AuthedHttpRequest, team_id: str
+) -> HttpResponse:
     """
     Endpoint to allow users to update Stripe customer info.
     """
@@ -336,7 +340,7 @@ class StartCheckoutModal(pydantic.BaseModel):
 
 
 @auth.login_required
-def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
+def start_checkout(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     payload = StartCheckoutModal.parse_obj(request.POST.dict())
     account = get_account_or_404(team_id=team_id, user=request.user)
     # if available, using the existing customer_id allows us to pre-fill the
@@ -372,7 +376,7 @@ def start_checkout(request: HttpRequest, team_id: str) -> HttpResponse:
 
 @auth.login_required
 def redirect_to_stripe_self_serve_portal(
-    request: HttpRequest, team_id: str
+    request: AuthedHttpRequest, team_id: str
 ) -> HttpResponse:
     """
     Redirect the user to the temp URL so they can access the stripe self serve portal
@@ -393,7 +397,7 @@ def redirect_to_stripe_self_serve_portal(
 
 @auth.login_required
 @require_http_methods(["GET"])
-def get_subscription_info(request: HttpRequest, team_id: str) -> JsonResponse:
+def get_subscription_info(request: AuthedHttpRequest, team_id: str) -> JsonResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
 
     subscription_status = account.get_subscription_blocker()
@@ -518,7 +522,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 
 
 @auth.login_required
-def accounts(request: HttpRequest) -> HttpResponse:
+def accounts(request: AuthedHttpRequest) -> HttpResponse:
     return JsonResponse(
         [
             dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image())
@@ -586,8 +590,8 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # handle errors
     if request.POST.get("error"):
         return Error(
-            error=request.POST.get("error"),
-            error_description=request.POST.get("error_description"),
+            error=request.POST["error"],
+            error_description=request.POST.get("error_description") or "",
         )
 
     code = request.POST.get("code")
@@ -691,13 +695,13 @@ def oauth_complete(request: HttpRequest) -> HttpResponse:
 
 def logout(request: HttpRequest) -> HttpResponse:
     request.session.flush()
-    request.user = AnonymousUser()
+    request.user = AnonymousUser()  # type: ignore [assignment]
     return HttpResponse(status=201)
 
 
 @auth.login_required
 @require_http_methods(["POST"])
-def sync_accounts(request: HttpRequest) -> HttpResponse:
+def sync_accounts(request: AuthedHttpRequest) -> HttpResponse:
     try:
         request.user.sync_accounts()
     except SyncAccountsError:

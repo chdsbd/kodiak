@@ -12,10 +12,19 @@ class Repository(pydantic.BaseModel):
     owner: Owner
 
 
+class Ref(pydantic.BaseModel):
+    ref: str
+
+
+class PullRequest(pydantic.BaseModel):
+    base: Ref
+
+
 class PullRequestEvent(GithubEvent):
     """
     https://developer.github.com/v3/activity/events/types/#pullrequestevent
     """
 
     number: int
+    pull_request: PullRequest
     repository: Repository

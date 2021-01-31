@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union, cast
+from typing import Callable, List, Optional, Union
 
 import pydantic
 import redis
@@ -14,6 +14,7 @@ import stripe
 from django.conf import settings
 from django.contrib.postgres import fields as pg_fields
 from django.db import connection, models
+from django.db.models.manager import Manager
 from django.utils import timezone
 from typing_extensions import Literal
 
@@ -26,7 +27,7 @@ r = redis.Redis.from_url(settings.REDIS_URL)
 models.TextField.register_lookup(models.functions.Length)
 
 
-def sane_repr(*attrs: str) -> Callable:
+def sane_repr(*attrs: str) -> Callable[[object], str]:
     """
     Copyright (c) 2019 Sentry (https://sentry.io) and individual contributors.
     All rights reserved.
@@ -84,6 +85,8 @@ class User(BaseModel):
         max_length=255, help_text="OAuth token for the GitHub user."
     )
 
+    objects = Manager["User"]()
+
     class Meta:
         db_table = "user"
 
@@ -102,12 +105,9 @@ class User(BaseModel):
         )
 
     def is_admin(self, account: Account) -> bool:
-        return cast(
-            bool,
-            AccountMembership.objects.filter(
-                account=account, user=self, role=AccountRole.admin
-            ).exists(),
-        )
+        return AccountMembership.objects.filter(
+            account=account, user=self, role=AccountRole.admin
+        ).exists()
 
     def sync_accounts(self) -> None:
         """
@@ -220,6 +220,8 @@ class GitHubEvent(BaseModel):
     event_name = models.CharField(max_length=255, db_index=True)
     payload = pg_fields.JSONField(default=dict)
 
+    objects = Manager["GitHubEvent"]()
+
     class Meta:
         db_table = "github_event"
 
@@ -306,6 +308,8 @@ class Account(BaseModel):
         help_text="Explanation for the subscription exemption to be displayed in the Usage & Billing page.",
     )
 
+    objects = Manager["Account"]()
+
     class Meta:
         db_table = "account"
         constraints = [
@@ -327,12 +331,9 @@ class Account(BaseModel):
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
     def get_stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
-        return cast(
-            Optional[StripeCustomerInformation],
-            StripeCustomerInformation.objects.filter(
-                customer_id=self.stripe_customer_id
-            ).first(),
-        )
+        return StripeCustomerInformation.objects.filter(
+            customer_id=self.stripe_customer_id
+        ).first()
 
     def start_trial(
         self, actor: User, billing_email: str, length_days: int = 30
@@ -361,13 +362,15 @@ class Account(BaseModel):
         self.update_bot()
 
     def trial_expired(self) -> bool:
-        return self.trial_expiration is not None and cast(
-            bool, (self.trial_expiration - timezone.now()).total_seconds() < 0
+        return (
+            self.trial_expiration is not None
+            and (self.trial_expiration - timezone.now()).total_seconds() < 0
         )
 
     def active_trial(self) -> bool:
-        return self.trial_expiration is not None and cast(
-            bool, (self.trial_expiration - timezone.now()).total_seconds() > 0
+        return (
+            self.trial_expiration is not None
+            and (self.trial_expiration - timezone.now()).total_seconds() > 0
         )
 
     def can_subscribe(self) -> bool:
@@ -473,7 +476,7 @@ class Account(BaseModel):
         r.rpush(
             "kodiak:refresh_pull_requests_for_installation",
             RefreshPullRequestsMessage(
-                installation_id=self.github_installation_id
+                installation_id=str(self.github_installation_id)
             ).json(),
         )
 
@@ -500,6 +503,8 @@ class AccountMembership(BaseModel):
         choices=AccountRole.choices,
         help_text="User's GitHub-defined role for the associated account.",
     )
+
+    objects = Manager["AccountMembership"]()
 
     class Meta:
         db_table = "account_membership"
@@ -533,6 +538,8 @@ class PullRequestActivity(BaseModel):
     kodiak_updated = models.IntegerField()
 
     github_installation_id = models.IntegerField(db_index=True)
+
+    objects = Manager["PullRequestActivity"]()
 
     class Meta:
         db_table = "pull_request_activity"
@@ -571,7 +578,7 @@ class PullRequestActivity(BaseModel):
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
                 )
-            )
+            )  # type: Optional[datetime.datetime]
             events_aggregated = GitHubEvent.objects.filter(
                 created_at__gte=min_date
             ).count()
@@ -709,6 +716,8 @@ class PullRequestActivityProgress(BaseModel):
         help_text="Date we should use as our minimum date for future aggregation jobs. Anything before this date is 'locked'."
     )
 
+    objects = Manager["PullRequestActivityProgress"]()
+
     class Meta:
         db_table = "pull_request_activity_progress"
 
@@ -738,6 +747,8 @@ class UserPullRequestActivity(BaseModel):
     is_private_repository = models.BooleanField(db_index=True)
     opened_pull_request = models.BooleanField(db_index=True)
     activity_date = models.DateField(db_index=True)
+
+    objects = Manager["UserPullRequestActivity"]()
 
     class Meta:
         db_table = "user_pull_request_activity"
@@ -878,6 +889,8 @@ class UserPullRequestActivityProgress(BaseModel):
         help_text="Date we should use as our minimum date for future aggregation jobs. Anything before this date is 'locked'.",
         db_index=True,
     )
+
+    objects = Manager["UserPullRequestActivityProgress"]()
 
     class Meta:
         db_table = "user_pull_request_activity_progress"
@@ -1037,6 +1050,8 @@ class StripeCustomerInformation(models.Model):
         null=True,
         help_text="If the subscription has been canceled, the date of that cancellation. If the subscription was canceled with cancel_at_period_end, canceled_at will still reflect the date of the initial cancellation request, not the end of the subscription period when the subscription is automatically moved to a canceled state.",
     )
+
+    objects = Manager["StripeCustomerInformation"]()
 
     class Meta:
         db_table = "stripe_customer_information"

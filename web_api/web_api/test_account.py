@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import pytest
 import redis
@@ -200,16 +200,13 @@ def create_account(
         datetime.datetime(1900, 2, 13)
     )
 ) -> Account:
-    return cast(
-        Account,
-        Account.objects.create(
-            github_installation_id=1066615,
-            github_account_login="acme-corp",
-            github_account_id=523412234,
-            github_account_type="Organization",
-            stripe_customer_id="cus_H2pvQ2kt7nk0JY",
-            trial_expiration=trial_expiration,
-        ),
+    return Account.objects.create(
+        github_installation_id=1066615,
+        github_account_login="acme-corp",
+        github_account_id=523412234,
+        github_account_type="Organization",
+        stripe_customer_id="cus_H2pvQ2kt7nk0JY",
+        trial_expiration=trial_expiration,
     )
 
 
@@ -243,7 +240,7 @@ def test_get_subscription_blocker_expired_trial_subscription_ok(
 
 
 def create_user() -> User:
-    return cast(User, User.objects.create(github_id=2341234, github_login="b-lowe"))
+    return User.objects.create(github_id=2341234, github_login="b-lowe")
 
 
 @pytest.mark.django_db

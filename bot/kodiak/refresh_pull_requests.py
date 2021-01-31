@@ -81,6 +81,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            baseRef {
+              name
+            }
           }
         }
       }
@@ -93,6 +96,9 @@ query ($login: String!) {
         pullRequests(first: 100, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
+            baseRef {
+              name
+            }
           }
         }
       }
@@ -108,7 +114,7 @@ async def get_login_for_install(*, installation_id: str) -> str:
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
     res = await http.get(
-        f"https://api.github.com/app/installations/{installation_id}",
+        conf.v3_url(f"/app/installations/{installation_id}"),
         headers=dict(
             Accept="application/vnd.github.machine-man-preview+json",
             Authorization=f"Bearer {app_token}",
@@ -124,7 +130,7 @@ async def refresh_pull_requests_for_installation(
     login = await get_login_for_install(installation_id=installation_id)
     token = await get_token_for_install(installation_id=installation_id)
     res = await http.post(
-        "https://api.github.com/graphql",
+        conf.GITHUB_V4_API_URL,
         json=dict(query=QUERY, variables=dict(login=login)),
         headers=dict(Authorization=f"Bearer {token}"),
     )
@@ -150,6 +156,7 @@ async def refresh_pull_requests_for_installation(
                 WebhookEvent(
                     repo_owner=login,
                     repo_name=repo_name,
+                    target_name=pull_request["baseRef"]["name"],
                     pull_request_number=pull_request["number"],
                     installation_id=installation_id,
                 )

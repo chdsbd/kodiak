@@ -190,7 +190,13 @@ disable=print-statement,
         no-name-in-module,,
         # handled by flake8
         unused-import,
-        unused-variable
+        unused-variable,
+        # gets it wrong
+        assignment-from-no-return,
+        unsubscriptable-object,
+        # isort handles this
+        wrong-import-position,
+
 
 
 # Enable the message, report, category or checker with the given id(s). You can

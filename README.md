@@ -45,7 +45,7 @@ Helpful Links:
 
 <a href="https://www.complex-it.de/jobs/offene-stellen?utm_source=oss-referal&utm_medium=logo&utm_campaign=growwithus">![Complex IT Aschaffenburg - GROW WITH US](https://user-images.githubusercontent.com/47448731/76313751-d3408b00-62d5-11ea-8f0f-a99e78b55a42.png)</a>
 
-<a href="https://www.meshcloud.io/?utm_source=meshsponsorship&utm_medium=github&utm_campaign=kodiak"> 
+<a href="https://www.meshcloud.io/?utm_source=meshsponsorship&utm_medium=github&utm_campaign=kodiak">
   <img src="https://www.meshcloud.io/wp-content/themes/meshcloud/img/meshcloud-logo.svg" height="40px")
 </a>
 
@@ -59,7 +59,7 @@ Using Kodiak for your commercial project?
 
 Feel free to file feature requests, bug reports, help requests through the issue tracker.
 
-If you'd like to add a feature, fix a big, update the docs, etc, take a peek at our [contributing guide](https://kodiakhq.com/docs/contributing).
+If you'd like to add a feature, fix a bug, update the docs, etc, take a peek at our [contributing guide](https://kodiakhq.com/docs/contributing).
 
 ## Project Layout
 

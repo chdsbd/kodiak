@@ -1,0 +1,3 @@
+from structlog._base import BoundLoggerBase
+
+class BoundLogger(BoundLoggerBase): ...

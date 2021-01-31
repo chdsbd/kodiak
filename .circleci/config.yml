@@ -25,6 +25,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -60,6 +61,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -109,8 +111,7 @@ jobs:
       - run:
           name: run typechecker
           working_directory: docs
-          command: |
-            yarn typecheck
+          command: s/typecheck
 
   docs_fmt:
     docker:
@@ -134,7 +135,7 @@ jobs:
       - run:
           name: run fmt
           working_directory: docs
-          command: yarn fmt-ci
+          command: s/fmt-ci
 
   docs_build:
     docker:
@@ -158,7 +159,7 @@ jobs:
       - run:
           name: build
           working_directory: docs
-          command: yarn build
+          command: s/build
 
   web_api_test:
     docker:
@@ -193,6 +194,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -228,6 +230,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
@@ -268,6 +271,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==0.12.12
+            poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:

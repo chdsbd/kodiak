@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional, Type
+from dataclasses import dataclass
+from typing import Awaitable, Callable, List, Optional, Type
 
 import structlog
 from requests_async import HTTPError
+from typing_extensions import Protocol
 
 import kodiak.app_config as conf
 from kodiak.errors import (
@@ -28,9 +30,9 @@ async def get_pr(
     owner: str,
     repo: str,
     number: int,
-    dequeue_callback: Callable[[], Awaitable],
-    requeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+    dequeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: Callable[[], Awaitable[None]],
+    queue_for_merge_callback: QueueForMergeCallback,
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     async with Client(installation_id=install, owner=owner, repo=repo) as api_client:
@@ -56,20 +58,27 @@ async def get_pr(
         )
 
 
+@dataclass(frozen=True)
+class APICallError:
+    api_name: str
+    http_status: str
+    response_body: str
+
+
 async def evaluate_pr(
     install: str,
     owner: str,
     repo: str,
     number: int,
     merging: bool,
-    dequeue_callback: Callable[[], Awaitable],
-    requeue_callback: Callable[[], Awaitable],
-    queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+    dequeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: Callable[[], Awaitable[None]],
+    queue_for_merge_callback: QueueForMergeCallback,
     is_active_merging: bool,
 ) -> None:
     skippable_check_timeout = 4
-    api_call_retry_timeout = 5
-    api_call_retry_method_name: Optional[str] = None
+    api_call_retries_remaining = 5
+    api_call_errors = []  # type: List[APICallError]
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     while True:
         log.info("get_pr")
@@ -105,14 +114,14 @@ async def evaluate_pr(
                         reviews=pr.event.reviews,
                         contexts=pr.event.status_contexts,
                         check_runs=pr.event.check_runs,
-                        commit_authors=pr.event.commit_authors,
+                        commits=pr.event.commits,
                         valid_signature=pr.event.valid_signature,
                         valid_merge_methods=pr.event.valid_merge_methods,
                         merging=merging,
                         is_active_merge=is_active_merging,
                         skippable_check_timeout=skippable_check_timeout,
-                        api_call_retry_timeout=api_call_retry_timeout,
-                        api_call_retry_method_name=api_call_retry_method_name,
+                        api_call_errors=api_call_errors,
+                        api_call_retries_remaining=api_call_retries_remaining,
                     ),
                     timeout=30,
                 )
@@ -130,17 +139,28 @@ async def evaluate_pr(
             except ApiCallException as e:
                 # if we have some api exception, it's likely a temporary error that
                 # can be resolved by calling GitHub again.
-                if api_call_retry_timeout:
-                    api_call_retry_method_name = e.method
-                    api_call_retry_timeout -= 1
+                if api_call_retries_remaining:
+                    api_call_errors.append(
+                        APICallError(
+                            api_name=e.method,
+                            http_status=str(e.status_code),
+                            response_body=str(e.response),
+                        )
+                    )
+                    api_call_retries_remaining -= 1
                     log.info("problem contacting remote api. retrying")
                     continue
-                log.exception("api_call_retry_timeout")
+                log.exception("api_call_retries_remaining")
             return
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
             log.exception("mergeable_timeout")
             await requeue_callback()
+
+
+class QueueForMergeCallback(Protocol):
+    async def __call__(self, *, first: bool) -> Optional[int]:
+        ...
 
 
 class PRV2:
@@ -159,9 +179,9 @@ class PRV2:
         owner: str,
         repo: str,
         number: int,
-        dequeue_callback: Callable[[], Awaitable],
-        requeue_callback: Callable[[], Awaitable],
-        queue_for_merge_callback: Callable[[], Awaitable[Optional[int]]],
+        dequeue_callback: Callable[[], Awaitable[None]],
+        requeue_callback: Callable[[], Awaitable[None]],
+        queue_for_merge_callback: QueueForMergeCallback,
         client: Optional[Type[Client]] = None,
     ):
         self.install = install
@@ -249,7 +269,11 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to update branch", res=res)
                 # we raise an exception to retry this request.
-                raise ApiCallException("update branch")
+                raise ApiCallException(
+                    method="pull_request/update_branch",
+                    http_status_code=res.status_code,
+                    response=res.content,
+                )
 
     async def approve_pull_request(self) -> None:
         self.log.info("approve_pull_request")
@@ -303,11 +327,15 @@ class PRV2:
                 if e.response is not None and e.response.status_code == 500:
                     raise GitHubApiInternalServerError
                 # we raise an exception to retry this request.
-                raise ApiCallException("merge")
+                raise ApiCallException(
+                    method="pull_request/merge",
+                    http_status_code=res.status_code,
+                    response=res.content,
+                )
 
-    async def queue_for_merge(self) -> Optional[int]:
+    async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         self.log.info("queue_for_merge")
-        return await self.queue_for_merge_callback()
+        return await self.queue_for_merge_callback(first=first)
 
     async def add_label(self, label: str) -> None:
         """
@@ -322,7 +350,11 @@ class PRV2:
                 res.raise_for_status()
             except HTTPError:
                 self.log.exception("failed to add label", label=label, res=res)
-                raise ApiCallException("add label")
+                raise ApiCallException(
+                    method="pull_request/add_label",
+                    http_status_code=res.status_code,
+                    response=res.content,
+                )
 
     async def remove_label(self, label: str) -> None:
         """
@@ -338,7 +370,11 @@ class PRV2:
             except HTTPError:
                 self.log.exception("failed to delete label", label=label, res=res)
                 # we raise an exception to retry this request.
-                raise ApiCallException("delete label")
+                raise ApiCallException(
+                    method="pull_request/delete_label",
+                    http_status_code=res.status_code,
+                    response=res.content,
+                )
 
     async def create_comment(self, body: str) -> None:
         """

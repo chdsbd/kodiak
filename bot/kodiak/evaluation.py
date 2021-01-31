@@ -2,7 +2,7 @@ import asyncio
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, MutableMapping, Optional, Set, Union
+from typing import Dict, List, MutableMapping, Optional, Sequence, Set, Union
 
 import inflection
 import pydantic
@@ -21,12 +21,15 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
+from kodiak.dependencies import dep_version_from_title
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
     RetryForSkippableChecks,
 )
 from kodiak.messages import (
+    APICallRetry,
+    get_markdown_for_api_call_errors,
     get_markdown_for_config,
     get_markdown_for_paywall,
     get_markdown_for_push_allowance_error,
@@ -35,7 +38,7 @@ from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
-    CommitAuthor,
+    Commit,
     MergeableState,
     MergeStateStatus,
     Permission,
@@ -43,6 +46,7 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestCommitUser,
     PullRequestReviewDecision,
     PullRequestState,
     PushAllowance,
@@ -63,10 +67,23 @@ logger = structlog.get_logger()
 
 
 def get_body_content(
-    body_type: BodyText, strip_html_comments: bool, pull_request: PullRequest
+    *,
+    body_type: BodyText,
+    strip_html_comments: bool,
+    cut_body_before: str,
+    cut_body_after: str,
+    pull_request: PullRequest,
 ) -> str:
     if body_type == BodyText.markdown:
         body = pull_request.body
+        if cut_body_before != "":
+            start_index = body.find(cut_body_before)
+            if start_index != -1:
+                body = body[start_index:]
+        if cut_body_after != "":
+            end_index = body.find(cut_body_after)
+            if end_index != -1:
+                body = body[: end_index + len(cut_body_after)]
         if strip_html_comments:
             return strip_html_comments_from_markdown(body)
         return body
@@ -86,32 +103,60 @@ class CommitAuthorName:
     login: str
 
 
-def get_commit_author_info(
-    *, login: str, databaseId: int, name: Optional[str], type_: str
-) -> CommitAuthorName:
-    """
-    Generate a name and github login for a user.
-    """
-    author_name = login
-    author_login = login
-    if type_ == "Bot":
-        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
-        author_name += "[bot]"
-        author_login += "[bot]"
-    if name:
-        author_name = name
-    return CommitAuthorName(name=author_name, login=author_login)
-
-
-def get_coauthor_trailer(*, user_id: int, login: str, name: str) -> str:
+def get_coauthor_trailer(
+    *, user_id: int, login: str, name: Optional[str], type: str
+) -> str:
     """
     Build a coauthor trailer given user information.
     """
+    display_name = login
+    display_login = login
+    if type == "Bot":
+        # the GitHub GraphQL API returns bot names without the `[bot]` suffix.
+        display_name += "[bot]"
+        display_login += "[bot]"
+    if name:
+        display_name = name
+
     # GitHub does not allow our GitHub App to view the email addresses of
     # pull request authors, so we generate a noreply GitHub email address
     # instead which works the same for the GitHub UI.
-    author_email = f"{user_id}+{login}@users.noreply.github.com"
-    return f"Co-authored-by: {name} <{author_email}>"
+    author_email = f"{user_id}+{display_login}@users.noreply.github.com"
+    return f"Co-authored-by: {display_name} <{author_email}>"
+
+
+def get_coauthor_trailers(
+    *,
+    coauthors: List[PullRequestCommitUser],
+    include_pull_request_author: bool,
+    pull_request_author_id: int,
+) -> List[str]:
+    """
+    Deduplicate coauthors and convert to strings.
+    """
+    coauthor_trailers = []
+    deduped_coauthors: Dict[PullRequestCommitUser, bool] = {}
+    for dupe_coauthor in coauthors:
+        deduped_coauthors[dupe_coauthor] = True
+
+    for coauthor in deduped_coauthors:
+        if coauthor.databaseId is None:
+            continue
+        if (
+            not include_pull_request_author
+            and coauthor.databaseId == pull_request_author_id
+        ):
+            continue
+
+        coauthor_trailers.append(
+            get_coauthor_trailer(
+                user_id=coauthor.databaseId,
+                login=coauthor.login,
+                name=coauthor.name,
+                type=coauthor.type,
+            )
+        )
+    return coauthor_trailers
 
 
 @dataclass
@@ -125,7 +170,7 @@ def get_merge_body(
     config: V1,
     merge_method: MergeMethod,
     pull_request: PullRequest,
-    commit_authors: List[CommitAuthor],
+    commits: List[Commit],
 ) -> MergeBody:
     """
     Get merge options for a pull request to call GitHub API.
@@ -133,9 +178,11 @@ def get_merge_body(
     merge_body = MergeBody(merge_method=merge_method)
     if config.merge.message.body == MergeBodyStyle.pull_request_body:
         body = get_body_content(
-            config.merge.message.body_type,
-            config.merge.message.strip_html_comments,
-            pull_request,
+            body_type=config.merge.message.body_type,
+            strip_html_comments=config.merge.message.strip_html_comments,
+            cut_body_before=config.merge.message.cut_body_before,
+            cut_body_after=config.merge.message.cut_body_after,
+            pull_request=pull_request,
         )
         merge_body.commit_message = body
     if config.merge.message.body == MergeBodyStyle.empty:
@@ -152,55 +199,43 @@ def get_merge_body(
 
     # we share coauthor logic between include_pull_request_author and
     # include_coauthors.
-    coauthor_trailers = []
+    coauthors = []  # type: List[PullRequestCommitUser]
     if config.merge.message.include_pull_request_author:
-        author = get_commit_author_info(
-            login=pull_request.author.login,
-            databaseId=pull_request.author.databaseId,
-            name=pull_request.author.name,
-            type_=pull_request.author.type,
-        )
-        coauthor_trailers.append(
-            get_coauthor_trailer(
-                user_id=pull_request.author.databaseId,
-                login=author.login,
-                name=author.name,
+        coauthors.append(
+            PullRequestCommitUser(
+                login=pull_request.author.login,
+                databaseId=pull_request.author.databaseId,
+                name=pull_request.author.name,
+                type=pull_request.author.type,
             )
         )
     if config.merge.message.include_coauthors:
-        for commit_author in commit_authors:
+        for commit in commits:
             if (
-                commit_author.databaseId is None
-                # don't add trailers for pull request author.
-                # TODO(chdsbd): Should we remove this?
-                or commit_author.databaseId == pull_request.author.databaseId
+                # only use commits that have identified authors.
+                commit.author is None
+                or commit.author.user is None
+                # ignore merge commits. They will have more than one parent.
+                or commit.parents.totalCount > 1
             ):
                 continue
-            author = get_commit_author_info(
-                login=commit_author.login,
-                databaseId=commit_author.databaseId,
-                name=commit_author.name,
-                type_=commit_author.type,
-            )
+            coauthors.append(commit.author.user)
 
-            coauthor_trailers.append(
-                get_coauthor_trailer(
-                    user_id=commit_author.databaseId,
-                    login=author.login,
-                    name=author.name,
-                )
-            )
+    coauthor_trailers = get_coauthor_trailers(
+        coauthors=coauthors,
+        include_pull_request_author=config.merge.message.include_pull_request_author,
+        pull_request_author_id=pull_request.author.databaseId,
+    )
 
-    if (
-        coauthor_trailers
-        and config.merge.message.body == MergeBodyStyle.pull_request_body
+    if coauthor_trailers and config.merge.message.body in (
+        MergeBodyStyle.pull_request_body,
+        MergeBodyStyle.empty,
     ):
-        # comment_message should never be None when using
-        # MergeBodyStyle.pull_request_body, but I'm not going to assert on that!
-        commit_message = merge_body.commit_message or ""
-        merge_body.commit_message = (
-            commit_message + "\n\n" + "\n".join(coauthor_trailers)
-        )
+        trailer_block = "\n".join(coauthor_trailers)
+        if merge_body.commit_message:
+            merge_body.commit_message += "\n\n" + trailer_block
+        else:
+            merge_body.commit_message = trailer_block
 
     return merge_body
 
@@ -263,7 +298,7 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
-    async def queue_for_merge(self) -> Optional[int]:
+    async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         ...
 
     async def update_branch(self) -> None:
@@ -422,15 +457,15 @@ async def mergeable(
     reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
-    commit_authors: List[CommitAuthor],
+    commits: List[Commit],
     valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
     merging: bool,
     is_active_merge: bool,
     skippable_check_timeout: int,
-    api_call_retry_timeout: int,
-    api_call_retry_method_name: Optional[str],
+    api_call_retries_remaining: int,
+    api_call_errors: Sequence[APICallRetry],
     subscription: Optional[Subscription],
     app_id: Optional[str] = None,
 ) -> None:
@@ -462,11 +497,15 @@ async def mergeable(
         await api.dequeue()
         return
 
-    if api_call_retry_timeout == 0:
+    if api_call_retries_remaining == 0:
         log.warning("timeout reached for api calls to GitHub")
-        if api_call_retry_method_name is not None:
+        if api_call_errors:
+            first_error = api_call_errors[0]
             await set_status(
-                f"⚠️ problem contacting GitHub API with method {api_call_retry_method_name!r}"
+                f"⚠️ problem contacting GitHub API with method {first_error.api_name!r}",
+                markdown_content=get_markdown_for_api_call_errors(
+                    errors=api_call_errors
+                ),
             )
         else:
             await set_status("⚠️ problem contacting GitHub API")
@@ -573,6 +612,12 @@ async def mergeable(
     )
     has_automerge_label = len(pull_request_automerge_labels) > 0
 
+    should_dependency_automerge = (
+        pull_request.author.login in config.merge.automerge_dependencies.usernames
+        and dep_version_from_title(pull_request.title)
+        in config.merge.automerge_dependencies.versions
+    )
+
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
     #
     # I don't foresee conflicts with checking configuration errors,
@@ -624,28 +669,34 @@ async def mergeable(
         branch_protection.requiresStrictStatusChecks
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
-    meets_label_requirement = (
+    update_always = config.update.always and (
         has_automerge_label or not config.update.require_automerge_label
     )
+    has_autoupdate_label = config.update.autoupdate_label in pull_request_labels
+    auto_update_enabled = update_always or has_autoupdate_label
 
-    if (
-        need_branch_update
-        and not merging
-        and (
-            (config.update.always and meets_label_requirement)
-            or config.update.autoupdate_label in pull_request_labels
-        )
-    ):
+    # Dequeue pull request if out-of-date and author in
+    # `update.ignored_usernames`. We cannot update or merge it.
+    #
+    # If `update.autoupdate_label` is applied to the pull request, bypass
+    # `update.ignored_usernames` and let the pull request update.
+    if need_branch_update and not has_autoupdate_label:
         if pull_request.author.login in config.update.blacklist_usernames:
             await set_status(
-                f"🛑 not auto updating for update.blacklist_usernames: {config.update.blacklist_usernames!r}"
+                f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}",
+                markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
             )
+            await api.dequeue()
             return
         if pull_request.author.login in config.update.ignored_usernames:
             await set_status(
-                f"🛑 not auto updating for update.ignored_usernames: {config.update.ignored_usernames!r}"
+                f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}",
+                markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
             )
+            await api.dequeue()
             return
+
+    if need_branch_update and not merging and auto_update_enabled:
         await set_status(
             "🔄 updating branch",
             markdown_content="branch updated because `update.always = true` is configured.",
@@ -653,7 +704,11 @@ async def mergeable(
         await api.update_branch()
         return
 
-    if config.merge.require_automerge_label and not has_automerge_label:
+    if (
+        config.merge.require_automerge_label
+        and not has_automerge_label
+        and not should_dependency_automerge
+    ):
         await block_merge(
             api,
             pull_request,
@@ -987,7 +1042,7 @@ branch protection requirements.
     # okay to merge if we reach this point.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
-        merge_args = get_merge_body(config, merge_method, pull_request, commit_authors)
+        merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
             await api.merge(
@@ -1027,7 +1082,8 @@ branch protection requirements.
             await set_status("merge complete 🎉")
 
     else:
-        position_in_queue = await api.queue_for_merge()
+        priority_merge = config.merge.priority_merge_label in pull_request.labels
+        position_in_queue = await api.queue_for_merge(first=priority_merge)
         if position_in_queue is None:
             # this case should be rare/impossible.
             log.warning("couldn't find position for enqueued PR")

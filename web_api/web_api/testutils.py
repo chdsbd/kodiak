@@ -1,9 +1,8 @@
 from importlib import import_module
-from typing import Optional, Tuple, Type, Union, cast
+from typing import Any, Mapping, Optional, Tuple, Type, Union, cast
 
 import stripe
 from django.conf import settings
-from django.contrib.sessions.backends.base import SessionBase as SessionStore
 from django.http import HttpRequest, SimpleCookie
 from django.test.client import Client as DjangoTestClient
 from typing_extensions import Literal
@@ -13,8 +12,8 @@ from web_api.models import Account, AccountMembership, StripeCustomerInformation
 
 
 class TestClient(DjangoTestClient):
-    def login(self, user: User) -> None:
-        engine: SessionStore = import_module(settings.SESSION_ENGINE)
+    def login(self, user: User) -> None:  # type: ignore [override]
+        engine = cast(Any, import_module(settings.SESSION_ENGINE))
 
         # Create a fake request to store login details.
         request = HttpRequest()
@@ -43,10 +42,10 @@ class TestClient(DjangoTestClient):
     def logout(self) -> None:
         """Log out the user by removing the cookies and session object."""
         request = HttpRequest()
-        engine: SessionStore = import_module(settings.SESSION_ENGINE)
+        engine = cast(Any, import_module(settings.SESSION_ENGINE))
         if self.session:
             request.session = self.session
-            request.user = auth.get_user(request)
+            request.user = auth.get_user(request)  # type: ignore [assignment]
         else:
             request.session = engine.SessionStore()
         auth.logout(request)
@@ -66,16 +65,12 @@ def create_account(
     github_account_login: str = "acme-corp",
     github_account_type: Literal["User", "Organization"] = "User",
 ) -> Account:
-
-    return cast(
-        Account,
-        Account.objects.create(
-            github_installation_id=create_pk(),
-            github_account_id=create_pk(),
-            github_account_login=github_account_login,
-            github_account_type=github_account_type,
-            stripe_customer_id=stripe_customer_id,
-        ),
+    return Account.objects.create(
+        github_installation_id=create_pk(),
+        github_account_id=create_pk(),
+        github_account_login=github_account_login,
+        github_account_type=github_account_type,
+        stripe_customer_id=stripe_customer_id,
     )
 
 
@@ -103,23 +98,20 @@ def create_stripe_customer_info(
     subscription_current_period_start: int = 1650581784,
     subscription_current_period_end: int = 1658357784,
 ) -> StripeCustomerInformation:
-    return cast(
-        StripeCustomerInformation,
-        StripeCustomerInformation.objects.create(
-            customer_id=customer_id,
-            subscription_id=subscription_id,
-            plan_id="plan_G2df31A4G5JzQ",
-            customer_email="accounting@acme-corp.com",
-            customer_balance=0,
-            customer_created=1585781308,
-            plan_amount=499,
-            plan_interval="month",
-            subscription_quantity=3,
-            subscription_start_date=1585781784,
-            upcoming_invoice_total=1122,
-            subscription_current_period_start=subscription_current_period_start,
-            subscription_current_period_end=subscription_current_period_end,
-        ),
+    return StripeCustomerInformation.objects.create(
+        customer_id=customer_id,
+        subscription_id=subscription_id,
+        plan_id="plan_G2df31A4G5JzQ",
+        customer_email="accounting@acme-corp.com",
+        customer_balance=0,
+        customer_created=1585781308,
+        plan_amount=499,
+        plan_interval="month",
+        subscription_quantity=3,
+        subscription_start_date=1585781784,
+        upcoming_invoice_total=1122,
+        subscription_current_period_start=subscription_current_period_start,
+        subscription_current_period_end=subscription_current_period_end,
     )
 
 
@@ -180,7 +172,7 @@ def create_stripe_customer(
     id: str = "cus_Gz7jQFKdh4KirU",
     email: str = "accounting@acme.corp",
     name: Optional[str] = None,
-    address: Optional[Union[dict, Type[Unset]]] = Unset,
+    address: Optional[Union[Mapping[str, str], Type[Unset]]] = Unset,
 ) -> stripe.Customer:
     if address == Unset:
         address = dict(
