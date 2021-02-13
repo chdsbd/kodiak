@@ -206,7 +206,9 @@ disable=print-statement,
         # doesn't handle .pyi files
         useless-import-alias,
         # conflicts with type stubs for structlog
-        keyword-arg-before-vararg
+        keyword-arg-before-vararg,
+        # not smart enough about refinement
+        inconsistent-return-statements,
 
 
 # Enable the message, report, category or checker with the given id(s). You can

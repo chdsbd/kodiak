@@ -12,6 +12,7 @@ import toml
 from typing_extensions import Protocol
 
 from kodiak import app_config, config, messages
+from kodiak.assertions import assert_never
 from kodiak.config import (
     DEFAULT_TITLE_REGEX,
     UNSET_TITLE_REGEX,
@@ -74,7 +75,7 @@ def get_body_content(
     cut_body_after: str,
     pull_request: PullRequest,
 ) -> str:
-    if body_type == BodyText.markdown:
+    if body_type is BodyText.markdown:
         body = pull_request.body
         if cut_body_before != "":
             start_index = body.find(cut_body_before)
@@ -87,11 +88,11 @@ def get_body_content(
         if strip_html_comments:
             return strip_html_comments_from_markdown(body)
         return body
-    if body_type == BodyText.plain_text:
+    if body_type is BodyText.plain_text:
         return pull_request.bodyText
-    if body_type == BodyText.html:
+    if body_type is BodyText.html:
         return pull_request.bodyHTML
-    raise Exception(f"Unknown body_type: {body_type}")
+    assert_never(body_type)
 
 
 EMPTY_STRING = ""
