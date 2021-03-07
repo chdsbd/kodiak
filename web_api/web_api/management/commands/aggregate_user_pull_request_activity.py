@@ -6,5 +6,5 @@ from web_api.models import UserPullRequestActivity
 class Command(BaseCommand):
     help = "Generate User pull request activity analytics"
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
         UserPullRequestActivity.generate()

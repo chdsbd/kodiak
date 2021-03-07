@@ -1415,7 +1415,7 @@ def test_current_account(authed_client: Client, user: User) -> None:
     )
 
     assert len(res.json()["accounts"]) == 2
-    accounts = sorted(res.json()["accounts"], key=lambda x: x["name"])
+    accounts = sorted(res.json()["accounts"], key=lambda x: x["name"])  # type: ignore [no-any-return]
     assert accounts[0]["id"] == str(user_account.id)
     assert accounts[0]["name"] == user_account.github_account_login
     assert (
@@ -1452,7 +1452,7 @@ def test_accounts(authed_client: Client, user: User) -> None:
     res = authed_client.get("/v1/accounts")
     assert res.status_code == 200
     assert len(res.json()) == 2
-    accounts = sorted(res.json(), key=lambda x: x["name"])
+    accounts = sorted(res.json(), key=lambda x: x["name"])  # type: ignore [no-any-return]
     assert accounts[0]["id"] == str(user_account.id)
     assert accounts[0]["name"] == user_account.github_account_login
     assert (
