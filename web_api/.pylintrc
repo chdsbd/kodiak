@@ -196,6 +196,8 @@ disable=print-statement,
         unsubscriptable-object,
         # isort handles this
         wrong-import-position,
+        # this has false positives
+        method-hidden,
 
 
 
