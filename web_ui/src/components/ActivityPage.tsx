@@ -9,7 +9,7 @@ import { Current } from "../world"
 import { useTeamApi } from "../useApi"
 import { IActiveMergeQueue } from "../api"
 
-function NoQueueFound({}) {
+function NoQueueFound() {
   return <p className="text-muted">No active merge queues to display.</p>
 }
 
