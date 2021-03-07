@@ -9,6 +9,7 @@ import stripe
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
+from redis import Redis
 from typing_extensions import Literal
 
 from web_api.models import (
@@ -931,6 +932,55 @@ def test_activity(authed_client: Client, user: User,) -> None:
         "merged": [pull_request_activity.total_merged],
         "closed": [pull_request_activity.total_closed],
     }
+    assert res.json()["activeMergeQueues"] == []
+
+
+@pytest.fixture
+def redis() -> Redis:
+    """
+    Fixture for using local Redis in tests. We clear the database before and
+    after for cleanliness.
+    """
+    r = Redis()
+    r.flushdb()
+    yield r
+    r.flushdb()
+
+
+@pytest.mark.django_db
+def test_activity_with_merge_queues(
+    authed_client: Client, user: User, redis: Redis
+) -> None:
+    """
+    We should return active merge queues from Redis if available.
+    """
+    assert user.github_login is not None
+    user_account = create_account(github_account_login=user.github_login,)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    install_id = user_account.github_installation_id
+    redis.zadd(
+        f"merge_queue:{install_id}.sbdchd/squawk/main",
+        {
+            '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
+            % install_id: 1614997354.8109288
+        },
+    )
+    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
+    assert res.status_code == 200
+    assert res.json()["activeMergeQueues"] == [
+        dict(
+            owner="sbdchd",
+            repo="squawk",
+            queues=[
+                dict(
+                    branch="main",
+                    pull_requests=[
+                        dict(number="55", added_at_timestamp=1614997354.8109288)
+                    ],
+                )
+            ],
+        )
+    ]
 
 
 @pytest.mark.django_db
