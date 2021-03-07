@@ -21,10 +21,10 @@ function MergeQueues({
   return (
     <>
       {mergeQueues.map(repo => (
-        <>
+        <React.Fragment key={repo.repo}>
           <div className="row">
             {repo.queues.map(queue => (
-              <div className="col-5">
+              <div className="col-5" key={repo.repo + queue.branch}>
                 <span>
                   {repo.repo} ({queue.branch})
                 </span>
@@ -38,7 +38,7 @@ function MergeQueues({
                   </thead>
                   <tbody>
                     {queue.pull_requests.map((pr, index) => (
-                      <tr>
+                      <tr key={pr.number}>
                         <td scope="row">{index + 1}</td>
                         <td>
                           <a
@@ -64,9 +64,9 @@ function MergeQueues({
               </div>
             ))}
           </div>
-        </>
+        </React.Fragment>
       ))}
-      {mergeQueues.length == 0 && <NoQueueFound />}
+      {mergeQueues.length === 0 && <NoQueueFound />}
       <p>
         <b>Tip: </b> Move a pull request to the front of the queue with the{" "}
         <a href="https://kodiakhq.com/docs/config-reference#mergepriority_merge_label">
