@@ -14,7 +14,6 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseRedirect,
-    JsonResponse,
 )
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
@@ -178,11 +177,10 @@ def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
         total_merged.append(day_activity.total_merged)
         total_closed.append(day_activity.total_closed)
 
-    queues = get_active_merge_queues(install_id=account.github_installation_id)
     active_merge_queues = [
         dict(owner=repo.owner, repo=repo.repo, queues=queues)
         for repo, queues in get_active_merge_queues(
-            install_id=account.github_installation_id
+            install_id=str(account.github_installation_id)
         ).items()
     ]
 

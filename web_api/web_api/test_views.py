@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any, Dict, Iterator, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, Iterator, Optional, Tuple, Type, Union
 
 import pytest
 import responses
@@ -936,7 +936,7 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 
 @pytest.fixture
-def redis() -> Redis:
+def redis() -> Generator[Redis, None, None]:
     """
     Fixture for using local Redis in tests. We clear the database before and
     after for cleanliness.

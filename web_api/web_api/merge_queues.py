@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import List, NamedTuple
+from typing import List, Mapping, NamedTuple
 
 import pydantic
 import redis
@@ -13,7 +13,8 @@ r = redis.Redis.from_url(settings.REDIS_URL)
 
 class KodiakQueueEntry(pydantic.BaseModel):
     """
-    must match schema from bot: https://github.com/chdsbd/kodiak/blob/4d4c2a31b6ceb2136f83281a154f47e8b49a86ac/bot/kodiak/queue.py#L30-L35
+    must match schema from bot:
+    https://github.com/chdsbd/kodiak/blob/4d4c2a31b6ceb2136f83281a154f47e8b49a86ac/bot/kodiak/queue.py#L30-L35
     """
 
     pull_request_number: str
@@ -40,15 +41,20 @@ class RepositoryName(NamedTuple):
     repo: str
 
 
-def get_active_merge_queues(*, install_id: str) -> List[Queue]:
+def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
     count, keys = r.scan(cursor=0, match=f"merge_queue:{install_id}*", count=50)
 
+    # Remove keys for tracking actively merging pull request.
+    #
+    # We append ':target' to the merge queue name to track the merging pull request.
+    # https://github.com/chdsbd/kodiak/blob/b68608e4622ab149997f0cece4d615c2ac51157f/bot/kodiak/queue.py#L41
     merge_queues = [key for key in keys if not key.endswith(b":target")]
     pipe = r.pipeline(transaction=False)
     for queue in merge_queues:
         pipe.zrange(queue, 0, 1000, withscores=True)
     res = pipe.execute()
 
+    # we accumulate merge queues by repository.
     queues = defaultdict(list)
     for queue_name, entries in zip(merge_queues, res):
         queue_name = queue_name.decode()
