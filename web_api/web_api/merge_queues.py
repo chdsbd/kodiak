@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 from typing import List, Mapping, NamedTuple
 
@@ -51,14 +50,13 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
     merge_queues = [key for key in keys if not key.endswith(b":target")]
     pipe = r.pipeline(transaction=False)
     for queue in merge_queues:
-        pipe.zrange(queue, 0, 1000, withscores=True)
+        pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
     res = pipe.execute()
 
     # we accumulate merge queues by repository.
     queues = defaultdict(list)
     for queue_name, entries in zip(merge_queues, res):
-        queue_name = queue_name.decode()
-        org, repo, branch = queue_name.split(".")[1].split("/")
+        org, repo, branch = queue_name.decode().split(".")[1].split("/")
         pull_requests = sorted(
             [
                 PullRequest(

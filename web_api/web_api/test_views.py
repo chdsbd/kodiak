@@ -936,12 +936,12 @@ def test_activity(authed_client: Client, user: User,) -> None:
 
 
 @pytest.fixture
-def redis() -> Generator[Redis, None, None]:
+def redis() -> Generator['Redis[bytes]', None, None]:
     """
     Fixture for using local Redis in tests. We clear the database before and
     after for cleanliness.
     """
-    r = Redis()
+    r = Redis(decode_responses=False)
     r.flushdb()
     yield r
     r.flushdb()
@@ -949,7 +949,7 @@ def redis() -> Generator[Redis, None, None]:
 
 @pytest.mark.django_db
 def test_activity_with_merge_queues(
-    authed_client: Client, user: User, redis: Redis
+    authed_client: Client, user: User, redis: 'Redis[bytes]'
 ) -> None:
     """
     We should return active merge queues from Redis if available.
