@@ -56,6 +56,7 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
     # we accumulate merge queues by repository.
     queues = defaultdict(list)
     for queue_name, entries in zip(merge_queues, res):
+        # queue_name looks like "merge_queue:11256551.sbdchd/squawk/main"
         org, repo, branch = queue_name.decode().split(".")[1].split("/")
         pull_requests = sorted(
             [
