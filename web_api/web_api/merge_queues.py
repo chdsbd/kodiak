@@ -40,6 +40,20 @@ class RepositoryName(NamedTuple):
     repo: str
 
 
+class QueueInfo(NamedTuple):
+    org: str
+    repo: str
+    branch: str
+
+
+def queue_info_from_name(name: str) -> QueueInfo:
+    """
+    Parse queue name like "merge_queue:11256551.sbdchd/squawk/main"
+    """
+    org, repo, branch = name.split(".", 1)[1].split("/", 2)
+    return QueueInfo(org, repo, branch)
+
+
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
     count, keys = r.scan(cursor=0, match=f"merge_queue:{install_id}*", count=50)
 
@@ -56,8 +70,7 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
     # we accumulate merge queues by repository.
     queues = defaultdict(list)
     for queue_name, entries in zip(merge_queues, res):
-        # queue_name looks like "merge_queue:11256551.sbdchd/squawk/main"
-        org, repo, branch = queue_name.decode().split(".")[1].split("/")
+        org, repo, branch = queue_info_from_name(queue_name.decode())
         pull_requests = sorted(
             [
                 PullRequest(
