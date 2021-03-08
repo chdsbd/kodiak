@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.37.0 - 2021-03-07
+
+### Added
+- added a list of active merge queues to the [dashboard](https://app.kodiakhq.com). You can see the pull requests in each active queue. Queues are only displayed if they have pull requests. This information is at the bottom of the Activity page. (#617, #616)
+
 ## 0.36.0 - 2021-01-30
 
 ### Added
