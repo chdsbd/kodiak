@@ -7,37 +7,6 @@
       private: no
 
   tasks:
-    # https://docs.ansible.com/ansible/latest/modules/apt_module.html
-    - name: install pip
-      become: true
-      apt:
-        name: python-pip
-        state: present
-
-    - name: install pip3
-      become: true
-      apt:
-        name: python3-pip
-        state: present
-
-    - name: install postgres
-      become: true
-      apt:
-        name: postgresql-12
-        state: present
-
-    # https://docs.ansible.com/ansible/latest/modules/systemd_module.html
-    - name: ensure postgres is running
-      systemd:
-        name: postgresql@12-main.service
-        state: started
-
-    # https://docs.ansible.com/ansible/latest/modules/pip_module.html
-    - name: install python docker package
-      become: true
-      pip:
-        name: docker
-
     # https://docs.ansible.com/ansible/latest/modules/template_module.html
     - name: template & copy aggregate PR activity cron service
       template:

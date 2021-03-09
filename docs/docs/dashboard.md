@@ -21,8 +21,6 @@ The Kodiak activity chart shows the number of pull requests merged by Kodiak per
 
 <img width="500px" title="Screenshot of kodiak activity chart" src="/img/dashboard/kodiak-activity-marked.png"/>
 
-
-
 All merge queues with pull requests are displayed at the bottom of the activity page.
 
 <img width="500px" title="Screenshot of merge queue" src="/img/dashboard/merge-queues-marked.png"/>
@@ -33,10 +31,7 @@ The usage and billing page displays trial and subscription information. You can 
 
 See the [billing docs](./billing.md) for information about starting a trial or modifying a subscription.
 
-
 <img width="500px" title="Screenshot of billing signup" src="/img/dashboard/billing-trial-signup.png"/>
 
 Seat license usage information is available at the bottom of the "Usage & Billing" page.
 <img width="500px" title="Screenshot of billing usage" src="/img/dashboard/billing-usage.png"/>
-
-
