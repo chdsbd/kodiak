@@ -5,12 +5,13 @@
       "config-reference",
       "features",
       "recipes",
+      "dashboard",
       "billing",
-      "why-and-how",
-      "permissions",
       "troubleshooting",
-      "prior-art-and-alternatives",
-      "self-hosting"
+      "permissions",
+      "self-hosting",
+      "why-and-how",
+      "prior-art-and-alternatives"
     ],
     "Contributing": ["contributing", "sponsoring"]
   }
