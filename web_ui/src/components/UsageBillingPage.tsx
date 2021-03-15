@@ -157,8 +157,8 @@ function formatFromNow(dateString: string): string {
   return formatDistanceToNowStrict(parseISO(dateString))
 }
 
-function FormatDate({ date }: { date: string }) {
-  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
+function formatPreciseDate(date: string) {
+  return formatDate(parseISO(date), "y-MM-dd kk:mm O")
 }
 
 interface IInstallCompleteModalProps {
@@ -719,7 +719,7 @@ const KodiakTooltip = ({
   content,
 }: {
   readonly children: React.ReactNode
-  readonly content: React.ReactNode
+  readonly content: React.ReactNode | string
 }) => (
   <OverlayTrigger overlay={<Tooltip id="kodiak-tooltip">{content}</Tooltip>}>
     {children}
@@ -772,7 +772,7 @@ function SubscriptionUpsellPrompt({
             </Button>
             <p className="text-center mt-2 mb-0">
               Your active trial expires in{" "}
-              <KodiakTooltip content={<FormatDate date={trial.endDate} />}>
+              <KodiakTooltip content={formatPreciseDate(trial.endDate)}>
                 <u>
                   <b>{formatFromNow(trial.endDate)}</b>
                 </u>
@@ -843,18 +843,18 @@ function SubscriptionUpsellPrompt({
   ]
   return (
     <Row>
-        {plans.map(x => (
-          <Col key={x.name} lg={4} className="mx-auto mb-2">
-            <Plan
-              name={x.name}
-              highlight={x.highlight}
-              cost={x.cost}
-              features={x.features}
-              startButton={x.startButton}
-            />
-          </Col>
-        ))}
-      </Row>
+      {plans.map(x => (
+        <Col key={x.name} lg={4} className="mx-auto mb-2">
+          <Plan
+            name={x.name}
+            highlight={x.highlight}
+            cost={x.cost}
+            features={x.features}
+            startButton={x.startButton}
+          />
+        </Col>
+      ))}
+    </Row>
   )
 }
 
@@ -1258,9 +1258,7 @@ function Subcription({
               <Form.Label className="font-weight-bold">
                 Next Billing Date
               </Form.Label>
-              <p>
-                <FormatDate date={subscription.nextBillingDate} />
-              </p>
+              <p>{formatPreciseDate(subscription.nextBillingDate)}</p>
             </Form.Group>
             <Form.Group>
               <Form.Label className="font-weight-bold">Cost</Form.Label>
@@ -1506,37 +1504,35 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
         />
         {data.subscription != null ? (
           <ManageSubscriptionModal
-              show={showSubscriptionModifyModal}
-              currentSeats={data.subscription.seats}
-              seatUsage={data.activeUsers.length}
-              billingEmail={data.subscription.billingEmail}
-              cardInfo={data.subscription.cardInfo}
-              cost={data.subscription.cost}
-              onClose={x => {
-                if (x?.reload) {
-                  location.search = ""
-                } else {
-                  clearQueryString()
-                }
-              }}
-            />
+            show={showSubscriptionModifyModal}
+            currentSeats={data.subscription.seats}
+            seatUsage={data.activeUsers.length}
+            billingEmail={data.subscription.billingEmail}
+            cardInfo={data.subscription.cardInfo}
+            cost={data.subscription.cost}
+            onClose={x => {
+              if (x?.reload) {
+                location.search = ""
+              } else {
+                clearQueryString()
+              }
+            }}
+          />
         ) : null}
         {data.accountCanSubscribe ? (
-          <>
-            {data.subscription == null ? (
-              <SubscriptionTrialStarter
-                startSubscription={handleStartSubscription}
-                startTrial={handleStartTrial}
-                trial={data.trial}
-              />
-            ) : (
-              <Subcription
-                subscription={data.subscription}
-                teamId={teamId}
-                modifySubscription={modifySubscription}
-              />
-            )}
-          </>
+          data.subscription == null ? (
+            <SubscriptionTrialStarter
+              startSubscription={handleStartSubscription}
+              startTrial={handleStartTrial}
+              trial={data.trial}
+            />
+          ) : (
+            <Subcription
+              subscription={data.subscription}
+              teamId={teamId}
+              modifySubscription={modifySubscription}
+            />
+          )
         ) : (
           <Row>
             <Col lg={8}>
