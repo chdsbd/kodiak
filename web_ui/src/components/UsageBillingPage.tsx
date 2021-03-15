@@ -157,8 +157,8 @@ function formatFromNow(dateString: string): string {
   return formatDistanceToNowStrict(parseISO(dateString))
 }
 
-function formatPreciseDate(date: string) {
-  return formatDate(parseISO(date), "y-MM-dd kk:mm O")
+function FormatDate({ date }: { date: string }) {
+  return <>{formatDate(parseISO(date), "y-MM-dd kk:mm O")}</>
 }
 
 interface IInstallCompleteModalProps {
@@ -719,7 +719,7 @@ const KodiakTooltip = ({
   content,
 }: {
   readonly children: React.ReactNode
-  readonly content: React.ReactNode | string
+  readonly content: React.ReactNode
 }) => (
   <OverlayTrigger overlay={<Tooltip id="kodiak-tooltip">{content}</Tooltip>}>
     {children}
@@ -772,7 +772,7 @@ function SubscriptionUpsellPrompt({
             </Button>
             <p className="text-center mt-2 mb-0">
               Your active trial expires in{" "}
-              <KodiakTooltip content={formatPreciseDate(trial.endDate)}>
+              <KodiakTooltip content={<FormatDate date={trial.endDate} />}>
                 <u>
                   <b>{formatFromNow(trial.endDate)}</b>
                 </u>
@@ -1258,7 +1258,9 @@ function Subcription({
               <Form.Label className="font-weight-bold">
                 Next Billing Date
               </Form.Label>
-              <p>{formatPreciseDate(subscription.nextBillingDate)}</p>
+              <p>
+                <FormatDate date={subscription.nextBillingDate} />
+              </p>
             </Form.Group>
             <Form.Group>
               <Form.Label className="font-weight-bold">Cost</Form.Label>
