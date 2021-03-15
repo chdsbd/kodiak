@@ -21,6 +21,7 @@ module.exports = {
   rules: {
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "error",
+    "react/jsx-no-useless-fragment": "error",
     "no-restricted-globals": [
       "error",
       "close",

@@ -26,8 +26,7 @@ export function OAuthPage() {
     })
   }, [clientState, code, history, serverState])
   return (
-    <>
-      <div className="h-100 d-flex justify-content-center align-items-center">
+    <div className="h-100 d-flex justify-content-center align-items-center">
         <div
           className="w-100 text-center d-flex justify-content-around align-items-center flex-column"
           style={{ minHeight: 300 }}>
@@ -65,6 +64,5 @@ export function OAuthPage() {
           </p>
         </div>
       </div>
-    </>
   )
 }

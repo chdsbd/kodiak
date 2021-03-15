@@ -842,8 +842,7 @@ function SubscriptionUpsellPrompt({
     },
   ]
   return (
-    <>
-      <Row>
+    <Row>
         {plans.map(x => (
           <Col key={x.name} lg={4} className="mx-auto mb-2">
             <Plan
@@ -856,7 +855,6 @@ function SubscriptionUpsellPrompt({
           </Col>
         ))}
       </Row>
-    </>
   )
 }
 
@@ -1507,8 +1505,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
           seatUsage={data.activeUsers.length}
         />
         {data.subscription != null ? (
-          <>
-            <ManageSubscriptionModal
+          <ManageSubscriptionModal
               show={showSubscriptionModifyModal}
               currentSeats={data.subscription.seats}
               seatUsage={data.activeUsers.length}
@@ -1523,7 +1520,6 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
                 }
               }}
             />
-          </>
         ) : null}
         {data.accountCanSubscribe ? (
           <>
