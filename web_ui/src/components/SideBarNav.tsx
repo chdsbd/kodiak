@@ -148,7 +148,7 @@ function Loading() {
   return (
     <SideBarNavContainer
       orgContent={<SkeletonProfileImage />}
-      switchAccountContent={<></>}
+      switchAccountContent={null}
     />
   )
 }
@@ -304,21 +304,17 @@ function SideBarNavInner({ accounts }: ISideBarNavInnerProps) {
           </span>
         </div>
       }
-      switchAccountContent={
-        <>
-          {sortBy(accounts.data.accounts, "name").map(x => (
-            <Dropdown.Item key={x.id} href={`/t/${x.id}/`}>
-              <Image
-                url={x.profileImgUrl}
-                alt={x.name}
-                size={30}
-                className="mr-3"
-              />
-              {x.name}
-            </Dropdown.Item>
-          ))}
-        </>
-      }
+      switchAccountContent={sortBy(accounts.data.accounts, "name").map(x => (
+        <Dropdown.Item key={x.id} href={`/t/${x.id}/`}>
+          <Image
+            url={x.profileImgUrl}
+            alt={x.name}
+            size={30}
+            className="mr-3"
+          />
+          {x.name}
+        </Dropdown.Item>
+      ))}
     />
   )
 }
