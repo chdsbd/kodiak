@@ -487,6 +487,10 @@ async def mergeable(
     # action. If the PR becomes ineligible for merging that logic will handle
     # it.
 
+    # rebase_fast_forward isn't determined via the GitHub UI and is always
+    # available.
+    valid_merge_methods = [*valid_merge_methods, MergeMethod.rebase_fast_forward]
+
     async def set_status(msg: str, markdown_content: Optional[str] = None) -> None:
         # don't clobber statuses set via merge loop.
         if is_active_merge:
