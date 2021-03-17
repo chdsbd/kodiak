@@ -333,6 +333,26 @@ class PRV2:
                     response=res.content,
                 )
 
+    async def update_ref(self, ref: str, sha: str) -> None:
+        self.log.info("update_ref", ref=ref, sha=sha)
+        async with self.client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.update_ref(ref=ref, sha=sha)
+            try:
+                res.raise_for_status()
+            except HTTPError as e:
+                if e.response is not None and e.response.status_code == 422:
+                    self.log.info("fast forward update not possible.", res=res)
+                else:
+                    self.log.exception("failed to update ref", res=res)
+                # we raise an exception to retry this request.
+                raise ApiCallException(
+                    method="pull_request/update_ref",
+                    http_status_code=res.status_code,
+                    response=res.content,
+                )
+
     async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         self.log.info("queue_for_merge")
         return await self.queue_for_merge_callback(first=first)

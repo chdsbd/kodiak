@@ -155,6 +155,11 @@ class MockMerge(BaseMockFunc):
             raise self.raises
 
 
+class MockUpdateRef(BaseMockFunc):
+    async def __call__(self, *, ref: str, sha: str) -> None:
+        self.log_call(dict(ref=ref, sha=sha))
+
+
 class MockQueueForMerge(BaseMockFunc):
     # in production we'll frequently have position information.
     # `3` is an arbitrary position.
@@ -192,6 +197,7 @@ class MockPrApi:
         self.create_comment = MockCreateComment()
         self.trigger_test_commit = MockTriggerTestCommit()
         self.merge = MockMerge()
+        self.update_ref = MockUpdateRef()
         self.queue_for_merge = MockQueueForMerge()
         self.update_branch = MockUpdateBranch()
         self.approve_pull_request = MockApprovePullRequest()

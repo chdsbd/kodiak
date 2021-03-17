@@ -158,11 +158,20 @@ class MockUpdateBranch(BaseMockFunc):
         return self.response
 
 
+class MockUpdateRef(BaseMockFunc):
+    response: requests.Response
+
+    async def __call__(self, *, ref: str, sha: str) -> requests.Response:
+        self.log_call(dict(ref=ref, sha=sha))
+        return self.response
+
+
 class FakeClientProtocol(Protocol):
     merge_pull_request: MockMergePullRequest
     delete_label: MockDeleteLabel
     add_label: MockAddLabel
     update_branch: MockUpdateBranch
+    update_ref: MockUpdateRef
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         ...
@@ -182,6 +191,7 @@ def create_client() -> Type[FakeClientProtocol]:
         delete_label = MockDeleteLabel()
         add_label = MockAddLabel()
         update_branch = MockUpdateBranch()
+        update_ref = MockUpdateRef()
 
         def __init__(self, *args: object, **kwargs: object) -> None:
             pass
@@ -383,5 +393,43 @@ async def test_pr_v2_remove_label_service_unavailable() -> None:
     assert client.delete_label.call_count == 1
     assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
     assert e.value.method == "pull_request/delete_label"
+    assert e.value.status_code == 503
+    assert b"Service Unavailable" in e.value.response
+
+
+@pytest.mark.asyncio
+async def test_update_ref_ok() -> None:
+    """
+    Check that update_ref works 
+    """
+    client = create_client()
+    client.update_ref.response = create_response(content=b"", status_code=200)
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.update_ref(ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd")
+    assert client.update_ref.call_count == 1
+    assert client.update_ref.calls[0] == dict(
+        ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_ref_service_unavailable() -> None:
+    """
+    We should raise ApiCallException when we get a bad API response.
+    """
+    client = create_client()
+    client.update_ref.response = create_response(
+        content=b"<html>Service Unavailable</html>", status_code=503
+    )
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.update_ref(
+            ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
+        )
+    assert client.update_ref.call_count == 1
+    assert client.update_ref.calls[0] == dict(
+        ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
+    )
+    assert e.value.method == "pull_request/update_ref"
     assert e.value.status_code == 503
     assert b"Service Unavailable" in e.value.response

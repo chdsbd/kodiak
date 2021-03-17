@@ -299,6 +299,9 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
+    async def update_ref(self, *, ref: str, sha: str) -> None:
+        ...
+
     async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         ...
 
@@ -388,7 +391,14 @@ def get_blocking_title_regex(config: config.V1) -> BlockingTitleRegex:
 
 
 # merge methods ordered by preference for selection.
-MERGE_METHODS = (MergeMethod.merge, MergeMethod.squash, MergeMethod.rebase)
+MERGE_METHODS = (
+    MergeMethod.merge,
+    MergeMethod.squash,
+    MergeMethod.rebase,
+    # rebase_fast_forward is not included here since it is not configurable via
+    # the GitHub UI. Kodiak users can manually specify rebase_fast_forward in
+    # their configuration file.
+)
 
 
 class MergeMethodValue(pydantic.BaseModel):
@@ -476,6 +486,10 @@ async def mergeable(
     # We don't want to clobber any statuses set by that system, so we take no
     # action. If the PR becomes ineligible for merging that logic will handle
     # it.
+
+    # rebase_fast_forward isn't determined via the GitHub UI and is always
+    # available.
+    valid_merge_methods = [*valid_merge_methods, MergeMethod.rebase_fast_forward]
 
     async def set_status(msg: str, markdown_content: Optional[str] = None) -> None:
         # don't clobber statuses set via merge loop.
@@ -1046,11 +1060,24 @@ branch protection requirements.
         merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
-            await api.merge(
-                merge_method=merge_args.merge_method,
-                commit_title=merge_args.commit_title,
-                commit_message=merge_args.commit_message,
-            )
+            # Use the Git Refs API to rebase merge.
+            #
+            # This preserves the rebased commits and their hashes. Using the
+            # GitHub Pull Request API to rebase merge rewrites the rebased
+            # commits, so the commit hashes change.
+            #
+            # For build systems that depend on commit hashes instead of tree
+            # hashes, it's desirable to not rewrite commits.
+            if merge_args.merge_method is MergeMethod.rebase_fast_forward:
+                await api.update_ref(
+                    ref=pull_request.baseRefName, sha=pull_request.latest_sha
+                )
+            else:
+                await api.merge(
+                    merge_method=merge_args.merge_method,
+                    commit_title=merge_args.commit_title,
+                    commit_message=merge_args.commit_message,
+                )
         # if we encounter an internal server error (status code 500), it is
         # _not_ safe to retry. Instead we mark the pull request as unmergable
         # and require a user to re-enable Kodiak on the pull request.
