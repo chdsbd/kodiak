@@ -648,7 +648,7 @@ def get_valid_merge_methods(*, repo: Dict[str, Any]) -> List[MergeMethod]:
 
     if repo.get("rebaseMergeAllowed"):
         valid_merge_methods.append(MergeMethod.rebase)
-        valid_merge_methods.append(MergeMethod.rebaseff)
+        valid_merge_methods.append(MergeMethod.rebase_fast_forward)
 
     if repo.get("squashMergeAllowed"):
         valid_merge_methods.append(MergeMethod.squash)
@@ -1044,13 +1044,19 @@ class Client:
             # teams who use the sha to correlate CI runs between multiple environments
             # and deployments. Without a fast-forward merge it's much harder to determine
             # if a test environment validated the code at the tip of the base ref.
-            url_base = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{base}")
-            url_head = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{branch}")
+            url_base = conf.v3_url(
+                f"/repos/{self.owner}/{self.repo}/git/refs/heads/{base}"
+            )
+            url_head = conf.v3_url(
+                f"/repos/{self.owner}/{self.repo}/git/refs/heads/{branch}"
+            )
             async with self.throttler:
                 res = await self.session.get(url_head, headers=headers)
             async with self.throttler:
-                sha=res.json()["object"]["sha"]
-                response = await self.session.patch(url_base, headers=headers, json=dict(sha=sha))
+                sha = res.json()["object"]["sha"]
+                response = await self.session.patch(
+                    url_base, headers=headers, json=dict(sha=sha)
+                )
                 return response
         else:
             body = dict(merge_method=merge_method)

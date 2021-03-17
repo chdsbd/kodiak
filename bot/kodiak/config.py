@@ -12,7 +12,7 @@ class MergeMethod(str, Enum):
     merge = "merge"
     squash = "squash"
     rebase = "rebase"
-    rebaseff = "rebase-ff"
+    rebase_fast_forward = "rebase-fast-forward"
 
 
 class MergeTitleStyle(Enum):
