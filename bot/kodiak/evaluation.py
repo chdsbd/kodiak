@@ -1060,8 +1060,14 @@ branch protection requirements.
         merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
-            # For rebase fast forward, we bypass the GitHub Pull Request APIs
-            # and use the Git Refs API to merge.
+            # Use the Git Refs API to rebase merge.
+            #
+            # This preserves the rebased commits and their hashes. Using the
+            # GitHub Pull Request API to rebase merge rewrites the rebased
+            # commits, so the commit hashes change.
+            #
+            # For build systems that depend on commit hashes instead of tree
+            # hashes, it's desirable to not rewrite commits.
             if merge_args.merge_method is MergeMethod.rebase_fast_forward:
                 await api.update_ref(
                     ref=pull_request.baseRefName, sha=pull_request.latest_sha
