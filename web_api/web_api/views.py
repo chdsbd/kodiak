@@ -13,7 +13,6 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseRedirect,
-    JsonResponse,
 )
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
@@ -23,6 +22,8 @@ from yarl import URL
 from web_api import auth
 from web_api.auth import AuthedHttpRequest
 from web_api.exceptions import BadRequest, PermissionDenied, UnprocessableEntity
+from web_api.http import JsonResponse
+from web_api.merge_queues import get_active_merge_queues
 from web_api.models import (
     Account,
     Address,
@@ -175,6 +176,13 @@ def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
         total_merged.append(day_activity.total_merged)
         total_closed.append(day_activity.total_closed)
 
+    active_merge_queues = [
+        dict(owner=repo.owner, repo=repo.repo, queues=queues)
+        for repo, queues in get_active_merge_queues(
+            install_id=str(account.github_installation_id)
+        ).items()
+    ]
+
     return JsonResponse(
         dict(
             kodiakActivity=dict(
@@ -191,6 +199,7 @@ def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
                     opened=total_opened, merged=total_merged, closed=total_closed
                 ),
             ),
+            activeMergeQueues=active_merge_queues,
         )
     )
 
@@ -630,7 +639,6 @@ def accounts(request: AuthedHttpRequest) -> HttpResponse:
                 "github_account_login"
             )
         ],
-        safe=False,
     )
 
 

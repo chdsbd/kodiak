@@ -106,9 +106,23 @@ interface ITotalChart {
     readonly closed: Array<number>
   }
 }
+
+export interface IActiveMergeQueue {
+  readonly owner: string
+  readonly repo: string
+  readonly queues: {
+    readonly branch: string
+    readonly pull_requests: {
+      readonly number: string
+      readonly added_at_timestamp: number
+    }[]
+  }[]
+}
+
 export interface IActivityApiResponse {
   readonly kodiakActivity: IKodiakChart
   readonly pullRequestActivity: ITotalChart
+  readonly activeMergeQueues: IActiveMergeQueue[]
 }
 
 export interface IAccountsApiResponse

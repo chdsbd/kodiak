@@ -26,45 +26,43 @@ export function OAuthPage() {
     })
   }, [clientState, code, history, serverState])
   return (
-    <>
-      <div className="h-100 d-flex justify-content-center align-items-center">
-        <div
-          className="w-100 text-center d-flex justify-content-around align-items-center flex-column"
-          style={{ minHeight: 300 }}>
-          <div className="d-flex justify-content-center align-items-center">
-            <img
-              src="/favicon.ico"
-              alt="favicon"
-              height={30}
-              width={30}
-              className="mr-2"
-            />
-            <h1 className="h2 mb-0 font-weight-bold">Kodiak</h1>
-          </div>
-
-          {!error ? (
-            <p className="text-muted">Logging in...</p>
-          ) : (
-            <p className="text-danger">
-              <b>
-                Login failure
-                <br />
-              </b>{" "}
-              {error}
-            </p>
-          )}
-
-          <p className="mb-0 d-flex flex-column">
-            {error && (
-              <Button variant="primary" className="mb-4" onClick={startLogin}>
-                {" "}
-                Retry login
-              </Button>
-            )}
-            <a href="/login">Return to Login</a>
-          </p>
+    <div className="h-100 d-flex justify-content-center align-items-center">
+      <div
+        className="w-100 text-center d-flex justify-content-around align-items-center flex-column"
+        style={{ minHeight: 300 }}>
+        <div className="d-flex justify-content-center align-items-center">
+          <img
+            src="/favicon.ico"
+            alt="favicon"
+            height={30}
+            width={30}
+            className="mr-2"
+          />
+          <h1 className="h2 mb-0 font-weight-bold">Kodiak</h1>
         </div>
+
+        {!error ? (
+          <p className="text-muted">Logging in...</p>
+        ) : (
+          <p className="text-danger">
+            <b>
+              Login failure
+              <br />
+            </b>{" "}
+            {error}
+          </p>
+        )}
+
+        <p className="mb-0 d-flex flex-column">
+          {error && (
+            <Button variant="primary" className="mb-4" onClick={startLogin}>
+              {" "}
+              Retry login
+            </Button>
+          )}
+          <a href="/login">Return to Login</a>
+        </p>
       </div>
-    </>
+    </div>
   )
 }
