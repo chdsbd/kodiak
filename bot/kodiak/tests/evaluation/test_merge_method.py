@@ -22,4 +22,3 @@ async def test_rebase_merge_fast_forward() -> None:
     assert "(merging)" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 0
     assert api.dequeue.call_count == 0
-

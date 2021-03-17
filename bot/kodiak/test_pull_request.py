@@ -433,4 +433,3 @@ async def test_update_ref_service_unavailable() -> None:
     assert e.value.method == "pull_request/update_ref"
     assert e.value.status_code == 503
     assert b"Service Unavailable" in e.value.response
-
