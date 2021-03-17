@@ -299,6 +299,9 @@ class PRAPI(Protocol):
     ) -> None:
         ...
 
+    async def update_ref(self, *, ref: str, sha: str) -> None:
+        ...
+
     async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         ...
 
@@ -392,7 +395,9 @@ MERGE_METHODS = (
     MergeMethod.merge,
     MergeMethod.squash,
     MergeMethod.rebase,
-    MergeMethod.rebase_fast_forward,
+    # rebase_fast_forward is not included here since it is not configurable via
+    # the GitHub UI. Kodiak users can manually specify rebase_fast_forward in
+    # their configuration file.
 )
 
 
@@ -1051,11 +1056,18 @@ branch protection requirements.
         merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
         await set_status("⛴ attempting to merge PR (merging)")
         try:
-            await api.merge(
-                merge_method=merge_args.merge_method,
-                commit_title=merge_args.commit_title,
-                commit_message=merge_args.commit_message,
-            )
+            # For rebase fast forward, we bypass the GitHub Pull Request APIs
+            # and use the Git Refs API to merge.
+            if merge_args.merge_method is MergeMethod.rebase_fast_forward:
+                await api.update_ref(
+                    ref=pull_request.baseRefName, sha=pull_request.latest_sha
+                )
+            else:
+                await api.merge(
+                    merge_method=merge_args.merge_method,
+                    commit_title=merge_args.commit_title,
+                    commit_message=merge_args.commit_message,
+                )
         # if we encounter an internal server error (status code 500), it is
         # _not_ safe to retry. Instead we mark the pull request as unmergable
         # and require a user to re-enable Kodiak on the pull request.
