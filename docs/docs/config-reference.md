@@ -145,7 +145,7 @@ merge.blocking_labels = ["wip"]
 
 - **type:** `string`
 - **default:** first valid merge method in list `"merge"`, `"squash"`, `"rebase"`
-- **options:** `"merge"`, `"squash"`, `"rebase"`
+- **options:** `"merge"`, `"squash"`, `"rebase"`, `"rebase_fast_forward"`
 
 Choose merge method for Kodiak to use.
 
@@ -154,6 +154,10 @@ If not configured, the first valid merge method in the list `"merge"`, `"squash"
 Kodiak will report a configuration error if the selected merge method is disabled for a repository.
 
 If you're using the "Require signed commits" GitHub Branch Protection setting to require commit signatures, _`"merge"` or `"squash"` are the only compatible options_. `"rebase"` will cause Kodiak to raise a configuration error.
+
+The `"rebase_fast_forward"` option is similar to `"rebase"`, but commits are rebased without being rewriten. This option is helpful if your build system depends on git commit hashes instead of git tree hashes for build deduplication.
+
+Since the `"rebase_fast_forward"` option only works with fast forward merges, you must enable the "Require branches to be up to date before merging" branch protection setting with at least one status check.
 
 ### `merge.delete_branch_on_merge`
 
