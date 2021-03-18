@@ -34,6 +34,7 @@ class TypedConfig(Config):
 
 config = TypedConfig(".env")
 
+PORT = config("PORT", cast=int, default=8000)
 REDIS_URL = config("REDIS_URL", cast=databases.DatabaseURL, default=None) or config(
     "REDISCLOUD_URL", cast=databases.DatabaseURL
 )
