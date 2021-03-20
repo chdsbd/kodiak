@@ -192,51 +192,54 @@ def get_merge_body(
         merge_body.commit_title = pull_request.title
     if config.merge.message.include_pr_number and merge_body.commit_title is not None:
         merge_body.commit_title += f" (#{pull_request.number})"
-    if config.merge.message.include_pull_request_url:
-        if merge_body.commit_message is None:
-            merge_body.commit_message = pull_request.url
-        else:
-            merge_body.commit_message += "\n\n" + pull_request.url
 
-    # we share coauthor logic between include_pull_request_author and
-    # include_coauthors.
-    coauthors = []  # type: List[PullRequestCommitUser]
-    if config.merge.message.include_pull_request_author:
-        coauthors.append(
-            PullRequestCommitUser(
-                login=pull_request.author.login,
-                databaseId=pull_request.author.databaseId,
-                name=pull_request.author.name,
-                type=pull_request.author.type,
-            )
-        )
-    if config.merge.message.include_coauthors:
-        for commit in commits:
-            if (
-                # only use commits that have identified authors.
-                commit.author is None
-                or commit.author.user is None
-                # ignore merge commits. They will have more than one parent.
-                or commit.parents.totalCount > 1
-            ):
-                continue
-            coauthors.append(commit.author.user)
-
-    coauthor_trailers = get_coauthor_trailers(
-        coauthors=coauthors,
-        include_pull_request_author=config.merge.message.include_pull_request_author,
-        pull_request_author_id=pull_request.author.databaseId,
-    )
-
-    if coauthor_trailers and config.merge.message.body in (
+    # MergeBodyStyle.github_default overrides these settings so we can ensure that GitHub generates the commit body.
+    if config.merge.message.body in (
         MergeBodyStyle.pull_request_body,
         MergeBodyStyle.empty,
     ):
-        trailer_block = "\n".join(coauthor_trailers)
-        if merge_body.commit_message:
-            merge_body.commit_message += "\n\n" + trailer_block
-        else:
-            merge_body.commit_message = trailer_block
+        if config.merge.message.include_pull_request_url:
+            if merge_body.commit_message is None:
+                merge_body.commit_message = pull_request.url
+            else:
+                merge_body.commit_message += "\n\n" + pull_request.url
+
+        # we share coauthor logic between include_pull_request_author and
+        # include_coauthors.
+        coauthors = []  # type: List[PullRequestCommitUser]
+        if config.merge.message.include_pull_request_author:
+            coauthors.append(
+                PullRequestCommitUser(
+                    login=pull_request.author.login,
+                    databaseId=pull_request.author.databaseId,
+                    name=pull_request.author.name,
+                    type=pull_request.author.type,
+                )
+            )
+        if config.merge.message.include_coauthors:
+            for commit in commits:
+                if (
+                    # only use commits that have identified authors.
+                    commit.author is None
+                    or commit.author.user is None
+                    # ignore merge commits. They will have more than one parent.
+                    or commit.parents.totalCount > 1
+                ):
+                    continue
+                coauthors.append(commit.author.user)
+
+        coauthor_trailers = get_coauthor_trailers(
+            coauthors=coauthors,
+            include_pull_request_author=config.merge.message.include_pull_request_author,
+            pull_request_author_id=pull_request.author.databaseId,
+        )
+
+        if coauthor_trailers and config.merge.message.body:
+            trailer_block = "\n".join(coauthor_trailers)
+            if merge_body.commit_message:
+                merge_body.commit_message += "\n\n" + trailer_block
+            else:
+                merge_body.commit_message = trailer_block
 
     return merge_body
 
