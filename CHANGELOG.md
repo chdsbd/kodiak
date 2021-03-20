@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- `merge.message.include_pull_request_url` no longer overrides  `merge.body = "github_default"`. (#622)
+- `merge.message.include_pull_request_url` no longer overrides  `merge.body = "github_default"`. (#622, #631)
 
 ## 0.38.0 - 2021-03-18
 
