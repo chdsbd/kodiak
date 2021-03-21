@@ -59,11 +59,12 @@ def queue_to_target(queue: bytes) -> bytes:
 
 
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
-    queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")
+    queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")  # type: ignore [assignment]
     pipe = r.pipeline(transaction=False)
     for queue in queue_names:
         pipe.get(queue_to_target(queue))
         pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
+    # response is a list[bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
     it = iter(res)
