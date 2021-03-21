@@ -958,12 +958,23 @@ def test_activity_with_merge_queues(
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     install_id = user_account.github_installation_id
+    queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
+    redis.sadd(f"merge_queue_by_install:{install_id}", queue)
+    merging_pr = (
+        '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
+        % install_id
+    )
+    redis.set(queue + ":target", merging_pr)
+    waiting_pr = (
+        '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 57, "installation_id": "%s", "target_name": "main"}'
+        % install_id
+    )
+    score = 1614997354.8109288
     redis.zadd(
-        f"merge_queue:{install_id}.sbdchd/squawk/main",
-        {
-            '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
-            % install_id: 1614997354.8109288
-        },
+        queue, {waiting_pr: score},
+    )
+    redis.zadd(
+        queue, {merging_pr: score + 1000},
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 200
@@ -975,7 +986,8 @@ def test_activity_with_merge_queues(
                 dict(
                     branch="main",
                     pull_requests=[
-                        dict(number="55", added_at_timestamp=1614997354.8109288)
+                        dict(number="55", added_at_timestamp=None),
+                        dict(number="57", added_at_timestamp=1614997354.8109288),
                     ],
                 )
             ],

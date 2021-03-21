@@ -47,15 +47,21 @@ function MergeQueues({
                           </a>
                         </td>
                         <td
-                          title={fromUnixTime(
-                            pr.added_at_timestamp,
-                          ).toLocaleString()}>
-                          {formatDistanceToNowStrict(
-                            fromUnixTime(pr.added_at_timestamp),
-                            {
-                              addSuffix: true,
-                            },
-                          )}
+                          title={
+                            pr.added_at_timestamp != null
+                              ? fromUnixTime(
+                                  pr.added_at_timestamp,
+                                ).toLocaleString()
+                              : "first"
+                          }>
+                          {pr.added_at_timestamp != null
+                            ? formatDistanceToNowStrict(
+                                fromUnixTime(pr.added_at_timestamp),
+                                {
+                                  addSuffix: true,
+                                },
+                              )
+                            : "merging"}
                         </td>
                       </tr>
                     ))}

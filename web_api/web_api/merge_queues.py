@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import List, Mapping, NamedTuple
+from typing import List, Mapping, NamedTuple, Optional, Set, TypeVar
 
 import pydantic
 import redis
@@ -21,7 +21,7 @@ class KodiakQueueEntry(pydantic.BaseModel):
 
 class PullRequest(pydantic.BaseModel):
     number: str
-    added_at_timestamp: float
+    added_at_timestamp: Optional[float]
 
 
 class Queue(pydantic.BaseModel):
@@ -54,34 +54,41 @@ def queue_info_from_name(name: str) -> QueueInfo:
     return QueueInfo(org, repo, branch)
 
 
-def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
-    count, keys = r.scan(cursor=0, match=f"merge_queue:{install_id}*", count=50)
+def queue_to_target(queue: bytes) -> bytes:
+    return queue + b":target"
 
-    # Remove keys for tracking actively merging pull request.
-    #
-    # We append ':target' to the merge queue name to track the merging pull request.
-    # https://github.com/chdsbd/kodiak/blob/b68608e4622ab149997f0cece4d615c2ac51157f/bot/kodiak/queue.py#L41
-    merge_queues = [key for key in keys if not key.endswith(b":target")]
+
+def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
+    queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")
     pipe = r.pipeline(transaction=False)
-    for queue in merge_queues:
+    for queue in queue_names:
+        pipe.get(queue_to_target(queue))
         pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
     res = pipe.execute()
 
-    # we accumulate merge queues by repository.
+    it = iter(res)
     queues = defaultdict(list)
-    for queue_name, entries in zip(merge_queues, res):
-        org, repo, branch = queue_info_from_name(queue_name.decode())
-        pull_requests = sorted(
-            [
-                PullRequest(
-                    number=KodiakQueueEntry.parse_raw(pull_request).pull_request_number,
-                    added_at_timestamp=score,
-                )
-                for pull_request, score in entries
-            ],
-            key=lambda x: x.added_at_timestamp,
-        )
+    for queue, (current_pr, waiting_prs) in zip(queue_names, zip(it, it)):
+        org, repo, branch = queue_info_from_name(queue.decode())
+
+        seen_prs = set()
+        pull_requests = []
+        for pull_request, score in [(current_pr, None), *waiting_prs]:
+            if not pull_request:
+                continue
+            pr = KodiakQueueEntry.parse_raw(pull_request)
+            # current_pr can existing in waiting_prs too. We only want to show
+            # it once.
+            if pr.pull_request_number in seen_prs:
+                continue
+            seen_prs.add(pr.pull_request_number)
+            pull_requests.append(
+                PullRequest(number=pr.pull_request_number, added_at_timestamp=score,)
+            )
+
+        pull_requests = sorted(pull_requests, key=lambda x: x.added_at_timestamp or 0)
         queues[RepositoryName(owner=org, repo=repo)].append(
             Queue(branch=branch, pull_requests=pull_requests)
         )
+
     return queues
