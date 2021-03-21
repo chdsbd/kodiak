@@ -959,7 +959,8 @@ def test_activity_with_merge_queues(
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     install_id = user_account.github_installation_id
     queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
-    redis.sadd(f"merge_queue_by_install:{install_id}", queue)
+    empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
+    redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
     merging_pr = (
         '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
         % install_id
