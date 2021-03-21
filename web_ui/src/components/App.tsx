@@ -14,14 +14,7 @@ import { ActivityPage } from "./ActivityPage"
 import { Page } from "./Page"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { NotFoundPage } from "./NotFoundPage"
-
-function throwError() {
-  throw Error("Test exception for Sentry")
-}
-function SentryDebugErrorPage() {
-  throwError()
-  return null
-}
+import { DebugSentryPage } from "./DebugSentryPage"
 
 export default function App() {
   return (
@@ -53,8 +46,8 @@ export default function App() {
               <AccountsPage />
             </Container>
           </Route>
-          <Route exact path="/__sentry_debug_error">
-            <SentryDebugErrorPage />
+          <Route exact path="/__debug_sentry">
+            <DebugSentryPage />
           </Route>
           <Redirect exact from="/" to="/accounts" />
           <Redirect from="/t/" to="/accounts" />
