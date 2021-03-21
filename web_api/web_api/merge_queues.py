@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import (
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 import pydantic
 import redis
@@ -70,11 +80,14 @@ def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
     return None
 
 
-def chunk(it: Sequence[Any], count: int) -> list[Tuple[Any, ...]]:
+T = TypeVar("T")
+
+
+def chunk(it: Sequence[T], count: int) -> Iterator[Tuple[T, ...]]:
     """
     Convert list of items into a list of `count` length items.
     """
-    return [tuple(it[i : count + i]) for i in range(0, len(it), count)]
+    return (tuple(it[i : count + i]) for i in range(0, len(it), count))
 
 
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
