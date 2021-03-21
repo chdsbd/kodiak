@@ -313,7 +313,7 @@ class RedisWebhookQueue:
             install=event.installation_id,
         )
 
-        log.info("enqueue repo event", merge_queues_by_install=merge_queues_by_install)
+        log.info("enqueue repo event")
         self.start_repo_worker(queue_name)
         results = await future_results
         dictionary = await results.asdict()
