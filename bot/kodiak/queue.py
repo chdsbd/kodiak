@@ -4,6 +4,7 @@ import asyncio
 import time
 import typing
 import urllib
+from datetime import timedelta
 from typing import Optional
 
 import asyncio_redis
@@ -128,10 +129,9 @@ async def process_repo_queue(
     log.info("block for new repo event")
     webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-    await connection.set(
-        webhook_event.get_merge_target_queue_name(), webhook_event.json()
-    )
+    await connection.set(target_name, webhook_event.json())
 
     async def dequeue() -> None:
         await connection.zrem(
@@ -160,6 +160,8 @@ async def process_repo_queue(
         is_active_merging=False,
         queue_for_merge_callback=queue_for_merge,
     )
+    log.info("merge completed, remove target marker", target_name=target_name)
+    await connection.delete([target_name])
 
 
 async def repo_queue_consumer(
@@ -192,6 +194,9 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
             return count
         count += 1
     return None
+
+
+ONE_DAY = int(timedelta(days=1).total_seconds())
 
 
 class RedisWebhookQueue:
@@ -286,7 +291,9 @@ class RedisWebhookQueue:
         """
         queue_name = get_merge_queue_name(event)
         transaction = await self.connection.multi()
-        await transaction.sadd(MERGE_QUEUE_NAMES, [queue_name])
+        merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
+        await transaction.sadd(merge_queues_by_install, [queue_name])
+        await transaction.expire(merge_queues_by_install, seconds=ONE_DAY)
         if first:
             # place at front of queue. To allow us to always place this PR at
             # the front, we should not pass only_if_not_exists.
@@ -306,7 +313,7 @@ class RedisWebhookQueue:
             install=event.installation_id,
         )
 
-        log.info("enqueue repo event")
+        log.info("enqueue repo event", merge_queues_by_install=merge_queues_by_install)
         self.start_repo_worker(queue_name)
         results = await future_results
         dictionary = await results.asdict()
