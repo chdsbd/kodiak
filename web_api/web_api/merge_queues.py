@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from typing import List, Mapping, NamedTuple, Optional, Set, TypeVar
 
 import pydantic
 import redis
 from django.conf import settings
+
+log = logging.getLogger(__name__)
 
 r = redis.Redis.from_url(settings.REDIS_URL)
 
@@ -77,7 +80,11 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
         for pull_request, score in [(current_pr, None), *waiting_prs]:
             if not pull_request:
                 continue
-            pr = KodiakQueueEntry.parse_raw(pull_request)
+            try:
+                pr = KodiakQueueEntry.parse_raw(pull_request)
+            except pydantic.ValidationError:
+                log.exception("failed to parse pull request")
+                continue
             # current_pr can existing in waiting_prs too. We only want to show
             # it once.
             if pr.pull_request_number in seen_prs:
