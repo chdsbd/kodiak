@@ -2,33 +2,33 @@ import React from "react"
 import { WebData } from "../webdata"
 import { Spinner } from "./Spinner"
 import { PullRequestActivityChart, KodiakActivityChart } from "./ActivityChart"
-import formatDistanceToNowStrict from "date-fns/formatDistanceToNowStrict"
+import formatDistanceStrict from "date-fns/formatDistanceStrict"
 import fromUnixTime from "date-fns/fromUnixTime"
 
 import { Current } from "../world"
 import { useTeamApi } from "../useApi"
 import { IActiveMergeQueue } from "../api"
 
-function useRenderOnInterval(seconds: number) {
-  const [, setState] = React.useState(0)
+function useTimestamp(): number {
+  const [state, setState] = React.useState(Date.now())
   React.useEffect(() => {
     const handle = setInterval(() => {
-      setState(s => s + 1)
-    }, seconds * 1000)
+      setState(Date.now())
+    }, 60 * 1000)
     return () => {
       clearInterval(handle)
     }
-  }, [seconds])
+  }, [])
+  return state
 }
 
 function RelativeTime({ timestamp }: { readonly timestamp: number }) {
-  useRenderOnInterval(60)
-
   const date = fromUnixTime(timestamp)
   const isoDate = date.toISOString()
+  const now = useTimestamp()
   return (
     <time dateTime={isoDate} title={isoDate}>
-      {formatDistanceToNowStrict(date, {
+      {formatDistanceStrict(date, now, {
         addSuffix: true,
       })}
     </time>

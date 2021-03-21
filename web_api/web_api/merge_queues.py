@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import List, Mapping, NamedTuple, Optional, Set, TypeVar
+from typing import List, Mapping, NamedTuple, Optional, Set
 
 import pydantic
 import redis

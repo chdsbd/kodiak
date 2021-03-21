@@ -961,14 +961,24 @@ def test_activity_with_merge_queues(
     queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
     empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
     redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
-    merging_pr = (
-        '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
-        % install_id
+    merging_pr = json.dumps(
+        dict(
+            repo_owner="sbdchd",
+            repo_name="squawk",
+            pull_request_number=55,
+            installation_id=install_id,
+            target_name="main",
+        )
     )
     redis.set(queue + ":target", merging_pr)
-    waiting_pr = (
-        '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 57, "installation_id": "%s", "target_name": "main"}'
-        % install_id
+    waiting_pr = json.dumps(
+        dict(
+            repo_owner="sbdchd",
+            repo_name="squawk",
+            pull_request_number=57,
+            installation_id=install_id,
+            target_name="main",
+        )
     )
     score = 1614997354.8109288
     redis.zadd(
@@ -1010,8 +1020,13 @@ def test_activity_with_merge_queues_invalid_parsing(
     queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
     empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
     redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
-    waiting_pr_with_invalid_stucture = (
-        '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 57, }'
+    waiting_pr_with_invalid_stucture = json.dumps(
+        dict(
+            repo_owner="sbdchd",
+            repo_name="squawk",
+            pull_request_number=57,
+            installation_id=install_id,
+        )
     )
     redis.zadd(
         queue, {waiting_pr_with_invalid_stucture: 1614997354.8109288},
