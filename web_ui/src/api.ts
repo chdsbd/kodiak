@@ -114,6 +114,7 @@ export interface IActiveMergeQueue {
     readonly branch: string
     readonly pull_requests: {
       readonly number: string
+      readonly merging: boolean
       readonly added_at_timestamp: number | null
     }[]
   }[]

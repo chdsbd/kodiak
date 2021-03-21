@@ -24,6 +24,7 @@ class KodiakQueueEntry(pydantic.BaseModel):
 
 class PullRequest(pydantic.BaseModel):
     number: str
+    merging: bool = False
     added_at_timestamp: Optional[float]
 
 
@@ -61,35 +62,53 @@ def queue_to_target(queue: bytes) -> bytes:
     return queue + b":target"
 
 
+def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
+    try:
+        return KodiakQueueEntry.parse_raw(data)
+    except pydantic.ValidationError:
+        log.exception("failed to parse pull request")
+    return None
+
+
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
     queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")  # type: ignore [assignment]
     pipe = r.pipeline(transaction=False)
     for queue in queue_names:
         pipe.get(queue_to_target(queue))
+        pipe.get(queue_to_target(queue) + b":time")
         pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
     # response is a list[bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
     it = iter(res)
     queues = defaultdict(list)
-    for queue, (current_pr, waiting_prs) in zip(queue_names, zip(it, it)):
+    for queue, (merging_pr_raw, current_pr_added_at, waiting_prs) in zip(
+        queue_names, zip(it, it, it)
+    ):
         org, repo, branch = queue_info_from_name(queue.decode())
 
-        seen_prs = set()
         pull_requests = []
-        for pull_request, score in [(current_pr, None), *waiting_prs]:
-            if not pull_request:
-                continue
-            try:
-                pr = KodiakQueueEntry.parse_raw(pull_request)
-            except pydantic.ValidationError:
-                log.exception("failed to parse pull request")
+        merging_pr = (
+            parse_kodiak_queue_entry(merging_pr_raw) if merging_pr_raw else None
+        )
+        if merging_pr:
+            pull_requests.append(
+                PullRequest(
+                    number=merging_pr.pull_request_number,
+                    merging=True,
+                    added_at_timestamp=float(current_pr_added_at)
+                    if current_pr_added_at
+                    else None,
+                )
+            )
+        for pull_request, score in waiting_prs:
+            pr = parse_kodiak_queue_entry(pull_request)
+            if not pr:
                 continue
             # current_pr can existing in waiting_prs too. We only want to show
             # it once.
-            if pr.pull_request_number in seen_prs:
+            if merging_pr and pr.pull_request_number == merging_pr.pull_request_number:
                 continue
-            seen_prs.add(pr.pull_request_number)
             pull_requests.append(
                 PullRequest(number=pr.pull_request_number, added_at_timestamp=score,)
             )

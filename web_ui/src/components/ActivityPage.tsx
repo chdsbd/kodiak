@@ -9,6 +9,32 @@ import { Current } from "../world"
 import { useTeamApi } from "../useApi"
 import { IActiveMergeQueue } from "../api"
 
+function useRenderOnInterval(seconds: number) {
+  const [, setState] = React.useState(0)
+  React.useEffect(() => {
+    const handle = setInterval(() => {
+      setState(s => s + 1)
+    }, seconds * 1000)
+    return () => {
+      clearInterval(handle)
+    }
+  }, [seconds])
+}
+
+function RelativeTime({ timestamp }: { readonly timestamp: number }) {
+  useRenderOnInterval(60)
+
+  const date = fromUnixTime(timestamp)
+  const isoDate = date.toISOString()
+  return (
+    <time dateTime={isoDate} title={isoDate}>
+      {formatDistanceToNowStrict(date, {
+        addSuffix: true,
+      })}
+    </time>
+  )
+}
+
 function NoQueueFound() {
   return <p className="text-muted">No active merge queues to display.</p>
 }
@@ -34,6 +60,7 @@ function MergeQueues({
                       <th scope="col">position</th>
                       <th scope="col">pull request</th>
                       <th scope="col">added</th>
+                      <th scope="col">merging</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -46,23 +73,12 @@ function MergeQueues({
                             #{pr.number}
                           </a>
                         </td>
-                        <td
-                          title={
-                            pr.added_at_timestamp != null
-                              ? fromUnixTime(
-                                  pr.added_at_timestamp,
-                                ).toLocaleString()
-                              : "first"
-                          }>
-                          {pr.added_at_timestamp != null
-                            ? formatDistanceToNowStrict(
-                                fromUnixTime(pr.added_at_timestamp),
-                                {
-                                  addSuffix: true,
-                                },
-                              )
-                            : "merging"}
+                        <td>
+                          {pr.added_at_timestamp != null && (
+                            <RelativeTime timestamp={pr.added_at_timestamp} />
+                          )}
                         </td>
+                        <td>{pr.merging ? "Yes" : ""}</td>
                       </tr>
                     ))}
                   </tbody>

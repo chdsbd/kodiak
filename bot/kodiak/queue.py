@@ -132,6 +132,7 @@ async def process_repo_queue(
     target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
     await connection.set(target_name, webhook_event.json())
+    await connection.set(target_name + ":time", str(time.time()))
 
     async def dequeue() -> None:
         await connection.zrem(
@@ -162,6 +163,7 @@ async def process_repo_queue(
     )
     log.info("merge completed, remove target marker", target_name=target_name)
     await connection.delete([target_name])
+    await connection.delete([target_name + ":time"])
 
 
 async def repo_queue_consumer(
