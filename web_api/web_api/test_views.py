@@ -997,8 +997,12 @@ def test_activity_with_merge_queues(
                 dict(
                     branch="main",
                     pull_requests=[
-                        dict(number="55", added_at_timestamp=None),
-                        dict(number="57", added_at_timestamp=1614997354.8109288),
+                        dict(number="55", added_at_timestamp=None, merging=True),
+                        dict(
+                            number="57",
+                            added_at_timestamp=1614997354.8109288,
+                            merging=False,
+                        ),
                     ],
                 )
             ],
@@ -1021,12 +1025,7 @@ def test_activity_with_merge_queues_invalid_parsing(
     empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
     redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
     waiting_pr_with_invalid_stucture = json.dumps(
-        dict(
-            repo_owner="sbdchd",
-            repo_name="squawk",
-            pull_request_number=57,
-            installation_id=install_id,
-        )
+        dict(repo_owner="sbdchd", installation_id=install_id,)
     )
     redis.zadd(
         queue, {waiting_pr_with_invalid_stucture: 1614997354.8109288},

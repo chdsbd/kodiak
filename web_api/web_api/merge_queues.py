@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import List, Mapping, NamedTuple, Optional, Set
+from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
 import pydantic
 import redis
@@ -70,6 +70,13 @@ def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
     return None
 
 
+def chunk(it: Sequence[Any], count: int) -> list[Tuple[Any, ...]]:
+    """
+    Convert list of items into a list of `count` length items.
+    """
+    return [tuple(it[i : count + i]) for i in range(0, len(it), count)]
+
+
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
     queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")  # type: ignore [assignment]
     pipe = r.pipeline(transaction=False)
@@ -80,10 +87,9 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
     # response is a list[bytes | None, bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
-    it = iter(res)
     queues = defaultdict(list)
     for queue, (merging_pr_raw, current_pr_added_at, waiting_prs) in zip(
-        queue_names, zip(it, it, it)
+        queue_names, chunk(res, count=3)
     ):
         org, repo, branch = queue_info_from_name(queue.decode())
 
