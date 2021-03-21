@@ -77,7 +77,7 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
         pipe.get(queue_to_target(queue))
         pipe.get(queue_to_target(queue) + b":time")
         pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
-    # response is a list[bytes | None, list[tuple[bytes, float]], ...]
+    # response is a list[bytes | None, bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
     it = iter(res)
