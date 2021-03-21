@@ -14,6 +14,7 @@ import { ActivityPage } from "./ActivityPage"
 import { Page } from "./Page"
 import { ErrorBoundary } from "./ErrorBoundary"
 import { NotFoundPage } from "./NotFoundPage"
+import { DebugSentryPage } from "./DebugSentryPage"
 
 export default function App() {
   return (
@@ -44,6 +45,9 @@ export default function App() {
             <Container className="h-100">
               <AccountsPage />
             </Container>
+          </Route>
+          <Route exact path="/__debug_sentry">
+            <DebugSentryPage />
           </Route>
           <Redirect exact from="/" to="/accounts" />
           <Redirect from="/t/" to="/accounts" />
