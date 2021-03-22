@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- fix merge queues not displaying in dashboard and merging pull request not appearing. (#632, #623, #621)
+
+## 0.38.0 - 2021-03-18
+
+### Added
+- added [`"rebase_fast_forward"` merge method](https://kodiakhq.com/docs/config-reference#mergemethod) to support fast forward rebase merges without rewriting commits. Thanks [@brock8503](https://github.com/brock8503) and [@andrewhampton](https://github.com/andrewhampton) for the contribution! (#625)
+- added [documentation for web dashboard](https://kodiakhq.com/docs/dashboard). (#620)
+
 ## 0.37.0 - 2021-03-07
 
 ### Added
