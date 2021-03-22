@@ -76,7 +76,7 @@ class ConfigQueryOptions(pydantic.BaseModel):
 
 
 class ConfigQueryResponse(pydantic.BaseModel):
-    repository: ConfigQueryOptions
+    repository: Optional[ConfigQueryOptions]
 
 
 GET_EVENT_INFO_QUERY = """
@@ -876,6 +876,8 @@ class Client:
             self.log.exception("problem parsing api response for config")
             return None
 
+        if not parsed.repository:
+            return None
         if (
             parsed.repository.rootConfigFile is not None
             and parsed.repository.rootConfigFile.text is not None
