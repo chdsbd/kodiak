@@ -21,4 +21,4 @@ RUN rm -rf /var/app/pip-wheel-metadata/
 # install cli
 RUN poetry install
 
-CMD /var/app/.venv/bin/uvicorn kodiak.main:app --host 0.0.0.0 --port $PORT
+CMD ["/var/app/.venv/bin/python", "-m", "kodiak.main"]
