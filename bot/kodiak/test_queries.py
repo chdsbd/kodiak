@@ -65,6 +65,52 @@ def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
     return client
 
 
+@pytest.mark.asyncio
+async def test_get_config_for_ref_error(
+    api_client: Client, mocker: MockFixture
+) -> None:
+    """
+    We should return None when there is an error.
+    """
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
+    )
+
+    res = await api_client.get_config_for_ref(ref="main")
+    assert res is None
+
+
+@pytest.mark.asyncio
+async def test_get_config_for_ref_dot_github(
+    api_client: Client, mocker: MockFixture
+) -> None:
+    """
+    We should be able to parse from .github/.kodiak.toml
+    """
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(
+            dict(
+                data=dict(
+                    repository=dict(
+                        rootConfigFile=None,
+                        githubConfigFile=dict(
+                            text="# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
+                        ),
+                    )
+                )
+            )
+        ),
+    )
+
+    res = await api_client.get_config_for_ref(ref="main")
+    assert res is not None
+    assert isinstance(res.parsed, V1) and res.parsed.merge.method == MergeMethod.rebase
+
+
 @pytest.fixture
 def blocked_response() -> Dict[str, Any]:
     return cast(
