@@ -48,19 +48,39 @@ class GraphQLResponse(TypedDict):
     errors: Optional[List[GraphQLError]]
 
 
-DEFAULT_BRANCH_NAME_QUERY = """
-query ($owner: String!, $repo: String!) {
+GET_CONFIG_QUERY = """
+query ($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $githubConfigFileExpression: String!) {
   repository(owner: $owner, name: $repo) {
-    defaultBranchRef {
-      name
+    rootConfigFile: object(expression: $rootConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    githubConfigFile: object(expression: $githubConfigFileExpression) {
+      ... on Blob {
+        text
+      }
     }
   }
 }
 """
 
 
+class ConfigQueryText(pydantic.BaseModel):
+    text: Optional[str]
+
+
+class ConfigQueryOptions(pydantic.BaseModel):
+    rootConfigFile: Optional[ConfigQueryText]
+    githubConfigFile: Optional[ConfigQueryText]
+
+
+class ConfigQueryResponse(pydantic.BaseModel):
+    repository: ConfigQueryOptions
+
+
 GET_EVENT_INFO_QUERY = """
-query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $githubConfigFileExpression: String!, $PRNumber: Int!) {
+query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -199,16 +219,6 @@ query GetEventInfo($owner: String!, $repo: String!, $rootConfigFileExpression: S
           name
         }
         totalCount
-      }
-    }
-    rootConfigFile: object(expression: $rootConfigFileExpression) {
-      ... on Blob {
-        text
-      }
-    }
-    githubConfigFile: object(expression: $githubConfigFileExpression) {
-      ... on Blob {
-        text
       }
     }
   }
@@ -701,6 +711,13 @@ class Subscription:
     ]
 
 
+@dataclass
+class CfgInfo:
+    parsed: V1
+    text: str
+    file_expression: str
+
+
 class Client:
     session: http.Session
     throttler: Throttler
@@ -741,7 +758,6 @@ class Client:
         query: str,
         variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
-        remaining_retries: int = 4,
     ) -> Optional[GraphQLResponse]:
         log = self.log
 
@@ -759,21 +775,6 @@ class Client:
             log.error("github api request error", res=res)
             return None
         return cast(GraphQLResponse, res.json())
-
-    async def get_default_branch_name(self) -> Optional[str]:
-        res = await self.send_query(
-            query=DEFAULT_BRANCH_NAME_QUERY,
-            variables=dict(owner=self.owner, repo=self.repo),
-            installation_id=self.installation_id,
-        )
-        if res is None:
-            return None
-        data = res.get("data")
-        errors = res.get("errors")
-        if errors is not None or data is None:
-            self.log.error("could not fetch default branch name", res=res)
-            return None
-        return cast(str, data["repository"]["defaultBranchRef"]["name"])
 
     async def get_permissions_for_username(self, username: str) -> Permission:
         headers = await get_headers(installation_id=self.installation_id)
@@ -849,9 +850,54 @@ class Client:
             key=lambda x: x.createdAt,
         )
 
-    async def get_event_info(
-        self, branch_name: str, pr_number: int
-    ) -> Optional[EventInfoResponse]:
+    async def get_config_for_ref(self, *, ref: str) -> CfgInfo | None:
+        root_config_file_expression = create_root_config_file_expression(branch=ref)
+        github_config_file_expression = create_github_config_file_expression(branch=ref)
+        res = await self.send_query(
+            query=GET_CONFIG_QUERY,
+            variables=dict(
+                owner=self.owner,
+                repo=self.repo,
+                rootConfigFileExpression=root_config_file_expression,
+                githubConfigFileExpression=github_config_file_expression,
+            ),
+            installation_id=self.installation_id,
+        )
+        if res is None:
+            return None
+        data = res.get("data")
+        errors = res.get("errors")
+        if errors is not None or data is None:
+            self.log.error("could not fetch default branch name", res=res)
+            return None
+        try:
+            parsed = ConfigQueryResponse.parse_obj(data)
+        except pydantic.ValidationError:
+            self.log.exception("problem parsing api response for config")
+            return None
+
+        if (
+            parsed.repository.rootConfigFile is not None
+            and parsed.repository.rootConfigFile.text is not None
+        ):
+            config_file_expression = root_config_file_expression
+            config_text = parsed.repository.rootConfigFile.text
+        elif (
+            parsed.repository.githubConfigFile is not None
+            and parsed.repository.githubConfigFile.text is not None
+        ):
+            config_file_expression = github_config_file_expression
+            config_text = parsed.repository.githubConfigFile.text
+        else:
+            return None
+
+        return CfgInfo(
+            parsed=V1.parse_toml(config_text),
+            text=config_text,
+            file_expression=config_file_expression,
+        )
+
+    async def get_event_info(self, pr_number: int) -> Optional[EventInfoResponse]:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -860,22 +906,9 @@ class Client:
 
         log = self.log.bind(pr=pr_number)
 
-        root_config_file_expression = create_root_config_file_expression(
-            branch=branch_name
-        )
-        github_config_file_expression = create_github_config_file_expression(
-            branch=branch_name
-        )
-
         res = await self.send_query(
             query=GET_EVENT_INFO_QUERY,
-            variables=dict(
-                owner=self.owner,
-                repo=self.repo,
-                rootConfigFileExpression=root_config_file_expression,
-                githubConfigFileExpression=github_config_file_expression,
-                PRNumber=pr_number,
-            ),
+            variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
         )
         if res is None:
@@ -894,26 +927,10 @@ class Client:
 
         subscription = await self.get_subscription()
 
-        root_config_str = get_root_config_str(repo=repository)
-        github_config_str = get_github_config_str(repo=repository)
-        if root_config_str is not None:
-            config_str = root_config_str
-            config_file_expression = root_config_file_expression
-        elif github_config_str is not None:
-            config_str = github_config_str
-            config_file_expression = github_config_file_expression
-        else:
-            # NOTE(chdsbd): we don't want to show a message for this as the lack
-            # of a config allows kodiak to be selectively installed
-            log.info("could not find configuration file")
-            return None
-
         pull_request = get_pull_request(repo=repository)
         if not pull_request:
             log.warning("Could not find PR")
             return None
-
-        config = V1.parse_toml(config_str)
 
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = get_labels(pr=pull_request)
@@ -925,6 +942,10 @@ class Client:
             log.warning("Could not parse pull request")
             return None
 
+        cfg = await self.get_config_for_ref(ref=pr.baseRefName)
+        if cfg is None:
+            log.info("no config found")
+            return None
         branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
@@ -934,9 +955,9 @@ class Client:
             reviews=partial_reviews
         )
         return EventInfoResponse(
-            config=config,
-            config_str=config_str,
-            config_file_expression=config_file_expression,
+            config=cfg.parsed,
+            config_str=cfg.text,
+            config_file_expression=cfg.file_expression,
             pull_request=pr,
             repository=RepoInfo(
                 merge_commit_allowed=repository.get("mergeCommitAllowed", False),
