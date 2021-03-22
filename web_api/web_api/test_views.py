@@ -958,12 +958,34 @@ def test_activity_with_merge_queues(
     user_account = create_account(github_account_login=user.github_login,)
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     install_id = user_account.github_installation_id
+    queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
+    empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
+    redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
+    merging_pr = json.dumps(
+        dict(
+            repo_owner="sbdchd",
+            repo_name="squawk",
+            pull_request_number=55,
+            installation_id=install_id,
+            target_name="main",
+        )
+    )
+    redis.set(queue + ":target", merging_pr)
+    waiting_pr = json.dumps(
+        dict(
+            repo_owner="sbdchd",
+            repo_name="squawk",
+            pull_request_number=57,
+            installation_id=install_id,
+            target_name="main",
+        )
+    )
+    score = 1614997354.8109288
     redis.zadd(
-        f"merge_queue:{install_id}.sbdchd/squawk/main",
-        {
-            '{"repo_owner": "sbdchd", "repo_name": "squawk", "pull_request_number": 55, "installation_id": "%s", "target_name": "main"}'
-            % install_id: 1614997354.8109288
-        },
+        queue, {waiting_pr: score},
+    )
+    redis.zadd(
+        queue, {merging_pr: score + 1000},
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 200
@@ -975,12 +997,42 @@ def test_activity_with_merge_queues(
                 dict(
                     branch="main",
                     pull_requests=[
-                        dict(number="55", added_at_timestamp=1614997354.8109288)
+                        dict(number="55", added_at_timestamp=None, merging=True),
+                        dict(
+                            number="57",
+                            added_at_timestamp=1614997354.8109288,
+                            merging=False,
+                        ),
                     ],
                 )
             ],
         )
     ]
+
+
+@pytest.mark.django_db
+def test_activity_with_merge_queues_invalid_parsing(
+    authed_client: Client, user: User, redis: "Redis[bytes]"
+) -> None:
+    """
+    We should ignore pull requests we can't parse so the web UI is robust.
+    """
+    assert user.github_login is not None
+    user_account = create_account(github_account_login=user.github_login,)
+    AccountMembership.objects.create(account=user_account, user=user, role="member")
+    install_id = user_account.github_installation_id
+    queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
+    empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
+    redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
+    waiting_pr_with_invalid_stucture = json.dumps(
+        dict(repo_owner="sbdchd", installation_id=install_id,)
+    )
+    redis.zadd(
+        queue, {waiting_pr_with_invalid_stucture: 1614997354.8109288},
+    )
+    res = authed_client.get(f"/v1/t/{user_account.id}/activity")
+    assert res.status_code == 200
+    assert res.json()["activeMergeQueues"] == []
 
 
 @pytest.mark.django_db

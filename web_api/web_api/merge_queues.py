@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
-from typing import List, Mapping, NamedTuple
+from typing import (
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 import pydantic
 import redis
 from django.conf import settings
+
+log = logging.getLogger(__name__)
 
 r = redis.Redis.from_url(settings.REDIS_URL)
 
@@ -21,7 +34,8 @@ class KodiakQueueEntry(pydantic.BaseModel):
 
 class PullRequest(pydantic.BaseModel):
     number: str
-    added_at_timestamp: float
+    merging: bool = False
+    added_at_timestamp: Optional[float]
 
 
 class Queue(pydantic.BaseModel):
@@ -54,34 +68,75 @@ def queue_info_from_name(name: str) -> QueueInfo:
     return QueueInfo(org, repo, branch)
 
 
-def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
-    count, keys = r.scan(cursor=0, match=f"merge_queue:{install_id}*", count=50)
+def queue_to_target(queue: bytes) -> bytes:
+    return queue + b":target"
 
-    # Remove keys for tracking actively merging pull request.
-    #
-    # We append ':target' to the merge queue name to track the merging pull request.
-    # https://github.com/chdsbd/kodiak/blob/b68608e4622ab149997f0cece4d615c2ac51157f/bot/kodiak/queue.py#L41
-    merge_queues = [key for key in keys if not key.endswith(b":target")]
+
+def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
+    try:
+        return KodiakQueueEntry.parse_raw(data)
+    except pydantic.ValidationError:
+        log.exception("failed to parse pull request")
+    return None
+
+
+T = TypeVar("T")
+
+
+def chunk(it: Sequence[T], count: int) -> Iterator[Tuple[T, ...]]:
+    """
+    Convert list of items into a list of `count` length items.
+    """
+    return (tuple(it[i : count + i]) for i in range(0, len(it), count))
+
+
+def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
+    queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")  # type: ignore [assignment]
     pipe = r.pipeline(transaction=False)
-    for queue in merge_queues:
+    for queue in queue_names:
+        pipe.get(queue_to_target(queue))
+        pipe.get(queue_to_target(queue) + b":time")
         pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
+    # response is a list[bytes | None, bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
-    # we accumulate merge queues by repository.
     queues = defaultdict(list)
-    for queue_name, entries in zip(merge_queues, res):
-        org, repo, branch = queue_info_from_name(queue_name.decode())
-        pull_requests = sorted(
-            [
+    for queue, (merging_pr_raw, current_pr_added_at, waiting_prs) in zip(
+        queue_names, chunk(res, count=3)
+    ):
+        org, repo, branch = queue_info_from_name(queue.decode())
+
+        pull_requests = []
+        merging_pr = (
+            parse_kodiak_queue_entry(merging_pr_raw) if merging_pr_raw else None
+        )
+        if merging_pr:
+            pull_requests.append(
                 PullRequest(
-                    number=KodiakQueueEntry.parse_raw(pull_request).pull_request_number,
-                    added_at_timestamp=score,
+                    number=merging_pr.pull_request_number,
+                    merging=True,
+                    added_at_timestamp=float(current_pr_added_at)
+                    if current_pr_added_at
+                    else None,
                 )
-                for pull_request, score in entries
-            ],
-            key=lambda x: x.added_at_timestamp,
-        )
-        queues[RepositoryName(owner=org, repo=repo)].append(
-            Queue(branch=branch, pull_requests=pull_requests)
-        )
+            )
+        for pull_request, score in waiting_prs:
+            pr = parse_kodiak_queue_entry(pull_request)
+            if not pr:
+                continue
+            # current_pr can existing in waiting_prs too. We only want to show
+            # it once.
+            if merging_pr and pr.pull_request_number == merging_pr.pull_request_number:
+                continue
+            pull_requests.append(
+                PullRequest(number=pr.pull_request_number, added_at_timestamp=score,)
+            )
+
+        pull_requests = sorted(pull_requests, key=lambda x: x.added_at_timestamp or 0)
+        # only add report targets that have pull requests merging or in queue.
+        if pull_requests:
+            queues[RepositoryName(owner=org, repo=repo)].append(
+                Queue(branch=branch, pull_requests=pull_requests)
+            )
+
     return queues

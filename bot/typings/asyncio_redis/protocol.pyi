@@ -5,6 +5,7 @@ from asyncio_redis.replies import StatusReply, ZRangeReply
 _Key = Union[bytes, str]
 
 class Transaction:
+    async def expire(self, key: _Key, seconds: int) -> Awaitable[int]: ...
     async def zadd(
         self,
         key: _Key,
