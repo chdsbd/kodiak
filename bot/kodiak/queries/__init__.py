@@ -713,7 +713,7 @@ class Subscription:
 
 @dataclass
 class CfgInfo:
-    parsed: V1
+    parsed: V1 | pydantic.ValidationError | toml.TomlDecodeError
     text: str
     file_expression: str
 
