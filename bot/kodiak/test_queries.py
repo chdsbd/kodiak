@@ -65,20 +65,6 @@ def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
     return client
 
 
-@pytest.mark.asyncio
-async def test_get_default_branch_name_error(
-    api_client: Client, mocker: MockFixture
-) -> None:
-    mocker.patch.object(
-        api_client,
-        "send_query",
-        return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
-    )
-
-    res = await api_client.get_default_branch_name()
-    assert res is None
-
-
 @pytest.fixture
 def blocked_response() -> Dict[str, Any]:
     return cast(
@@ -276,7 +262,7 @@ async def test_get_event_info_blocked(
         api_client, "get_permissions_for_username", get_permissions_for_username_patch
     )
 
-    res = await api_client.get_event_info(branch_name="master", pr_number=100)
+    res = await api_client.get_event_info(pr_number=100)
     assert res is not None
     assert res == block_event
 
