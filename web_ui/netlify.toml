@@ -1,7 +1,7 @@
 # see: https://docs.netlify.com/configure-builds/file-based-configuration/
 [[redirects]]
   from = "/v1/*"
-  to = "https://api.staging.kodiakhq.com/:splat"
+  to = "https://api.staging.kodiakhq.com/v1/:splat"
   status = 200
   force = true
 
