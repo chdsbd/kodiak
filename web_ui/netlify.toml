@@ -1,12 +1,11 @@
 # see: https://docs.netlify.com/configure-builds/file-based-configuration/
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-
-[[redirects]]
   from = "/v1/*"
   to = "https://api.staging.kodiakhq.com/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
