@@ -33,9 +33,9 @@ Kodiak reads files from repositories at `.kodiak.toml` and `.github/.kodiak.toml
 
 ### Who runs Kodiak?
 
-Kodiak is built and maintained by Christopher Dignam ([@chdsbd](https://github.com/chdsbd)) and Steve Dignam ([@sbdchd](https://github.com/sbdchd)).
+Kodiak is built and maintained by the Kodiak Team: Christopher Dignam ([@chdsbd](https://github.com/chdsbd)) and Steve Dignam ([@sbdchd](https://github.com/sbdchd)).
 
-### What 3rd party services does Kodiak use?
+### What third party services does Kodiak use?
 
 | name                | purpose         | country       | website                  |
 | ------------------- | --------------- | ------------- | ------------------------ |
@@ -43,6 +43,8 @@ Kodiak is built and maintained by Christopher Dignam ([@chdsbd](https://github.c
 | Amazon Web Services | Data storage    | United States | https://aws.amazon.com   |
 | Sentry              | Error reporting | United States | https://sentry.io        |
 | Stripe              | Payments        | United States | https://stripe.com       |
+
+Access to these third party services is restricted to the Kodiak Team ([@chdsbd](https://github.com/chdsbd) and [@sbdchd](https://github.com/sbdchd)).
 
 ### Does Kodiak `git clone` my repository?
 
