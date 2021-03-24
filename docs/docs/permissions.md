@@ -31,12 +31,25 @@ Below is a table of all the required permissions and the reasons they are necess
 
 Kodiak reads files from repositories at `.kodiak.toml` and `.github/.kodiak.toml` to retrieve its configuration. Kodiak reads pull request titles and bodies to create merge commit messages. Kodiak reads pull request labels, status checks and GitHub API fields to determine merge eligibility.
 
-### What 3rd party services or infrastructure does Kodiak use?
+### Who runs Kodiak?
 
-Kodiak uses Digital Ocean for infrastructure hosting, Cloudflare for API protection, Google Cloud for API uptime monitoring, and Sentry for error monitoring. All accounts are only accessible by Kodiak's administrators ([@chdsbd](https://github.com/chdsbd), [@sbdchd](https://github.com/sbdchd)).
+Kodiak is built and maintained by Christopher Dignam ([@chdsbd](https://github.com/chdsbd)) and Steve Dignam ([@sbdchd](https://github.com/sbdchd)).
+
+### What 3rd party services does Kodiak use?
+
+| name                | purpose         | country       | website                  |
+| ------------------- | --------------- | ------------- | ------------------------ |
+| Digital Ocean       | Server Hosting  | United States | https://digitalocean.com |
+| Amazon Web Services | Data storage    | United States | https://aws.amazon.com   |
+| Sentry              | Error reporting | United States | https://sentry.io        |
+| Stripe              | Payments        | United States | https://stripe.com       |
 
 ### Does Kodiak `git clone` my repository?
 
 Kodiak does not clone any repository and does not use `git` at all.
 
 Kodiak uses the GitHub API to perform actions on repositories and pull requests, so repository content stays within GitHub.
+
+## Terms and Conditions
+
+## Privacy Policy
