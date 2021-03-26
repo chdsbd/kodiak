@@ -13,15 +13,16 @@ Kodiak only requests [GitHub App permissions](https://developer.github.com/apps/
 
 Below is a table of all the required permissions and the reasons they are necessary.
 
-| name            | type         | level | reason                                                                                                   |
-| --------------- | ------------ | ----- | -------------------------------------------------------------------------------------------------------- |
-| administration  | repository   | read  | Access GitHub branch protection settings to determine pull request merge eligibility.                    |
-| checks          | repository   | write | Set status checks to display Kodiak's activity on a pull request.                                        |
-| contents        | repository   | write | Merge and update pull requests. Read Kodiak's configuration from `.kodiak.toml`, `.github/.kodiak.toml`. |
-| issues          | repository   | write | Support [closing issues using keywords][issue-keywords].                                                 |
-| pull requests   | repository   | write | Comment on pull requests. View pull request information to determine merge eligibility.                  |
-| commit statuses | repository   | read  | View passing/failing status checks to determine pull request merge eligibility.                          |
-| members         | organization | read  | View review requests for users/teams of a pull request to determine merge eligibility.                   |
+| name            | type         | level        | reason                                                                                                   |
+| --------------- | ------------ | ------------ | -------------------------------------------------------------------------------------------------------- |
+| administration  | repository   | read         | Access GitHub branch protection settings to determine pull request merge eligibility.                    |
+| checks          | repository   | write        | Set status checks to display Kodiak's activity on a pull request.                                        |
+| contents        | repository   | write        | Merge and update pull requests. Read Kodiak's configuration from `.kodiak.toml`, `.github/.kodiak.toml`. |
+| issues          | repository   | write        | Support [closing issues using keywords][issue-keywords].                                                 |
+| pull requests   | repository   | write        | Comment on pull requests. View pull request information to determine merge eligibility.                  |
+| commit statuses | repository   | read         | View passing/failing status checks to determine pull request merge eligibility.                          |
+| workflows       | repository   | read & write | Merge pull requests that modify GitHub Workflow files.                                                   |
+| members         | organization | read         | View review requests for users/teams of a pull request to determine merge eligibility.                   |
 
 [issue-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
 
