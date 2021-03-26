@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.40.0 - 2021-03-26
+
+### Changed
+- requested the repository "Workflow" permission to allow Kodiak to merge pull requests that modify GitHub Workflow files. (#641, #642)
+
 ## 0.39.0 - 2021-03-21
 
 ### Fixed
