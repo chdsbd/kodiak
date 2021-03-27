@@ -105,7 +105,7 @@ if not DEBUG:
 KODIAK_API_GITHUB_CLIENT_ID = os.environ["KODIAK_API_GITHUB_CLIENT_ID"]
 KODIAK_API_GITHUB_CLIENT_SECRET = os.environ["KODIAK_API_GITHUB_CLIENT_SECRET"]
 KODIAK_WEB_APP_URL = os.environ["KODIAK_WEB_APP_URL"]
-KODIAK_WEB_AUTHED_LANDING_PATH = str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
+KODIAK_WEB_APP_OAUTH_CALLBACK = os.getenv('KODIAK_WEB_APP_OAUTH_CALLBACK') or str(URL(KODIAK_WEB_APP_URL).with_path("/oauth"))
 REDIS_URL = os.environ["REDIS_URL"]
 
 # Stripe Credentials https://dashboard.stripe.com/account/apikeys

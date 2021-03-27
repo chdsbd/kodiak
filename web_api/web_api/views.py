@@ -657,7 +657,7 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
     oauth_url = URL("https://github.com/login/oauth/authorize").with_query(
         dict(
             client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-            redirect_uri=settings.KODIAK_WEB_AUTHED_LANDING_PATH,
+            redirect_uri=settings.KODIAK_WEB_APP_OAUTH_CALLBACK,
             state=state,
         )
     )

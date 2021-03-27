@@ -112,6 +112,8 @@
     ]
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^8.5.1",
     "prettier": "^1.19.1"
   },
   "jest": {

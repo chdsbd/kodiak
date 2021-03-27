@@ -6,7 +6,11 @@ export function startLogin() {
   url.pathname = loginPath
   const queryParams = new URLSearchParams(location.search)
   const redirectUri = queryParams.get("redirect")
-  const state = JSON.stringify({ nonce: uuid(), redirect: redirectUri })
+  const state = JSON.stringify({
+    nonce: uuid(),
+    redirect: redirectUri,
+    signedRedirectUri: process.env.KODIAK_SIGNED_REDIRECT_URI,
+  })
   url.searchParams.set("state", state)
   localStorage.setItem("oauth_state", state)
   // eslint-disable-next-line no-restricted-globals
