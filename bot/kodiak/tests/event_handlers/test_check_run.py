@@ -13,6 +13,9 @@ from kodiak.queue import WebhookEvent
 
 
 def test_ignore_external_pull_requests() -> None:
+    """
+    We should filter out pull requests that don't belong to our repository.
+    """
     internal_repository_id = 554453
     internal_pull_request = PullRequest(
         number=123,
