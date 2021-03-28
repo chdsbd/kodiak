@@ -36,13 +36,7 @@ async def get_pr(
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
     async with Client(installation_id=install, owner=owner, repo=repo) as api_client:
-        default_branch_name = await api_client.get_default_branch_name()
-        if default_branch_name is None:
-            log.info("failed to find default_branch_name")
-            return None
-        event = await api_client.get_event_info(
-            branch_name=default_branch_name, pr_number=number
-        )
+        event = await api_client.get_event_info(pr_number=number)
         if event is None:
             log.info("failed to find event")
             return None
