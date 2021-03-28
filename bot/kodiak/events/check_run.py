@@ -5,8 +5,13 @@ import pydantic
 from kodiak.events.base import GithubEvent
 
 
+class PullRequestRepository(pydantic.BaseModel):
+    id: int
+
+
 class Ref(pydantic.BaseModel):
     ref: str
+    repo: PullRequestRepository
 
 
 class PullRequest(pydantic.BaseModel):
@@ -24,6 +29,7 @@ class Owner(pydantic.BaseModel):
 
 
 class Repository(pydantic.BaseModel):
+    id: int
     name: str
     owner: Owner
 
@@ -35,3 +41,4 @@ class CheckRunEvent(GithubEvent):
 
     check_run: CheckRun
     repository: Repository
+
