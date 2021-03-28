@@ -41,4 +41,3 @@ class CheckRunEvent(GithubEvent):
 
     check_run: CheckRun
     repository: Repository
-

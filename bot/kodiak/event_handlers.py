@@ -51,12 +51,12 @@ def check_run(check_run_event: CheckRunEvent) -> Iterator[WebhookEvent]:
         if pr.base.repo.id != check_run_event.repository.id:
             continue
         yield WebhookEvent(
-                repo_owner=check_run_event.repository.owner.login,
-                repo_name=check_run_event.repository.name,
-                pull_request_number=pr.number,
-                target_name=pr.base.ref,
-                installation_id=str(check_run_event.installation.id),
-            )
+            repo_owner=check_run_event.repository.owner.login,
+            repo_name=check_run_event.repository.name,
+            pull_request_number=pr.number,
+            target_name=pr.base.ref,
+            installation_id=str(check_run_event.installation.id),
+        )
 
 
 def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
