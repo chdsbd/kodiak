@@ -42,6 +42,13 @@ function Footer(props) {
           <a href={props.config.changeLogUrl}>Changelog</a>
           <a href="/help">Help</a>
         </div>
+        <div>
+          <h5>Legal</h5>
+          <a href="/docs/permissions#terms-and-conditions">
+            Terms and Condition
+          </a>
+          <a href="/docs/permissions#privacy-policy">Privacy Policy</a>
+        </div>
       </section>
       <section className="copyright">{props.config.copyright}</section>
     </footer>

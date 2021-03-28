@@ -3309,6 +3309,28 @@ https://github.com/example_org/example_repo/pull/65""",
     assert actual == expected
 
 
+def test_get_merge_body_includes_pull_request_url_github_default() -> None:
+    """
+    We should not set a commit message when merge.body = "github_default".
+    """
+    pull_request = create_pull_request()
+    actual = get_merge_body(
+        config=V1(
+            version=1,
+            merge=Merge(
+                message=MergeMessage(
+                    body=MergeBodyStyle.github_default, include_pull_request_url=True
+                )
+            ),
+        ),
+        pull_request=pull_request,
+        merge_method=MergeMethod.squash,
+        commits=[],
+    )
+    expected = MergeBody(merge_method="squash", commit_message=None)
+    assert actual == expected
+
+
 def test_get_merge_body_includes_pull_request_url_with_coauthor() -> None:
     """
     Coauthor should appear after the pull request url

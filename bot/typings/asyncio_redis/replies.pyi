@@ -16,5 +16,7 @@ class SetReply:
 class BlockingZPopReply:
     @property
     def value(self) -> bytes: ...
+    @property
+    def score(self) -> float: ...
 
 __all__ = ["DictReply", "BlockingZPopReply", "StatusReply"]

@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, cast
 
 import sentry_sdk
 import structlog
+import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -102,3 +103,7 @@ async def webhook_event(
 @app.on_event("startup")
 async def startup() -> None:
     await redis_webhook_queue.create()
+
+
+if __name__ == "__main__":
+    uvicorn.run("kodiak.main:app", host="0.0.0.0", port=conf.PORT)

@@ -386,6 +386,8 @@ Append the pull request's URL to the commit message body.
 
 This can make accessing the relevant PR for a given commit easier.
 
+This setting only applies when `merge.message.body = "pull_request"` is set.
+
 ### `update.always`
 
 - **type:** `boolean`
