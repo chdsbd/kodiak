@@ -9,7 +9,6 @@ from kodiak import events
 # register themselves here for testing.
 MAPPING = (
     ("check_run", events.CheckRunEvent),
-    ("check_run", events.CheckRunEvent),
     ("pull_request", events.PullRequestEvent),
     ("pull_request_review", events.PullRequestReviewEvent),
     ("status", events.StatusEvent),

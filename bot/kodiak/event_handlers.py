@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Dict, List, Optional, Set
+from typing import Dict, Iterator, List, Optional, Set
 
 import asyncio_redis
 import structlog
@@ -39,7 +39,7 @@ async def pr_event(pr: PullRequestEvent) -> None:
     )
 
 
-async def check_run(check_run_event: CheckRunEvent) -> None:
+def check_run(check_run_event: CheckRunEvent) -> Iterator[WebhookEvent]:
     """
     Trigger evaluation of all PRs included in check run.
     """
@@ -47,14 +47,15 @@ async def check_run(check_run_event: CheckRunEvent) -> None:
     if check_run_event.check_run.name == queries.CHECK_RUN_NAME:
         return
     for pr in check_run_event.check_run.pull_requests:
-        await redis_webhook_queue.enqueue(
-            event=WebhookEvent(
-                repo_owner=check_run_event.repository.owner.login,
-                repo_name=check_run_event.repository.name,
-                pull_request_number=pr.number,
-                target_name=pr.base.ref,
-                installation_id=str(check_run_event.installation.id),
-            )
+        # filter out pull requests for other repositories
+        if pr.base.repo.id != check_run_event.repository.id:
+            continue
+        yield WebhookEvent(
+            repo_owner=check_run_event.repository.owner.login,
+            repo_name=check_run_event.repository.name,
+            pull_request_number=pr.number,
+            target_name=pr.base.ref,
+            installation_id=str(check_run_event.installation.id),
         )
 
 
@@ -220,7 +221,8 @@ async def handle_webhook_event(event_name: str, payload: Dict[str, object]) -> N
         log = log.bind(usage_reported=True)
 
     if event_name == "check_run":
-        await check_run(CheckRunEvent.parse_obj(payload))
+        for event in check_run(CheckRunEvent.parse_obj(payload)):
+            await redis_webhook_queue.enqueue(event=event)
     elif event_name == "pull_request":
         await pr_event(PullRequestEvent.parse_obj(payload))
     elif event_name == "pull_request_review":

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Configuration file (`.kodiak.toml`) is now read from a pull request's base branch instead of repository default branch. (#152, #634)
 
+### Fixed
+- fixed handling of "check run" webhooks to ignore pull requests from other repositories. (#644)
+
 ## 0.40.0 - 2021-03-26
 
 ### Changed
