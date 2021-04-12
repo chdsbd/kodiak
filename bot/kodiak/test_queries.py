@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict, Iterable, cast
 
 import asyncio_redis
 import pytest
@@ -824,3 +824,30 @@ async def test_get_reviewers_and_permissions_empty_author(
             author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_open_pull_requests_empty(
+    mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
+) -> None:
+    def genrate_page_of_prs(numbers: Iterable[int]) -> Response:
+        response = Response()
+        response.status_code = 200
+        prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
+        response._content = json.dumps(prs).encode()
+        return response
+
+    mocker.patch(
+        "kodiak.queries.http.Session.get",
+        side_effect=[
+            wrap_future(genrate_page_of_prs(range(1, 101))),
+            wrap_future(genrate_page_of_prs(range(101, 201))),
+            wrap_future(genrate_page_of_prs(range(201, 251))),
+            wrap_future(genrate_page_of_prs([])),
+        ],
+    )
+
+    async with api_client as api_client:
+        res = await api_client.get_open_pull_requests()
+        assert res is not None
+        assert len(res) == 250
