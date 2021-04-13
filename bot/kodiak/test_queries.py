@@ -827,7 +827,7 @@ async def test_get_reviewers_and_permissions_empty_author(
 
 
 @pytest.mark.asyncio
-async def test_get_open_pull_requests_empty(
+async def test_get_open_pull_requests(
     mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
 ) -> None:
     def genrate_page_of_prs(numbers: Iterable[int]) -> Response:
@@ -851,3 +851,26 @@ async def test_get_open_pull_requests_empty(
         res = await api_client.get_open_pull_requests()
         assert res is not None
         assert len(res) == 250
+
+
+@pytest.mark.asyncio
+async def test_get_open_pull_requests_page_limit(
+    mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
+) -> None:
+    def genrate_page_of_prs(numbers: Iterable[int]) -> Response:
+        response = Response()
+        response.status_code = 200
+        prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
+        response._content = json.dumps(prs).encode()
+        return response
+
+    pages = [range(n, n + 100) for n in range(1, 3001, 100)] + []
+    mocker.patch(
+        "kodiak.queries.http.Session.get",
+        side_effect=[wrap_future(genrate_page_of_prs(p)) for p in pages],
+    )
+
+    async with api_client as api_client:
+        res = await api_client.get_open_pull_requests()
+        assert res is not None
+        assert len(res) == 2000
