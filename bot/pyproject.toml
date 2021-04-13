@@ -37,7 +37,7 @@ pytest-mock = "3.3.1"
 typing_extensions = "^3.7"
 pylint = "^2.3"
 flake8 = "3.8.4"
-flake8-pie = "^0.2.1"
+flake8-pie = "0.7.1"
 isort = "^4.3"
 pytest-cov = "^2.10"
 
