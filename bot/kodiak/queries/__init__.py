@@ -988,13 +988,12 @@ class Client:
         """
         log = self.log.bind(base=base, head=head)
         headers = await get_headers(installation_id=self.installation_id)
-        params = dict(state="open", sort="updated")
+        params = dict(state="open", sort="updated", per_page="100")
         if base is not None:
             params["base"] = base
         if head is not None:
             params["head"] = head
 
-        params["per_page"] = "100"
         open_prs = []
 
         page = None
@@ -1002,9 +1001,7 @@ class Client:
         while page != []:
             current_page += 1
             if current_page > 20:
-                log.warning(
-                    "problem finding all prs, over 20 pages traversed, returning first 2000 results"
-                )
+                log.info("hit pagination limit")
                 break
 
             params["page"] = str(current_page)
