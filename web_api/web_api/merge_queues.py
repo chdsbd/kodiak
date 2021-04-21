@@ -91,12 +91,12 @@ def chunk(it: Sequence[T], count: int) -> Iterator[Tuple[T, ...]]:
 
 
 def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
-    queue_names: Set[bytes] = r.smembers(f"merge_queue_by_install:{install_id}")  # type: ignore [assignment]
+    queue_names = r.smembers(f"merge_queue_by_install:{install_id}")
     pipe = r.pipeline(transaction=False)
     for queue in queue_names:
         pipe.get(queue_to_target(queue))
         pipe.get(queue_to_target(queue) + b":time")
-        pipe.zrange(queue, 0, 1000, withscores=True)  # type: ignore [no-untyped-call]
+        pipe.zrange(queue, 0, 1000, withscores=True)
     # response is a list[bytes | None, bytes | None, list[tuple[bytes, float]], ...]
     res = pipe.execute()
 
