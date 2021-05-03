@@ -198,6 +198,8 @@ disable=print-statement,
         wrong-import-position,
         # this has false positives
         method-hidden,
+        # flake8 handles this now
+        broad-except,
 
 
 
