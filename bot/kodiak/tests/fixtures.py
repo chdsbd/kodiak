@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from kodiak.queries import Commit, CommitConnection, GitActor, PullRequestCommitUser
 
@@ -19,3 +19,11 @@ def create_commit(
             )
         ),
     )
+
+
+class FakeThottler:
+    async def __aenter__(self) -> None:
+        ...
+
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        ...

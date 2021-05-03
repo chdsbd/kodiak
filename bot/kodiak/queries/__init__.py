@@ -15,14 +15,14 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Literal
+from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
-from kodiak.throttle import Throttler, get_thottler_for_installation
+from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
 
@@ -718,9 +718,17 @@ class CfgInfo:
     file_expression: str
 
 
+class ThrottlerProtocol(Protocol):
+    async def __aenter__(self) -> None:
+        ...
+
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        ...
+
+
 class Client:
     session: http.Session
-    throttler: Throttler
+    throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
 

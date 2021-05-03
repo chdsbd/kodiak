@@ -43,7 +43,7 @@ from kodiak.queries import (
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
-from kodiak.tests.fixtures import create_commit
+from kodiak.tests.fixtures import FakeThottler, create_commit
 
 
 @pytest.fixture
@@ -60,6 +60,9 @@ def github_installation_id() -> str:
 
 @pytest.fixture
 def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
+    mocker.patch(
+        "kodiak.queries.get_thottler_for_installation", return_value=FakeThottler()
+    )
     client = Client(installation_id=github_installation_id, owner="foo", repo="foo")
     mocker.patch.object(client, "send_query")
     return client
