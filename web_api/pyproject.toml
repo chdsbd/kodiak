@@ -38,6 +38,7 @@ pytest-mock = "3.3.1"
 ipdb = "^0.12.3"
 pytest-cov = "^2.10"
 django-types = "0.3.0"
+flake8-pie = "0.7.1"
 
 [build-system]
 requires = ["poetry>=0.12", "setuptools"]

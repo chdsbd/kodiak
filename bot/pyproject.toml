@@ -14,7 +14,7 @@ cryptography = "2.8"
 structlog = "^19.1"
 colorama = "^0.4.1"
 databases = "0.3.2"
-asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git"}
+asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git", branch="master"}
 inflection = "0.5.1"
 markdown-html-finder = "0.2.2"
 markupsafe = "^1.1"
@@ -37,7 +37,7 @@ pytest-mock = "3.3.1"
 typing_extensions = "^3.7"
 pylint = "^2.3"
 flake8 = "3.8.4"
-flake8-pie = "^0.2.1"
+flake8-pie = "0.7.1"
 isort = "^4.3"
 pytest-cov = "^2.10"
 
