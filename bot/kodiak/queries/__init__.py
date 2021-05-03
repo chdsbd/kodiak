@@ -22,7 +22,7 @@ from kodiak.config import V1, MergeMethod
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
-from kodiak.throttle import Throttler, get_thottler_for_installation
+from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
 

@@ -39,7 +39,6 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
     Subscription,
-    ThrottlerProtocol,
     get_commits,
 )
 from kodiak.queries.commits import CommitConnection, GitActor
