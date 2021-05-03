@@ -996,23 +996,39 @@ class Client:
         """
         log = self.log.bind(base=base, head=head)
         headers = await get_headers(installation_id=self.installation_id)
-        params = dict(state="open", sort="updated")
+        params = dict(state="open", sort="updated", per_page="100")
         if base is not None:
             params["base"] = base
         if head is not None:
             params["head"] = head
-        async with self.throttler:
-            res = await self.session.get(
-                conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
-                params=params,
-                headers=headers,
-            )
-        try:
-            res.raise_for_status()
-        except http.HTTPError:
-            log.warning("problem finding prs", res=res, exc_info=True)
-            return None
-        return [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in res.json()]
+
+        open_prs = []
+
+        page = None
+        current_page = 0
+        while page != []:
+            current_page += 1
+            if current_page > 20:
+                log.info("hit pagination limit")
+                break
+
+            params["page"] = str(current_page)
+            async with self.throttler:
+                res = await self.session.get(
+                    conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
+                    params=params,
+                    headers=headers,
+                )
+            try:
+                res.raise_for_status()
+            except http.HTTPError:
+                log.warning("problem finding prs", res=res, exc_info=True)
+                return None
+
+            page = res.json()
+            open_prs += [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in page]
+
+        return open_prs
 
     async def delete_branch(self, branch: str) -> http.Response:
         """
