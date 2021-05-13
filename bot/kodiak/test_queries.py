@@ -3,12 +3,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, cast
 
-import asyncio_redis
 import pytest
 from pytest_mock import MockFixture
 from requests_async import Response
 
-from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
     Actor,
@@ -259,27 +257,6 @@ method = "squash"
     )
 
 
-@pytest.fixture  # type: ignore
-@pytest.mark.asyncio
-async def setup_redis(github_installation_id: str) -> None:
-    host = conf.REDIS_URL.hostname
-    port = conf.REDIS_URL.port
-    assert host and port
-    r = await asyncio_redis.Connection.create(
-        host=host,
-        port=port,
-        password=(
-            conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
-        ),
-    )
-    key = f"kodiak:subscription:{github_installation_id}"
-    await r.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
-    await r.hset(key, "subscription_blocker", "")
-    yield
-    await r.delete([key])
-    r.close()
-
-
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
@@ -287,8 +264,18 @@ async def test_get_event_info_blocked(
     blocked_response: Dict[str, Any],
     block_event: EventInfoResponse,
     mocker: MockFixture,
-    setup_redis: object,
 ) -> None:
+
+    fake_redis = create_fake_redis_reply(
+        {
+            b"account_id": b"D1606A79-A1A1-4550-BA7B-C9ED0D792B1E",
+            b"subscription_blocker": b"",
+            b"data": b"",
+        }
+    )
+    mocker.patch(
+        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
+    )
 
     mocker.patch.object(
         api_client,
