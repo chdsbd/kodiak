@@ -43,7 +43,7 @@ from kodiak.queries import (
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
-from kodiak.tests.fixtures import FakeThottler, create_commit
+from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
 
 
 @pytest.fixture
@@ -281,6 +281,7 @@ async def setup_redis(github_installation_id: str) -> None:
 
 
 # TODO: serialize EventInfoResponse to JSON to parametrize test
+@requires_redis
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
     api_client: Client,
