@@ -20,7 +20,7 @@ from starlette.requests import Request
 from kodiak import app_config as conf
 from kodiak import redis
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queue import enqueue_raw_webhook
+from kodiak.queue import enqueue_incoming_webhook
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
 logging.basicConfig(
@@ -100,7 +100,7 @@ async def webhook_event(
             detail="Invalid signature: X-Hub-Signature",
         )
 
-    await enqueue_raw_webhook(redis=redis, event=event)
+    await enqueue_incoming_webhook(redis=redis, event_name=github_event, event=event)
 
 
 if __name__ == "__main__":

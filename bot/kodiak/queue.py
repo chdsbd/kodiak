@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import typing
 import urllib
@@ -15,6 +16,7 @@ from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
+from kodiak.events import RawIncomingEvent
 from kodiak.pull_request import evaluate_pr
 
 logger = structlog.get_logger()
@@ -334,10 +336,13 @@ def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
 
 
-async def enqueue_raw_webhook(
+INCOMING_QUEUE_NAME = "kodiak:incoming_queue"
+
+
+async def enqueue_incoming_webhook(
     *, redis: asyncio_redis.Connection, event_name: str, event: dict[str, object]
 ) -> None:
     logger.info("enqueuing github webhook event")
 
-    # TODO(sbdchd): how do we want to format the queue messages?
-    await redis.rpush(event)
+    raw_event = RawIncomingEvent(name=event_name, payload=json.dumps(event))
+    await redis.rpush(INCOMING_QUEUE_NAME, [raw_event.json()])
