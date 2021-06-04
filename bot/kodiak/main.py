@@ -6,19 +6,21 @@ import logging
 import sys
 from typing import Any, Dict, Optional, cast
 
+import asyncio_redis
 import sentry_sdk
 import structlog
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.param_functions import Depends
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
-from kodiak.event_handlers import handle_webhook_event
+from kodiak import redis
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queue import redis_webhook_queue
+from kodiak.queue import enqueue_raw_webhook
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
 logging.basicConfig(
@@ -68,6 +70,7 @@ async def webhook_event(
     request: Request,
     x_github_event: str = Header(None),
     x_hub_signature: str = Header(None),
+    redis: asyncio_redis.Connection = Depends(redis.get_conn)
 ) -> None:
     """
     Verify and accept GitHub Webhook payloads.
@@ -97,12 +100,7 @@ async def webhook_event(
             detail="Invalid signature: X-Hub-Signature",
         )
 
-    await handle_webhook_event(event_name=github_event, payload=event)
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    await redis_webhook_queue.create()
+    await enqueue_raw_webhook(redis=redis, event=event)
 
 
 if __name__ == "__main__":

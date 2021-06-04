@@ -19,16 +19,16 @@ from kodiak.events import (
 )
 from kodiak.events.status import Branch
 from kodiak.queries import Client
-from kodiak.queue import WebhookEvent, redis_webhook_queue
+from kodiak.queue import RedisWebhookQueue, WebhookEvent
 
 logger = structlog.get_logger()
 
 
-async def pr_event(pr: PullRequestEvent) -> None:
+async def pr_event(queue: RedisWebhookQueue, pr: PullRequestEvent) -> None:
     """
     Trigger evaluation of modified PR.
     """
-    await redis_webhook_queue.enqueue(
+    await queue.enqueue(
         event=WebhookEvent(
             repo_owner=pr.repository.owner.login,
             repo_name=pr.repository.name,
@@ -73,7 +73,7 @@ def find_branch_names_latest(sha: str, branches: List[Branch]) -> List[str]:
     return [branch.name for branch in branches if branch.commit.sha == sha]
 
 
-async def status_event(status_event: StatusEvent) -> None:
+async def status_event(queue: RedisWebhookQueue, status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
     """
@@ -120,14 +120,14 @@ async def status_event(status_event: StatusEvent) -> None:
                     )
                 )
         for event in all_events:
-            await redis_webhook_queue.enqueue(event=event)
+            await queue.enqueue(event=event)
 
 
-async def pr_review(review: PullRequestReviewEvent) -> None:
+async def pr_review(queue: RedisWebhookQueue, review: PullRequestReviewEvent) -> None:
     """
     Trigger evaluation of the modified PR.
     """
-    await redis_webhook_queue.enqueue(
+    await queue.enqueue(
         event=WebhookEvent(
             repo_owner=review.repository.owner.login,
             repo_name=review.repository.name,
@@ -147,7 +147,7 @@ def get_branch_name(raw_ref: str) -> Optional[str]:
     return None
 
 
-async def push(push_event: PushEvent) -> None:
+async def push(queue: RedisWebhookQueue, push_event: PushEvent) -> None:
     """
     Trigger evaluation of PRs that depend on the pushed branch.
     """
@@ -170,7 +170,7 @@ async def push(push_event: PushEvent) -> None:
             log.info("api call to find pull requests failed")
             return None
         for pr in prs:
-            await redis_webhook_queue.enqueue(
+            await queue.enqueue(
                 event=WebhookEvent(
                     repo_owner=owner,
                     repo_name=repo,
@@ -204,7 +204,10 @@ def compress_payload(data: Dict[str, object]) -> bytes:
     return cctx.compress(json.dumps(data).encode())
 
 
-async def handle_webhook_event(event_name: str, payload: Dict[str, object]) -> None:
+# TODO(sbdchd): we need a new entrypoint that processes the new incoming queue
+async def handle_webhook_event(
+    queue: RedisWebhookQueue, event_name: str, payload: Dict[str, object]
+) -> None:
     log = logger.bind(event_name=event_name)
 
     if conf.USAGE_REPORTING and event_name in conf.USAGE_REPORTING_EVENTS:
@@ -222,15 +225,15 @@ async def handle_webhook_event(event_name: str, payload: Dict[str, object]) -> N
 
     if event_name == "check_run":
         for event in check_run(CheckRunEvent.parse_obj(payload)):
-            await redis_webhook_queue.enqueue(event=event)
+            await queue.enqueue(event=event)
     elif event_name == "pull_request":
-        await pr_event(PullRequestEvent.parse_obj(payload))
+        await pr_event(queue, PullRequestEvent.parse_obj(payload))
     elif event_name == "pull_request_review":
-        await pr_review(PullRequestReviewEvent.parse_obj(payload))
+        await pr_review(queue, PullRequestReviewEvent.parse_obj(payload))
     elif event_name == "push":
-        await push(PushEvent.parse_obj(payload))
+        await push(queue, PushEvent.parse_obj(payload))
     elif event_name == "status":
-        await status_event(StatusEvent.parse_obj(payload))
+        await status_event(queue, StatusEvent.parse_obj(payload))
     else:
         log = log.bind(event_parsed=False)
 

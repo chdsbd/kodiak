@@ -334,4 +334,10 @@ def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
 
 
-redis_webhook_queue = RedisWebhookQueue()
+async def enqueue_raw_webhook(
+    *, redis: asyncio_redis.Connection, event_name: str, event: dict[str, object]
+) -> None:
+    logger.info("enqueuing github webhook event")
+
+    # TODO(sbdchd): how do we want to format the queue messages?
+    await redis.rpush(event)

@@ -209,6 +209,8 @@ disable=print-statement,
         keyword-arg-before-vararg,
         # not smart enough about refinement
         inconsistent-return-statements,
+        # doesn't understand modern dict
+        unsubscriptable-object,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
