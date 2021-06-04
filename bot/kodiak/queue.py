@@ -10,7 +10,7 @@ from typing import Optional
 import asyncio_redis
 import sentry_sdk
 import structlog
-from asyncio_redis.connection import Connection as RedisConnection
+from asyncio_redis import Pool as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
@@ -202,7 +202,7 @@ ONE_DAY = int(timedelta(days=1).total_seconds())
 
 
 class RedisWebhookQueue:
-    connection: asyncio_redis.Connection
+    connection: asyncio_redis.Pool
 
     async def create(self) -> None:
         redis_db = 0

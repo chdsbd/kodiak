@@ -58,8 +58,8 @@ class Connection:
         value: _Key,
         expire: Optional[int] = ...,
         pexpire: Optional[int] = ...,
-        only_if_not_exists: bool = False,
-        only_if_exists: bool = False,
+        only_if_not_exists: bool = ...,
+        only_if_exists: bool = ...,
     ) -> Optional[StatusReply]: ...
     async def smembers(self, key: _Key) -> SetReply: ...
     async def multi(self) -> Transaction: ...
