@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.41.0 - 2021-06-04
+
 ### Changed
 - Configuration file (`.kodiak.toml`) is now read from a pull request's base branch instead of repository default branch. (#152, #634)
 
 ### Fixed
 - fixed handling of "check run" webhooks to ignore pull requests from other repositories. (#644)
-- When fetching open pull requests, Kodiak now loads up to 20 pages of 100 pull requests. Previously Kodiak would only fetch a single page of 30 pull requests. Thanks [@wuub](https://github.com/wuub) for the contribution!  (#649)
+- When fetching open pull requests, Kodiak now loads up to 20 pages of 100 pull requests. Previously Kodiak would only fetch a single page of 30 pull requests. Thanks [@wuub](https://github.com/wuub) for the contribution! (#649)
 
 ## 0.40.0 - 2021-03-26
 
