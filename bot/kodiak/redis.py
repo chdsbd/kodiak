@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import AsyncIterator
-
 import asyncio_redis
 import structlog
 
@@ -13,10 +10,10 @@ conn: asyncio_redis.Connection | None = None
 logger = structlog.get_logger()
 
 
-async def get_conn() -> AsyncIterator[asyncio_redis.Connection]:
+async def get_conn() -> asyncio_redis.Connection:
     """
     FastAPI compatible function for accessing the connection pool
-    see: https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/#a-database-dependency-with-yield
+    see: https://fastapi.tiangolo.com/tutorial/dependencies/#to-async-or-not-to-async
     """
     global conn
     if conn is None:
@@ -33,4 +30,4 @@ async def get_conn() -> AsyncIterator[asyncio_redis.Connection]:
             poolsize=conf.REDIS_POOL_SIZE,
         )
         logger.info("redis pool created.")
-    yield conn
+    return conn
