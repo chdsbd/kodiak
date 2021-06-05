@@ -5,7 +5,7 @@ import structlog
 
 from kodiak import app_config as conf
 
-conn: asyncio_redis.Connection | None = None
+_redis: asyncio_redis.Connection | None = None
 
 logger = structlog.get_logger()
 
@@ -15,8 +15,8 @@ async def get_conn() -> asyncio_redis.Connection:
     FastAPI compatible function for accessing the connection pool
     see: https://fastapi.tiangolo.com/tutorial/dependencies/#to-async-or-not-to-async
     """
-    global conn
-    if conn is None:
+    global _redis
+    if _redis is None:
         logger.info("creating redis pool...")
         try:
             redis_db = int(conf.REDIS_URL.database)
@@ -30,4 +30,4 @@ async def get_conn() -> asyncio_redis.Connection:
             poolsize=conf.REDIS_POOL_SIZE,
         )
         logger.info("redis pool created.")
-    return conn
+    return _redis
