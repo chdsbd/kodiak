@@ -125,6 +125,20 @@ async def webhook_event_consumer(
             await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
+async def raw_webhook_event_consumer(*, connection: RedisConnection) -> typing.NoReturn:
+    logger.info("start raw webhook event consumer")
+    while True:
+        res = await connection.blpop([INCOMING_QUEUE_NAME])
+
+        raw_event = RawIncomingEvent.parse_raw(res.value)
+        event_name = raw_event.name
+        event = json.loads(raw_event.payload)
+
+        await enqueue_incoming_webhook(
+            redis=connection, event_name=event_name, event=event
+        )
+
+
 async def process_repo_queue(
     log: structlog.BoundLogger, connection: RedisConnection, queue_name: str
 ) -> None:
@@ -220,6 +234,8 @@ class RedisWebhookQueue:
             poolsize=conf.REDIS_POOL_SIZE,
         )
 
+        self.start_raw_webhook_worker()
+
         # restart repo workers
         merge_queues, webhook_queues = await asyncio.gather(
             self.connection.smembers(MERGE_QUEUE_NAMES),
@@ -232,6 +248,11 @@ class RedisWebhookQueue:
         for webhook_result in webhook_queues:
             queue_name = await webhook_result
             self.start_webhook_worker(queue_name=queue_name)
+
+    def start_raw_webhook_worker(self) -> None:
+        self._start_worker(
+            INCOMING_QUEUE_NAME, raw_webhook_event_consumer(connection=self.connection)
+        )
 
     def start_webhook_worker(self, *, queue_name: str) -> None:
         self._start_worker(
