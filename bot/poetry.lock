@@ -38,7 +38,7 @@ python-versions = "^3.7"
 version = "0.1.0"
 
 [package.source]
-reference = "319c3aa80f40eccd730ae72e52064874d4428551"
+reference = "7d174e0ebe2dc52340001097eeee48a868454480"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
 
@@ -826,7 +826,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "ea285867838bf7f4031f26c79e600934d3ab2c615fe4ca93a2fc9d56c6daf4c3"
+content-hash = "8a2738f04e94afea8d1912695da0b881acc006af87180361bc31a56cb7889c1b"
 python-versions = "^3.7"
 
 [metadata.hashes]
