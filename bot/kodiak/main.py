@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
+import os
 import sys
 from typing import Any, Dict, Optional, cast
 
@@ -16,11 +18,12 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
+from typing_extensions import Literal
 
 from kodiak import app_config as conf
 from kodiak import redis
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queue import enqueue_incoming_webhook
+from kodiak.queue import RedisWebhookQueue, enqueue_incoming_webhook
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
 logging.basicConfig(
@@ -70,7 +73,7 @@ async def webhook_event(
     request: Request,
     x_github_event: str = Header(None),
     x_hub_signature: str = Header(None),
-    redis: asyncio_redis.Connection = Depends(redis.get_conn)
+    redis: asyncio_redis.Connection = Depends(redis.get_conn),
 ) -> None:
     """
     Verify and accept GitHub Webhook payloads.
@@ -103,5 +106,16 @@ async def webhook_event(
     await enqueue_incoming_webhook(redis=redis, event_name=github_event, event=event)
 
 
+def main() -> None:
+    # TODO(sbdchd): we should make this an argument and do something proper like arg parse
+    service = os.getenv("KODIAK_SERVICE_NAME")
+    if service == "HTTP":
+        uvicorn.run("kodiak.main:app", host="0.0.0.0", port=conf.PORT)
+    elif service == "QUEUE_CONSUMERS":
+        asyncio.run(RedisWebhookQueue().create())
+    else:
+        raise ValueError(f"unknown service: {service}")
+
+
 if __name__ == "__main__":
-    uvicorn.run("kodiak.main:app", host="0.0.0.0", port=conf.PORT)
+    main()
