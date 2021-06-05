@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import re
 from typing import List, Optional, Sequence, Tuple, TypeVar
 
+import pydantic
+import yaml
+from pydantic import Field
 from typing_extensions import Literal
 
 title_regex = re.compile(r"from (?P<old_version>\S+) to (?P<new_version>\S+)")
@@ -81,3 +86,43 @@ def dep_version_from_title(x: str) -> Optional[Literal["major", "minor", "patch"
         return None
     old_version, new_version = res
     return _compare_versions(old_version, new_version)
+
+
+class DependabotUpdate(pydantic.BaseModel):
+    dependency_name: str = Field(default=..., alias="dependency-name")
+    dependency_type: str = Field(default=..., alias="dependency-type")
+    update_type: str = Field(default=..., alias="update-type")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+_dependency_regex = re.compile(
+    r"^-{3}\n(?P<dependencies>(.|\n)*)^\.{3}\n", flags=re.MULTILINE
+)
+
+
+class _ParsedMetadata(pydantic.BaseModel):
+    updated_dependencies: List[DependabotUpdate] = Field(
+        default=..., alias="updated-dependencies"
+    )
+
+
+def parse_dependabot_metadata(commit_message: str) -> list[DependabotUpdate]:
+    """
+    Parse Dependabot update metadata from commit message.
+
+    Dependabot writes structured data about the dependency upgrades as YAML
+    within the commit message. We can parse this information.
+    """
+    match = _dependency_regex.search(commit_message)
+    if match is None:
+        return []
+    dependencies = match.groupdict().get("dependencies")
+    if dependencies is None:
+        return []
+    metadata_dict = yaml.safe_load(dependencies)
+    try:
+        return _ParsedMetadata.parse_obj(metadata_dict).updated_dependencies
+    except pydantic.ValidationError:
+        return []

@@ -23,6 +23,7 @@ sentry-sdk = "^0.10.2"
 requests = "^2.22"
 rure = "^0.2.2"
 zstandard = "^0.13.0"
+pyyaml = "^5.4"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'

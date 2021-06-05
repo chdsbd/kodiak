@@ -1,7 +1,9 @@
 from kodiak.dependencies import (
+    DependabotUpdate,
     _compare_versions,
     _extract_versions,
     dep_version_from_title,
+    parse_dependabot_metadata,
 )
 
 
@@ -51,3 +53,61 @@ def test_compare_versions() -> None:
             _compare_versions(old_version=old_version, new_version=new_version)
             == change
         )
+
+
+def test_parse_dependabot_metadata_success() -> None:
+    EXAMPLE_COMMIT_MESSAGE = """\
+Bump rollup from 2.50.1 to 2.50.6
+Bumps [rollup](https://github.com/rollup/rollup) from 2.50.1 to 2.50.6.
+- [Release notes](https://github.com/rollup/rollup/releases)
+- [Changelog](https://github.com/rollup/rollup/blob/master/CHANGELOG.md)
+- [Commits](rollup/rollup@v2.50.1...v2.50.6)
+
+---
+updated-dependencies:
+- dependency-name: rollup
+  dependency-type: direct:development
+  update-type: version-update:semver-patch
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+"""
+    assert parse_dependabot_metadata(EXAMPLE_COMMIT_MESSAGE) == [
+        DependabotUpdate(
+            dependency_name="rollup",
+            dependency_type="direct:development",
+            update_type="version-update:semver-patch",
+        )
+    ]
+
+
+def test_parse_dependabot_metadata_invalid_metadata() -> None:
+    EXAMPLE_COMMIT_MESSAGE = """\
+Bump rollup from 2.50.1 to 2.50.6
+Bumps [rollup](https://github.com/rollup/rollup) from 2.50.1 to 2.50.6.
+- [Release notes](https://github.com/rollup/rollup/releases)
+- [Changelog](https://github.com/rollup/rollup/blob/master/CHANGELOG.md)
+- [Commits](rollup/rollup@v2.50.1...v2.50.6)
+
+---
+updated-dependencies:
+
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+"""
+    assert parse_dependabot_metadata(EXAMPLE_COMMIT_MESSAGE) == []
+
+
+def test_parse_dependabot_metadata_missing() -> None:
+    EXAMPLE_COMMIT_MESSAGE = """\
+Bump rollup from 2.50.1 to 2.50.6
+Bumps [rollup](https://github.com/rollup/rollup) from 2.50.1 to 2.50.6.
+- [Release notes](https://github.com/rollup/rollup/releases)
+- [Changelog](https://github.com/rollup/rollup/blob/master/CHANGELOG.md)
+- [Commits](rollup/rollup@v2.50.1...v2.50.6)
+
+
+Signed-off-by: dependabot[bot] <support@github.com>
+"""
+    assert parse_dependabot_metadata(EXAMPLE_COMMIT_MESSAGE) == []
