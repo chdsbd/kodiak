@@ -181,10 +181,10 @@ async def push(push_event: PushEvent) -> None:
             )
 
 
-_redis = None
+_redis: asyncio_redis.Pool | None = None
 
 
-async def get_redis() -> asyncio_redis.Connection:
+async def get_redis() -> asyncio_redis.Pool:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
