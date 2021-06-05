@@ -254,7 +254,6 @@ method = "squash"
         check_runs=[
             CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
         ],
-        valid_signature=True,
         valid_merge_methods=[MergeMethod.squash],
     )
 

@@ -329,7 +329,6 @@ class EventInfoResponse:
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
-    valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
     commits: List[Commit] = field(default_factory=list)
 
@@ -635,13 +634,6 @@ def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
         except ValueError:
             logger.warning("Could not parse CheckRun", exc_info=True)
     return check_runs
-
-
-def get_valid_signature(*, pr: Dict[str, Any]) -> bool:
-    try:
-        return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
-    except (IndexError, KeyError, TypeError):
-        return False
 
 
 def get_head_exists(*, pr: Dict[str, Any]) -> bool:
@@ -984,7 +976,6 @@ class Client:
             commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
-            valid_signature=get_valid_signature(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 

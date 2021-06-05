@@ -352,7 +352,6 @@ class MergeableType(Protocol):
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
         commits: List[Commit] = ...,
-        valid_signature: bool = ...,
         valid_merge_methods: List[MergeMethod] = ...,
         merging: bool = ...,
         is_active_merge: bool = ...,
@@ -380,7 +379,6 @@ def create_mergeable() -> MergeableType:
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
         commits: List[Commit] = [],
-        valid_signature: bool = False,
         valid_merge_methods: List[MergeMethod] = [
             MergeMethod.merge,
             MergeMethod.squash,
@@ -411,7 +409,6 @@ def create_mergeable() -> MergeableType:
             contexts=contexts,
             check_runs=check_runs,
             commits=commits,
-            valid_signature=valid_signature,
             valid_merge_methods=valid_merge_methods,
             repository=repository,
             merging=merging,

@@ -83,7 +83,6 @@ method = "squash"
         reviews=[],
         status_contexts=[],
         check_runs=[],
-        valid_signature=True,
         valid_merge_methods=[MergeMethod.squash],
         subscription=None,
     )

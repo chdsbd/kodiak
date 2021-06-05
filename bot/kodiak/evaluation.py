@@ -472,7 +472,6 @@ async def mergeable(
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
     commits: List[Commit],
-    valid_signature: bool,
     valid_merge_methods: List[MergeMethod],
     repository: RepoInfo,
     merging: bool,
