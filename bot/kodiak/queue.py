@@ -16,6 +16,7 @@ from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 
 import kodiak.app_config as conf
+from kodiak.event_handlers import handle_webhook_event
 from kodiak.events import RawIncomingEvent
 from kodiak.pull_request import evaluate_pr
 
@@ -125,7 +126,9 @@ async def webhook_event_consumer(
             await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
-async def raw_webhook_event_consumer(*, connection: RedisConnection) -> typing.NoReturn:
+async def raw_webhook_event_consumer(
+    *, queue: RedisWebhookQueue, connection: RedisConnection
+) -> typing.NoReturn:
     logger.info("start raw webhook event consumer")
     while True:
         res = await connection.blpop([INCOMING_QUEUE_NAME])
@@ -134,9 +137,7 @@ async def raw_webhook_event_consumer(*, connection: RedisConnection) -> typing.N
         event_name = raw_event.name
         event = json.loads(raw_event.payload)
 
-        await enqueue_incoming_webhook(
-            redis=connection, event_name=event_name, event=event
-        )
+        await handle_webhook_event(queue=queue, event_name=event_name, payload=event)
 
 
 async def process_repo_queue(
