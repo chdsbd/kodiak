@@ -252,7 +252,8 @@ class RedisWebhookQueue:
 
     def start_raw_webhook_worker(self) -> None:
         self._start_worker(
-            INCOMING_QUEUE_NAME, raw_webhook_event_consumer(connection=self.connection)
+            INCOMING_QUEUE_NAME,
+            raw_webhook_event_consumer(queue=self, connection=self.connection),
         )
 
     def start_webhook_worker(self, *, queue_name: str) -> None:
