@@ -18,7 +18,6 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
-from typing_extensions import Literal
 
 from kodiak import app_config as conf
 from kodiak import redis
