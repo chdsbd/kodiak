@@ -593,3 +593,7 @@ async def enqueue_incoming_webhook(
 
     raw_event = RawIncomingEvent(name=event_name, payload=json.dumps(event))
     await redis.rpush(INCOMING_QUEUE_NAME, [raw_event.json()])
+
+
+def main() -> None:
+    asyncio.run(RedisWebhookQueue().create())
