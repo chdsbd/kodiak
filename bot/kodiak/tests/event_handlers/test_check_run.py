@@ -1,4 +1,4 @@
-from kodiak.event_handlers import check_run
+from kodiak.queue import check_run
 from kodiak.events.base import Installation
 from kodiak.events.check_run import (
     CheckRun,

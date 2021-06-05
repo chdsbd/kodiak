@@ -40,7 +40,7 @@ def test_webhook_event(
 ) -> None:
     """Test all of the events we have"""
     handle_webhook_event = mocker.patch(
-        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
+        "kodiak.main.enqueue_incoming_webhook", return_value=wrap_future(None)
     )
     for index, fixture_path in enumerate(
         (Path(__file__).parent / "test" / "fixtures" / "events" / event_name).rglob(
@@ -65,7 +65,7 @@ def test_webhook_event_missing_github_event(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
-        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
+        "kodiak.main.enqueue_incoming_webhook", return_value=wrap_future(None)
     )
     data = {"hello": 123}
 
@@ -81,7 +81,7 @@ def test_webhook_event_invalid_signature(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
-        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
+        "kodiak.main.enqueue_incoming_webhook", return_value=wrap_future(None)
     )
     data = {"hello": 123}
 

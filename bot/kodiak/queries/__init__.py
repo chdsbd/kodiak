@@ -1132,7 +1132,7 @@ class Client:
         """
         Get subscription information for installation.
         """
-        from kodiak.event_handlers import get_redis
+        from kodiak.queue import get_redis
 
         redis = await get_redis()
         res = await redis.hgetall(
