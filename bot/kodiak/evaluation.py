@@ -268,11 +268,7 @@ class PRAPI(Protocol):
         ...
 
     async def set_status(
-        self,
-        msg: str,
-        *,
-        latest_commit_sha: str,
-        markdown_content: Optional[str] = None,
+        self, msg: str, *, markdown_content: Optional[str] = None
     ) -> None:
         ...
 
@@ -316,25 +312,15 @@ class PRAPI(Protocol):
 
 
 async def cfg_err(
-    api: PRAPI,
-    pull_request: PullRequest,
-    msg: str,
-    *,
-    markdown_content: Optional[str] = None,
+    api: PRAPI, msg: str, *, markdown_content: Optional[str] = None
 ) -> None:
     await api.dequeue()
-    await api.set_status(
-        f"⚠️ config error ({msg})",
-        latest_commit_sha=pull_request.latest_sha,
-        markdown_content=markdown_content,
-    )
+    await api.set_status(f"⚠️ config error ({msg})", markdown_content=markdown_content)
 
 
 async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.dequeue()
-    await api.set_status(
-        f"🛑 cannot merge ({msg})", latest_commit_sha=pull_request.latest_sha
-    )
+    await api.set_status(f"🛑 cannot merge ({msg})")
 
 
 def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
@@ -497,11 +483,7 @@ async def mergeable(
         # don't clobber statuses set via merge loop.
         if is_active_merge:
             return
-        await api.set_status(
-            msg,
-            latest_commit_sha=pull_request.latest_sha,
-            markdown_content=markdown_content,
-        )
+        await api.set_status(msg, markdown_content=markdown_content)
 
     if not isinstance(config, V1):
         log.warning("problem fetching config")
@@ -537,9 +519,7 @@ async def mergeable(
 
     if branch_protection is None:
         await cfg_err(
-            api,
-            pull_request,
-            f"missing branch protection for baseRef: {pull_request.baseRefName!r}",
+            api, f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
         )
         return
 
@@ -556,7 +536,6 @@ async def mergeable(
     ):
         await cfg_err(
             api,
-            pull_request,
             '"Require signed commits" branch protection is only supported with "squash" or "merge" commits. Rebase is not supported by GitHub.',
         )
         return
@@ -565,7 +544,6 @@ async def mergeable(
         valid_merge_methods_str = [method.value for method in valid_merge_methods]
         await cfg_err(
             api,
-            pull_request,
             f"configured merge.method {merge_method.value!r} is invalid. Valid methods for repo are {valid_merge_methods_str!r}",
         )
         return
@@ -577,7 +555,6 @@ async def mergeable(
     ):
         await cfg_err(
             api,
-            pull_request,
             "push restriction branch protection setting is missing push allowance for Kodiak",
             markdown_content=get_markdown_for_push_allowance_error(
                 branch_name=pull_request.baseRefName
@@ -591,8 +568,7 @@ async def mergeable(
     if config.disable_bot_label in pull_request.labels:
         await api.dequeue()
         await api.set_status(
-            f"🚨 kodiak disabled by disable_bot_label ({config.disable_bot_label}). Remove label to re-enable Kodiak.",
-            latest_commit_sha=pull_request.latest_sha,
+            f"🚨 kodiak disabled by disable_bot_label ({config.disable_bot_label}). Remove label to re-enable Kodiak."
         )
         return
 

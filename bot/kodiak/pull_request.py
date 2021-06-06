@@ -197,11 +197,7 @@ class PRV2:
         await self.requeue_callback()
 
     async def set_status(
-        self,
-        msg: str,
-        *,
-        latest_commit_sha: str,
-        markdown_content: Optional[str] = None,
+        self, msg: str, *, markdown_content: Optional[str] = None
     ) -> None:
         """
         Display a message to a user through a github check

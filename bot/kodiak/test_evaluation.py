@@ -87,19 +87,9 @@ class MockDequeue(BaseMockFunc):
 
 class MockSetStatus(BaseMockFunc):
     async def __call__(
-        self,
-        msg: str,
-        *,
-        latest_commit_sha: str,
-        markdown_content: Optional[str] = None,
+        self, msg: str, *, markdown_content: Optional[str] = None
     ) -> None:
-        self.log_call(
-            dict(
-                msg=msg,
-                latest_commit_sha=latest_commit_sha,
-                markdown_content=markdown_content,
-            )
-        )
+        self.log_call(dict(msg=msg, markdown_content=markdown_content))
 
 
 class MockPullRequestsForRef(BaseMockFunc):
