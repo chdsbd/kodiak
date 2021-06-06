@@ -43,7 +43,7 @@ def main(path: str) -> int:
             # because build environment changes could affect our tests
             ".circleci/config.yml",
         ],
-        stdout=subprocess.PIPE
+        stdout=subprocess.PIPE,
     )
     file_names = res.stdout.decode().strip().splitlines()
     # no changes on zero return code.
@@ -51,7 +51,11 @@ def main(path: str) -> int:
         print("no changes found. Skipping build.")
         return 1
     if res.returncode == 1:
-        print("changes found in files: {file_names!r}\nContinuing build.".format(file_names=file_names))
+        print(
+            "changes found in files: {file_names!r}\nContinuing build.".format(
+                file_names=file_names
+            )
+        )
         return 0
     raise ValueError("Unexpected return code {}".format(res.returncode))
 
