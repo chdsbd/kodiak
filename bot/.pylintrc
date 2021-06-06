@@ -203,6 +203,8 @@ disable=print-statement,
         import-error,
         # mypy already does this
         signature-differs,
+        # doesn't understand annotations with builtin dict
+        unsubscriptable-object,
         # doesn't handle .pyi files
         useless-import-alias,
         # conflicts with type stubs for structlog

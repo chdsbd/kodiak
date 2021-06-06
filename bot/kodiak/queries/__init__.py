@@ -7,9 +7,9 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
+import httpx as http
 import jwt
 import pydantic
-import requests_async as http
 import structlog
 import toml
 from mypy_extensions import TypedDict
@@ -719,7 +719,6 @@ class ThrottlerProtocol(Protocol):
 
 
 class Client:
-    session: http.Session
     throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
@@ -729,7 +728,7 @@ class Client:
         self.installation_id = installation_id
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
-        self.session = http.Session()
+        self.session = http.AsyncClient()
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
@@ -751,7 +750,7 @@ class Client:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        await self.session.close()
+        await self.session.aclose()
 
     async def send_query(
         self,
@@ -761,7 +760,9 @@ class Client:
     ) -> Optional[GraphQLResponse]:
         log = self.log
 
-        token = await get_token_for_install(installation_id=installation_id)
+        token = await get_token_for_install(
+            session=self.session, installation_id=installation_id
+        )
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
@@ -777,7 +778,9 @@ class Client:
         return cast(GraphQLResponse, res.json())
 
     async def get_permissions_for_username(self, username: str) -> Permission:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             res = await self.session.get(
                 conf.v3_url(
@@ -789,7 +792,7 @@ class Client:
             res.raise_for_status()
             return Permission(res.json()["permission"])
         except (http.HTTPError, IndexError, TypeError, ValueError):
-            logger.exception("couldn't fetch permissions for username %r", username)
+            logger.exception("couldn't fetch permissions", username=username)
             return Permission.NONE
 
     # TODO(chdsbd): We may want to cache this response to improve performance as
@@ -986,7 +989,9 @@ class Client:
         https://developer.github.com/v3/pulls/#list-pull-requests
         """
         log = self.log.bind(base=base, head=head)
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         params = dict(state="open", sort="updated", per_page="100")
         if base is not None:
             params["base"] = base
@@ -1025,7 +1030,9 @@ class Client:
         """
         delete a branch by name
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
@@ -1034,7 +1041,9 @@ class Client:
             )
 
     async def update_branch(self, *, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.put(
                 conf.v3_url(
@@ -1047,7 +1056,9 @@ class Client:
         """
         https://developer.github.com/v3/pulls/reviews/#create-a-pull-request-review
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         body = dict(event="APPROVE")
         async with self.throttler:
             return await self.session.post(
@@ -1059,7 +1070,9 @@ class Client:
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
         async with self.throttler:
             return await self.session.get(url, headers=headers)
@@ -1080,7 +1093,9 @@ class Client:
             body["commit_title"] = commit_title
         if commit_message is not None:
             body["commit_message"] = commit_message
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
@@ -1089,7 +1104,9 @@ class Client:
         """
         https://docs.github.com/en/rest/reference/git#update-a-reference
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{ref}")
         async with self.throttler:
             return await self.session.patch(url, headers=headers, json=dict(sha=sha))
@@ -1097,7 +1114,9 @@ class Client:
     async def create_notification(
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
         body = dict(
             name=CHECK_RUN_NAME,
@@ -1111,7 +1130,9 @@ class Client:
             return await self.session.post(url, headers=headers, json=body)
 
     async def add_label(self, label: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
@@ -1122,7 +1143,9 @@ class Client:
             )
 
     async def delete_label(self, label: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
@@ -1133,7 +1156,9 @@ class Client:
             )
 
     async def create_comment(self, body: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
@@ -1198,7 +1223,9 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
 
-async def get_token_for_install(*, installation_id: str) -> str:
+async def get_token_for_install(
+    *, session: http.AsyncClient, installation_id: str
+) -> str:
     """
     https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
     """
@@ -1214,7 +1241,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
         installation_id=APPLICATION_ID
     )
     async with throttler:
-        res = await http.post(
+        res = await session.post(
             conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
             headers=dict(
                 Accept="application/vnd.github.machine-man-preview+json",
@@ -1227,8 +1254,12 @@ async def get_token_for_install(*, installation_id: str) -> str:
     return token_response.token
 
 
-async def get_headers(*, installation_id: str) -> Mapping[str, str]:
-    token = await get_token_for_install(installation_id=installation_id)
+async def get_headers(
+    *, session: http.AsyncClient, installation_id: str
+) -> dict[str, str]:
+    token = await get_token_for_install(
+        session=session, installation_id=installation_id
+    )
     return dict(
         Authorization=f"token {token}",
         Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",

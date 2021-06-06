@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable, List, Optional, Type
 
 import structlog
-from requests_async import HTTPError
+from httpx import HTTPStatusError as HTTPError
 from typing_extensions import Protocol
 
 import kodiak.app_config as conf
