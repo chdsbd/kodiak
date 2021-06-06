@@ -30,6 +30,7 @@ from kodiak.events import (
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+from kodiak.redis import get_conn
 
 logger = structlog.get_logger()
 
@@ -456,18 +457,7 @@ class RedisWebhookQueue:
     connection: asyncio_redis.Pool
 
     async def create(self) -> None:
-        redis_db = 0
-        try:
-            redis_db = int(conf.REDIS_URL.database)
-        except ValueError:
-            pass
-        self.connection = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password or None,
-            db=redis_db,
-            poolsize=conf.REDIS_POOL_SIZE,
-        )
+        self.connection = await get_conn()
 
         self.start_raw_webhook_worker()
 
