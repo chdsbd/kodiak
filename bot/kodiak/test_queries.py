@@ -5,8 +5,8 @@ from typing import Any, Dict, Iterable, cast
 
 import asyncio_redis
 import pytest
+from httpx import Response
 from pytest_mock import MockFixture
-from requests_async import Response
 
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
@@ -333,8 +333,7 @@ def mock_get_token_for_install(mocker: MockFixture) -> None:
 async def test_get_permissions_for_username_missing(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    not_found = Response()
-    not_found.status_code = 404
+    not_found = Response(status_code=404)
     mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(not_found))
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("_invalid_username")
@@ -372,9 +371,7 @@ PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
 async def test_get_permissions_for_username_read(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    response = Response()
-    response.status_code = 200
-    response._content = PERMISSION_OK_READ_USER_RESPONSE
+    response = Response(status_code=200, content=PERMISSION_OK_READ_USER_RESPONSE)
 
     mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(response))
     async with api_client as api_client:
@@ -817,11 +814,8 @@ def generate_page_of_prs(numbers: Iterable[int]) -> Response:
 
     This is used by get_open_pull_requests.
     """
-    response = Response()
-    response.status_code = 200
     prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
-    response._content = json.dumps(prs).encode()
-    return response
+    return Response(status_code=200, content=json.dumps(prs).encode())
 
 
 @pytest.mark.asyncio

@@ -5,12 +5,12 @@ import structlog
 
 from kodiak import app_config as conf
 
-_redis: asyncio_redis.Connection | None = None
+_redis: asyncio_redis.Pool | None = None
 
 logger = structlog.get_logger()
 
 
-async def get_conn() -> asyncio_redis.Connection:
+async def get_conn() -> asyncio_redis.Pool:
     """
     FastAPI compatible function for accessing the connection pool
     see: https://fastapi.tiangolo.com/tutorial/dependencies/#to-async-or-not-to-async

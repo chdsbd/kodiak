@@ -17,11 +17,11 @@ import time
 from typing import cast
 
 import asyncio_redis
-import requests_async as http
 import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
+from httpx import AsyncClient
 from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -109,7 +109,7 @@ query ($login: String!) {
 """
 
 
-async def get_login_for_install(*, installation_id: str) -> str:
+async def get_login_for_install(*, http: AsyncClient, installation_id: str) -> str:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
@@ -127,13 +127,16 @@ async def get_login_for_install(*, installation_id: str) -> str:
 async def refresh_pull_requests_for_installation(
     *, installation_id: str, redis: RedisConnection
 ) -> None:
-    login = await get_login_for_install(installation_id=installation_id)
-    token = await get_token_for_install(installation_id=installation_id)
-    res = await http.post(
-        conf.GITHUB_V4_API_URL,
-        json=dict(query=QUERY, variables=dict(login=login)),
-        headers=dict(Authorization=f"Bearer {token}"),
-    )
+    async with AsyncClient() as http:
+        login = await get_login_for_install(http=http, installation_id=installation_id)
+        token = await get_token_for_install(
+            session=http, installation_id=installation_id
+        )
+        res = await http.post(
+            conf.GITHUB_V4_API_URL,
+            json=dict(query=QUERY, variables=dict(login=login)),
+            headers=dict(Authorization=f"Bearer {token}"),
+        )
     res.raise_for_status()
 
     organizationdata = res.json()["data"]["organizationdata"]

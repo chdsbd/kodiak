@@ -8,7 +8,6 @@ authors = ["Christopher Dignam <chris@dignam.xyz>"]
 python = "^3.7"
 uvicorn = "^0.7.0"
 toml = "^0.10.0"
-requests-async = "^0.4.1"
 PyJWT = "^1.7"
 cryptography = "2.8"
 structlog = "^19.1"
@@ -23,6 +22,7 @@ sentry-sdk = "^0.10.2"
 requests = "^2.22"
 rure = "^0.2.2"
 zstandard = "^0.13.0"
+httpx = "^0.18.1"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'

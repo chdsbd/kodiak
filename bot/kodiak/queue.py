@@ -6,15 +6,16 @@ import time
 import typing
 import urllib
 from datetime import timedelta
-from typing import Iterator
+from typing import Iterator, NoReturn
 
 import asyncio_redis
 import sentry_sdk
 import structlog
-from asyncio_redis import Pool as RedisConnection
 import zstandard as zstd
+from asyncio_redis import Pool as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
+from typing_extensions import Protocol
 
 from kodiak import app_config as conf
 from kodiak import queries
@@ -41,7 +42,15 @@ WORKER_TASKS: typing.MutableMapping[str, asyncio.Task[None]] = {}
 RETRY_RATE_SECONDS = 2
 
 
-async def pr_event(queue: RedisWebhookQueue, pr: PullRequestEvent) -> None:
+class WebhookQueueProtocol(Protocol):
+    async def enqueue(self, *, event: WebhookEvent) -> None:
+        ...
+
+    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
+        ...
+
+
+async def pr_event(queue: WebhookQueueProtocol, pr: PullRequestEvent) -> None:
     """
     Trigger evaluation of modified PR.
     """
@@ -90,7 +99,7 @@ def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
     return [branch.name for branch in branches if branch.commit.sha == sha]
 
 
-async def status_event(queue: RedisWebhookQueue, status_event: StatusEvent) -> None:
+async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
     """
@@ -140,7 +149,9 @@ async def status_event(queue: RedisWebhookQueue, status_event: StatusEvent) -> N
             await queue.enqueue(event=event)
 
 
-async def pr_review(queue: RedisWebhookQueue, review: PullRequestReviewEvent) -> None:
+async def pr_review(
+    queue: WebhookQueueProtocol, review: PullRequestReviewEvent
+) -> None:
     """
     Trigger evaluation of the modified PR.
     """
@@ -164,7 +175,7 @@ def get_branch_name(raw_ref: str) -> str | None:
     return None
 
 
-async def push(queue: RedisWebhookQueue, push_event: PushEvent) -> None:
+async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
     """
     Trigger evaluation of PRs that depend on the pushed branch.
     """
@@ -198,10 +209,10 @@ async def push(queue: RedisWebhookQueue, push_event: PushEvent) -> None:
             )
 
 
-_redis = None
+_redis: asyncio_redis.Pool | None = None
 
 
-async def get_redis() -> asyncio_redis.Connection:
+async def get_redis() -> asyncio_redis.Pool:
     global _redis  # pylint: disable=global-statement
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
@@ -221,9 +232,8 @@ def compress_payload(data: dict[str, object]) -> bytes:
     return cctx.compress(json.dumps(data).encode())
 
 
-# TODO(sbdchd): we need a new entrypoint that processes the new incoming queue
 async def handle_webhook_event(
-    queue: RedisWebhookQueue, event_name: str, payload: dict[str, object]
+    queue: WebhookQueueProtocol, event_name: str, payload: dict[str, object]
 ) -> None:
     log = logger.bind(event_name=event_name)
 
@@ -284,7 +294,7 @@ class WebhookEvent(BaseModel):
 
 async def process_webhook_event(
     connection: RedisConnection,
-    webhook_queue: RedisWebhookQueue,
+    webhook_queue: WebhookQueueProtocol,
     queue_name: str,
     log: structlog.BoundLogger,
 ) -> None:
@@ -327,7 +337,7 @@ async def process_webhook_event(
 
 
 async def webhook_event_consumer(
-    *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
+    *, connection: RedisConnection, webhook_queue: WebhookQueueProtocol, queue_name: str
 ) -> typing.NoReturn:
     """
     Worker to process incoming webhook events from redis
@@ -352,18 +362,16 @@ async def webhook_event_consumer(
             await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
-async def raw_webhook_event_consumer(
-    *, queue: RedisWebhookQueue, connection: RedisConnection
-) -> typing.NoReturn:
-    logger.info("start raw webhook event consumer")
-    while True:
-        res = await connection.blpop([INCOMING_QUEUE_NAME])
+async def process_raw_webhook_event_consumer(
+    *, queue: WebhookQueueProtocol, connection: RedisConnection
+) -> None:
+    res = await connection.blpop([INCOMING_QUEUE_NAME])
 
-        raw_event = RawIncomingEvent.parse_raw(res.value)
-        event_name = raw_event.name
-        event = json.loads(raw_event.payload)
+    raw_event = RawIncomingEvent.parse_raw(res.value)
+    event_name = raw_event.name
+    event = json.loads(raw_event.payload)
 
-        await handle_webhook_event(queue=queue, event_name=event_name, payload=event)
+    await handle_webhook_event(queue=queue, event_name=event_name, payload=event)
 
 
 async def process_repo_queue(
@@ -477,6 +485,15 @@ class RedisWebhookQueue:
             self.start_webhook_worker(queue_name=queue_name)
 
     def start_raw_webhook_worker(self) -> None:
+        async def raw_webhook_event_consumer(
+            *, queue: WebhookQueueProtocol, connection: RedisConnection
+        ) -> NoReturn:
+            logger.info("start raw webhook event consumer")
+            while True:
+                await process_raw_webhook_event_consumer(
+                    queue=queue, connection=connection
+                )
+
         self._start_worker(
             INCOMING_QUEUE_NAME,
             raw_webhook_event_consumer(queue=self, connection=self.connection),
