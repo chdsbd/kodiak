@@ -1,30 +1,20 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
 import json
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Iterator, Tuple
+from typing import Any, Dict, Tuple
 
-import asyncio_redis
 import pytest
-from httpx import AsyncClient, Request, Response
 from pytest_mock import MockFixture
 from starlette import status
 from starlette.testclient import TestClient
 
 from kodiak import app_config as conf
 from kodiak.main import app
-from kodiak.queue import (
-    INCOMING_QUEUE_NAME,
-    WebhookEvent,
-    process_raw_webhook_event_consumer,
-)
 from kodiak.test_events import MAPPING
 from kodiak.test_utils import wrap_future
-from kodiak.tests.fixtures import FakeThottler
 
 
 def test_root(client: TestClient) -> None:
