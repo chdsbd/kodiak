@@ -84,16 +84,12 @@ jobs:
   # https://circleci.com/docs/2.0/building-docker-images/
   bot_build_container:
     docker:
-      - image: docker:20.10.7
+      - image: docker:18.05.0-ce
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
     steps:
       - checkout
-      - run:
-          name: skip build if no changes
-          command: |
-            ./s/path_has_changes bot/ && circleci step halt
       - setup_remote_docker
       - run:
           name: build container
@@ -327,16 +323,12 @@ jobs:
   # https://circleci.com/docs/2.0/building-docker-images/
   web_api_build_container:
     docker:
-      - image: docker:20.10.7
+      - image: docker:18.05.0-ce
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
     steps:
       - checkout
-      - run:
-          name: skip build if no changes
-          command: |
-            ./s/path_has_changes web_api/ && circleci step halt
       - setup_remote_docker
       - run:
           name: build container
@@ -420,7 +412,7 @@ jobs:
   # https://circleci.com/docs/2.0/building-docker-images/
   web_ui_build_container:
     docker:
-      - image: docker:20.10.7
+      - image: docker:18.05.0-ce
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
