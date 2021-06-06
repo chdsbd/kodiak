@@ -38,22 +38,6 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-@pytest.fixture
-async def redis() -> AsyncIterator[asyncio_redis.Pool]:
-    redis = await asyncio_redis.Pool.create()
-    yield redis
-    redis.close()
-
-
-@pytest.fixture(scope="module")
-def event_loop() -> Iterator[object]:
-    """
-    Fixes some pytest issues related to which event loop it should be using.
-    see: https://github.com/encode/starlette/issues/652#issuecomment-569327566
-    """
-    yield asyncio.get_event_loop()
-
-
 def get_body_and_hash(data: Dict[str, Any]) -> Tuple[bytes, str]:
     body = json.dumps(data).encode()
     sha = hmac.new(
@@ -62,64 +46,38 @@ def get_body_and_hash(data: Dict[str, Any]) -> Tuple[bytes, str]:
     return body, sha
 
 
-@dataclass
-class FakeWebhookQueue:
-    enqueue_call_count: int = 0
-
-    async def enqueue(self, *, event: WebhookEvent) -> None:
-        self.enqueue_call_count += 1
-
-    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
-        raise NotImplementedError
-
-
 @pytest.mark.parametrize("event_name", (event_name for event_name, _schema in MAPPING))
-@pytest.mark.asyncio
-async def test_webhook_event_can_be_enqued_and_processed(
-    event_name: str, redis: asyncio_redis.Pool, mocker: MockFixture
+def test_webhook_event(
+    client: TestClient, event_name: str, mocker: MockFixture
 ) -> None:
-    mocker.patch(
-        "kodiak.queries.http.AsyncClient.get",
-        return_value=wrap_future(
-            Response(status_code=200, json=[], request=Request(method="GET", url=""))
-        ),
+    """Test all of the events we have"""
+    handle_webhook_event = mocker.patch(
+        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
     )
-    mocker.patch(
-        "kodiak.queries.get_thottler_for_installation", return_value=FakeThottler()
-    )
-    mocker.patch("kodiak.queries.get_token_for_install", return_value=wrap_future(str))
-
     for index, fixture_path in enumerate(
         (Path(__file__).parent / "test" / "fixtures" / "events" / event_name).rglob(
             "*.json"
         )
     ):
-        await redis.delete([INCOMING_QUEUE_NAME])
         data = json.loads(fixture_path.read_bytes())
+
         body, sha = get_body_and_hash(data)
-        assert await redis.llen(INCOMING_QUEUE_NAME) == 0
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            res = await client.post(
-                "/api/github/hook",
-                content=body,
-                headers={"X-Github-Event": event_name, "X-Hub-Signature": sha},
-            )
-        assert res.status_code == status.HTTP_200_OK
-        assert await redis.llen(INCOMING_QUEUE_NAME) == 1
-        fake_webhook_queue = FakeWebhookQueue()
 
-        await process_raw_webhook_event_consumer(
-            queue=fake_webhook_queue, connection=redis
+        assert handle_webhook_event.call_count == index
+        res = client.post(
+            "/api/github/hook",
+            data=body,
+            headers={"X-Github-Event": event_name, "X-Hub-Signature": sha},
         )
-
-        assert await redis.llen(INCOMING_QUEUE_NAME) == 0
+        assert res.status_code == status.HTTP_200_OK
+        assert handle_webhook_event.call_count == index + 1
 
 
 def test_webhook_event_missing_github_event(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
-        "kodiak.main.enqueue_incoming_webhook", return_value=wrap_future(None)
+        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
     )
     data = {"hello": 123}
 
@@ -135,7 +93,7 @@ def test_webhook_event_invalid_signature(
     client: TestClient, mocker: MockFixture
 ) -> None:
     handle_webhook_event = mocker.patch(
-        "kodiak.main.enqueue_incoming_webhook", return_value=wrap_future(None)
+        "kodiak.main.handle_webhook_event", return_value=wrap_future(None)
     )
     data = {"hello": 123}
 

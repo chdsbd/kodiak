@@ -1,4 +1,4 @@
-from kodiak.queue import get_branch_name
+from kodiak.event_handlers import get_branch_name
 
 
 def test_get_branch_name() -> None:

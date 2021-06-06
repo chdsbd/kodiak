@@ -1,7 +1,6 @@
 from typing import Any, AsyncIterator, Optional
 
 import requests
-
 from requests_async.models import Response
 
 class Session(requests.Session):

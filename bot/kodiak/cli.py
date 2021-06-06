@@ -93,23 +93,3 @@ def refresh_pull_requests() -> None:
     from kodiak.refresh_pull_requests import main
 
     main()
-
-
-@cli.command()
-def http_server() -> None:
-    """
-    run HTTP server used for receiving webhooks
-    """
-    from kodiak.main import main
-
-    main()
-
-
-@cli.command()
-def queue_consumers() -> None:
-    """
-    run the consumers for the various queues
-    """
-    from kodiak.queue import main
-
-    main()

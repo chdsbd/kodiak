@@ -1,3 +1,4 @@
+from kodiak.event_handlers import check_run
 from kodiak.events.base import Installation
 from kodiak.events.check_run import (
     CheckRun,
@@ -8,7 +9,7 @@ from kodiak.events.check_run import (
     Ref,
     Repository,
 )
-from kodiak.queue import WebhookEvent, check_run
+from kodiak.queue import WebhookEvent
 
 
 def test_ignore_external_pull_requests() -> None:
