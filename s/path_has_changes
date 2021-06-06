@@ -51,7 +51,7 @@ def main(path: str) -> int:
         print("no changes found. Skipping build.")
         return 1
     if res.returncode == 1:
-        print(f"changes found in files: {file_names!r}\nContinuing build.")
+        print("changes found in files: {file_names!r}\nContinuing build.".format(file_names=file_names))
         return 0
     raise ValueError("Unexpected return code {}".format(res.returncode))
 
