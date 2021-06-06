@@ -16,7 +16,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes bot/ && circleci step halt
+            ./s/stop_ci_if_no_changes bot/
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -56,7 +56,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes bot/ && circleci step halt
+            ./s/stop_ci_if_no_changes bot/
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -107,7 +107,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes docs/ && circleci step halt
+            ./s/stop_ci_if_no_changes docs/
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -136,7 +136,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes docs/ && circleci step halt
+            ./s/stop_ci_if_no_changes docs/
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -164,7 +164,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes docs/ && circleci step halt
+            ./s/stop_ci_if_no_changes docs/
       - restore_cache:
           keys:
             - docs-site-v1-{{ checksum "docs/yarn.lock" }}
@@ -205,7 +205,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes web_api/ && circleci step halt
+            ./s/stop_ci_if_no_changes web_api/
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -245,7 +245,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes web_api/ && circleci step halt
+            ./s/stop_ci_if_no_changes web_api/
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -290,7 +290,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes web_api/ && circleci step halt
+            ./s/stop_ci_if_no_changes web_api/
       # https://circleci.com/docs/2.0/caching/
       - restore_cache:
           keys:
@@ -346,7 +346,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes web_ui/ && circleci step halt
+            ./s/stop_ci_if_no_changes web_ui/
       - restore_cache:
           keys:
             - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
@@ -374,7 +374,7 @@ jobs:
       - run:
           name: skip build if no changes
           command: |
-            ./s/path_has_changes web_ui/ && circleci step halt
+            ./s/stop_ci_if_no_changes web_ui/
       - restore_cache:
           keys:
             - web-ui-v1-{{ checksum "web_ui/yarn.lock" }}
