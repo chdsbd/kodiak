@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Type, cast
 
+import httpx as requests
 import pytest
-import requests
+from httpx import Request
 from typing_extensions import Protocol
 
 from kodiak.config import V1, Merge, MergeMethod
@@ -207,10 +208,9 @@ def create_client() -> Type[FakeClientProtocol]:
 
 
 def create_response(content: bytes, status_code: int) -> requests.Response:
-    res = requests.Response()
-    cast(Any, res)._content = content
-    res.status_code = status_code
-    return res
+    return requests.Response(
+        status_code=status_code, content=content, request=Request(method="", url="")
+    )
 
 
 def create_prv2(

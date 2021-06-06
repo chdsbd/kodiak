@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, cast
 
 import asyncio_redis
 import pytest
-from httpx import Response
+from httpx import Request, Response
 from pytest_mock import MockFixture
 
 from kodiak import app_config as conf
@@ -333,8 +333,10 @@ def mock_get_token_for_install(mocker: MockFixture) -> None:
 async def test_get_permissions_for_username_missing(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    not_found = Response(status_code=404)
-    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(not_found))
+    not_found = Response(status_code=404, request=Request(method="", url=""))
+    mocker.patch(
+        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(not_found)
+    )
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("_invalid_username")
     assert res == Permission.NONE
@@ -371,9 +373,15 @@ PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
 async def test_get_permissions_for_username_read(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    response = Response(status_code=200, content=PERMISSION_OK_READ_USER_RESPONSE)
+    response = Response(
+        status_code=200,
+        content=PERMISSION_OK_READ_USER_RESPONSE,
+        request=Request(method="", url=""),
+    )
 
-    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(response))
+    mocker.patch(
+        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(response)
+    )
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("ghost")
     assert res == Permission.READ
@@ -815,7 +823,11 @@ def generate_page_of_prs(numbers: Iterable[int]) -> Response:
     This is used by get_open_pull_requests.
     """
     prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
-    return Response(status_code=200, content=json.dumps(prs).encode())
+    return Response(
+        status_code=200,
+        content=json.dumps(prs).encode(),
+        request=Request(method="", url=""),
+    )
 
 
 @pytest.mark.asyncio
@@ -826,7 +838,7 @@ async def test_get_open_pull_requests(
     We should stop calling the API after reaching an empty page.
     """
     patched_session_get = mocker.patch(
-        "kodiak.queries.http.Session.get",
+        "kodiak.queries.http.AsyncClient.get",
         side_effect=[
             wrap_future(generate_page_of_prs(range(1, 101))),
             wrap_future(generate_page_of_prs(range(101, 201))),
@@ -853,7 +865,7 @@ async def test_get_open_pull_requests_page_limit(
     pages = [range(n, n + 100) for n in range(1, 3001, 100)]
     assert len(pages) == 30
     patched_session_get = mocker.patch(
-        "kodiak.queries.http.Session.get",
+        "kodiak.queries.http.AsyncClient.get",
         side_effect=[wrap_future(generate_page_of_prs(p)) for p in pages],
     )
 
