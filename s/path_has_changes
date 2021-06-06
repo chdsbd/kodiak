@@ -33,21 +33,25 @@ def main(path: str) -> int:
     res = subprocess.run(
         [
             "git",
+            "--no-pager",
             "diff",
-            "--quiet",
+            "--name-only",
+            "--exit-code",
             "{branch}...".format(branch=MAIN_BRANCH),
             path,
             # we want to run our build whenever the CircleCI config changes
             # because build environment changes could affect our tests
             ".circleci/config.yml",
         ],
+        stdout=subprocess.PIPE
     )
+    file_names = res.stdout.decode().strip().splitlines()
     # no changes on zero return code.
     if res.returncode == 0:
         print("no changes found. Skipping build.")
         return 1
     if res.returncode == 1:
-        print("changes found. Continuing build.")
+        print(f"changes found in files: {file_names!r}\nContinuing build.")
         return 0
     raise ValueError("Unexpected return code {}".format(res.returncode))
 
