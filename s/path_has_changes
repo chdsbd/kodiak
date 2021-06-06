@@ -42,13 +42,13 @@ def main(paths: str) -> int:
             ],
         )
         if res.returncode == 1:
-            print("changes found. Continuing build.")
+            print(f"changes found for path {path!r}. Continuing build.")
             return 0
         # no changes on zero return code.
         if res.returncode == 0:
             continue
         raise ValueError("Unexpected return code {}".format(res.returncode))
-    print("no changes found. Skipping build.")
+    print(f"no changes found for paths {paths!r}. Skipping build.")
     return 1
 
 
