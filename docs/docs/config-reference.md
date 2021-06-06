@@ -410,7 +410,7 @@ this configuration option was disabled you would only see at least `N-1` updates
 
 When enabled, Kodiak will only update PRs that have an automerge label (configured via `merge.automerge_label`).
 
-When disable, Kodiak will update any PR.
+When disabled, Kodiak will update any PR.
 
 This option only applies when `update.always = true`.
 

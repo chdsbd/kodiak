@@ -38,7 +38,7 @@ python-versions = "^3.7"
 version = "0.1.0"
 
 [package.source]
-reference = "319c3aa80f40eccd730ae72e52064874d4428551"
+reference = "7d174e0ebe2dc52340001097eeee48a868454480"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
 
@@ -201,6 +201,19 @@ name = "flake8-pie"
 optional = false
 python-versions = ">=3.7"
 version = "0.7.1"
+
+[[package]]
+category = "dev"
+description = "A plugin for flake8 to enable linting .pyi files."
+name = "flake8-pyi"
+optional = false
+python-versions = ">=3.6"
+version = "20.10.0"
+
+[package.dependencies]
+attrs = "*"
+flake8 = ">=3.2.1"
+pyflakes = ">=2.1.1"
 
 [[package]]
 category = "main"
@@ -813,7 +826,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "afadca498c296d0e48895e483ce8b3762ec3fbda31beb1c676ed5fa05f292dfb"
+content-hash = "8a2738f04e94afea8d1912695da0b881acc006af87180361bc31a56cb7889c1b"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -837,6 +850,7 @@ decorator = ["86156361c50488b84a3f148056ea716ca587df2f0de1d34750d35c21312725de",
 fastapi = ["3130313f23935d99150953422dfe5f6b43f043b6fe3aac22cc4c8d537a4464d9", "be62491f536dc50041913a37bdcd6b5e05c84e756ff331506b5afeddec859013"]
 flake8 = ["749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839", "aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b"]
 flake8-pie = ["198baa85d85dea2bc42c28baa5978bc771fced814bac9a9688441efe65485711", "b75f7b0383a7c7b2660a86491d0cefd9d8c0eb47caae36064157f47b7c864a81"]
+flake8-pyi = ["cee3b20a5123152c697870e7e800b60e3c95eb89e272a2b63d8cf55cafb0472c", "ff5dfc40bffa878f6ce95bcfd9a6ad14c44b85cbe99c4864e729301bf54267f0"]
 h11 = ["acca6a44cb52a32ab442b1779adf0875c443c689e9e028f8d831a3769f9c5208", "f2b1ca39bfed357d1f19ac732913d5f9faa54a5062eca7d2ec3a916cfb7ae4c7"]
 httpcore = ["e3d5d110f49012dd3f1980ba5779f91170457cde43851e531e56e6eb08f05357"]
 httptools = ["e00cbd7ba01ff748e494248183abc6e153f49181169d8a3d41bb49132ca01dfc"]

@@ -15,14 +15,14 @@ import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from starlette import status
-from typing_extensions import Literal
+from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
-from kodiak.throttle import Throttler, get_thottler_for_installation
+from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
 
@@ -329,7 +329,6 @@ class EventInfoResponse:
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
-    valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
     commits: List[Commit] = field(default_factory=list)
 
@@ -637,13 +636,6 @@ def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
     return check_runs
 
 
-def get_valid_signature(*, pr: Dict[str, Any]) -> bool:
-    try:
-        return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
-    except (IndexError, KeyError, TypeError):
-        return False
-
-
 def get_head_exists(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["headRef"]["id"])
@@ -718,9 +710,17 @@ class CfgInfo:
     file_expression: str
 
 
+class ThrottlerProtocol(Protocol):
+    async def __aenter__(self) -> None:
+        ...
+
+    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        ...
+
+
 class Client:
     session: http.Session
-    throttler: Throttler
+    throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
 
@@ -976,7 +976,6 @@ class Client:
             commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
-            valid_signature=get_valid_signature(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
@@ -988,23 +987,39 @@ class Client:
         """
         log = self.log.bind(base=base, head=head)
         headers = await get_headers(installation_id=self.installation_id)
-        params = dict(state="open", sort="updated")
+        params = dict(state="open", sort="updated", per_page="100")
         if base is not None:
             params["base"] = base
         if head is not None:
             params["head"] = head
-        async with self.throttler:
-            res = await self.session.get(
-                conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
-                params=params,
-                headers=headers,
-            )
-        try:
-            res.raise_for_status()
-        except http.HTTPError:
-            log.warning("problem finding prs", res=res, exc_info=True)
-            return None
-        return [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in res.json()]
+
+        open_prs = []
+
+        page = None
+        current_page = 0
+        while page != []:
+            current_page += 1
+            if current_page > 20:
+                log.info("hit pagination limit")
+                break
+
+            params["page"] = str(current_page)
+            async with self.throttler:
+                res = await self.session.get(
+                    conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls"),
+                    params=params,
+                    headers=headers,
+                )
+            try:
+                res.raise_for_status()
+            except http.HTTPError:
+                log.warning("problem finding prs", res=res, exc_info=True)
+                return None
+
+            page = res.json()
+            open_prs += [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in page]
+
+        return open_prs
 
     async def delete_branch(self, branch: str) -> http.Response:
         """

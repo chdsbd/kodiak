@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict, Iterable, cast
 
 import asyncio_redis
 import pytest
@@ -43,7 +43,7 @@ from kodiak.queries import (
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
-from kodiak.tests.fixtures import create_commit
+from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
 
 
 @pytest.fixture
@@ -60,6 +60,9 @@ def github_installation_id() -> str:
 
 @pytest.fixture
 def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
+    mocker.patch(
+        "kodiak.queries.get_thottler_for_installation", return_value=FakeThottler()
+    )
     client = Client(installation_id=github_installation_id, owner="foo", repo="foo")
     mocker.patch.object(client, "send_query")
     return client
@@ -251,7 +254,6 @@ method = "squash"
         check_runs=[
             CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
         ],
-        valid_signature=True,
         valid_merge_methods=[MergeMethod.squash],
     )
 
@@ -278,6 +280,7 @@ async def setup_redis(github_installation_id: str) -> None:
 
 
 # TODO: serialize EventInfoResponse to JSON to parametrize test
+@requires_redis
 @pytest.mark.asyncio
 async def test_get_event_info_blocked(
     api_client: Client,
@@ -806,3 +809,62 @@ async def test_get_reviewers_and_permissions_empty_author(
             author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
         )
     ]
+
+
+def generate_page_of_prs(numbers: Iterable[int]) -> Response:
+    """
+    Create a fake page for the list-pull-requests API.
+
+    This is used by get_open_pull_requests.
+    """
+    response = Response()
+    response.status_code = 200
+    prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
+    response._content = json.dumps(prs).encode()
+    return response
+
+
+@pytest.mark.asyncio
+async def test_get_open_pull_requests(
+    mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
+) -> None:
+    """
+    We should stop calling the API after reaching an empty page.
+    """
+    patched_session_get = mocker.patch(
+        "kodiak.queries.http.Session.get",
+        side_effect=[
+            wrap_future(generate_page_of_prs(range(1, 101))),
+            wrap_future(generate_page_of_prs(range(101, 201))),
+            wrap_future(generate_page_of_prs(range(201, 251))),
+            wrap_future(generate_page_of_prs([])),
+        ],
+    )
+
+    async with api_client as api_client:
+        res = await api_client.get_open_pull_requests()
+
+    assert res is not None
+    assert len(res) == 250
+    assert patched_session_get.call_count == 4
+
+
+@pytest.mark.asyncio
+async def test_get_open_pull_requests_page_limit(
+    mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
+) -> None:
+    """
+    We should fetch at most 20 pages.
+    """
+    pages = [range(n, n + 100) for n in range(1, 3001, 100)]
+    assert len(pages) == 30
+    patched_session_get = mocker.patch(
+        "kodiak.queries.http.Session.get",
+        side_effect=[wrap_future(generate_page_of_prs(p)) for p in pages],
+    )
+
+    async with api_client as api_client:
+        res = await api_client.get_open_pull_requests()
+    assert res is not None
+    assert len(res) == 2000
+    assert patched_session_get.call_count == 20, "stop calling after 20 pages"
