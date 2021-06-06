@@ -49,14 +49,14 @@ def main(path: str) -> int:
     # no changes on zero return code.
     if res.returncode == 0:
         print("no changes found. Skipping build.")
-        return 1
+        return 0
     if res.returncode == 1:
         print(
             "changes found in files: {file_names!r}\nContinuing build.".format(
                 file_names=file_names
             )
         )
-        return 0
+        return 1
     raise ValueError("Unexpected return code {}".format(res.returncode))
 
 
