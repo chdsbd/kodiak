@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+"""
+If there have been no changes in the specified path, exit circleci job early.
+
+
+We use the `circleci` CLI to stop the job early.
+"""
+
+import os
+import subprocess
+import sys
+
+MAIN_BRANCH = "master"
+
+
+def main(path: str) -> int:
+    # CircleCI's built in git checkout code clobbers the `master` ref so we do the
+    # following to make it not point to the current ref.
+    # https://discuss.circleci.com/t/git-checkout-of-a-branch-destroys-local-reference-to-master/23781/7
+    if os.getenv("CIRCLECI") and os.getenv("CIRCLE_BRANCH") != MAIN_BRANCH:
+        subprocess.run(
+            [
+                "git",
+                "branch",
+                "-f",
+                MAIN_BRANCH,
+                "origin/{branch}".format(branch=MAIN_BRANCH),
+            ],
+            check=True,
+        )
+
+    res = subprocess.run(
+        [
+            "git",
+            "--no-pager",
+            "diff",
+            "--name-only",
+            "--exit-code",
+            "{branch}...".format(branch=MAIN_BRANCH),
+            path,
+            # we want to run our build whenever the CircleCI config changes
+            # because build environment changes could affect our tests
+            ".circleci/config.yml",
+        ],
+        stdout=subprocess.PIPE,
+    )
+    file_names = res.stdout.decode().strip().splitlines()
+    # no changes on zero return code.
+    if res.returncode == 0:
+        print("no changes found. Skipping build.")
+        subprocess.run(["circleci", "step", "halt"], check=True)
+    elif res.returncode == 1:
+        print(
+            "changes found in files: {file_names!r}\nContinuing build.".format(
+                file_names=file_names
+            )
+        )
+    else:
+        raise ValueError("Unexpected return code {}".format(res.returncode))
+
+
+if __name__ == "__main__":
+    path = sys.argv[1]
+    sys.exit(main(path))
