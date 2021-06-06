@@ -14,7 +14,7 @@ import sys
 MAIN_BRANCH = "master"
 
 
-def main(paths: str) -> int:
+def main(path: str) -> int:
     # CircleCI's built in git checkout code clobbers the `master` ref so we do the
     # following to make it not point to the current ref.
     # https://discuss.circleci.com/t/git-checkout-of-a-branch-destroys-local-reference-to-master/23781/7
@@ -30,28 +30,28 @@ def main(paths: str) -> int:
             check=True,
         )
 
-    for path in paths:
-        res = subprocess.run(
-            [
-                "git",
-                "diff",
-                "--quiet",
-                "{branch}...".format(branch=MAIN_BRANCH),
-                path,
-                ".circleci/config.yml",
-            ],
-        )
-        if res.returncode == 1:
-            print(f"changes found for path {path!r}. Continuing build.")
-            return 0
-        # no changes on zero return code.
-        if res.returncode == 0:
-            continue
-        raise ValueError("Unexpected return code {}".format(res.returncode))
-    print(f"no changes found for paths {paths!r}. Skipping build.")
-    return 1
+    res = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--quiet",
+            "{branch}...".format(branch=MAIN_BRANCH),
+            path,
+            # we want to run our build whenever the CircleCI config changes
+            # because build environment changes could affect our tests
+            ".circleci/config.yml",
+        ],
+    )
+    # no changes on zero return code.
+    if res.returncode == 0:
+        print("no changes found. Skipping build.")
+        return 1
+    if res.returncode == 1:
+        print("changes found. Continuing build.")
+        return 0
+    raise ValueError("Unexpected return code {}".format(res.returncode))
 
 
 if __name__ == "__main__":
-    paths = sys.argv[1:]
-    sys.exit(main(paths))
+    path = sys.argv[1]
+    sys.exit(main(path))
