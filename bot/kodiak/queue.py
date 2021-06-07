@@ -6,7 +6,7 @@ import time
 import typing
 import urllib
 from datetime import timedelta
-from typing import Iterator, NoReturn
+from typing import Iterator, NoReturn, Optional
 
 import asyncio_redis
 import sentry_sdk
