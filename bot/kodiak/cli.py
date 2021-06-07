@@ -131,5 +131,5 @@ def http_server_and_consumers() -> None:
     queue_consumers_process = Process(target=queue_consumers_main)
     queue_consumers_process.start()
 
-    http_process.join()
     queue_consumers_process.join()
+    http_process.join()
