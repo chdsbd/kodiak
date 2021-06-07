@@ -78,6 +78,10 @@ class FakeWebhookQueue:
 async def test_webhook_event_can_be_enqued_and_processed(
     event_name: str, redis: asyncio_redis.Pool, mocker: MockFixture
 ) -> None:
+    """
+    Smoke test to ensure all the events types work from the HTTP server to the
+    queue and back off the queue.
+    """
     mocker.patch(
         "kodiak.queries.http.AsyncClient.get",
         return_value=wrap_future(
@@ -89,11 +93,9 @@ async def test_webhook_event_can_be_enqued_and_processed(
     )
     mocker.patch("kodiak.queries.get_token_for_install", return_value=wrap_future(str))
 
-    for index, fixture_path in enumerate(
-        (Path(__file__).parent / "test" / "fixtures" / "events" / event_name).rglob(
-            "*.json"
-        )
-    ):
+    for fixture_path in (
+        Path(__file__).parent / "test" / "fixtures" / "events" / event_name
+    ).rglob("*.json"):
         await redis.delete([INCOMING_QUEUE_NAME])
         data = json.loads(fixture_path.read_bytes())
         body, sha = get_body_and_hash(data)
