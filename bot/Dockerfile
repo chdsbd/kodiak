@@ -21,4 +21,4 @@ RUN rm -rf /var/app/pip-wheel-metadata/
 # install cli
 RUN poetry install
 
-CMD ["/var/app/.venv/bin/python", "-m", "kodiak.main"]
+CMD ["/var/app/.venv/bin/kodiak", "http-server-and-consumers"]

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eux
 
-./.venv/bin/uvicorn kodiak.main:app "$@"
+./.venv/bin/kodiak http-server-and-consumers

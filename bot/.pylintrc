@@ -211,6 +211,8 @@ disable=print-statement,
         keyword-arg-before-vararg,
         # not smart enough about refinement
         inconsistent-return-statements,
+        # mypy handles this
+        no-value-for-parameter,
 
 
 # Enable the message, report, category or checker with the given id(s). You can

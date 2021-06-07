@@ -6,7 +6,7 @@ import time
 import typing
 import urllib
 from datetime import timedelta
-from typing import Iterator, Optional
+from typing import Iterator, NoReturn
 
 import asyncio_redis
 import sentry_sdk
@@ -24,11 +24,13 @@ from kodiak.events import (
     PullRequestEvent,
     PullRequestReviewEvent,
     PushEvent,
+    RawIncomingEvent,
     StatusEvent,
 )
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+from kodiak.redis import get_conn
 
 logger = structlog.get_logger()
 
@@ -293,7 +295,7 @@ class WebhookEvent(BaseModel):
 
 async def process_webhook_event(
     connection: RedisConnection,
-    webhook_queue: RedisWebhookQueue,
+    webhook_queue: WebhookQueueProtocol,
     queue_name: str,
     log: structlog.BoundLogger,
 ) -> None:
@@ -318,7 +320,7 @@ async def process_webhook_event(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge(*, first: bool) -> Optional[int]:
+    async def queue_for_merge(*, first: bool) -> int | None:
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
@@ -336,7 +338,7 @@ async def process_webhook_event(
 
 
 async def webhook_event_consumer(
-    *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
+    *, connection: RedisConnection, webhook_queue: WebhookQueueProtocol, queue_name: str
 ) -> typing.NoReturn:
     """
     Worker to process incoming webhook events from redis
@@ -359,6 +361,18 @@ async def webhook_event_consumer(
         log.info("start webhook event consumer")
         while True:
             await process_webhook_event(connection, webhook_queue, queue_name, log)
+
+
+async def process_raw_webhook_event_consumer(
+    *, queue: WebhookQueueProtocol, connection: RedisConnection
+) -> None:
+    res = await connection.blpop([INCOMING_QUEUE_NAME])
+
+    raw_event = RawIncomingEvent.parse_raw(res.value)
+    event_name = raw_event.name
+    event = json.loads(raw_event.payload)
+
+    await handle_webhook_event(queue=queue, event_name=event_name, payload=event)
 
 
 async def process_repo_queue(
@@ -384,7 +398,7 @@ async def process_repo_queue(
             only_if_not_exists=True,
         )
 
-    async def queue_for_merge(*, first: bool) -> Optional[int]:
+    async def queue_for_merge(*, first: bool) -> int | None:
         raise NotImplementedError
 
     log.info("evaluate PR for merging")
@@ -427,7 +441,7 @@ async def repo_queue_consumer(
 T = typing.TypeVar("T")
 
 
-def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
+def find_position(x: typing.Iterable[T], v: T) -> int | None:
     count = 0
     for item in x:
         if item == v:
@@ -443,18 +457,9 @@ class RedisWebhookQueue:
     connection: asyncio_redis.Pool
 
     async def create(self) -> None:
-        redis_db = 0
-        try:
-            redis_db = int(conf.REDIS_URL.database)
-        except ValueError:
-            pass
-        self.connection = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password or None,
-            db=redis_db,
-            poolsize=conf.REDIS_POOL_SIZE,
-        )
+        self.connection = await get_conn(poolsize=conf.REDIS_POOL_SIZE)
+
+        self.start_raw_webhook_worker()
 
         # restart repo workers
         merge_queues, webhook_queues = await asyncio.gather(
@@ -468,6 +473,21 @@ class RedisWebhookQueue:
         for webhook_result in webhook_queues:
             queue_name = await webhook_result
             self.start_webhook_worker(queue_name=queue_name)
+
+    def start_raw_webhook_worker(self) -> None:
+        async def raw_webhook_event_consumer(
+            *, queue: WebhookQueueProtocol, connection: RedisConnection
+        ) -> NoReturn:
+            logger.info("start raw webhook event consumer")
+            while True:
+                await process_raw_webhook_event_consumer(
+                    queue=queue, connection=connection
+                )
+
+        self._start_worker(
+            INCOMING_QUEUE_NAME,
+            raw_webhook_event_consumer(queue=self, connection=self.connection),
+        )
 
     def start_webhook_worker(self, *, queue_name: str) -> None:
         self._start_worker(
@@ -517,9 +537,7 @@ class RedisWebhookQueue:
         log.info("enqueue webhook event")
         self.start_webhook_worker(queue_name=queue_name)
 
-    async def enqueue_for_repo(
-        self, *, event: WebhookEvent, first: bool
-    ) -> Optional[int]:
+    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
         """
         1. get the corresponding repo queue for event
         2. add key to MERGE_QUEUE_NAMES so on restart we can recreate the
@@ -572,4 +590,24 @@ def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
 
 
-redis_webhook_queue = RedisWebhookQueue()
+INCOMING_QUEUE_NAME = "kodiak:incoming_queue"
+
+
+async def enqueue_incoming_webhook(
+    *, redis: asyncio_redis.Pool, event_name: str, event: dict[str, object]
+) -> None:
+    logger.info("enqueuing github webhook event")
+
+    raw_event = RawIncomingEvent(name=event_name, payload=json.dumps(event))
+    await redis.rpush(INCOMING_QUEUE_NAME, [raw_event.json()])
+
+
+def main() -> None:
+    async def run_workers() -> None:
+        await RedisWebhookQueue().create()
+        # HACK(sbdchd): we want something like trio's nursery, but instead we
+        # have this. There must be a better way.
+        while True:
+            await asyncio.sleep(5)
+
+    asyncio.run(run_workers())
