@@ -603,4 +603,11 @@ async def enqueue_incoming_webhook(
 
 
 def main() -> None:
-    asyncio.run(RedisWebhookQueue().create())
+    async def run_workers() -> None:
+        await RedisWebhookQueue().create()
+        # HACK(sbdchd): we want something like trio's nursery, but instead we
+        # have this. There must be a better way.
+        while True:
+            await asyncio.sleep(5)
+
+    asyncio.run(run_workers())
