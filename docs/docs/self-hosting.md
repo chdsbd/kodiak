@@ -101,3 +101,8 @@ These instructions describe setting up Kodiak on Heroku using a Docker container
     # release app
     heroku container:release web -a $APP_NAME
     ```
+
+    > **NOTE:** While the default CMD for the Docker container will run Kodiak,
+    > for a more robust setup you can run the webhook http server and the queue
+    > consumers seperately. Entrypoints should be `/var/app/.venv/bin/kodiak http-server` and `/var/app/.venv/bin/kodiak queue-consumers`. This allows
+    > for updating & restarting Kodiak with less/zero downtime.
