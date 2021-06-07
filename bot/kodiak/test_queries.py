@@ -415,9 +415,7 @@ async def test_get_subscription_missing_blocker(
             b"subscription_blocker": b"",
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -439,9 +437,7 @@ async def test_get_subscription_missing_blocker_and_data(
             b"data": b"",
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -458,9 +454,7 @@ async def test_get_subscription_missing_blocker_fully(
     Redis. We should handle this case by returning an empty subscription.
     """
     fake_redis = create_fake_redis_reply({})
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res is None
@@ -481,9 +475,7 @@ async def test_get_subscription_seats_exceeded(
             b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": [5234234]}',
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -506,9 +498,7 @@ async def test_get_subscription_seats_exceeded_no_seats(
             b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": []}',
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -532,9 +522,7 @@ async def test_get_subscription_seats_exceeded_missing_data(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -558,9 +546,7 @@ async def test_get_subscription_seats_exceeded_invalid_data(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -585,9 +571,7 @@ async def test_get_subscription_seats_exceeded_invalid_kind(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -610,9 +594,7 @@ async def test_get_subscription_unknown_blocker(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
