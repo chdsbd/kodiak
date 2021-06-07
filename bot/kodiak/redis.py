@@ -10,7 +10,7 @@ _redis: asyncio_redis.Pool | None = None
 logger = structlog.get_logger()
 
 
-async def get_conn() -> asyncio_redis.Pool:
+async def get_conn(*, poolsize: int) -> asyncio_redis.Pool:
     """
     FastAPI compatible function for accessing the connection pool
     see: https://fastapi.tiangolo.com/tutorial/dependencies/#to-async-or-not-to-async
@@ -27,7 +27,7 @@ async def get_conn() -> asyncio_redis.Pool:
             port=conf.REDIS_URL.port or 6379,
             password=conf.REDIS_URL.password or None,
             db=redis_db,
-            poolsize=conf.REDIS_POOL_SIZE,
+            poolsize=poolsize,
         )
         logger.info("redis pool created.")
     return _redis

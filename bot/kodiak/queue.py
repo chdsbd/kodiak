@@ -457,7 +457,7 @@ class RedisWebhookQueue:
     connection: asyncio_redis.Pool
 
     async def create(self) -> None:
-        self.connection = await get_conn()
+        self.connection = await get_conn(poolsize=conf.REDIS_POOL_SIZE)
 
         self.start_raw_webhook_worker()
 
@@ -594,7 +594,7 @@ INCOMING_QUEUE_NAME = "kodiak:incoming_queue"
 
 
 async def enqueue_incoming_webhook(
-    *, redis: asyncio_redis.Connection, event_name: str, event: dict[str, object]
+    *, redis: asyncio_redis.Pool, event_name: str, event: dict[str, object]
 ) -> None:
     logger.info("enqueuing github webhook event")
 

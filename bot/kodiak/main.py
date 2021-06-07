@@ -54,6 +54,11 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
+
+async def get_http_redis_pool() -> asyncio_redis.Pool:
+    return await redis.get_conn(poolsize=conf.REDIS_HTTP_POOL_SIZE)
+
+
 app = FastAPI()
 app.add_middleware(SentryAsgiMiddleware)
 
@@ -70,7 +75,7 @@ async def webhook_event(
     request: Request,
     x_github_event: str = Header(None),
     x_hub_signature: str = Header(None),
-    redis: asyncio_redis.Connection = Depends(redis.get_conn),
+    redis: asyncio_redis.Pool = Depends(get_http_redis_pool),
 ) -> None:
     """
     Verify and accept GitHub Webhook payloads.
@@ -107,7 +112,7 @@ async def webhook_event(
 async def startup() -> None:
     # create redis queue so the first request to the HTTP server doesn't have to
     # wait for the queue creation.
-    await redis.get_conn()
+    await get_http_redis_pool()
 
 
 def main() -> None:
