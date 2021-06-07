@@ -1,4 +1,5 @@
 import asyncio
+from multiprocessing import Process
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -113,3 +114,22 @@ def queue_consumers() -> None:
     from kodiak.queue import main
 
     main()
+
+
+@cli.command()
+def http_server_and_consumers() -> None:
+    """
+    Run http server and consumers as subprocesses for backwards compat with self
+    hosting docs.
+    """
+    from kodiak.main import main as http_main
+    from kodiak.queue import main as queue_consumers_main
+
+    http_process = Process(target=http_main)
+    http_process.start()
+
+    queue_consumers_process = Process(target=queue_consumers_main)
+    queue_consumers_process.start()
+
+    http_process.join()
+    queue_consumers_process.join()
