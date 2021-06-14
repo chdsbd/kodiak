@@ -1525,6 +1525,7 @@ async def test_mergeable_pull_request_need_test_commit() -> None:
     assert api.dequeue.call_count == 0
     assert api.trigger_test_commit.call_count == 1
     assert api.requeue.call_count == 1
+    assert api.requeue.calls[0]["priority_merge"] is False
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
