@@ -15,7 +15,7 @@ from kodiak.errors import (
     PollForever,
     RetryForSkippableChecks,
 )
-from kodiak.evaluation import mergeable, is_priority_merge
+from kodiak.evaluation import is_priority_merge, mergeable
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
