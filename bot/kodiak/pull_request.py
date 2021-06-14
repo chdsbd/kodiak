@@ -15,7 +15,7 @@ from kodiak.errors import (
     PollForever,
     RetryForSkippableChecks,
 )
-from kodiak.evaluation import mergeable
+from kodiak.evaluation import mergeable, is_priority_merge
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
@@ -25,13 +25,18 @@ RETRY_RATE_SECONDS = 2
 POLL_RATE_SECONDS = 3
 
 
+class RequeueCallback(Protocol):
+    async def __call__(self, *, priority_merge: bool) -> None:
+        ...
+
+
 async def get_pr(
     install: str,
     owner: str,
     repo: str,
     number: int,
     dequeue_callback: Callable[[], Awaitable[None]],
-    requeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: RequeueCallback,
     queue_for_merge_callback: QueueForMergeCallback,
 ) -> Optional[PRV2]:
     log = logger.bind(install=install, owner=owner, repo=repo, number=number)
@@ -66,7 +71,7 @@ async def evaluate_pr(
     number: int,
     merging: bool,
     dequeue_callback: Callable[[], Awaitable[None]],
-    requeue_callback: Callable[[], Awaitable[None]],
+    requeue_callback: RequeueCallback,
     queue_for_merge_callback: QueueForMergeCallback,
     is_active_merging: bool,
 ) -> None:
@@ -148,7 +153,12 @@ async def evaluate_pr(
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
             log.exception("mergeable_timeout")
-            await requeue_callback()
+            await requeue_callback(
+                priority_merge=pr is not None
+                and is_priority_merge(
+                    config=pr.event.config, pull_request=pr.event.pull_request
+                )
+            )
 
 
 class QueueForMergeCallback(Protocol):
@@ -173,7 +183,7 @@ class PRV2:
         repo: str,
         number: int,
         dequeue_callback: Callable[[], Awaitable[None]],
-        requeue_callback: Callable[[], Awaitable[None]],
+        requeue_callback: RequeueCallback,
         queue_for_merge_callback: QueueForMergeCallback,
         client: Optional[Type[Client]] = None,
     ):
@@ -192,9 +202,9 @@ class PRV2:
         self.log.info("dequeue")
         await self.dequeue_callback()
 
-    async def requeue(self) -> None:
+    async def requeue(self, *, priority_merge: bool) -> None:
         self.log.info("requeue")
-        await self.requeue_callback()
+        await self.requeue_callback(priority_merge=priority_merge)
 
     async def set_status(
         self, msg: str, *, markdown_content: Optional[str] = None

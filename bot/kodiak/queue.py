@@ -313,10 +313,11 @@ async def process_webhook_event(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
-    async def requeue() -> None:
+    async def requeue(*, priority_merge: bool) -> None:
+        queue_position = 0 if priority_merge else time.time()
         await connection.zadd(
             webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
+            {webhook_event.json(): queue_position},
             only_if_not_exists=True,
         )
 
@@ -391,10 +392,11 @@ async def process_repo_queue(
             webhook_event.get_merge_queue_name(), [webhook_event.json()]
         )
 
-    async def requeue() -> None:
+    async def requeue(*, priority_merge: bool) -> None:
+        queue_position = 0 if priority_merge else time.time()
         await connection.zadd(
             webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
+            {webhook_event.json(): queue_position},
             only_if_not_exists=True,
         )
 

@@ -171,8 +171,8 @@ class MockApprovePullRequest(BaseMockFunc):
 
 
 class MockRequeue(BaseMockFunc):
-    async def __call__(self) -> None:
-        self.log_call(dict())
+    async def __call__(self, *, priority_merge: bool) -> None:
+        self.log_call(dict(priority_merge=priority_merge))
 
 
 class MockPrApi:

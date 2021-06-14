@@ -264,7 +264,7 @@ class PRAPI(Protocol):
     async def dequeue(self) -> None:
         ...
 
-    async def requeue(self) -> None:
+    async def requeue(self, *, priority_merge: bool) -> None:
         ...
 
     async def set_status(
@@ -446,6 +446,16 @@ def get_merge_method(
     return MergeMethod.merge
 
 
+def is_priority_merge(
+    config: Union[V1, pydantic.ValidationError, toml.TomlDecodeError],
+    pull_request: PullRequest,
+) -> bool:
+    return (
+        isinstance(config, V1)
+        and config.merge.priority_merge_label in pull_request.labels
+    )
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -611,6 +621,8 @@ async def mergeable(
         in config.merge.automerge_dependencies.versions
     )
 
+    priority_merge = is_priority_merge(config, pull_request)
+
     # we should trigger mergeability checks whenever we encounter UNKNOWN.
     #
     # I don't foresee conflicts with checking configuration errors,
@@ -629,7 +641,7 @@ async def mergeable(
 
         # queue the PR for evaluation again in case GitHub doesn't send another
         # webhook for the commit test.
-        await api.requeue()
+        await api.requeue(priority_merge=priority_merge)
 
         # we don't want to abort the merge if we encounter this status check.
         # Just keep polling!
@@ -1088,7 +1100,6 @@ branch protection requirements.
             await set_status("merge complete 🎉")
 
     else:
-        priority_merge = config.merge.priority_merge_label in pull_request.labels
         position_in_queue = await api.queue_for_merge(first=priority_merge)
         if position_in_queue is None:
             # this case should be rare/impossible.
