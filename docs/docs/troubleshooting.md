@@ -39,3 +39,14 @@ This state where the branch has been merged but the pull request remains open wo
 If Kodiak set the `disable_bot_label` label (default "kodiak:disabled") on your pull request you can remove the label to re-enable Kodiak. GitHub API instability is usually brief.
 
 Related issues: [#398](https://github.com/chdsbd/kodiak/pull/398), [#397](https://github.com/chdsbd/kodiak/issues/397)
+
+### GitHub Enterprise IP allow list
+
+GitHub Enterprise [allows limiting access by IP address](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-allowed-ip-addresses-for-your-organization). To allow Kodiak to run when the IP allow list is enabled, you must add Kodiak's outgoing IP addresses to your allow list.
+
+Here's the list of outgoing IP addresses Kodiak uses.
+
+```
+174.138.118.176
+165.227.248.81
+```
