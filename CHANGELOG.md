@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - use [fixed IP addresses](https://kodiakhq.com/docs/troubleshooting#github-enterprise-ip-allow-list) for sending GitHub API requests to support GitHub Enterprise Cloud IP address allow list. (#666, #673)
 
+### Fixed
+- fixed typo in config reference documentation. Thanks @AndersDJohnson! (#663)
+
 ## 0.41.0 - 2021-06-04
 
 ### Changed
