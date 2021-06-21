@@ -664,6 +664,9 @@ optional = false
 python-versions = "*"
 version = "1.5.0"
 
+[package.dependencies]
+idna = "*"
+
 [[package]]
 category = "main"
 description = "Python bindings for the Rust `regex` crate. This implementation uses finite automata and guarantees linear time matching on all inputs."

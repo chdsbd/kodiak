@@ -1,20 +1,14 @@
 import asyncio
-import sys
-import time
-from multiprocessing import Process
 from pathlib import Path
 from typing import Any, Dict, List
 
 import click
 import requests
-import structlog
 from httpx import AsyncClient
 
 from kodiak import app_config as conf
 from kodiak.config import V1
 from kodiak.queries import generate_jwt, get_token_for_install
-
-logger = structlog.get_logger()
 
 
 @click.group()
@@ -99,50 +93,3 @@ def refresh_pull_requests() -> None:
     from kodiak.refresh_pull_requests import main
 
     main()
-
-
-@cli.command()
-def http_server() -> None:
-    """
-    run HTTP server used for receiving webhooks
-    """
-    from kodiak.main import main
-
-    main()
-
-
-@cli.command()
-def queue_consumers() -> None:
-    """
-    run the consumers for the various queues
-    """
-    from kodiak.queue import main
-
-    main()
-
-
-@cli.command()
-def http_server_and_consumers() -> None:
-    """
-    Run http server and consumers as subprocesses for backwards compat with self
-    hosting docs.
-    """
-    from kodiak.main import main as http_main
-    from kodiak.queue import main as queue_consumers_main
-
-    http_process = Process(target=http_main)
-    http_process.start()
-
-    queue_consumers_process = Process(target=queue_consumers_main)
-    queue_consumers_process.start()
-
-    while True:
-        if not queue_consumers_process.is_alive():
-            logger.warning("queue consumer died, exiting")
-            sys.exit(1)
-
-        if not http_process.is_alive():
-            logger.warning("http process died, exiting")
-            sys.exit(1)
-
-        time.sleep(1)
