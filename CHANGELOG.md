@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.42.1 - 2021-06-23
 
 ### Fixed
+- fixed Kodiak-breaking bug from release 0.42.0 (#676)
 - fixed short HTTP timeouts for GitHub API requests negatively impacting Kodiak's reliability. (#678)
 
 ## 0.42.0 - 2021-06-20
