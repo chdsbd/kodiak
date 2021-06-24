@@ -728,7 +728,11 @@ class Client:
         self.installation_id = installation_id
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
-        self.session = http.AsyncClient()
+        self.session = http.AsyncClient(
+            # infinite timeout to match behavior of old, requests_async http
+            # client. As a backup we have an asyncio timeout of 30 seconds.
+            timeout=None
+        )
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
