@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import pydantic
 
@@ -6,7 +6,7 @@ from kodiak.events.base import GithubEvent
 
 
 class Commit(pydantic.BaseModel):
-    sha: str
+    sha: Optional[str]
 
 
 class Branch(pydantic.BaseModel):
