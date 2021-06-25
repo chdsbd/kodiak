@@ -41,6 +41,18 @@ WORKER_TASKS: typing.MutableMapping[str, asyncio.Task[None]] = {}
 RETRY_RATE_SECONDS = 2
 
 
+def installation_id_from_queue(queue_name: str) -> str:
+    """
+    Extract the installation id from the queue names
+
+    On restart we only have queue names, so we need to extract installation ids from the names.
+
+    webhook:848733 -> 848733
+    merge_queue:848733.chdsbd/kodiak/master -> 848733
+    """
+    return queue_name.partition(":")[2].partition(".")[0]
+
+
 class WebhookQueueProtocol(Protocol):
     async def enqueue(self, *, event: WebhookEvent) -> None:
         ...
@@ -355,6 +367,7 @@ async def webhook_event_consumer(
     with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
         with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
+            scope.set_tag("installation", installation_id_from_queue(queue_name))
         log = logger.bind(queue=queue_name)
         log.info("start webhook event consumer")
         while True:
@@ -418,6 +431,7 @@ async def repo_queue_consumer(
     with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
         with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
+            scope.set_tag("installation", installation_id_from_queue(queue_name))
         log = logger.bind(queue=queue_name)
         log.info("start repo_consumer")
         while True:
