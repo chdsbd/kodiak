@@ -776,12 +776,15 @@ class Client:
         rate_limit_max = res.headers.get("x-ratelimit-limit")
         rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
         log = log.bind(rate_limit=rate_limit)
-        if res.status_code != status.HTTP_200_OK:
-            log.error("github api request error", res=res)
+        try:
+            res.raise_for_status()
+        except HTTPError:
+            log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
 
     async def get_permissions_for_username(self, username: str) -> Permission:
+        log = self.log.bind(username=username)
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
         )
@@ -792,11 +795,17 @@ class Client:
                 ),
                 headers=headers,
             )
+        log = log.bind(res=res)
         try:
             res.raise_for_status()
+        except http.HTTPError:
+            log.warning("get_permissions request_failure", exc_info=True)
+            return Permission.NONE
+
+        try:
             return Permission(res.json()["permission"])
-        except (http.HTTPError, IndexError, TypeError, ValueError):
-            logger.exception("couldn't fetch permissions", username=username)
+        except (IndexError, TypeError, ValueError):
+            log.exception("get_permissions parse error")
             return Permission.NONE
 
     # TODO(chdsbd): We may want to cache this response to improve performance as
