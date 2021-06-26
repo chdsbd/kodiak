@@ -1210,7 +1210,7 @@ class Client:
                     real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
-                logger.warning("failed to parse seats_exceeded data", exc_info=True)
+                logger.exception("failed to parse seats_exceeded data", exc_info=True)
                 subscription_blocker = SeatsExceeded(allowed_user_ids=[])
         if subscription_blocker_kind == "trial_expired":
             subscription_blocker = TrialExpired()
