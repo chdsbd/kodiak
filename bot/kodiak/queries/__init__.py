@@ -784,7 +784,6 @@ class Client:
         return cast(GraphQLResponse, res.json())
 
     async def get_permissions_for_username(self, username: str) -> Permission:
-        log = self.log.bind(username=username)
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
         )
@@ -795,7 +794,7 @@ class Client:
                 ),
                 headers=headers,
             )
-        log = log.bind(res=res)
+        log = log.bind(res=res, username=username)
         try:
             res.raise_for_status()
         except http.HTTPError:
