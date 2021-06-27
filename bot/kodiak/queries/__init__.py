@@ -14,7 +14,6 @@ import structlog
 import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
-from starlette import status
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -776,8 +775,10 @@ class Client:
         rate_limit_max = res.headers.get("x-ratelimit-limit")
         rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
         log = log.bind(rate_limit=rate_limit)
-        if res.status_code != status.HTTP_200_OK:
-            log.error("github api request error", res=res)
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
 
@@ -792,11 +793,17 @@ class Client:
                 ),
                 headers=headers,
             )
+        log = self.log.bind(res=res, username=username)
         try:
             res.raise_for_status()
+        except http.HTTPError:
+            log.warning("get_permissions request_failure", exc_info=True)
+            return Permission.NONE
+
+        try:
             return Permission(res.json()["permission"])
-        except (http.HTTPError, IndexError, TypeError, ValueError):
-            logger.exception("couldn't fetch permissions", username=username)
+        except (IndexError, TypeError, ValueError):
+            log.exception("get_permissions parse error")
             return Permission.NONE
 
     # TODO(chdsbd): We may want to cache this response to improve performance as
@@ -1202,7 +1209,7 @@ class Client:
                     real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
-                logger.warning("failed to parse seats_exceeded data", exc_info=True)
+                logger.exception("failed to parse seats_exceeded data", exc_info=True)
                 subscription_blocker = SeatsExceeded(allowed_user_ids=[])
         if subscription_blocker_kind == "trial_expired":
             subscription_blocker = TrialExpired()
