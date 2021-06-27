@@ -14,7 +14,6 @@ import structlog
 import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
-from starlette import status
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
