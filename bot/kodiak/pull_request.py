@@ -289,7 +289,9 @@ class PRV2:
                 res.raise_for_status()
             except HTTPError:
                 self.log.warning(
-                    "failed to get pull request for test commit trigger", res=res
+                    "failed to get pull request for test commit trigger",
+                    res=res,
+                    exc_info=True,
                 )
 
     async def merge(
