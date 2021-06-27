@@ -794,7 +794,7 @@ class Client:
                 ),
                 headers=headers,
             )
-        log = log.bind(res=res, username=username)
+        log = self.log.bind(res=res, username=username)
         try:
             res.raise_for_status()
         except http.HTTPError:
