@@ -778,7 +778,7 @@ class Client:
         log = log.bind(rate_limit=rate_limit)
         try:
             res.raise_for_status()
-        except HTTPError:
+        except http.HTTPError:
             log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
