@@ -218,7 +218,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.warning("failed to create notification", res=res, exc_info=True)
+                self.log.warning(
+                    "failed to create notification", res=res, exc_info=True
+                )
 
     async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
         log = self.log.bind(ref=ref)
@@ -273,7 +275,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.warning("failed to approve pull request", res=res, exc_info=True)
+                self.log.warning(
+                    "failed to approve pull request", res=res, exc_info=True
+                )
 
     async def trigger_test_commit(self) -> None:
         self.log.info("trigger_test_commit")
@@ -312,7 +316,9 @@ class PRV2:
                         "branch is not mergeable. PR likely already merged.", res=res
                     )
                 else:
-                    self.log.warning("failed to merge pull request", res=res, exc_info=True)
+                    self.log.warning(
+                        "failed to merge pull request", res=res, exc_info=True
+                    )
                 if e.response is not None and e.response.status_code == 500:
                     raise GitHubApiInternalServerError
                 # we raise an exception to retry this request.
@@ -358,7 +364,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.warning("failed to add label", label=label, res=res, exc_info=True)
+                self.log.warning(
+                    "failed to add label", label=label, res=res, exc_info=True
+                )
                 raise ApiCallException(
                     method="pull_request/add_label",
                     http_status_code=res.status_code,
@@ -377,7 +385,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.warning("failed to delete label", label=label, res=res, exc_info=True)
+                self.log.warning(
+                    "failed to delete label", label=label, res=res, exc_info=True
+                )
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/delete_label",
