@@ -278,7 +278,7 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
         <Logo>
           <Logos.ComplexGmbH />
         </Logo>
-        <Logo>
+    
         <Logo>
           <Logos.Hasura />
         </Logo>
