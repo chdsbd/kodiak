@@ -88,6 +88,8 @@ const Logos = {
       </svg>
     )
   },
+}
+
 /** @param {{language?: string, siteConfig: typeof import("../../siteConfig")}} props */
 function HomeSplash(props) {
   const { siteConfig } = props
