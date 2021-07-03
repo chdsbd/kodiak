@@ -945,13 +945,13 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
           <Logos.Hasura />
         </Logo>
         <Logo>
-          <Logos.Linz />
-        </Logo>
-        <Logo>
           <Logos.Lola />
         </Logo>
         <Logo>
           <Logos.Meshcloud />
+        </Logo>
+        <Logo>
+          <Logos.Linz />
         </Logo>
         <Logo>
           <Logos.Vercel />
