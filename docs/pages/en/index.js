@@ -921,7 +921,7 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
   /**
    * @param {{children: React.ReactNode}} props
    */
-  const Logo = props => <span style={{ margin: "20px" }}>{props.children}</span>
+  const Logo = props => <span className="customer-logo">{props.children}</span>
 
   const Users = () => (
     <Container background="light" padding={["top", "bottom"]}>

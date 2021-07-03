@@ -52,6 +52,10 @@ header a {
   top: unset;
 }
 
+.customer-logo {
+  margin: 20px 30px;
+}
+
 @media (max-width: 480px) {
   /* by default the project title hides on mobile leaving just the logo */
   .headerTitleWithLogo {
