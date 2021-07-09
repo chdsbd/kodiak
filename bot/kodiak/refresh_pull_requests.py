@@ -40,10 +40,8 @@ logging.basicConfig(
 
 # disable sentry logging middleware as the structlog processor provides more
 # info via the extra data field
-# TODO(sbdchd): waiting on https://github.com/getsentry/sentry-python/pull/444
-# to be merged & released to remove `# type: ignore`
 sentry_sdk.init(
-    integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
+    integrations=[LoggingIntegration(level=None, event_level=None)]
 )
 
 structlog.configure(
