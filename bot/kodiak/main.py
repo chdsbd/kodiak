@@ -28,9 +28,7 @@ logging.basicConfig(
 
 # disable sentry logging middleware as the structlog processor provides more
 # info via the extra data field
-sentry_sdk.init(
-    integrations=[LoggingIntegration(level=None, event_level=None)]
-)
+sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
 
 structlog.configure(
     processors=[
