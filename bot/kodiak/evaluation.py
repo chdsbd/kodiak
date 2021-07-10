@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import textwrap
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Dict, List, MutableMapping, Optional, Sequence, Set, Union
 
@@ -258,6 +261,13 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
         ):
             status = review.state
     return status
+
+
+def deduplicate_check_runs(check_runs: Iterable[CheckRun]) -> List[CheckRun]:
+    check_run_map = dict()
+    for check_run in check_runs:
+        check_run_map[check_run.name] = check_run
+    return list(check_run_map.values())
 
 
 class PRAPI(Protocol):
@@ -882,7 +892,8 @@ async def mergeable(
                 else:
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
-            for check_run in check_runs:
+
+            for check_run in deduplicate_check_runs(check_runs):
                 if (
                     check_run.name in config.merge.dont_wait_on_status_checks
                     and check_run.conclusion in (None, CheckConclusionState.NEUTRAL)

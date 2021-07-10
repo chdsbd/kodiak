@@ -282,8 +282,12 @@ def create_context() -> StatusContext:
     return StatusContext(context="ci/api", state=StatusState.SUCCESS)
 
 
-def create_check_run() -> CheckRun:
-    return CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
+def create_check_run(
+    *,
+    name: str = "WIP (beta)",
+    conclusion: CheckConclusionState = CheckConclusionState.SUCCESS,
+) -> CheckRun:
+    return CheckRun(name=name, conclusion=conclusion)
 
 
 def create_review_request() -> PRReviewRequest:
