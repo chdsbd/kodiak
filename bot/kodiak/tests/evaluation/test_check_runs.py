@@ -570,6 +570,12 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
 
 
 async def test_duplicate_check_suites() -> None:
+    """
+    Kodiak should only consider the most recent check run when evaluating a PR
+    for merging.
+
+    Regression test.
+    """
     api = create_api()
     pull_request = create_pull_request()
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
