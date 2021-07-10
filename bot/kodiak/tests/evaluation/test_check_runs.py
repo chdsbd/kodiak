@@ -569,6 +569,7 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
     assert api.dequeue.call_count == 0
 
 
+@pytest.mark.asyncio
 async def test_duplicate_check_suites() -> None:
     """
     Kodiak should only consider the most recent check run when evaluating a PR
