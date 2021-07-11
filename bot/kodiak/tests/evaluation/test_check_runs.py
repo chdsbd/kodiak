@@ -1,8 +1,13 @@
+"""
+Tests for flows that depend on status checks or check_runs.
+"""
 import pytest
 
 from kodiak.errors import PollForever, RetryForSkippableChecks
-from kodiak.queries import CheckConclusionState, MergeStateStatus, StatusState
+from kodiak.queries import StatusState
 from kodiak.test_evaluation import (
+    CheckConclusionState,
+    MergeStateStatus,
     create_api,
     create_branch_protection,
     create_check_run,
@@ -562,3 +567,38 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
     assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_duplicate_check_suites() -> None:
+    """
+    Kodiak should only consider the most recent check run when evaluating a PR
+    for merging.
+
+    Regression test.
+    """
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    branch_protection = create_branch_protection()
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["Pre-merge checks"]
+    mergeable = create_mergeable()
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        check_runs=[
+            create_check_run(
+                name="Pre-merge checks", conclusion=CheckConclusionState.NEUTRAL
+            ),
+            create_check_run(
+                name="Pre-merge checks", conclusion=CheckConclusionState.FAILURE
+            ),
+            create_check_run(
+                name="Pre-merge checks", conclusion=CheckConclusionState.SUCCESS
+            ),
+        ],
+    )
+    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
