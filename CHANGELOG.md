@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.43.0 - 2021-07-10
+
+### Fixed
+- fixed Kodiak incorrectly saying a PR was not mergeable when there were duplicated check runs. (#688)
+
 ## 0.42.1 - 2021-06-23
 
 ### Fixed
