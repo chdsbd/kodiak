@@ -263,11 +263,9 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
     return status
 
 
-def deduplicate_check_runs(check_runs: Iterable[CheckRun]) -> List[CheckRun]:
-    check_run_map = dict()
-    for check_run in check_runs:
-        check_run_map[check_run.name] = check_run
-    return list(check_run_map.values())
+def deduplicate_check_runs(check_runs: Iterable[CheckRun]) -> Iterable[CheckRun]:
+    check_run_map = {check_run.name: check_run for check_run in check_runs}
+    return check_run_map.values()
 
 
 class PRAPI(Protocol):
