@@ -95,6 +95,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         requiresStrictStatusChecks
         requiresCodeOwnerReviews
         requiresCommitSignatures
+        requiresConversationResolution
         restrictsPushes
         pushAllowances(first: 100) {
           nodes {
@@ -375,6 +376,7 @@ class BranchProtectionRule(BaseModel):
     requiresStrictStatusChecks: bool
     requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
+    requiresConversationResolution: bool
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
 

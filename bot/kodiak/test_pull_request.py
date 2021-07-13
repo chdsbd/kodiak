@@ -64,6 +64,7 @@ def create_event() -> EventInfoResponse:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=False,
         pushAllowances=NodeListPushAllowance(nodes=[]),
     )

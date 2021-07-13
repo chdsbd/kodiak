@@ -262,6 +262,7 @@ def create_branch_protection() -> BranchProtectionRule:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=True,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=False,
         pushAllowances=NodeListPushAllowance(nodes=[]),
     )

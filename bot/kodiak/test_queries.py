@@ -176,6 +176,7 @@ def block_event() -> EventInfoResponse:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=True,
         pushAllowances=NodeListPushAllowance(
             nodes=[

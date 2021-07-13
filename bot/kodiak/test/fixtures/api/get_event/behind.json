@@ -24,6 +24,7 @@
             "requiresStrictStatusChecks": true,
             "requiresCodeOwnerReviews": false,
             "requiresCommitSignatures": false,
+            "requiresConversationResolution": false,
             "restrictsPushes": true,
             "pushAllowances": {
               "nodes": [
