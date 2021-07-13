@@ -977,6 +977,10 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request() -> 
 
 @pytest.mark.asyncio
 async def test_mergeable_requires_conversation_resolution() -> None:
+    """
+    When requiresConversationResolution is enabled and we have unresolved review
+    threads, we should block merge.
+    """
     mergeable = create_mergeable()
     api = create_api()
     config = create_config()
@@ -1002,6 +1006,10 @@ async def test_mergeable_requires_conversation_resolution() -> None:
 
 @pytest.mark.asyncio
 async def test_mergeable_uncollapsed_reviews() -> None:
+    """
+    We should only block merge for unresolved review threads if
+    requiresConversationResolution is enabled.
+    """
     mergeable = create_mergeable()
     api = create_api()
     config = create_config()
