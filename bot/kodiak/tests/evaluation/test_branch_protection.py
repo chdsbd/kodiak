@@ -997,7 +997,7 @@ async def test_mergeable_requires_conversation_resolution() -> None:
         branch_protection=branch_protection,
     )
     assert api.set_status.call_count == 1
-    assert "cannot merge (unresolved review threads)" in api.set_status.calls[0]["msg"]
+    assert "cannot merge (unresolved conversations)" in api.set_status.calls[0]["msg"]
 
 
 @pytest.mark.asyncio
