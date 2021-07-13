@@ -157,8 +157,7 @@ def block_event() -> EventInfoResponse:
         bodyHTML="",
         url="https://github.com/delos-corp/hive-mind/pull/324",
         reviewThreads=ReviewThreadConnection(
-            nodes=[ReviewThread(isCollapsed=True), ReviewThread(isCollapsed=False)],
-            totalCount=2,
+            nodes=[ReviewThread(isCollapsed=True), ReviewThread(isCollapsed=False)]
         ),
     )
     rep_info = RepoInfo(

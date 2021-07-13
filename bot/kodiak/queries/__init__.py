@@ -152,7 +152,6 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         nodes {
           isCollapsed
         }
-        totalCount
       }
       title
       body
@@ -295,7 +294,6 @@ class ReviewThread(BaseModel):
 
 class ReviewThreadConnection(BaseModel):
     nodes: Optional[List[ReviewThread]]
-    totalCount: int
 
 
 class PullRequest(BaseModel):
