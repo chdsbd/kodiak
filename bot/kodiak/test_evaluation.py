@@ -251,7 +251,7 @@ def create_pull_request() -> PullRequest:
         bodyText="some description",
         bodyHTML="<h1>some description</h1>",
         url="https://github.com/example_org/example_repo/pull/65",
-        reviewThreads=ReviewThreadConnection(nodes=[], totalCount=0),
+        reviewThreads=ReviewThreadConnection(nodes=[]),
     )
 
 
