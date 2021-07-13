@@ -148,6 +148,12 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
           }
         }
       }
+      reviewThreads(first: 100) {
+        nodes {
+          isCollapsed
+        }
+        totalCount
+      }
       title
       body
       bodyText
@@ -283,6 +289,15 @@ class PullRequestReviewDecision(Enum):
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
 
+class ReviewThread(BaseModel):
+    isCollapsed: bool
+
+
+class ReviewThreadConnection(BaseModel):
+    nodes: Optional[List[ReviewThread]]
+    totalCount: int
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -296,6 +311,7 @@ class PullRequest(BaseModel):
     # null if the pull request does not require a review by default (no branch
     # protection), and no review was requested or submitted yet.
     reviewDecision: Optional[PullRequestReviewDecision]
+    reviewThreads: ReviewThreadConnection
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool

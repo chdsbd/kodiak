@@ -15,6 +15,7 @@ from kodiak.queries import (
     PullRequestReviewDecision,
     PushAllowance,
     PushAllowanceActor,
+    ReviewThread,
     StatusState,
 )
 from kodiak.test_evaluation import (
@@ -972,3 +973,55 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request() -> 
     assert api.queue_for_merge.call_count == 0
     assert api.merge.call_count == 0
     assert api.dequeue.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_requires_conversation_resolution() -> None:
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    pull_request.reviewThreads.nodes = [
+        ReviewThread(isCollapsed=True),
+        ReviewThread(isCollapsed=False),
+    ]
+    branch_protection.requiresConversationResolution = True
+
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+    )
+    assert api.set_status.call_count == 1
+    assert "cannot merge (unresolved review threads)" in api.set_status.calls[0]["msg"]
+
+
+@pytest.mark.asyncio
+async def test_mergeable_uncollapsed_reviews() -> None:
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    pull_request = create_pull_request()
+    branch_protection = create_branch_protection()
+
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    pull_request.reviewThreads.nodes = [
+        ReviewThread(isCollapsed=True),
+        ReviewThread(isCollapsed=False),
+    ]
+
+    await mergeable(
+        api=api,
+        config=config,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+    )
+    assert api.set_status.call_count == 1
+    assert (
+        "cannot merge (Merging blocked by GitHub requirements)"
+        in api.set_status.calls[0]["msg"]
+    )

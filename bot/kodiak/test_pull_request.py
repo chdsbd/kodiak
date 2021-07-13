@@ -20,6 +20,7 @@ from kodiak.queries import (
     PullRequestAuthor,
     PullRequestState,
     RepoInfo,
+    ReviewThreadConnection,
 )
 
 
@@ -45,6 +46,7 @@ def create_event() -> EventInfoResponse:
         bodyText="",
         bodyHTML="",
         url="https://github.com/delos-corp/hive-mind/pull/324",
+        reviewThreads=ReviewThreadConnection(nodes=[], totalCount=0),
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,

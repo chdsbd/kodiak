@@ -78,6 +78,13 @@
             }
           ]
         },
+        "reviewThreads": {
+          "nodes": [
+            {"isCollapsed": true},
+            {"isCollapsed": false}
+          ],
+          "totalCount": 2
+        },
         "title": "Update README.md",
         "body": "",
         "bodyText": "",
