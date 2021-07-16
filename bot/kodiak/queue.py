@@ -234,6 +234,7 @@ async def get_redis() -> asyncio_redis.Pool:
             ),
             poolsize=conf.USAGE_REPORTING_POOL_SIZE,
             encoder=asyncio_redis.encoders.BytesEncoder(),
+            ssl=conf.REDIS_URL.scheme == "rediss",
         )
     return _redis
 
@@ -462,12 +463,14 @@ class RedisWebhookQueue:
             redis_db = int(conf.REDIS_URL.database)
         except ValueError:
             pass
+
         self.connection = await asyncio_redis.Pool.create(
             host=conf.REDIS_URL.hostname or "localhost",
             port=conf.REDIS_URL.port or 6379,
             password=conf.REDIS_URL.password or None,
             db=redis_db,
             poolsize=conf.REDIS_POOL_SIZE,
+            ssl=conf.REDIS_URL.scheme == "rediss",
         )
 
         # restart repo workers
