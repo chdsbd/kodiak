@@ -95,6 +95,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         requiresStrictStatusChecks
         requiresCodeOwnerReviews
         requiresCommitSignatures
+        requiresConversationResolution
         restrictsPushes
         pushAllowances(first: 100) {
           nodes {
@@ -145,6 +146,11 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
               login
             }
           }
+        }
+      }
+      reviewThreads(first: 100) {
+        nodes {
+          isCollapsed
         }
       }
       title
@@ -282,6 +288,14 @@ class PullRequestReviewDecision(Enum):
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
 
+class ReviewThread(BaseModel):
+    isCollapsed: bool
+
+
+class ReviewThreadConnection(BaseModel):
+    nodes: Optional[List[ReviewThread]]
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -295,6 +309,7 @@ class PullRequest(BaseModel):
     # null if the pull request does not require a review by default (no branch
     # protection), and no review was requested or submitted yet.
     reviewDecision: Optional[PullRequestReviewDecision]
+    reviewThreads: ReviewThreadConnection
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool
@@ -375,6 +390,7 @@ class BranchProtectionRule(BaseModel):
     requiresStrictStatusChecks: bool
     requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
+    requiresConversationResolution: bool
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
 

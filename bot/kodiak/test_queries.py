@@ -35,6 +35,8 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    ReviewThread,
+    ReviewThreadConnection,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -154,6 +156,9 @@ def block_event() -> EventInfoResponse:
         bodyText="",
         bodyHTML="",
         url="https://github.com/delos-corp/hive-mind/pull/324",
+        reviewThreads=ReviewThreadConnection(
+            nodes=[ReviewThread(isCollapsed=True), ReviewThread(isCollapsed=False)]
+        ),
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
@@ -176,6 +181,7 @@ def block_event() -> EventInfoResponse:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=True,
         pushAllowances=NodeListPushAllowance(
             nodes=[

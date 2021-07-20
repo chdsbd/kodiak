@@ -24,6 +24,7 @@
             "requiresStrictStatusChecks": true,
             "requiresCodeOwnerReviews": false,
             "requiresCommitSignatures": false,
+            "requiresConversationResolution": false,
             "restrictsPushes": true,
             "pushAllowances": {
               "nodes": [
@@ -75,6 +76,12 @@
                 "login": "ghost-mannequin"
               }
             }
+          ]
+        },
+        "reviewThreads": {
+          "nodes": [
+            {"isCollapsed": true},
+            {"isCollapsed": false}
           ]
         },
         "title": "Update README.md",
