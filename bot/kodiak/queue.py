@@ -23,6 +23,7 @@ from kodiak.events import (
     CheckRunEvent,
     PullRequestEvent,
     PullRequestReviewEvent,
+    PullRequestReviewThreadEvent,
     PushEvent,
     StatusEvent,
 )
@@ -161,7 +162,8 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
 
 
 async def pr_review(
-    queue: WebhookQueueProtocol, review: PullRequestReviewEvent
+    queue: WebhookQueueProtocol,
+    review: PullRequestReviewEvent | PullRequestReviewThreadEvent,
 ) -> None:
     """
     Trigger evaluation of the modified PR.
@@ -269,6 +271,8 @@ async def handle_webhook_event(
         await pr_event(queue, PullRequestEvent.parse_obj(payload))
     elif event_name == "pull_request_review":
         await pr_review(queue, PullRequestReviewEvent.parse_obj(payload))
+    elif event_name == "pull_request_review_thread":
+        await pr_review(queue, PullRequestReviewThreadEvent.parse_obj(payload))
     elif event_name == "push":
         await push(queue, PushEvent.parse_obj(payload))
     elif event_name == "status":
