@@ -11,6 +11,7 @@ MAPPING = (
     ("check_run", events.CheckRunEvent),
     ("pull_request", events.PullRequestEvent),
     ("pull_request_review", events.PullRequestReviewEvent),
+    ("pull_request_review_thread", events.PullRequestReviewThreadEvent),
     ("status", events.StatusEvent),
     ("push", events.PushEvent),
 )
