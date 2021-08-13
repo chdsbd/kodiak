@@ -627,6 +627,7 @@ def test_update_subscription(
     )
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
+    assert stripe_payment_method_list.call_count == 0
     assert update_bot.call_count == 0
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
@@ -636,6 +637,7 @@ def test_update_subscription(
     assert stripe_subscription_retrieve.call_count == 1
     assert update_bot.call_count == 1
     assert stripe_subscription_modify.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     _args, kwargs = stripe_subscription_modify.call_args
     assert kwargs["items"][0]["plan"] == settings.STRIPE_PLAN_ID
     assert stripe_invoice_create.call_count == 1
@@ -1774,6 +1776,7 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     assert customer_retrieve.call_count == 1
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
 
     assert update_bot.call_count == 1
@@ -1957,6 +1960,7 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     assert customer_retrieve.call_count == 1
     assert subscription_retrieve.call_count == 1
     assert payment_method_retrieve.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     assert StripeCustomerInformation.objects.count() == 2
 
     # verify `other_subscription` hasn't been modified
@@ -2050,6 +2054,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     assert retrieve_subscription.call_count == 0
     assert retrieve_customer.call_count == 0
     assert retrieve_payment_method.call_count == 0
+    assert stripe_payment_method_list.call_count == 0
     res = post_webhook(
         """
 {
@@ -2195,6 +2200,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     assert retrieve_subscription.call_count == 1
     assert retrieve_customer.call_count == 1
     assert retrieve_payment_method.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert (
@@ -2316,6 +2322,7 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     assert patched_retrieve_customer.call_count == 0
     assert patched_retrieve_subscription.call_count == 0
     assert patched_retrieve_payment_method.call_count == 0
+    assert stripe_payment_method_list.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 200
@@ -2323,6 +2330,7 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     assert patched_retrieve_customer.call_count == 1
     assert patched_retrieve_subscription.call_count == 1
     assert patched_retrieve_payment_method.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert updated_stripe_customer_info.customer_email == fake_customer.email
@@ -2377,6 +2385,7 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     assert patched_retrieve_customer.call_count == 0
     assert patched_retrieve_subscription.call_count == 0
     assert patched_retrieve_payment_method.call_count == 0
+    assert stripe_payment_method_list.call_count == 0
     res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
 
     assert res.status_code == 200
@@ -2384,6 +2393,7 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     assert patched_retrieve_customer.call_count == 1
     assert patched_retrieve_subscription.call_count == 1
     assert patched_retrieve_payment_method.call_count == 1
+    assert stripe_payment_method_list.call_count == 1
     assert StripeCustomerInformation.objects.count() == 1
     updated_stripe_customer_info = StripeCustomerInformation.objects.get()
     assert updated_stripe_customer_info.customer_email == fake_customer.email
