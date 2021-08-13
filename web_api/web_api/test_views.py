@@ -2452,27 +2452,6 @@ def test_stripe_webhook_handler_customer_updated_no_matching_customer(
 
 
 @pytest.mark.django_db
-def test_stripe_webhook_handler_payment_method_attached(mocker: Any,) -> None:
-    """
-    
-    """
-    account = create_account()
-
-    patched_update_from_stripe = mocker.patch(
-        "web_api.models.StripeCustomerInformation.update_from_stripe",
-        spec=StripeCustomerInformation.update_from_stripe,
-    )
-    mocker.patch("web_api.models.Account.update_bot", spec=Account.update_bot)
-    assert StripeCustomerInformation.objects.count() == 0
-    assert patched_update_from_stripe.call_count == 0
-    res = post_webhook(make_customer_updated_event(account.stripe_customer_id))
-
-    assert res.status_code == 400
-    assert StripeCustomerInformation.objects.count() == 0
-    assert patched_update_from_stripe.call_count == 0
-
-
-@pytest.mark.django_db
 def test_logout(client: Client, user: User) -> None:
     """
     Ensure we delete the cookie on logout.
