@@ -1041,9 +1041,7 @@ class StripeCustomerInformation(models.Model):
     def update_from_stripe(self) -> None:
         customer = stripe.Customer.retrieve(self.customer_id)
         subscription = stripe.Subscription.retrieve(customer.subscriptions.data[0].id)
-        payment_methods = stripe.PaymentMethod.list(
-            customer=customer.id, type="card",
-        )
+        payment_methods = stripe.PaymentMethod.list(customer=customer.id, type="card")
 
         payment_method = stripe.PaymentMethod.retrieve(payment_methods.data[0].id)
 

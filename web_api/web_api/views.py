@@ -285,9 +285,7 @@ def update_subscription(request: AuthedHttpRequest, team_id: str) -> HttpRespons
 
         payment_method = payment_methods.data[0].id
 
-        stripe.Invoice.pay(
-            invoice.id, payment_method=payment_method
-        )
+        stripe.Invoice.pay(invoice.id, payment_method=payment_method)
     stripe_customer_info.plan_amount = updated_subscription.plan.amount
     stripe_customer_info.plan_interval = updated_subscription.plan.interval
 
@@ -643,11 +641,14 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
             if payment_method.id != new_payment_method.id:
                 stripe.PaymentMethod.detach(payment_method.id)
 
-        stripe.Customer.modify(new_payment_method.customer,invoice_settings=dict(default_payment_method=new_payment_method.id))
+        stripe.Customer.modify(
+            new_payment_method.customer,
+            invoice_settings=dict(default_payment_method=new_payment_method.id),
+        )
         stripe_customer_info.update_from_stripe()
 
     else:
-        logger.warning('unexpected event type %s', event.type)
+        logger.warning("unexpected event type %s", event.type)
         raise BadRequest
 
     return HttpResponse(status=200)
