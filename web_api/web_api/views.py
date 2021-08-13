@@ -645,6 +645,11 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
             new_payment_method.customer,
             invoice_settings=dict(default_payment_method=new_payment_method.id),
         )
+        if stripe_customer_info is None:
+            logger.warning(
+                "payment_method.attached event for unknown customer %s", event
+            )
+            raise BadRequest
         stripe_customer_info.update_from_stripe()
 
     else:
