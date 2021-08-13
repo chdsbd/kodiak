@@ -10,6 +10,13 @@ If Kodiak isn't working as expected, feel free to file a [GitHub Issue](https://
 
 Editing a pull request (changing title, editing labels, etc.) will trigger Kodiak to evaluate the pull request for mergeability. If you think Kodiak's status check is stuck, editing a pull request may help.
 
+### Kodiak isn't running on one of my repositories
+
+Verify you have granted Kodiak access to that repository for your installation.
+
+1. Visit https://github.com/settings/installations and click "Configure" on your kodiakhq installation
+2. Verify you have granted repository access to "All repositories" or have selected your specific repository if you chose "Only select repositories"
+
 ## Known issues
 
 ### Branch protection requirement
