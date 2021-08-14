@@ -47,14 +47,6 @@ from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
 from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
 
-
-@pytest.fixture
-def private_key() -> str:
-    return (
-        Path(__file__).parent / "test" / "fixtures" / "github.voided.private-key.pem"
-    ).read_text()
-
-
 @pytest.fixture
 def github_installation_id() -> str:
     return "8912353"
