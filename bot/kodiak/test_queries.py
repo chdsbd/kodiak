@@ -47,6 +47,7 @@ from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
 from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
 
+
 @pytest.fixture
 def github_installation_id() -> str:
     return "8912353"
