@@ -38,7 +38,7 @@ python-versions = "^3.7"
 version = "0.1.0"
 
 [package.source]
-reference = "7d174e0ebe2dc52340001097eeee48a868454480"
+reference = "388a6ac390ae70ee16bdc45cf19b308d11212566"
 type = "git"
 url = "https://github.com/chdsbd/asyncio-redis.git"
 
@@ -49,7 +49,7 @@ marker = "sys_platform == \"win32\""
 name = "atomicwrites"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.3.0"
+version = "1.4.0"
 
 [[package]]
 category = "dev"
@@ -225,15 +225,15 @@ version = "0.8.1"
 
 [[package]]
 category = "main"
-description = "..."
+description = "A minimal low-level HTTP client."
 name = "httpcore"
 optional = false
 python-versions = ">=3.6"
-version = "0.2.1"
+version = "0.13.2"
 
 [package.dependencies]
-certifi = "*"
-h11 = "*"
+h11 = "<1.0.0"
+sniffio = ">=1.0.0,<2.0.0"
 
 [[package]]
 category = "main"
@@ -243,6 +243,20 @@ name = "httptools"
 optional = false
 python-versions = "*"
 version = "0.0.13"
+
+[[package]]
+category = "main"
+description = "The next generation HTTP client."
+name = "httpx"
+optional = false
+python-versions = ">=3.6"
+version = "0.18.1"
+
+[package.dependencies]
+certifi = "*"
+httpcore = ">=0.13.0,<0.14.0"
+rfc3986 = ">=1.3,<2"
+sniffio = "*"
 
 [[package]]
 category = "main"
@@ -630,14 +644,6 @@ pytest = ">=5.0"
 
 [[package]]
 category = "main"
-description = "YAML parser and emitter for Python"
-name = "pyyaml"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
-version = "5.4.1"
-
-[[package]]
-category = "main"
 description = "Python HTTP for Humans."
 name = "requests"
 optional = false
@@ -652,15 +658,11 @@ urllib3 = ">=1.21.1,<1.25.0 || >1.25.0,<1.25.1 || >1.25.1,<1.26"
 
 [[package]]
 category = "main"
-description = "async-await support for `requests`."
-name = "requests-async"
+description = "Validating URI References per RFC 3986"
+name = "rfc3986"
 optional = false
-python-versions = ">=3.6"
-version = "0.4.1"
-
-[package.dependencies]
-httpcore = ">=0.2.0,<0.3.0"
-requests = ">=2.0.0,<3.0.0"
+python-versions = "*"
+version = "1.5.0"
 
 [[package]]
 category = "main"
@@ -677,15 +679,15 @@ six = "*"
 
 [[package]]
 category = "main"
-description = "Python client for Sentry (https://getsentry.com)"
+description = "Python client for Sentry (https://sentry.io)"
 name = "sentry-sdk"
 optional = false
 python-versions = "*"
-version = "0.10.2"
+version = "1.3.0"
 
 [package.dependencies]
 certifi = "*"
-urllib3 = "*"
+urllib3 = ">=1.10.0"
 
 [[package]]
 category = "main"
@@ -694,6 +696,14 @@ name = "six"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "1.12.0"
+
+[[package]]
+category = "main"
+description = "Sniff out which async library your code is running under"
+name = "sniffio"
+optional = false
+python-versions = ">=3.5"
+version = "1.2.0"
 
 [[package]]
 category = "main"
@@ -834,7 +844,7 @@ python-versions = "*"
 version = "0.13.0"
 
 [metadata]
-content-hash = "ff5390fa5310aaf590992b0b9d50f02e1518fc218f633cbd9ab516a0e665f946"
+content-hash = "3ee192a8dc6f80e518dd18c3b6da12e8cbb1dfe772849a3f223abfea05f247fd"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -842,7 +852,7 @@ appdirs = ["9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92", "
 appnope = ["5b26757dc6f79a3b7dc9fab95359328d5747fcb2409d331ea66d0272b90ab2a0", "8b995ffe925347a2138d7ac0fe77155e4311a0ea6d6da4f5128fe4b3cbe5ed71"]
 astroid = ["6560e1e1749f68c64a4b5dee4e091fce798d2f0d84ebe638cf0e0585a343acf4", "b65db1bbaac9f9f4d190199bb8680af6f6f84fd3769a5ea883df8a91fe68b4c4"]
 asyncio-redis = []
-atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
+atomicwrites = ["6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197", "ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"]
 attrs = ["69c0dbf2ed392de1cb5ec704444b08a5ef81680a61cb899dc08127123af36a79", "f0b870f674851ecbfbbbd364d6b5cbdff9dcedbc7f3f5e18a6891057f21fe399"]
 backcall = ["38ecd85be2c1e78f77fd91700c76e14667dc21e2713b63876c0eb901196e01e4", "bbbf4b1e5cd2bdb08f915895b51081c041bac22394fdfcfdfbe9f14b77c08bf2"]
 black = ["09a9dcb7c46ed496a9850b76e4e825d6049ecd38b611f1224857a79bd985a8cf", "68950ffd4d9169716bcb8719a56c07a2f4485354fec061cdd5910aa07369731c"]
@@ -860,8 +870,9 @@ flake8 = ["749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839", "a
 flake8-pie = ["198baa85d85dea2bc42c28baa5978bc771fced814bac9a9688441efe65485711", "b75f7b0383a7c7b2660a86491d0cefd9d8c0eb47caae36064157f47b7c864a81"]
 flake8-pyi = ["cee3b20a5123152c697870e7e800b60e3c95eb89e272a2b63d8cf55cafb0472c", "ff5dfc40bffa878f6ce95bcfd9a6ad14c44b85cbe99c4864e729301bf54267f0"]
 h11 = ["acca6a44cb52a32ab442b1779adf0875c443c689e9e028f8d831a3769f9c5208", "f2b1ca39bfed357d1f19ac732913d5f9faa54a5062eca7d2ec3a916cfb7ae4c7"]
-httpcore = ["e3d5d110f49012dd3f1980ba5779f91170457cde43851e531e56e6eb08f05357"]
+httpcore = ["52b7d9413f6f5592a667de9209d70d4d41aba3fb0540dd7c93475c78b85941e9", "c16efbdf643e1b57bde0adc12c53b08645d7d92d6d345a3f71adfc2a083e7fd2"]
 httptools = ["e00cbd7ba01ff748e494248183abc6e153f49181169d8a3d41bb49132ca01dfc"]
+httpx = ["0a2651dd2b9d7662c70d12ada5c290abcf57373b9633515fe4baa9f62566086f", "ad2e3db847be736edc4b272c4d5788790a7e5789ef132fc6b5fef8aeb9e9f6e0"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 importlib-metadata = ["6dfd58dfe281e8d240937776065dd3624ad5469c835248219bd16cf2e12dbeb7", "cb6ee23b46173539939964df59d3d72c3e0c1b5d54b84f1d8a7e912fe43612db"]
 inflection = ["1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417", "f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"]
@@ -899,12 +910,12 @@ pytest = ["85228d75db9f45e06e57ef9bf4429267f81ac7c0d742cc9ed63d09886a9fe6f4", "8
 pytest-asyncio = ["9fac5100fd716cbecf6ef89233e8590a4ad61d729d1732e0a96b84182df1daaf", "d734718e25cfc32d2bf78d346e99d33724deeba774cc4afdf491530c6184b63b"]
 pytest-cov = ["1a629dc9f48e53512fcbfda6b07de490c374b0c83c55ff7a1720b3fccff0ac87", "6e6d18092dce6fad667cd7020deed816f858ad3b49d5b5e2b1cc1c97a4dba65c"]
 pytest-mock = ["024e405ad382646318c4281948aadf6fe1135632bea9cc67366ea0c4098ef5f2", "a4d6d37329e4a893e77d9ffa89e838dd2b45d5dc099984cf03c703ac8411bb82"]
-pyyaml = ["08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf", "0f5f5786c0e09baddcd8b4b45f20a7b5d61a7e7e99846e3c799b05c7c53fa696", "129def1b7c1bf22faffd67b8f3724645203b79d8f4cc81f674654d9902cb4393", "294db365efa064d00b8d1ef65d8ea2c3426ac366c0c4368d930bf1c5fb497f77", "3b2b1824fe7112845700f815ff6a489360226a5609b96ec2190a45e62a9fc922", "3bd0e463264cf257d1ffd2e40223b197271046d09dadf73a0fe82b9c1fc385a5", "4465124ef1b18d9ace298060f4eccc64b0850899ac4ac53294547536533800c8", "49d4cdd9065b9b6e206d0595fee27a96b5dd22618e7520c33204a4a3239d5b10", "4e0583d24c881e14342eaf4ec5fbc97f934b999a6828693a99157fde912540cc", "5accb17103e43963b80e6f837831f38d314a0495500067cb25afab2e8d7a4018", "607774cbba28732bfa802b54baa7484215f530991055bb562efbed5b2f20a45e", "6c78645d400265a062508ae399b60b8c167bf003db364ecb26dcab2bda048253", "72a01f726a9c7851ca9bfad6fd09ca4e090a023c00945ea05ba1638c09dc3347", "74c1485f7707cf707a7aef42ef6322b8f97921bd89be2ab6317fd782c2d53183", "895f61ef02e8fed38159bb70f7e100e00f471eae2bc838cd0f4ebb21e28f8541", "8c1be557ee92a20f184922c7b6424e8ab6691788e6d86137c5d93c1a6ec1b8fb", "bb4191dfc9306777bc594117aee052446b3fa88737cd13b7188d0e7aa8162185", "bfb51918d4ff3d77c1c856a9699f8492c612cde32fd3bcd344af9be34999bfdc", "c20cfa2d49991c8b4147af39859b167664f2ad4561704ee74c1de03318e898db", "cb333c16912324fd5f769fff6bc5de372e9e7a202247b48870bc251ed40239aa", "d2d9808ea7b4af864f35ea216be506ecec180628aced0704e34aca0b040ffe46", "d483ad4e639292c90170eb6f7783ad19490e7a8defb3e46f97dfe4bacae89122", "dd5de0646207f053eb0d6c74ae45ba98c3395a571a2891858e87df7c9b9bd51b", "e1d4970ea66be07ae37a3c2e48b5ec63f7ba6804bdddfdbd3cfd954d25a82e63", "e4fac90784481d221a8e4b1162afa7c47ed953be40d31ab4629ae917510051df", "fa5ae20527d8e831e8230cbffd9f8fe952815b2b7dae6ffec25318803a7528fc", "fd7f6999a8070df521b6384004ef42833b9bd62cfee11a09bda1079b4b704247", "fdc842473cd33f45ff6bce46aea678a54e3d21f1b61a7750ce3c498eedfe25d6", "fe69978f3f768926cfa37b867e3843918e012cf83f680806599ddce33c2c68b0"]
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
-requests-async = ["484221fb41ccc47b475cdc2634b37884ca78ca291160664e9b8b8c5e53fdd4af"]
+rfc3986 = ["270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835", "a86d6e1f5b1dc238b218b012df0aa79409667bb209e58da56d0b94704e712a97"]
 rure = ["c99524e4000b105ed0c4a6f51f58139758652f4fb2fba4862eff775f84de1733", "f8ccec9bea1651ba2334029b12e1665f0f076fadf6ea66402f0554506c30de6c"]
-sentry-sdk = ["d491aa6399eaa3eded433972751a9770180730fd8b4c225b0b7f49c4fa2af70b", "d68003cdffbbfcadaa2c445b72e1050b0a44406f94199866f192986c016b23f5"]
+sentry-sdk = ["5210a712dd57d88d225c1fc3fe3a3626fee493637bcd54e204826cf04b8d769c", "6864dcb6f7dec692635e5518c2a5c80010adf673c70340817f1a1b713d65bb41"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
+sniffio = ["471b71698eac1c2112a40ce2752bb2f4a4814c22a54a3eed3676bc0f5ca9f663", "c4666eecec1d3f50960c6bdf61ab7bc350648da6c126e3cf6898d8cd4ddcd3de"]
 sqlalchemy = ["c7fef198b43ef31dfd783d094fd5ee435ce8717592e6784c45ba337254998017"]
 starlette = ["c2ac9a42e0e0328ad20fe444115ac5e3760c1ee2ac1ff8cdb5ec915c4a453411"]
 structlog = ["5feae03167620824d3ae3e8915ea8589fc28d1ad6f3edf3cc90ed7c7cb33fab5", "db441b81c65b0f104a7ce5d86c5432be099956b98b8a2c8be0b3fb3a7a0b1536"]
