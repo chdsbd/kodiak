@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 import click
 import requests
+from httpx import AsyncClient
 
 from kodiak import app_config as conf
 from kodiak.config import V1
@@ -63,7 +64,12 @@ def token_for_install(install_id: str) -> None:
     outputs the OAuth token for a given installation id.
     This is useful to help debug installation problems
     """
-    token = asyncio.run(get_token_for_install(installation_id=install_id))
+
+    async def get_token() -> str:
+        async with AsyncClient() as http:
+            return await get_token_for_install(session=http, installation_id=install_id)
+
+    token = asyncio.run(get_token())
     click.echo(token)
 
 

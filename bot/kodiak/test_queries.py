@@ -5,8 +5,8 @@ from typing import Any, Dict, Iterable, cast
 
 import asyncio_redis
 import pytest
+from httpx import Request, Response
 from pytest_mock import MockFixture
-from requests_async import Response
 
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
@@ -35,6 +35,8 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    ReviewThread,
+    ReviewThreadConnection,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -44,13 +46,6 @@ from kodiak.queries import (
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.test_utils import wrap_future
 from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
-
-
-@pytest.fixture
-def private_key() -> str:
-    return (
-        Path(__file__).parent / "test" / "fixtures" / "github.voided.private-key.pem"
-    ).read_text()
 
 
 @pytest.fixture
@@ -154,6 +149,9 @@ def block_event() -> EventInfoResponse:
         bodyText="",
         bodyHTML="",
         url="https://github.com/delos-corp/hive-mind/pull/324",
+        reviewThreads=ReviewThreadConnection(
+            nodes=[ReviewThread(isCollapsed=True), ReviewThread(isCollapsed=False)]
+        ),
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
@@ -176,6 +174,7 @@ def block_event() -> EventInfoResponse:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=True,
         pushAllowances=NodeListPushAllowance(
             nodes=[
@@ -254,7 +253,6 @@ method = "squash"
         check_runs=[
             CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
         ],
-        valid_signature=True,
         valid_merge_methods=[MergeMethod.squash],
     )
 
@@ -334,9 +332,10 @@ def mock_get_token_for_install(mocker: MockFixture) -> None:
 async def test_get_permissions_for_username_missing(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    not_found = Response()
-    not_found.status_code = 404
-    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(not_found))
+    not_found = Response(status_code=404, request=Request(method="", url=""))
+    mocker.patch(
+        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(not_found)
+    )
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("_invalid_username")
     assert res == Permission.NONE
@@ -373,11 +372,15 @@ PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
 async def test_get_permissions_for_username_read(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    response = Response()
-    response.status_code = 200
-    response._content = PERMISSION_OK_READ_USER_RESPONSE
+    response = Response(
+        status_code=200,
+        content=PERMISSION_OK_READ_USER_RESPONSE,
+        request=Request(method="", url=""),
+    )
 
-    mocker.patch("kodiak.queries.http.Session.get", return_value=wrap_future(response))
+    mocker.patch(
+        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(response)
+    )
     async with api_client as api_client:
         res = await api_client.get_permissions_for_username("ghost")
     assert res == Permission.READ
@@ -411,9 +414,7 @@ async def test_get_subscription_missing_blocker(
             b"subscription_blocker": b"",
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -435,9 +436,7 @@ async def test_get_subscription_missing_blocker_and_data(
             b"data": b"",
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -454,9 +453,7 @@ async def test_get_subscription_missing_blocker_fully(
     Redis. We should handle this case by returning an empty subscription.
     """
     fake_redis = create_fake_redis_reply({})
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res is None
@@ -477,9 +474,7 @@ async def test_get_subscription_seats_exceeded(
             b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": [5234234]}',
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -502,9 +497,7 @@ async def test_get_subscription_seats_exceeded_no_seats(
             b"data": b'{"kind":"seats_exceeded", "allowed_user_ids": []}',
         }
     )
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -528,9 +521,7 @@ async def test_get_subscription_seats_exceeded_missing_data(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -554,9 +545,7 @@ async def test_get_subscription_seats_exceeded_invalid_data(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -581,9 +570,7 @@ async def test_get_subscription_seats_exceeded_invalid_kind(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -606,9 +593,7 @@ async def test_get_subscription_unknown_blocker(
         }
     )
 
-    mocker.patch(
-        "kodiak.event_handlers.get_redis", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.queue.get_redis", return_value=wrap_future(fake_redis))
     async with api_client as api_client:
         res = await api_client.get_subscription()
     assert res == Subscription(
@@ -836,11 +821,12 @@ def generate_page_of_prs(numbers: Iterable[int]) -> Response:
 
     This is used by get_open_pull_requests.
     """
-    response = Response()
-    response.status_code = 200
     prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
-    response._content = json.dumps(prs).encode()
-    return response
+    return Response(
+        status_code=200,
+        content=json.dumps(prs).encode(),
+        request=Request(method="", url=""),
+    )
 
 
 @pytest.mark.asyncio
@@ -851,7 +837,7 @@ async def test_get_open_pull_requests(
     We should stop calling the API after reaching an empty page.
     """
     patched_session_get = mocker.patch(
-        "kodiak.queries.http.Session.get",
+        "kodiak.queries.http.AsyncClient.get",
         side_effect=[
             wrap_future(generate_page_of_prs(range(1, 101))),
             wrap_future(generate_page_of_prs(range(101, 201))),
@@ -878,7 +864,7 @@ async def test_get_open_pull_requests_page_limit(
     pages = [range(n, n + 100) for n in range(1, 3001, 100)]
     assert len(pages) == 30
     patched_session_get = mocker.patch(
-        "kodiak.queries.http.Session.get",
+        "kodiak.queries.http.AsyncClient.get",
         side_effect=[wrap_future(generate_page_of_prs(p)) for p in pages],
     )
 

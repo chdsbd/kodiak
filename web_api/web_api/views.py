@@ -279,9 +279,13 @@ def update_subscription(request: AuthedHttpRequest, team_id: str) -> HttpRespons
         )
         # we must specify the payment method because our Stripe customers don't have
         # a default payment method, so the default invoicing will fail.
-        stripe.Invoice.pay(
-            invoice.id, payment_method=subscription.default_payment_method
+        payment_methods = stripe.PaymentMethod.list(
+            customer=subscription.customer, type="card",
         )
+
+        payment_method = payment_methods.data[0].id
+
+        stripe.Invoice.pay(invoice.id, payment_method=payment_method)
     stripe_customer_info.plan_amount = updated_subscription.plan.amount
     stripe_customer_info.plan_interval = updated_subscription.plan.interval
 
@@ -623,8 +627,36 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
             raise BadRequest
         stripe_customer_info.update_from_stripe()
 
+    elif event.type == "payment_method.attached":
+        # a customer should only have one payment method.
+        #
+        # When a customer attaches a new payment method, remove the old ones to
+        # ensure subscriptions use the newly added method.
+        new_payment_method = event.data.object
+
+        payment_methods = stripe.PaymentMethod.list(
+            customer=new_payment_method.customer, type="card",
+        )
+        for payment_method in payment_methods.data:
+            if payment_method.id != new_payment_method.id:
+                stripe.PaymentMethod.detach(payment_method.id)
+
+        stripe.Customer.modify(
+            new_payment_method.customer,
+            invoice_settings=dict(default_payment_method=new_payment_method.id),
+        )
+        stripe_customer_info = StripeCustomerInformation.objects.filter(
+            customer_id=new_payment_method.customer
+        ).first()
+        if stripe_customer_info is None:
+            logger.warning(
+                "payment_method.attached event for unknown customer %s", event
+            )
+            raise BadRequest
+        stripe_customer_info.update_from_stripe()
+
     else:
-        # Unexpected event type
+        logger.warning("unexpected event type %s", event.type)
         raise BadRequest
 
     return HttpResponse(status=200)

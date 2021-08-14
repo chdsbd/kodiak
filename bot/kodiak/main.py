@@ -16,9 +16,8 @@ from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
-from kodiak.event_handlers import handle_webhook_event
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queue import redis_webhook_queue
+from kodiak.queue import handle_webhook_event, redis_webhook_queue
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
 logging.basicConfig(
@@ -29,11 +28,7 @@ logging.basicConfig(
 
 # disable sentry logging middleware as the structlog processor provides more
 # info via the extra data field
-# TODO(sbdchd): waiting on https://github.com/getsentry/sentry-python/pull/444
-# to be merged & released to remove `# type: ignore`
-sentry_sdk.init(
-    integrations=[LoggingIntegration(level=None, event_level=None)]  # type: ignore
-)
+sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
 
 structlog.configure(
     processors=[
@@ -97,7 +92,9 @@ async def webhook_event(
             detail="Invalid signature: X-Hub-Signature",
         )
 
-    await handle_webhook_event(event_name=github_event, payload=event)
+    await handle_webhook_event(
+        queue=redis_webhook_queue, event_name=github_event, payload=event
+    )
 
 
 @app.on_event("startup")

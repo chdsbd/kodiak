@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.44.0 - 2021-07-20
+
+### Added
+- TLS support for Redis connections. Thanks @zetaron! (#695)
+- requiresConversationResolution branch protection support. (#692)
+
+## 0.43.0 - 2021-07-10
+
+### Fixed
+- fixed Kodiak incorrectly saying a PR was not mergeable when there were duplicated check runs. (#688)
+
+## 0.42.1 - 2021-06-23
+
+### Fixed
+- fixed Kodiak-breaking bug from release 0.42.0 (#676)
+- fixed short HTTP timeouts for GitHub API requests negatively impacting Kodiak's reliability. (#678)
+
+## 0.42.0 - 2021-06-20
+
+### Added
+- use [fixed IP addresses](https://kodiakhq.com/docs/troubleshooting#github-enterprise-ip-allow-list) for sending GitHub API requests to support GitHub Enterprise Cloud IP address allow list. (#666, #673)
+
+### Fixed
+- fixed typo in config reference documentation. Thanks @AndersDJohnson! (#663)
+
 ## 0.41.0 - 2021-06-04
 
 ### Changed

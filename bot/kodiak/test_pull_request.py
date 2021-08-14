@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Type, cast
 
+import httpx as requests
 import pytest
-import requests
+from httpx import Request
 from typing_extensions import Protocol
 
 from kodiak.config import V1, Merge, MergeMethod
@@ -19,6 +20,7 @@ from kodiak.queries import (
     PullRequestAuthor,
     PullRequestState,
     RepoInfo,
+    ReviewThreadConnection,
 )
 
 
@@ -44,6 +46,7 @@ def create_event() -> EventInfoResponse:
         bodyText="",
         bodyHTML="",
         url="https://github.com/delos-corp/hive-mind/pull/324",
+        reviewThreads=ReviewThreadConnection(nodes=[]),
     )
     rep_info = RepoInfo(
         merge_commit_allowed=False,
@@ -63,6 +66,7 @@ def create_event() -> EventInfoResponse:
         requiresStrictStatusChecks=True,
         requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
+        requiresConversationResolution=False,
         restrictsPushes=False,
         pushAllowances=NodeListPushAllowance(nodes=[]),
     )
@@ -83,7 +87,6 @@ method = "squash"
         reviews=[],
         status_contexts=[],
         check_runs=[],
-        valid_signature=True,
         valid_merge_methods=[MergeMethod.squash],
         subscription=None,
     )
@@ -208,10 +211,9 @@ def create_client() -> Type[FakeClientProtocol]:
 
 
 def create_response(content: bytes, status_code: int) -> requests.Response:
-    res = requests.Response()
-    cast(Any, res)._content = content
-    res.status_code = status_code
-    return res
+    return requests.Response(
+        status_code=status_code, content=content, request=Request(method="", url="")
+    )
 
 
 def create_prv2(

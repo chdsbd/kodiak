@@ -50,7 +50,7 @@ def get_commits(*, pr: Dict[str, Any]) -> List[Commit]:
     try:
         pull_request = PullRequest.parse_obj(pr)
     except pydantic.ValidationError:
-        logger.warning("problem parsing commit authors", exc_info=True)
+        logger.exception("problem parsing commit authors")
         return []
     nodes = pull_request.commitHistory.nodes
     if not nodes:

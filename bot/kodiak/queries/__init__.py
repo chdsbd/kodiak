@@ -7,14 +7,13 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
 
+import httpx as http
 import jwt
 import pydantic
-import requests_async as http
 import structlog
 import toml
 from mypy_extensions import TypedDict
 from pydantic import BaseModel
-from starlette import status
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -96,6 +95,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         requiresStrictStatusChecks
         requiresCodeOwnerReviews
         requiresCommitSignatures
+        requiresConversationResolution
         restrictsPushes
         pushAllowances(first: 100) {
           nodes {
@@ -146,6 +146,11 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
               login
             }
           }
+        }
+      }
+      reviewThreads(first: 100) {
+        nodes {
+          isCollapsed
         }
       }
       title
@@ -283,6 +288,14 @@ class PullRequestReviewDecision(Enum):
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
 
+class ReviewThread(BaseModel):
+    isCollapsed: bool
+
+
+class ReviewThreadConnection(BaseModel):
+    nodes: Optional[List[ReviewThread]]
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -296,6 +309,7 @@ class PullRequest(BaseModel):
     # null if the pull request does not require a review by default (no branch
     # protection), and no review was requested or submitted yet.
     reviewDecision: Optional[PullRequestReviewDecision]
+    reviewThreads: ReviewThreadConnection
     state: PullRequestState
     mergeable: MergeableState
     isCrossRepository: bool
@@ -329,7 +343,6 @@ class EventInfoResponse:
     reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
-    valid_signature: bool = False
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
     commits: List[Commit] = field(default_factory=list)
 
@@ -377,6 +390,7 @@ class BranchProtectionRule(BaseModel):
     requiresStrictStatusChecks: bool
     requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
+    requiresConversationResolution: bool
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
 
@@ -637,13 +651,6 @@ def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
     return check_runs
 
 
-def get_valid_signature(*, pr: Dict[str, Any]) -> bool:
-    try:
-        return bool(pr["commits"]["nodes"][0]["commit"]["signature"]["isValid"])
-    except (IndexError, KeyError, TypeError):
-        return False
-
-
 def get_head_exists(*, pr: Dict[str, Any]) -> bool:
     try:
         return bool(pr["headRef"]["id"])
@@ -727,7 +734,6 @@ class ThrottlerProtocol(Protocol):
 
 
 class Client:
-    session: http.Session
     throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
@@ -737,7 +743,11 @@ class Client:
         self.installation_id = installation_id
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
-        self.session = http.Session()
+        self.session = http.AsyncClient(
+            # infinite timeout to match behavior of old, requests_async http
+            # client. As a backup we have an asyncio timeout of 30 seconds.
+            timeout=None
+        )
         self.session.headers[
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
@@ -759,7 +769,7 @@ class Client:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        await self.session.close()
+        await self.session.aclose()
 
     async def send_query(
         self,
@@ -769,7 +779,9 @@ class Client:
     ) -> Optional[GraphQLResponse]:
         log = self.log
 
-        token = await get_token_for_install(installation_id=installation_id)
+        token = await get_token_for_install(
+            session=self.session, installation_id=installation_id
+        )
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
@@ -779,13 +791,17 @@ class Client:
         rate_limit_max = res.headers.get("x-ratelimit-limit")
         rate_limit = f"{rate_limit_remaining}/{rate_limit_max}"
         log = log.bind(rate_limit=rate_limit)
-        if res.status_code != status.HTTP_200_OK:
-            log.error("github api request error", res=res)
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
 
     async def get_permissions_for_username(self, username: str) -> Permission:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             res = await self.session.get(
                 conf.v3_url(
@@ -793,11 +809,17 @@ class Client:
                 ),
                 headers=headers,
             )
+        log = self.log.bind(res=res, username=username)
         try:
             res.raise_for_status()
+        except http.HTTPError:
+            log.warning("get_permissions request_failure", exc_info=True)
+            return Permission.NONE
+
+        try:
             return Permission(res.json()["permission"])
-        except (http.HTTPError, IndexError, TypeError, ValueError):
-            logger.exception("couldn't fetch permissions for username %r", username)
+        except (IndexError, TypeError, ValueError):
+            log.exception("get_permissions parse error")
             return Permission.NONE
 
     # TODO(chdsbd): We may want to cache this response to improve performance as
@@ -984,7 +1006,6 @@ class Client:
             commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
-            valid_signature=get_valid_signature(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
         )
 
@@ -995,7 +1016,9 @@ class Client:
         https://developer.github.com/v3/pulls/#list-pull-requests
         """
         log = self.log.bind(base=base, head=head)
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         params = dict(state="open", sort="updated", per_page="100")
         if base is not None:
             params["base"] = base
@@ -1034,7 +1057,9 @@ class Client:
         """
         delete a branch by name
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         ref = urllib.parse.quote(f"heads/{branch}")
         async with self.throttler:
             return await self.session.delete(
@@ -1043,7 +1068,9 @@ class Client:
             )
 
     async def update_branch(self, *, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.put(
                 conf.v3_url(
@@ -1056,7 +1083,9 @@ class Client:
         """
         https://developer.github.com/v3/pulls/reviews/#create-a-pull-request-review
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         body = dict(event="APPROVE")
         async with self.throttler:
             return await self.session.post(
@@ -1068,7 +1097,9 @@ class Client:
             )
 
     async def get_pull_request(self, number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}")
         async with self.throttler:
             return await self.session.get(url, headers=headers)
@@ -1089,7 +1120,9 @@ class Client:
             body["commit_title"] = commit_title
         if commit_message is not None:
             body["commit_message"] = commit_message
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
@@ -1098,7 +1131,9 @@ class Client:
         """
         https://docs.github.com/en/rest/reference/git#update-a-reference
         """
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{ref}")
         async with self.throttler:
             return await self.session.patch(url, headers=headers, json=dict(sha=sha))
@@ -1106,7 +1141,9 @@ class Client:
     async def create_notification(
         self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
         body = dict(
             name=CHECK_RUN_NAME,
@@ -1120,7 +1157,9 @@ class Client:
             return await self.session.post(url, headers=headers, json=body)
 
     async def add_label(self, label: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
@@ -1131,7 +1170,9 @@ class Client:
             )
 
     async def delete_label(self, label: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         escaped_label = urllib.parse.quote(label)
         async with self.throttler:
             return await self.session.delete(
@@ -1142,7 +1183,9 @@ class Client:
             )
 
     async def create_comment(self, body: str, pull_number: int) -> http.Response:
-        headers = await get_headers(installation_id=self.installation_id)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
@@ -1156,7 +1199,7 @@ class Client:
         """
         Get subscription information for installation.
         """
-        from kodiak.event_handlers import get_redis
+        from kodiak.queue import get_redis
 
         redis = await get_redis()
         res = await redis.hgetall(
@@ -1182,7 +1225,7 @@ class Client:
                     real_response.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
-                logger.warning("failed to parse seats_exceeded data", exc_info=True)
+                logger.exception("failed to parse seats_exceeded data", exc_info=True)
                 subscription_blocker = SeatsExceeded(allowed_user_ids=[])
         if subscription_blocker_kind == "trial_expired":
             subscription_blocker = TrialExpired()
@@ -1207,7 +1250,9 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
 
-async def get_token_for_install(*, installation_id: str) -> str:
+async def get_token_for_install(
+    *, session: http.AsyncClient, installation_id: str
+) -> str:
     """
     https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
     """
@@ -1223,7 +1268,7 @@ async def get_token_for_install(*, installation_id: str) -> str:
         installation_id=APPLICATION_ID
     )
     async with throttler:
-        res = await http.post(
+        res = await session.post(
             conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
             headers=dict(
                 Accept="application/vnd.github.machine-man-preview+json",
@@ -1236,8 +1281,12 @@ async def get_token_for_install(*, installation_id: str) -> str:
     return token_response.token
 
 
-async def get_headers(*, installation_id: str) -> Mapping[str, str]:
-    token = await get_token_for_install(installation_id=installation_id)
+async def get_headers(
+    *, session: http.AsyncClient, installation_id: str
+) -> dict[str, str]:
+    token = await get_token_for_install(
+        session=session, installation_id=installation_id
+    )
     return dict(
         Authorization=f"token {token}",
         Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",

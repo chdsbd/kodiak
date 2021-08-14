@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable, List, Optional, Type
 
 import structlog
-from requests_async import HTTPError
+from httpx import HTTPStatusError as HTTPError
 from typing_extensions import Protocol
 
 import kodiak.app_config as conf
@@ -109,7 +109,6 @@ async def evaluate_pr(
                         contexts=pr.event.status_contexts,
                         check_runs=pr.event.check_runs,
                         commits=pr.event.commits,
-                        valid_signature=pr.event.valid_signature,
                         valid_merge_methods=pr.event.valid_merge_methods,
                         merging=merging,
                         is_active_merge=is_active_merging,
@@ -144,11 +143,11 @@ async def evaluate_pr(
                     api_call_retries_remaining -= 1
                     log.info("problem contacting remote api. retrying")
                     continue
-                log.exception("api_call_retries_remaining")
+                log.warning("api_call_retries_remaining", exc_info=True)
             return
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
-            log.exception("mergeable_timeout")
+            log.warning("mergeable_timeout", exc_info=True)
             await requeue_callback()
 
 
@@ -198,11 +197,7 @@ class PRV2:
         await self.requeue_callback()
 
     async def set_status(
-        self,
-        msg: str,
-        *,
-        latest_commit_sha: str,
-        markdown_content: Optional[str] = None,
+        self, msg: str, *, markdown_content: Optional[str] = None
     ) -> None:
         """
         Display a message to a user through a github check
@@ -223,7 +218,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to create notification", res=res)
+                self.log.warning(
+                    "failed to create notification", res=res, exc_info=True
+                )
 
     async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
         log = self.log.bind(ref=ref)
@@ -250,7 +247,7 @@ class PRV2:
                 if e.response is not None and e.response.status_code == 422:
                     self.log.info("branch already deleted, nothing to do", res=res)
                 else:
-                    self.log.exception("failed to delete branch", res=res)
+                    self.log.warning("failed to delete branch", res=res, exc_info=True)
 
     async def update_branch(self) -> None:
         self.log.info("update_branch")
@@ -261,7 +258,7 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to update branch", res=res)
+                self.log.warning("failed to update branch", res=res, exc_info=True)
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/update_branch",
@@ -278,7 +275,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to approve pull request", res=res)
+                self.log.warning(
+                    "failed to approve pull request", res=res, exc_info=True
+                )
 
     async def trigger_test_commit(self) -> None:
         self.log.info("trigger_test_commit")
@@ -289,8 +288,10 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception(
-                    "failed to get pull request for test commit trigger", res=res
+                self.log.warning(
+                    "failed to get pull request for test commit trigger",
+                    res=res,
+                    exc_info=True,
                 )
 
     async def merge(
@@ -317,7 +318,9 @@ class PRV2:
                         "branch is not mergeable. PR likely already merged.", res=res
                     )
                 else:
-                    self.log.exception("failed to merge pull request", res=res)
+                    self.log.warning(
+                        "failed to merge pull request", res=res, exc_info=True
+                    )
                 if e.response is not None and e.response.status_code == 500:
                     raise GitHubApiInternalServerError
                 # we raise an exception to retry this request.
@@ -339,7 +342,7 @@ class PRV2:
                 if e.response is not None and e.response.status_code == 422:
                     self.log.info("fast forward update not possible.", res=res)
                 else:
-                    self.log.exception("failed to update ref", res=res)
+                    self.log.warning("failed to update ref", res=res, exc_info=True)
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/update_ref",
@@ -363,7 +366,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to add label", label=label, res=res)
+                self.log.warning(
+                    "failed to add label", label=label, res=res, exc_info=True
+                )
                 raise ApiCallException(
                     method="pull_request/add_label",
                     http_status_code=res.status_code,
@@ -382,7 +387,9 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to delete label", label=label, res=res)
+                self.log.warning(
+                    "failed to delete label", label=label, res=res, exc_info=True
+                )
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/delete_label",
@@ -402,4 +409,4 @@ class PRV2:
             try:
                 res.raise_for_status()
             except HTTPError:
-                self.log.exception("failed to create comment", res=res)
+                self.log.warning("failed to create comment", res=res, exc_info=True)

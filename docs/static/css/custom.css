@@ -28,6 +28,13 @@
   margin-bottom: 1rem;
 }
 
+.container.paddingTop {
+  padding-top: 10px;
+}
+.container.paddingBottom {
+  padding-bottom: 10px;
+}
+
 /* with our purple of choice, links are difficult to identify without the text-decoration */
 a {
   text-decoration: underline;
@@ -43,6 +50,10 @@ header a {
   left: unset;
   bottom: unset;
   top: unset;
+}
+
+.customer-logo {
+  margin: 20px 30px;
 }
 
 @media (max-width: 480px) {
