@@ -25,7 +25,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
-from kodiak.dependencies import dep_version_from_title
+from kodiak.dependencies import dep_version_from_title, dep_versions_from_pr
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
@@ -615,7 +615,7 @@ async def mergeable(
 
     should_dependency_automerge = (
         pull_request.author.login in config.merge.automerge_dependencies.usernames
-        and dep_version_from_title(pull_request.title)
+        and dep_versions_from_pr(pull_request)
         in config.merge.automerge_dependencies.versions
     )
 

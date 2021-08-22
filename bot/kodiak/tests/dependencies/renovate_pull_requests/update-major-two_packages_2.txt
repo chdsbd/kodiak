@@ -1,0 +1,99 @@
+chore(deps): update commitlint monorepo to v13 (major)
+[![WhiteSource Renovate](https://app.renovatebot.com/images/banner.svg)](https://renovatebot.com)
+
+This PR contains the following updates:
+
+| Package | Change | Age | Adoption | Passing | Confidence |
+|---|---|---|---|---|---|
+| [@commitlint/cli](https://togithub.com/conventional-changelog/commitlint) | [`^12.0.0` -> `^13.0.0`](https://renovatebot.com/diffs/npm/@commitlint%2fcli/12.1.4/13.1.0) | [![age](https://badges.renovateapi.com/packages/npm/@commitlint%2fcli/13.1.0/age-slim)](https://docs.renovatebot.com/merge-confidence/) | [![adoption](https://badges.renovateapi.com/packages/npm/@commitlint%2fcli/13.1.0/adoption-slim)](https://docs.renovatebot.com/merge-confidence/) | [![passing](https://badges.renovateapi.com/packages/npm/@commitlint%2fcli/13.1.0/compatibility-slim/12.1.4)](https://docs.renovatebot.com/merge-confidence/) | [![confidence](https://badges.renovateapi.com/packages/npm/@commitlint%2fcli/13.1.0/confidence-slim/12.1.4)](https://docs.renovatebot.com/merge-confidence/) |
+| [@commitlint/config-conventional](https://togithub.com/conventional-changelog/commitlint) | [`^12.0.0` -> `^13.0.0`](https://renovatebot.com/diffs/npm/@commitlint%2fconfig-conventional/12.1.4/13.1.0) | [![age](https://badges.renovateapi.com/packages/npm/@commitlint%2fconfig-conventional/13.1.0/age-slim)](https://docs.renovatebot.com/merge-confidence/) | [![adoption](https://badges.renovateapi.com/packages/npm/@commitlint%2fconfig-conventional/13.1.0/adoption-slim)](https://docs.renovatebot.com/merge-confidence/) | [![passing](https://badges.renovateapi.com/packages/npm/@commitlint%2fconfig-conventional/13.1.0/compatibility-slim/12.1.4)](https://docs.renovatebot.com/merge-confidence/) | [![confidence](https://badges.renovateapi.com/packages/npm/@commitlint%2fconfig-conventional/13.1.0/confidence-slim/12.1.4)](https://docs.renovatebot.com/merge-confidence/) |
+
+---
+
+### Release Notes
+
+<details>
+<summary>conventional-changelog/commitlint</summary>
+
+### [`v13.1.0`](https://togithub.com/conventional-changelog/commitlint/blob/master/CHANGELOG.md#&#8203;1310-httpsgithubcomconventional-changelogcommitlintcomparev1300v1310-2021-07-24)
+
+[Compare Source](https://togithub.com/conventional-changelog/commitlint/compare/v13.0.0...v13.1.0)
+
+##### Bug Fixes
+
+-   **cz-commitlint:** fix minor formatting issues ([99d8881](https://togithub.com/conventional-changelog/commitlint/commit/99d8881d0d951deded6d9e31bbb279d04101549b))
+-   **types:** adds TargetCaseType\[] for CaseRuleConfig ([c3bef38](https://togithub.com/conventional-changelog/commitlint/commit/c3bef384ff1a3ec428ba7c86bc778c50a9e6eead))
+-   update dependency import-from to v4 ([#&#8203;2629](https://togithub.com/conventional-changelog/commitlint/issues/2629)) ([5bcb604](https://togithub.com/conventional-changelog/commitlint/commit/5bcb60456cd9d4c8f0f0bae21ca7c3d1c73943ca))
+-   **cli:** remove hard coded comment char with linting `COMMIT_EDIT_MSG` ([#&#8203;2618](https://togithub.com/conventional-changelog/commitlint/issues/2618)) ([5badf6d](https://togithub.com/conventional-changelog/commitlint/commit/5badf6dc08116ed3557e6c780e55764b4f07ca67)), closes [#&#8203;2351](https://togithub.com/conventional-changelog/commitlint/issues/2351)
+
+##### Features
+
+-   **rules:** allow body-case to accept an array of cases ([5383c9e](https://togithub.com/conventional-changelog/commitlint/commit/5383c9edcd9a351ea1c33ed49f47afed9b1cde6b)), closes [#&#8203;2631](https://togithub.com/conventional-changelog/commitlint/issues/2631)
+
+### [`v13.0.0`](https://togithub.com/conventional-changelog/commitlint/blob/master/CHANGELOG.md#&#8203;1300-httpsgithubcomconventional-changelogcommitlintcomparev1214v1300-2021-05-24)
+
+[Compare Source](https://togithub.com/conventional-changelog/commitlint/compare/v12.1.4...v13.0.0)
+
+##### Bug Fixes
+
+-   update dependency chalk to v4.1.1 ([#&#8203;2608](https://togithub.com/conventional-changelog/commitlint/issues/2608)) ([f41b123](https://togithub.com/conventional-changelog/commitlint/commit/f41b1237c7f7b2ff23b87643939569276d77b304))
+-   update dependency yargs to v17.0.1 ([#&#8203;2609](https://togithub.com/conventional-changelog/commitlint/issues/2609)) ([afbfd10](https://togithub.com/conventional-changelog/commitlint/commit/afbfd10592579c544d8e2c313f2c2baef68990f8))
+
+##### Features
+
+-   add subject-exclamation-mark rule to improve error messages ([#&#8203;2593](https://togithub.com/conventional-changelog/commitlint/issues/2593)) ([be701bd](https://togithub.com/conventional-changelog/commitlint/commit/be701bdb1de4e667b7a872767244285c4fa4fda4))
+
+-   **rules:** add `trailer-exists` rule ([#&#8203;2578](https://togithub.com/conventional-changelog/commitlint/issues/2578)) ([cd3816d](https://togithub.com/conventional-changelog/commitlint/commit/cd3816d553762eae99e088689395c55afce0c6cc))
+
+-   chore!: remove node 10 support ([#&#8203;2596](https://togithub.com/conventional-changelog/commitlint/issues/2596)) ([4db4ba1](https://togithub.com/conventional-changelog/commitlint/commit/4db4ba1b0b312410a0f62100a93a80c246a6c410)), closes [#&#8203;2596](https://togithub.com/conventional-changelog/commitlint/issues/2596)
+
+##### BREAKING CHANGES
+
+-   minimum node version is 12
+
+#### [12.1.3](https://togithub.com/conventional-changelog/commitlint/compare/v12.1.2...v12.1.3) (2021-05-12)
+
+##### Bug Fixes
+
+-   update dependency fs-extra to v10 ([#&#8203;2575](https://togithub.com/conventional-changelog/commitlint/issues/2575)) ([d47d2b5](https://togithub.com/conventional-changelog/commitlint/commit/d47d2b595b980adadd4fb8ff198c1914caeff18f))
+-   update dependency yargs to v17 ([#&#8203;2574](https://togithub.com/conventional-changelog/commitlint/issues/2574)) ([81c38dd](https://togithub.com/conventional-changelog/commitlint/commit/81c38ddf15f239b525f673b26b2ee6606f2ee8f6))
+
+#### [12.1.2](https://togithub.com/conventional-changelog/commitlint/compare/v12.1.1...v12.1.2) (2021-04-29)
+
+##### Bug Fixes
+
+-   **rules:** fix subject-full-stop rule config value type ([#&#8203;2534](https://togithub.com/conventional-changelog/commitlint/issues/2534)) ([2ab3c57](https://togithub.com/conventional-changelog/commitlint/commit/2ab3c57b709ddad3fc98d768309ac4fdac8cb68a))
+-   **types:** update chalk import ([#&#8203;2535](https://togithub.com/conventional-changelog/commitlint/issues/2535)) ([89f9a6d](https://togithub.com/conventional-changelog/commitlint/commit/89f9a6d759f7296438e184a93c1f766aba1443ca))
+
+#### [12.1.1](https://togithub.com/conventional-changelog/commitlint/compare/v12.1.0...v12.1.1) (2021-04-02)
+
+##### Bug Fixes
+
+-   update dependency read-pkg to v6 ([#&#8203;2530](https://togithub.com/conventional-changelog/commitlint/issues/2530)) ([d38a2ad](https://togithub.com/conventional-changelog/commitlint/commit/d38a2adc07f4cd6dad48aadbb73f2f1d3740e689))
+-   **config-lerna-scopes:** ignore packages without names ([#&#8203;2514](https://togithub.com/conventional-changelog/commitlint/issues/2514)) ([df3bf71](https://togithub.com/conventional-changelog/commitlint/commit/df3bf71ab36a085ef35a1491025c0d2e2b92ff77))
+-   update dependency semver to v7.3.5 ([#&#8203;2519](https://togithub.com/conventional-changelog/commitlint/issues/2519)) ([5113f22](https://togithub.com/conventional-changelog/commitlint/commit/5113f22c620e7b187fd558e5befa541b448ea18b))
+-   **prompt:** modify the entry point to pass commitizen's function check ([#&#8203;2501](https://togithub.com/conventional-changelog/commitlint/issues/2501)) ([0173fb7](https://togithub.com/conventional-changelog/commitlint/commit/0173fb7cc01dc8442ed88a0ab8feec20c955deee)), closes [/github.com/conventional-changelog/commitlint/issues/2486#issuecomment-791682272](https://togithub.com//github.com/conventional-changelog/commitlint/issues/2486/issues/issuecomment-791682272) [/github.com/conventional-changelog/commitlint/issues/2486#issuecomment-791682272](https://togithub.com//github.com/conventional-changelog/commitlint/issues/2486/issues/issuecomment-791682272)
+
+</details>
+
+---
+
+### Configuration
+
+📅 **Schedule**: "before 3am on Monday" (UTC).
+
+🚦 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.
+
+♻ **Rebasing**: Whenever PR becomes conflicted, or you tick the rebase/retry checkbox.
+
+🔕 **Ignore**: Close this PR and you won't be reminded about these updates again.
+
+---
+
+ - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box.
+
+---
+
+This PR has been generated by [WhiteSource Renovate](https://renovate.whitesourcesoftware.com). View repository job log [here](https://app.renovatebot.com/dashboard#github/netlify/cli).
+
+source: https://github.com/netlify/cli/pull/2998

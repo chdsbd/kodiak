@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import re
+from collections.abc import Sequence
 from typing import List, Optional, Sequence, Tuple, TypeVar
 
-from typing_extensions import Literal
+from typing_extensions import Literal, Protocol
 
 title_regex = re.compile(r"from (?P<old_version>\S+) to (?P<new_version>\S+)")
 
 
-def _extract_versions(x: str) -> Optional[Tuple[str, str]]:
+def _extract_versions(x: str) -> tuple[str, str] | None:
     """
     Find old and new version from PR title
     Example:
@@ -29,7 +32,7 @@ def _extract_versions(x: str) -> Optional[Tuple[str, str]]:
 version_regex = re.compile(r"[.+]")
 
 
-def _parse_version_simple(x: str) -> List[str]:
+def _parse_version_simple(x: str) -> list[str]:
     """
     Split version string into pieces.
     """
@@ -39,16 +42,14 @@ def _parse_version_simple(x: str) -> List[str]:
 T = TypeVar("T")
 
 
-def _get_or_none(arr: Sequence[T], index: int) -> Optional[T]:
+def _get_or_none(arr: Sequence[T], index: int) -> T | None:
     try:
         return arr[index]
     except IndexError:
         return None
 
 
-def _compare_versions(
-    old_version: str, new_version: str
-) -> Optional[Literal["major", "minor", "patch"]]:
+def _compare_versions(old_version: str, new_version: str) -> MatchType | None:
     """
     Determine patch, like Dependabot.
 
@@ -87,27 +88,24 @@ renovate_body_regex = re.compile(
     r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE
 )
 
-renovate_lock_file_maintenance_regex = re.compile(r"^|.*lockFileMaintenance.*|")
 
 MatchType = Literal["major", "minor", "patch"]
 
 match_rank = {"major": 3, "minor": 2, "patch": 1, None: 0}
 
 
-def compare_match_type(a: MatchType, b: MatchType) -> bool:
+def compare_match_type(a: MatchType | None, b: MatchType | None) -> bool:
     return match_rank[a] > match_rank[b]
 
 
-def dep_versions_from_renovate_pr_body(
-    body: str
-) -> Optional[Literal["major", "minor", "patch"]]:
+def dep_versions_from_renovate_pr_body(body: str) -> MatchType | None:
     """
     Parse update type from a Renovate PR Body.
 
     Renovate can batch updates, so we need to report to largest update type of the batch. For example, if the batch contained a "major"
     """
-    largest_match_type = None
-    if renovate_lock_file_maintenance_regex.search(body) is not None:
+    largest_match_type: MatchType | None = None
+    if "| lockFileMaintenance |" in body:
         largest_match_type = "patch"
     for match in renovate_body_regex.finditer(body):
         group = match.groupdict()
@@ -119,3 +117,16 @@ def dep_versions_from_renovate_pr_body(
         if compare_match_type(match_type, largest_match_type):
             largest_match_type = match_type
     return largest_match_type
+
+
+class PRLike(Protocol):
+    title: str
+    body: str
+
+
+def dep_versions_from_pr(pr: PRLike) -> MatchType | None:
+    match_type = dep_versions_from_renovate_pr_body(pr.body)
+    if match_type is not None:
+        return match_type
+
+    return dep_version_from_title(pr.title)
