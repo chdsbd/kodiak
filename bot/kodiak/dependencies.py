@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
-from typing import TypeVar
+from typing import List, Optional, Sequence, Tuple, TypeVar
 
 from typing_extensions import Literal, Protocol
 
