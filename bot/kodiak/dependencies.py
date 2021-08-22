@@ -78,7 +78,8 @@ def dep_version_from_title(x: str) -> MatchType | None:
     """
     Try to determine the semver upgrade type from string.
 
-    For example, 'Bump lodash from 4.17.15 to 4.17.19', would be "patch", since the "patch" field is upgraded from 15 to 19.
+    For example, 'Bump lodash from 4.17.15 to 4.17.19', would be "patch", since
+    the "patch" field is upgraded from 15 to 19.
     """
     res = _extract_versions(x)
     if res is None:
