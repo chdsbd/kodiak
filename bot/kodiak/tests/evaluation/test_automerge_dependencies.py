@@ -113,9 +113,7 @@ async def test_merge_renovate(pr: FakePR, update_type: MatchType) -> None:
     pull_request.body = pr.body
 
     for version in (update_type, None):
-        config.merge.automerge_dependencies.versions = (
-            [version] if version else []
-        )
+        config.merge.automerge_dependencies.versions = [version] if version else []
         api = create_api()
         await mergeable(api=api, pull_request=pull_request, config=config)
         if version:
