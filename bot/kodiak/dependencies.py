@@ -92,8 +92,6 @@ renovate_body_regex = re.compile(
 )
 
 
-MatchType = Literal["major", "minor", "patch"]
-
 match_rank = {"major": 3, "minor": 2, "patch": 1, None: 0}
 
 
