@@ -1,5 +1,5 @@
 """
-Tests for dependabot PRs
+Tests for dependabot PRs.
 """
 from kodiak.dependencies import (
     _compare_versions,
