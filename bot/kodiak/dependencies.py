@@ -87,6 +87,8 @@ renovate_body_regex = re.compile(
     r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE
 )
 
+renovate_lock_file_maintenance_regex = re.compile(r"^|.*lockFileMaintenance.*|")
+
 MatchType = Literal["major", "minor", "patch"]
 
 match_rank = {"major": 3, "minor": 2, "patch": 1, None: 0}
@@ -105,6 +107,8 @@ def dep_versions_from_renovate_pr_body(
     Renovate can batch updates, so we need to report to largest update type of the batch. For example, if the batch contained a "major"
     """
     largest_match_type = None
+    if renovate_lock_file_maintenance_regex.search(body) is not None:
+        largest_match_type = "patch"
     for match in renovate_body_regex.finditer(body):
         group = match.groupdict()
         if "old_version" not in group or "new_version" not in group:

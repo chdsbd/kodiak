@@ -99,3 +99,20 @@ def test_renovate_action_update() -> None:
 ---
 """
     assert dep_versions_from_renovate_pr_body(update) == "major"
+
+
+def test_renovate_lock_file_maintenance() -> None:
+    """
+
+    Example: https://github.com/netlify/cli/pull/2999
+    """
+    update = """
+| Update | Change |
+|---|---|
+| lockFileMaintenance | All locks refreshed |
+
+🔧 This Pull Request updates lock files to use the latest dependency versions.
+
+---
+"""
+    assert dep_versions_from_renovate_pr_body(update) == "patch"
