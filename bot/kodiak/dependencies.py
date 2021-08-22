@@ -82,19 +82,19 @@ def dep_version_from_title(x: str) -> Optional[Literal["major", "minor", "patch"
     old_version, new_version = res
     return _compare_versions(old_version, new_version)
 
-renovate_body_regex = re.compile(r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE)
+
+renovate_body_regex = re.compile(
+    r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE
+)
 
 MatchType = Literal["major", "minor", "patch"]
 
-match_rank = {
-    "major": 3,
-    "minor": 2,
-    "patch": 1,
-    None: 0
-}
+match_rank = {"major": 3, "minor": 2, "patch": 1, None: 0}
+
 
 def compare_match_type(a: MatchType, b: MatchType) -> bool:
     return match_rank[a] > match_rank[b]
+
 
 def dep_versions_from_renovate_pr_body(
     body: str
@@ -113,5 +113,5 @@ def dep_versions_from_renovate_pr_body(
         if not match_type:
             continue
         if compare_match_type(match_type, largest_match_type):
-            largest_match_type =match_type
+            largest_match_type = match_type
     return largest_match_type
