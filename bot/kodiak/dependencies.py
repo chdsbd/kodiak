@@ -103,7 +103,9 @@ def dep_versions_from_renovate_pr_body(body: str) -> MatchType | None:
     """
     Parse update type from a Renovate PR Body.
 
-    Renovate can batch updates, so we need to report to largest update type of the batch. For example, if the batch contained a "minor" and "major" update, we'd return the larger of the two, "major".
+    Renovate can batch updates, so we need to report to largest update type of
+    the batch. For example, if the batch contained a "minor" and "major" update,
+    we'd return the larger of the two, "major".
     """
     largest_match_type: MatchType | None = None
     if "| lockFileMaintenance |" in body:
