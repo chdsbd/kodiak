@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import re
-from typing import List, Optional, Sequence, Tuple, TypeVar
+from collections.abc import Sequence
+from typing import TypeVar
 
 from typing_extensions import Literal
 
 title_regex = re.compile(r"from (?P<old_version>\S+) to (?P<new_version>\S+)")
 
 
-def _extract_versions(x: str) -> Optional[Tuple[str, str]]:
+def _extract_versions(x: str) -> tuple[str, str] | None:
     """
     Find old and new version from PR title
     Example:
@@ -29,7 +32,7 @@ def _extract_versions(x: str) -> Optional[Tuple[str, str]]:
 version_regex = re.compile(r"[.+]")
 
 
-def _parse_version_simple(x: str) -> List[str]:
+def _parse_version_simple(x: str) -> list[str]:
     """
     Split version string into pieces.
     """
@@ -39,16 +42,17 @@ def _parse_version_simple(x: str) -> List[str]:
 T = TypeVar("T")
 
 
-def _get_or_none(arr: Sequence[T], index: int) -> Optional[T]:
+def _get_or_none(arr: Sequence[T], index: int) -> T | None:
     try:
         return arr[index]
     except IndexError:
         return None
 
 
-def _compare_versions(
-    old_version: str, new_version: str
-) -> Optional[Literal["major", "minor", "patch"]]:
+MatchType = Literal["major", "minor", "patch"]
+
+
+def _compare_versions(old_version: str, new_version: str) -> MatchType | None:
     """
     Determine patch, like Dependabot.
 
@@ -70,7 +74,7 @@ def _compare_versions(
     return "patch"
 
 
-def dep_version_from_title(x: str) -> Optional[Literal["major", "minor", "patch"]]:
+def dep_version_from_title(x: str) -> MatchType | None:
     """
     Try to determine the semver upgrade type from string.
 
