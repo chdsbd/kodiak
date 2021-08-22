@@ -1,8 +1,13 @@
+"""
+Tests for dependabot PRs
+"""
 from kodiak.dependencies import (
     _compare_versions,
     _extract_versions,
     dep_version_from_title,
+    dep_versions_from_pr,
 )
+from kodiak.tests.dependencies.test_dependencies import FakePR
 
 
 def test_extract_versions() -> None:
@@ -35,6 +40,7 @@ def test_extract_versions() -> None:
     ]:
         assert _extract_versions(title) == version
         assert dep_version_from_title(title) == upgrade
+        assert dep_versions_from_pr(FakePR(title=title, body="")) == upgrade
 
 
 def test_compare_versions() -> None:
