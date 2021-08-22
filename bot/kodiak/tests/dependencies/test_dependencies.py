@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -9,10 +10,10 @@ import pytest
 from kodiak.dependencies import dep_versions_from_pr
 
 
+@dataclass
 class FakePR:
-    def __init__(self, title: str, body: str) -> None:
-        self.title = title
-        self.body = body
+    title: str
+    body: str
 
 
 def generate_test_cases() -> Iterator[tuple[FakePR, str]]:

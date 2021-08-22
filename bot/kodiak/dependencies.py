@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from typing import List, Optional, Sequence, Tuple, TypeVar
+from typing import TypeVar
 
 from typing_extensions import Literal, Protocol
 
@@ -71,7 +71,7 @@ def _compare_versions(old_version: str, new_version: str) -> MatchType | None:
     return "patch"
 
 
-def dep_version_from_title(x: str) -> Optional[Literal["major", "minor", "patch"]]:
+def dep_version_from_title(x: str) -> MatchType | None:
     """
     Try to determine the semver upgrade type from string.
 

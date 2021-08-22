@@ -25,7 +25,7 @@ from kodiak.config import (
     MergeMethod,
     MergeTitleStyle,
 )
-from kodiak.dependencies import dep_version_from_title, dep_versions_from_pr
+from kodiak.dependencies import dep_versions_from_pr
 from kodiak.errors import (
     GitHubApiInternalServerError,
     PollForever,
