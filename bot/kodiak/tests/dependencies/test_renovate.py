@@ -26,3 +26,19 @@ def test_renovate_minor_major() -> None:
 """
 
     assert dep_versions_from_renovate_pr_body(renovate_body) == "major"
+
+
+def test_renovate_unknown() -> None:
+    """
+    With an unknown version ("16.2.1-beta") we should return None.
+    """
+    renovate_body = r"""
+
+| Package | Change | Age | Adoption | Passing | Confidence |
+|---|---|---|---|---|---|
+| [@netlify/build](https://togithub.com/netlify/build) | [`^16.2.1-beta` -> `^16.2.1`](https://renovatebot.com/diffs/npm/@netlify%2fbuild/16.2.1-beta/16.2.1) | [![age](https://badges.renovateapi.com/packages/npm/@netlify%2fbuild/16.2.1/age-slim)](https://docs.renovatebot.com/merge-confidence/) | [![adoption](https://badges.renovateapi.com/packages/npm/@netlify%2fbuild/16.2.1/adoption-slim)](https://docs.renovatebot.com/merge-confidence/) | [![passing](https://badges.renovateapi.com/packages/npm/@netlify%2fbuild/16.2.1/compatibility-slim/16.2.1-beta)](https://docs.renovatebot.com/merge-confidence/) | [![confidence](https://badges.renovateapi.com/packages/npm/@netlify%2fbuild/16.2.1/confidence-slim/16.2.1-beta)](https://docs.renovatebot.com/merge-confidence/) |
+
+---
+"""
+
+    assert dep_versions_from_renovate_pr_body(renovate_body) is None
