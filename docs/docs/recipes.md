@@ -17,7 +17,9 @@ always = true # default: false
 require_automerge_label = false # default: true
 ```
 
-## Automated dependency updates with Dependabot
+## Automated dependency updates with Dependabot (or Renovate)
+
+> **NOTE:** Kodiak supports Dependabot and Renovate for dependency updates. Any mention of Dependabot can be substituted with Renovate.
 
 Kodiak can automerge all Dependabot PRs if you configure Dependabot to open pull requests with our [`merge.automerge_label`](/docs/config-reference#mergeautomerge_label) label.
 
@@ -28,7 +30,7 @@ If you want to only merge specific upgrade types, like "major", "minor", "patch"
 1. Install Kodiak following the [quick start guide](/docs/quickstart).
 2. Add `"dependabot"` and your automerge upgrade types to the `.kodiak.toml`
 
-> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`.
+> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`. Instead of `"renovate[bot]"` use `"renovate"`.
 
 ```toml
 # .kodiak.toml
@@ -76,7 +78,7 @@ When "Required approving reviews" is configured via GitHub Branch Protection, ev
 
 Kodiak can add an approval to pull requests via [`approve.auto_approve_usernames`](/docs/config-reference#approveauto_approve_usernames), enabling Dependabot PRs to be merged without human intervention.
 
-> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`.
+> **NOTE:** Remove the `[bot]` suffix from GitHub Bot usernames. Instead of `"dependabot[bot]"` use `"dependabot"`. Instead of `"renovate[bot]"` use `"renovate"`.
 
 ```toml
 # .kodiak.toml
