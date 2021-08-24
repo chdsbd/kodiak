@@ -4,7 +4,7 @@ import re
 from collections.abc import Sequence
 from typing import TypeVar
 
-from typing_extensions import Literal
+from typing_extensions import Literal, Protocol
 
 title_regex = re.compile(r"from (?P<old_version>\S+) to (?P<new_version>\S+)")
 
@@ -78,10 +78,59 @@ def dep_version_from_title(x: str) -> MatchType | None:
     """
     Try to determine the semver upgrade type from string.
 
-    For example, 'Bump lodash from 4.17.15 to 4.17.19', would be "patch", since the "patch" field is upgraded from 15 to 19.
+    For example, 'Bump lodash from 4.17.15 to 4.17.19', would be "patch", since
+    the "patch" field is upgraded from 15 to 19.
     """
     res = _extract_versions(x)
     if res is None:
         return None
     old_version, new_version = res
     return _compare_versions(old_version, new_version)
+
+
+renovate_body_regex = re.compile(
+    r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE
+)
+
+
+match_rank = {"major": 3, "minor": 2, "patch": 1, None: 0}
+
+
+def compare_match_type(a: MatchType | None, b: MatchType | None) -> bool:
+    return match_rank[a] > match_rank[b]
+
+
+def dep_versions_from_renovate_pr_body(body: str) -> MatchType | None:
+    """
+    Parse update type from a Renovate PR Body.
+
+    Renovate can batch updates, so we need to report to largest update type of
+    the batch. For example, if the batch contained a "minor" and "major" update,
+    we'd return the larger of the two, "major".
+    """
+    largest_match_type: MatchType | None = None
+    if "| lockFileMaintenance |" in body:
+        largest_match_type = "patch"
+    for match in renovate_body_regex.finditer(body):
+        group = match.groupdict()
+        if "old_version" not in group or "new_version" not in group:
+            continue
+        match_type = _compare_versions(group["old_version"], group["new_version"])
+        if not match_type:
+            continue
+        if compare_match_type(match_type, largest_match_type):
+            largest_match_type = match_type
+    return largest_match_type
+
+
+class PRLike(Protocol):
+    title: str
+    body: str
+
+
+def dep_versions_from_pr(pr: PRLike) -> MatchType | None:
+    match_type = dep_versions_from_renovate_pr_body(pr.body)
+    if match_type is not None:
+        return match_type
+
+    return dep_version_from_title(pr.title)

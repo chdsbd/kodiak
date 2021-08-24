@@ -1,11 +1,13 @@
 import pytest
 
+from kodiak.dependencies import MatchType
 from kodiak.test_evaluation import (
     create_api,
     create_config,
     create_mergeable,
     create_pull_request,
 )
+from kodiak.tests.dependencies.test_dependencies import FakePR, generate_test_cases
 
 
 @pytest.mark.asyncio
@@ -96,3 +98,27 @@ async def test_merge_disallowed_version() -> None:
     await mergeable(api=api, pull_request=pull_request, config=config)
     assert api.queue_for_merge.call_count == 0
     assert api.dequeue.call_count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pr,update_type", generate_test_cases())
+async def test_merge_renovate(pr: FakePR, update_type: MatchType) -> None:
+    mergeable = create_mergeable()
+    config = create_config()
+    config.merge.automerge_dependencies.usernames = ["my-custom-renovate"]
+    pull_request = create_pull_request()
+    pull_request.labels = []
+    pull_request.author.login = "my-custom-renovate"
+    pull_request.title = pr.title
+    pull_request.body = pr.body
+
+    for version in (update_type, None):
+        config.merge.automerge_dependencies.versions = [version] if version else []
+        api = create_api()
+        await mergeable(api=api, pull_request=pull_request, config=config)
+        if version:
+            assert api.queue_for_merge.call_count == 1
+            assert api.dequeue.call_count == 0
+        else:
+            assert api.queue_for_merge.call_count == 0
+            assert api.dequeue.call_count == 1
