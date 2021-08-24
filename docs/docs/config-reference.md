@@ -68,10 +68,10 @@ See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-
 # only auto merge "minor" and "patch" version upgrades.
 # do not automerge "major" version upgrades.
 versions = ["minor", "patch"]
-usernames = ["dependabot"]
+usernames = ["dependabot", "renovate"]
 ```
 
-Dependency upgrade types are parsed from the pull request title. The following table shows version upgrade examples:
+Dependency upgrade types are parsed from the pull request title and body. The following table shows version upgrade examples for Dependabot pull request titles:
 
 | title                           | upgrade |
 | ------------------------------- | ------- |
@@ -96,8 +96,8 @@ See ["Configuring automerge by upgrade type"](recipes.md##configuring-automerge-
 # .kodiak.toml
 [merge.automerge_dependencies]
 versions = ["minor", "patch"]
-# only automerge by upgrade version for pull requests authored by dependabot.
-usernames = ["dependabot"]
+# automerge by upgrade version for pull requests authored by dependabot or renovate.
+usernames = ["dependabot", "renovate"]
 ```
 
 <span id="mergeblacklist_title_regex"/> <!-- handle old links -->
