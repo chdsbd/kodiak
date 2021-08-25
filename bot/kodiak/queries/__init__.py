@@ -957,7 +957,9 @@ class Client:
             log.warning("could not find repository")
             return None
 
-        subscription = await self.get_subscription()
+        subscription = (
+            await self.get_subscription() if conf.SUBSCRIPTIONS_ENABLED else None
+        )
 
         pull_request = get_pull_request(repo=repository)
         if not pull_request:
