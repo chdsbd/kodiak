@@ -751,6 +751,20 @@ const Logos = {
       </svg>
     )
   },
+  Target: function() {
+    return (
+      <svg
+        height={LogoHeight}
+        viewBox="0 0 73 73"
+        xmlns="http://www.w3.org/2000/svg">
+        <title>target.com</title>
+        <g fill="#C00" fillRule="evenodd">
+          <path d="M36.666 12.218c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24M72.67 36.217c0 19.883-16.118 36-36 36s-36-16.117-36-36c0-19.882 16.118-36 36-36s36 16.118 36 36" />
+          <path d="M36.668 24.22c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12" />
+        </g>
+      </svg>
+    )
+  },
   Vercel: function() {
     return (
       <svg
@@ -973,6 +987,9 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
         </Logo>
         <Logo>
           <Logos.Productboard />
+        </Logo>
+        <Logo>
+          <Logos.Target />
         </Logo>
         <Logo>
           <Logos.Linz />
