@@ -4,7 +4,7 @@ RUN set -ex && mkdir -p /var/app
 
 RUN python3 -m pip install poetry===1.1.8
 
-RUN poetry config settings.virtualenvs.in-project true
+RUN poetry config virtualenvs.in-project true
 
 WORKDIR /var/app
 

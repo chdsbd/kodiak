@@ -29,7 +29,7 @@ jobs:
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
             command -v poetry || python -m pip install --user poetry==1.1.8
-            poetry config settings.virtualenvs.in-project true
+            poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
           paths:
