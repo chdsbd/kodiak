@@ -6,7 +6,7 @@ authors = ["Christopher Dignam <chris@dignam.xyz>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-uvicorn = "^0.7.0"
+uvicorn = "^0.15.0"
 toml = "^0.10.0"
 PyJWT = "^1.7"
 cryptography = "2.8"
