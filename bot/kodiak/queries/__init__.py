@@ -1277,7 +1277,8 @@ async def get_token_for_install(
                 Authorization=f"Bearer {app_token}",
             ),
         )
-    assert res.status_code < 300
+    if res.status_code > 300:
+        raise Exception(f"Failed to get token, github response: {res.text}")
     token_response = TokenResponse(**res.json())
     installation_cache[installation_id] = token_response
     return token_response.token
