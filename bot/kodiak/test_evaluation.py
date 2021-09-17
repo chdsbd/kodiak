@@ -376,9 +376,9 @@ def create_mergeable() -> MergeableType:
         app_id: Optional[str] = None,
     ) -> None:
         """
-            wrapper around evaluation.mergeable that simplifies tests by providing
-            default arguments to override.
-            """
+        wrapper around evaluation.mergeable that simplifies tests by providing
+        default arguments to override.
+        """
         return await mergeable_func(
             api=api,
             config=config,
@@ -1653,7 +1653,7 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately() -> None:
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update() -> None:
     """
-    merge.do_not_merge is only useful with merge.update_branch_immediately, 
+    merge.do_not_merge is only useful with merge.update_branch_immediately,
     Test when PR doesn't need update.
     """
     mergeable = create_mergeable()
@@ -1675,7 +1675,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update()
 @pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update() -> None:
     """
-    merge.do_not_merge is only useful with merge.update_branch_immediately, 
+    merge.do_not_merge is only useful with merge.update_branch_immediately,
     Test when PR needs update.
     """
     mergeable = create_mergeable()

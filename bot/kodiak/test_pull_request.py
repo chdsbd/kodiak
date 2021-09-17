@@ -370,7 +370,7 @@ async def test_pr_v2_add_label_service_unavailable() -> None:
 @pytest.mark.asyncio
 async def test_pr_v2_remove_label_ok() -> None:
     """
-    Check that remove_label works when 
+    Check that remove_label works when
     """
     client = create_client()
     client.delete_label.response = create_response(content=b"", status_code=204)
@@ -402,7 +402,7 @@ async def test_pr_v2_remove_label_service_unavailable() -> None:
 @pytest.mark.asyncio
 async def test_update_ref_ok() -> None:
     """
-    Check that update_ref works 
+    Check that update_ref works
     """
     client = create_client()
     client.update_ref.response = create_response(content=b"", status_code=200)

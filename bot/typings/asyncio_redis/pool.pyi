@@ -26,7 +26,7 @@ class Pool:
         auto_reconnection: bool = ...,
         loop: Optional[Any] = ...,
         protocol_class: Any = ...,
-        ssl: Optional[bool] = ...
+        ssl: Optional[bool] = ...,
     ) -> Pool: ...
     # NOTE(sbdchd): asyncio_redis does some hackery with __getattr__, so we copy
     # the methods from Connection

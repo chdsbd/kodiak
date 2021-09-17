@@ -399,7 +399,7 @@ class PRV2:
 
     async def create_comment(self, body: str) -> None:
         """
-       create a comment on the specified `pr_number` with the given `body` as text.
+        create a comment on the specified `pr_number` with the given `body` as text.
         """
         self.log.info("create_comment", body=body)
         async with self.client(
