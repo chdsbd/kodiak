@@ -1,6 +1,7 @@
 from html.parser import HTMLParser
 from typing import List, Tuple
 
+from markdown_html_finder import find_html_positions
 
 
 class CommentHTMLParser(HTMLParser):
@@ -39,7 +40,7 @@ def strip_html_comments_from_markdown(raw_message: str) -> str:
     # remark-parse also doesn't handle carriage returns:
     # https://github.com/remarkjs/remark/issues/195#issuecomment-230760892
     message = raw_message.replace("\r", "")
-    html_node_positions = [1, 2]
+    html_node_positions = find_html_positions(message)
     comment_locations = []
     for html_start, html_end in html_node_positions:
         html_text = message[html_start:html_end]
