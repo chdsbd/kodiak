@@ -98,7 +98,11 @@ if GITHUB_V3_API_ROOT == "https://api.github.com":
 else:
     r = requests.get(v3_url("/meta"))
     if r.status_code != 200:
-        logging.warning("failed to get github version from github enterprise server, setting version to 3.0.0")
+        logging.warning(
+            "failed to get github version from github enterprise server, setting version to 3.0.0"
+        )
         GITHUB_ENTERPRISE_VERSION = (2, 0, 0)
     else:
-        GITHUB_ENTERPRISE_VERSION = tuple(int(x) for x in r.json()["installed_version"].split("."))
+        GITHUB_ENTERPRISE_VERSION = tuple(
+            int(x) for x in r.json()["installed_version"].split(".")
+        )
