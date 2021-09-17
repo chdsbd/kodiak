@@ -5,8 +5,10 @@ from typing import Any, Optional, Type, TypeVar, overload
 import databases
 from starlette.config import Config, undefined
 from starlette.datastructures import CommaSeparatedStrings
+import requests
 
-from kodiak.logging import get_logging_level
+from kodiak.custom_log import get_logging_level
+import logging
 
 T = TypeVar("T")
 
@@ -89,3 +91,14 @@ else:
 
 def v3_url(path: str) -> str:
     return GITHUB_V3_API_ROOT + path
+
+
+if GITHUB_V3_API_ROOT == "https://api.github.com":
+    GITHUB_ENTERPRISE_VERSION = None
+else:
+    r = requests.get(v3_url("/meta"))
+    if r.status_code != 200:
+        logging.warning("failed to get github version from github enterprise server, setting version to 3.0.0")
+        GITHUB_ENTERPRISE_VERSION = (2, 0, 0)
+    else:
+        GITHUB_ENTERPRISE_VERSION = tuple(int(x) for x in r.json()["installed_version"].split("."))

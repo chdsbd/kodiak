@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
-from kodiak.logging import SentryProcessor, add_request_info_processor
+from kodiak.custom_log import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
 

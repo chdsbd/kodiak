@@ -5,7 +5,7 @@ from typing import Any, cast
 import pytest
 from requests import PreparedRequest, Request, Response
 
-from kodiak.logging import (
+from kodiak.custom_log import (
     SentryLevel,
     SentryProcessor,
     add_request_info_processor,
@@ -43,7 +43,7 @@ def test_sentry_sent() -> None:
 
 @pytest.mark.parametrize("level", ["debug", "info", "warning"])
 def test_sentry_log(mocker: Any, level: SentryLevel) -> None:
-    m_capture_event = mocker.patch("kodiak.logging.capture_event")
+    m_capture_event = mocker.patch("kodiak.custom_log.capture_event")
 
     event_data = {"event": level + " message"}
     sentry_event_data = event_data.copy()
@@ -63,9 +63,9 @@ def test_sentry_log(mocker: Any, level: SentryLevel) -> None:
 
 @pytest.mark.parametrize("level", ["error", "critical"])
 def test_sentry_log_failure(mocker: Any, level: SentryLevel) -> None:
-    m_capture_event = mocker.patch("kodiak.logging.capture_event")
+    m_capture_event = mocker.patch("kodiak.custom_log.capture_event")
     mocker.patch(
-        "kodiak.logging.event_from_exception",
+        "kodiak.custom_log.event_from_exception",
         return_value=({"exception": mocker.sentinel.exception}, mocker.sentinel.hint),
     )
 
@@ -90,7 +90,7 @@ def test_sentry_log_failure(mocker: Any, level: SentryLevel) -> None:
 
 @pytest.mark.parametrize("level", ["debug", "info", "warning"])
 def test_sentry_log_all_as_tags(mocker: Any, level: SentryLevel) -> None:
-    m_capture_event = mocker.patch("kodiak.logging.capture_event")
+    m_capture_event = mocker.patch("kodiak.custom_log.capture_event")
 
     event_data = {"event": level + " message"}
     sentry_event_data = event_data.copy()
@@ -117,7 +117,7 @@ def test_sentry_log_all_as_tags(mocker: Any, level: SentryLevel) -> None:
 
 @pytest.mark.parametrize("level", ["debug", "info", "warning"])
 def test_sentry_log_specific_keys_as_tags(mocker: Any, level: SentryLevel) -> None:
-    m_capture_event = mocker.patch("kodiak.logging.capture_event")
+    m_capture_event = mocker.patch("kodiak.custom_log.capture_event")
 
     event_data = {"event": level + " message", "info1": "info1", "required": True}
     tag_keys = ["info1", "required", "some non existing key"]

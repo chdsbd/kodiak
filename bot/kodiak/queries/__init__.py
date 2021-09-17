@@ -78,6 +78,30 @@ class ConfigQueryResponse(pydantic.BaseModel):
     repository: Optional[ConfigQueryOptions]
 
 
+if conf.GITHUB_ENTERPRISE_VERSION and conf.GITHUB_ENTERPRISE_VERSION < (3, 2, 0):
+    BRANCH_PROTECTION_RULE_FIELDS = [
+        "requiresApprovingReviews",
+        "requiredApprovingReviewCount",
+        "requiresStatusChecks",
+        "requiredStatusCheckContexts",
+        "requiresStrictStatusChecks",
+        "requiresCodeOwnerReviews",
+        "requiresCommitSignatures",
+        "restrictsPushes",
+    ]
+else:
+    BRANCH_PROTECTION_RULE_FIELDS = [
+        "requiresApprovingReviews",
+        "requiredApprovingReviewCount",
+        "requiresStatusChecks",
+        "requiredStatusCheckContexts",
+        "requiresStrictStatusChecks",
+        "requiresCodeOwnerReviews",
+        "requiresCommitSignatures",
+        "restrictsPushes",
+        "requiresConversationResolution",
+    ]
+
 GET_EVENT_INFO_QUERY = """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -88,15 +112,8 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
             name
           }
         }
-        requiresApprovingReviews
-        requiredApprovingReviewCount
-        requiresStatusChecks
-        requiredStatusCheckContexts
-        requiresStrictStatusChecks
-        requiresCodeOwnerReviews
-        requiresCommitSignatures
-        requiresConversationResolution
-        restrictsPushes
+        """ + "        \n".join(BRANCH_PROTECTION_RULE_FIELDS) + \
+                       """
         pushAllowances(first: 100) {
           nodes {
             actor {
@@ -390,7 +407,7 @@ class BranchProtectionRule(BaseModel):
     requiresStrictStatusChecks: bool
     requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
-    requiresConversationResolution: bool
+    requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
 
@@ -495,6 +512,7 @@ class TokenResponse(BaseModel):
 
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 
+
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
 
@@ -551,7 +569,7 @@ def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]
 
 
 def get_branch_protection(
-    *, repo: Dict[str, Any], ref_name: str
+        *, repo: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     for rule in get_branch_protection_dicts(repo=repo):
         try:
@@ -752,8 +770,8 @@ class Client:
             "Accept"
         ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
         if (
-            conf.GITHUB_API_HEADER_NAME is not None
-            and conf.GITHUB_API_HEADER_VALUE is not None
+                conf.GITHUB_API_HEADER_NAME is not None
+                and conf.GITHUB_API_HEADER_VALUE is not None
         ):
             self.session.headers[
                 conf.GITHUB_API_HEADER_NAME
@@ -772,10 +790,10 @@ class Client:
         await self.session.aclose()
 
     async def send_query(
-        self,
-        query: str,
-        variables: Mapping[str, Union[str, int, None]],
-        installation_id: str,
+            self,
+            query: str,
+            variables: Mapping[str, Union[str, int, None]],
+            installation_id: str,
     ) -> Optional[GraphQLResponse]:
         log = self.log
 
@@ -825,7 +843,7 @@ class Client:
     # TODO(chdsbd): We may want to cache this response to improve performance as
     # we could encounter a lot of throttling when hitting the Github API
     async def get_reviewers_and_permissions(
-        self, *, reviews: List[PRReviewSchema]
+            self, *, reviews: List[PRReviewSchema]
     ) -> List[PRReview]:
         reviewer_names: Set[str] = {
             review.author.login
@@ -909,14 +927,14 @@ class Client:
         if not parsed.repository:
             return None
         if (
-            parsed.repository.rootConfigFile is not None
-            and parsed.repository.rootConfigFile.text is not None
+                parsed.repository.rootConfigFile is not None
+                and parsed.repository.rootConfigFile.text is not None
         ):
             config_file_expression = root_config_file_expression
             config_text = parsed.repository.rootConfigFile.text
         elif (
-            parsed.repository.githubConfigFile is not None
-            and parsed.repository.githubConfigFile.text is not None
+                parsed.repository.githubConfigFile is not None
+                and parsed.repository.githubConfigFile.text is not None
         ):
             config_file_expression = github_config_file_expression
             config_text = parsed.repository.githubConfigFile.text
@@ -1012,7 +1030,7 @@ class Client:
         )
 
     async def get_open_pull_requests(
-        self, base: Optional[str] = None, head: Optional[str] = None
+            self, base: Optional[str] = None, head: Optional[str] = None
     ) -> Optional[List[GetOpenPullRequestsResponseSchema]]:
         """
         https://developer.github.com/v3/pulls/#list-pull-requests
@@ -1107,11 +1125,11 @@ class Client:
             return await self.session.get(url, headers=headers)
 
     async def merge_pull_request(
-        self,
-        number: int,
-        merge_method: str,
-        commit_title: Optional[str],
-        commit_message: Optional[str],
+            self,
+            number: int,
+            merge_method: str,
+            commit_title: Optional[str],
+            commit_message: Optional[str],
     ) -> http.Response:
         body = dict(merge_method=merge_method)
         # we must not pass the keys for commit_title or commit_message when they
@@ -1141,7 +1159,7 @@ class Client:
             return await self.session.patch(url, headers=headers, json=dict(sha=sha))
 
     async def create_notification(
-        self, head_sha: str, message: str, summary: Optional[str] = None
+            self, head_sha: str, message: str, summary: Optional[str] = None
     ) -> http.Response:
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
@@ -1213,7 +1231,7 @@ class Client:
         if not real_response:
             return None
         subscription_blocker_kind = (
-            real_response.get(b"subscription_blocker") or b""
+                real_response.get(b"subscription_blocker") or b""
         ).decode()
         subscription_blocker: Optional[
             Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
@@ -1247,13 +1265,13 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
     This is different from authenticating as an installation
     """
     issued_at = int(datetime.now().timestamp())
-    expiration = int((datetime.now() + timedelta(minutes=10)).timestamp())
+    expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())
     payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
 
 async def get_token_for_install(
-    *, session: http.AsyncClient, installation_id: str
+        *, session: http.AsyncClient, installation_id: str
 ) -> str:
     """
     https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
@@ -1277,14 +1295,15 @@ async def get_token_for_install(
                 Authorization=f"Bearer {app_token}",
             ),
         )
-    assert res.status_code < 300
+    if res.status_code > 300:
+        raise Exception(f"Failed to get token, github response: {res.text}")
     token_response = TokenResponse(**res.json())
     installation_cache[installation_id] = token_response
     return token_response.token
 
 
 async def get_headers(
-    *, session: http.AsyncClient, installation_id: str
+        *, session: http.AsyncClient, installation_id: str
 ) -> dict[str, str]:
     token = await get_token_for_install(
         session=session, installation_id=installation_id

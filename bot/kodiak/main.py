@@ -16,7 +16,7 @@ from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
-from kodiak.logging import SentryProcessor, add_request_info_processor
+from kodiak.custom_log import SentryProcessor, add_request_info_processor
 from kodiak.queue import handle_webhook_event, redis_webhook_queue
 
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
