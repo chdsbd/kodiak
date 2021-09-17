@@ -29,9 +29,9 @@ kodiak = 'kodiak.cli:cli'
 
 [tool.poetry.dev-dependencies]
 pytest = "6.0.1"
-black = "^19.3b0"
+black = "^21.9b0"
 mypy = "^0.812"
-ipdb = "^0.12.0"
+ipdb = "^0.13.9"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "3.3.1"
 typing_extensions = "^3.7"
@@ -46,5 +46,5 @@ flake8-pyi = "^20.10"
 "pytest_plugin" = "pytest_plugin.plugin"
 
 [build-system]
-requires = ["poetry>=0.12", "setuptools"]
+requires = ["poetry>=1.1.8", "setuptools"]
 build-backend = "poetry.masonry.api"

@@ -211,6 +211,14 @@ disable=print-statement,
         keyword-arg-before-vararg,
         # not smart enough about refinement
         inconsistent-return-statements,
+        # we place imports in functions to prevent circular refs.
+        import-outside-toplevel,
+        # it's okay to use dict()
+        use-dict-literal,
+        # the default encoding works fine
+        unspecified-encoding,
+        # we don't need to specify `from`
+        raise-missing-from,
 
 
 # Enable the message, report, category or checker with the given id(s). You can

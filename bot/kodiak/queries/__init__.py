@@ -858,10 +858,7 @@ class Client:
         ]
         permissions = await asyncio.gather(*requests)
 
-        user_permission_mapping = {
-            username: permission
-            for username, permission in zip(reviewer_names, permissions)
-        }
+        user_permission_mapping = dict(zip(reviewer_names, permissions))
 
         return sorted(
             bot_reviews
