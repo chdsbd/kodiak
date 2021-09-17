@@ -348,6 +348,7 @@ class MergeableType(Protocol):
 
 
 def create_mergeable() -> MergeableType:
+    # pylint: disable=dangerous-default-value
     async def mergeable(
         *,
         api: PRAPI = create_api(),
@@ -402,6 +403,7 @@ def create_mergeable() -> MergeableType:
             app_id=app_id,
         )
 
+    # pylint: enable=dangerous-default-value
     return mergeable
 
 

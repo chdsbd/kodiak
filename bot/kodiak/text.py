@@ -12,10 +12,10 @@ class CommentHTMLParser(HTMLParser):
         self.comments: List[Tuple[int, int]] = []
         super().__init__()
 
-    def handle_comment(self, tag: str) -> None:
+    def handle_comment(self, data: str) -> None:
         start_token_len = len("<!--")
         end_token_len = len("-->")
-        tag_len = len(tag)
+        tag_len = len(data)
         end = start_token_len + tag_len + end_token_len
         self.comments.append((self.offset, end + self.offset))
 
