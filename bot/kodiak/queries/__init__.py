@@ -61,6 +61,18 @@ query ($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $git
       }
     }
   }
+  orgConfigRepo: repository(owner: $owner, name: ".github") {
+    rootConfigFile: object(expression: $rootConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    githubConfigFile: object(expression: $githubConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+  }
 }
 """
 
@@ -76,6 +88,7 @@ class ConfigQueryOptions(pydantic.BaseModel):
 
 class ConfigQueryResponse(pydantic.BaseModel):
     repository: Optional[ConfigQueryOptions]
+    orgConfigRepo: Optional[ConfigQueryOptions]
 
 
 GET_EVENT_INFO_QUERY = """
@@ -906,20 +919,24 @@ class Client:
             self.log.exception("problem parsing api response for config")
             return None
 
-        if not parsed.repository:
+        if parsed.repository:
+            repository = parsed.repository
+        elif parsed.orgConfigRepo:
+            repository = parsed.orgConfigRepo
+        else:
             return None
         if (
-            parsed.repository.rootConfigFile is not None
-            and parsed.repository.rootConfigFile.text is not None
+            repository.rootConfigFile is not None
+            and repository.rootConfigFile.text is not None
         ):
             config_file_expression = root_config_file_expression
-            config_text = parsed.repository.rootConfigFile.text
+            config_text = repository.rootConfigFile.text
         elif (
-            parsed.repository.githubConfigFile is not None
-            and parsed.repository.githubConfigFile.text is not None
+            repository.githubConfigFile is not None
+            and repository.githubConfigFile.text is not None
         ):
             config_file_expression = github_config_file_expression
-            config_text = parsed.repository.githubConfigFile.text
+            config_text = repository.githubConfigFile.text
         else:
             return None
 
