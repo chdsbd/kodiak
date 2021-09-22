@@ -28,7 +28,7 @@ httpx = "^0.18.1"
 kodiak = 'kodiak.cli:cli'
 
 [tool.poetry.dev-dependencies]
-pytest = "6.0.1"
+pytest = "^6.0.1"
 black = "^21.9b0"
 mypy = "^0.812"
 ipdb = "^0.13.9"
