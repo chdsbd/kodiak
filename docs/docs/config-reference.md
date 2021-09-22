@@ -382,7 +382,7 @@ March 6th, 2020, making this option no longer necessary.
 - **type:** `boolean`
 - **default:** `false`
 
-Append the pull request's URL to the commit message body.
+Append the pull request's URL to the commit message body, prefixed with `PR-URL:`.
 
 This can make accessing the relevant PR for a given commit easier.
 
