@@ -28,7 +28,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.8
+            command -v poetry || python -m pip install --user poetry==1.1.9
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -68,7 +68,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.8
+            command -v poetry || python -m pip install --user poetry==1.1.9
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -217,7 +217,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.8
+            command -v poetry || python -m pip install --user poetry==1.1.9
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -257,7 +257,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.8
+            command -v poetry || python -m pip install --user poetry==1.1.9
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -302,7 +302,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.8
+            command -v poetry || python -m pip install --user poetry==1.1.9
             poetry config settings.virtualenvs.in-project true
             poetry install
       - save_cache:
