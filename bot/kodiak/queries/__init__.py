@@ -871,10 +871,7 @@ class Client:
         ]
         permissions = await asyncio.gather(*requests)
 
-        user_permission_mapping = {
-            username: permission
-            for username, permission in zip(reviewer_names, permissions)
-        }
+        user_permission_mapping = dict(zip(reviewer_names, permissions))
 
         return sorted(
             bot_reviews
@@ -1264,7 +1261,7 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
     This is different from authenticating as an installation
     """
     issued_at = int(datetime.now().timestamp())
-    expiration = int((datetime.now() + timedelta(minutes=10)).timestamp())
+    expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())
     payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
@@ -1294,7 +1291,8 @@ async def get_token_for_install(
                 Authorization=f"Bearer {app_token}",
             ),
         )
-    assert res.status_code < 300
+    if res.status_code > 300:
+        raise Exception(f"Failed to get token, github response: {res.text}")
     token_response = TokenResponse(**res.json())
     installation_cache[installation_id] = token_response
     return token_response.token

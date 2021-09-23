@@ -14,7 +14,7 @@ def _extract_versions(x: str) -> tuple[str, str] | None:
     Find old and new version from PR title
     Example:
         title: "Bump jackson-databind from 2.9.10.1 to 2.10.0.pr1 in /LiveIngest/LiveEventWithDVR"
-        
+
         result: "2.9.10.1", "2.10.0.pr1"
     """
     match = title_regex.search(x)

@@ -2,9 +2,9 @@ FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138e
 
 RUN set -ex && mkdir -p /var/app
 
-RUN python3 -m pip install poetry===0.12.11
+RUN python3 -m pip install poetry===1.1.8
 
-RUN poetry config settings.virtualenvs.in-project true
+RUN poetry config virtualenvs.in-project true
 
 WORKDIR /var/app
 

@@ -67,7 +67,9 @@ class Merge(BaseModel):
     require_automerge_label: bool = True
     # regex to match against title and block merging. Set to empty string to
     # disable check.
-    blacklist_title_regex: str = UNSET_TITLE_REGEX  # deprecated for blocking_title_regex
+    blacklist_title_regex: str = (
+        UNSET_TITLE_REGEX  # deprecated for blocking_title_regex
+    )
     blocking_title_regex: str = UNSET_TITLE_REGEX
     # labels to block merging of pull request
     blacklist_labels: List[str] = []  # deprecated for blocking_labels
