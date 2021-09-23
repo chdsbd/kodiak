@@ -130,7 +130,7 @@ def parse_config(data: dict[Any, Any]) -> ParsedConfig | None:
                 text=res.repository.githubConfigFile.text, kind="repo_github"
             )
         raise Exception("unexpected missing config file")
-    elif res.orgConfigRepo:
+    if res.orgConfigRepo:
         if (
             res.orgConfigRepo.rootConfigFile
             and res.orgConfigRepo.rootConfigFile.text is not None
