@@ -223,6 +223,8 @@ disable=print-statement,
         method-hidden,
         # flake8 handles this now
         broad-except,
+        # we can format strings as we like
+        consider-using-f-string
 
 
 # Enable the message, report, category or checker with the given id(s). You can
