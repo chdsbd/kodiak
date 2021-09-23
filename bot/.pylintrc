@@ -219,6 +219,10 @@ disable=print-statement,
         unspecified-encoding,
         # we don't need to specify `from`
         raise-missing-from,
+        # this has false positives
+        method-hidden,
+        # flake8 handles this now
+        broad-except,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
