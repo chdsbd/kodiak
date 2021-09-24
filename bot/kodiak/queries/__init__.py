@@ -48,7 +48,14 @@ class GraphQLResponse(TypedDict):
 
 
 GET_CONFIG_QUERY = """
-query ($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $githubConfigFileExpression: String!) {
+query (
+    $owner: String!,
+    $repo: String!,
+    $rootConfigFileExpression: String!,
+    $githubConfigFileExpression: String!,
+    $orgRootConfigFileExpression: String!,
+    $orgGithubConfigFileExpression: String!
+  ) {
   repository(owner: $owner, name: $repo) {
     rootConfigFile: object(expression: $rootConfigFileExpression) {
       ... on Blob {
@@ -56,6 +63,18 @@ query ($owner: String!, $repo: String!, $rootConfigFileExpression: String!, $git
       }
     }
     githubConfigFile: object(expression: $githubConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+  }
+  orgConfigRepo: repository(owner: $owner, name: ".github") {
+    rootConfigFile: object(expression: $orgRootConfigFileExpression) {
+      ... on Blob {
+        text
+      }
+    }
+    githubConfigFile: object(expression: $orgGithubConfigFileExpression) {
       ... on Blob {
         text
       }
@@ -73,9 +92,61 @@ class ConfigQueryOptions(pydantic.BaseModel):
     rootConfigFile: Optional[ConfigQueryText]
     githubConfigFile: Optional[ConfigQueryText]
 
+    def __bool__(self) -> bool:
+        return bool(self.rootConfigFile or self.githubConfigFile)
+
 
 class ConfigQueryResponse(pydantic.BaseModel):
     repository: Optional[ConfigQueryOptions]
+    orgConfigRepo: Optional[ConfigQueryOptions]
+
+
+@dataclass
+class ParsedConfig:
+    text: str
+    kind: Literal["repo_root", "repo_github", "org_root", "org_github"]
+
+
+def parse_config(data: dict[Any, Any]) -> ParsedConfig | None:
+    try:
+        res = ConfigQueryResponse.parse_obj(data)
+    except pydantic.ValidationError:
+        logger.exception("problem parsing api response for config")
+        return None
+
+    if res.repository:
+        if (
+            res.repository.rootConfigFile
+            and res.repository.rootConfigFile.text is not None
+        ):
+            return ParsedConfig(
+                text=res.repository.rootConfigFile.text, kind="repo_root"
+            )
+        if (
+            res.repository.githubConfigFile
+            and res.repository.githubConfigFile.text is not None
+        ):
+            return ParsedConfig(
+                text=res.repository.githubConfigFile.text, kind="repo_github"
+            )
+        raise Exception("unexpected missing config file")
+    if res.orgConfigRepo:
+        if (
+            res.orgConfigRepo.rootConfigFile
+            and res.orgConfigRepo.rootConfigFile.text is not None
+        ):
+            return ParsedConfig(
+                text=res.orgConfigRepo.rootConfigFile.text, kind="org_root"
+            )
+        if (
+            res.orgConfigRepo.githubConfigFile
+            and res.orgConfigRepo.githubConfigFile.text is not None
+        ):
+            return ParsedConfig(
+                text=res.orgConfigRepo.githubConfigFile.text, kind="org_github"
+            )
+        raise Exception("unexpected missing config file")
+    return None
 
 
 GET_EVENT_INFO_QUERY = """
@@ -227,9 +298,21 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       }
     }
   }
+  orgConfigRepo: repository(owner: $owner, name: ".github") {
+    defaultBranchRef {
+      name
+    }
+  }
 }
 
 """
+
+
+def get_org_config_default_branch(data: dict[Any, Any]) -> str | None:
+    try:
+        return cast(Union[str, None], data["orgConfigRepo"]["defaultBranchRef"]["name"])
+    except (KeyError, TypeError):
+        return None
 
 
 class MergeStateStatus(Enum):
@@ -501,20 +584,6 @@ installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
 def get_repo(*, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
         return cast(Dict[str, Any], data["repository"])
-    except (KeyError, TypeError):
-        return None
-
-
-def get_root_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
-    try:
-        return cast(str, repo["rootConfigFile"]["text"])
-    except (KeyError, TypeError):
-        return None
-
-
-def get_github_config_str(*, repo: Dict[str, Any]) -> Optional[str]:
-    try:
-        return cast(str, repo["githubConfigFile"]["text"])
     except (KeyError, TypeError):
         return None
 
@@ -877,53 +946,62 @@ class Client:
             key=lambda x: x.createdAt,
         )
 
-    async def get_config_for_ref(self, *, ref: str) -> CfgInfo | None:
-        root_config_file_expression = create_root_config_file_expression(branch=ref)
-        github_config_file_expression = create_github_config_file_expression(branch=ref)
+    async def get_config_for_ref(
+        self, *, ref: str, org_repo_default_branch: str | None
+    ) -> CfgInfo | None:
+        repo_root_config_expression = create_root_config_file_expression(branch=ref)
+        repo_github_config_expression = create_github_config_file_expression(branch=ref)
+        org_root_config_expression: str | None = None
+        org_github_config_file_expression: str | None = None
+
+        if org_repo_default_branch is not None:
+            org_root_config_expression = create_root_config_file_expression(
+                branch=org_repo_default_branch
+            )
+            org_github_config_file_expression = create_github_config_file_expression(
+                branch=org_repo_default_branch
+            )
         res = await self.send_query(
             query=GET_CONFIG_QUERY,
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
-                rootConfigFileExpression=root_config_file_expression,
-                githubConfigFileExpression=github_config_file_expression,
+                rootConfigFileExpression=repo_root_config_expression,
+                githubConfigFileExpression=repo_github_config_expression,
+                orgRootConfigFileExpression=org_root_config_expression,
+                orgGithubConfigFileExpression=org_github_config_file_expression,
             ),
             installation_id=self.installation_id,
         )
         if res is None:
             return None
         data = res.get("data")
-        errors = res.get("errors")
-        if errors is not None or data is None:
+        if data is None:
             self.log.error("could not fetch default branch name", res=res)
             return None
-        try:
-            parsed = ConfigQueryResponse.parse_obj(data)
-        except pydantic.ValidationError:
-            self.log.exception("problem parsing api response for config")
+
+        parsed_config = parse_config(data)
+        if parsed_config is None:
             return None
 
-        if not parsed.repository:
-            return None
-        if (
-            parsed.repository.rootConfigFile is not None
-            and parsed.repository.rootConfigFile.text is not None
-        ):
-            config_file_expression = root_config_file_expression
-            config_text = parsed.repository.rootConfigFile.text
-        elif (
-            parsed.repository.githubConfigFile is not None
-            and parsed.repository.githubConfigFile.text is not None
-        ):
-            config_file_expression = github_config_file_expression
-            config_text = parsed.repository.githubConfigFile.text
-        else:
-            return None
+        def get_file_expression() -> str:
+            assert parsed_config is not None
+            if parsed_config.kind == "repo_root":
+                return repo_root_config_expression
+            if parsed_config.kind == "repo_github":
+                return repo_github_config_expression
+            if parsed_config.kind == "org_root":
+                assert org_root_config_expression is not None
+                return org_root_config_expression
+            if parsed_config.kind == "org_github":
+                assert org_github_config_file_expression is not None
+                return org_github_config_file_expression
+            raise Exception(f"unknown config kind {parsed_config.kind!r}")
 
         return CfgInfo(
-            parsed=V1.parse_toml(config_text),
-            text=config_text,
-            file_expression=config_file_expression,
+            parsed=V1.parse_toml(parsed_config.text),
+            text=parsed_config.text,
+            file_expression=get_file_expression(),
         )
 
     async def get_event_info(self, pr_number: int) -> Optional[EventInfoResponse]:
@@ -944,8 +1022,7 @@ class Client:
             return None
 
         data = res.get("data")
-        errors = res.get("errors")
-        if errors is not None or data is None:
+        if data is None:
             log.error("could not fetch event info", res=res)
             return None
 
@@ -953,6 +1030,8 @@ class Client:
         if not repository:
             log.warning("could not find repository")
             return None
+
+        org_repo_default_branch = get_org_config_default_branch(data=data)
 
         subscription = (
             await self.get_subscription() if conf.SUBSCRIPTIONS_ENABLED else None
@@ -973,7 +1052,9 @@ class Client:
             log.warning("Could not parse pull request")
             return None
 
-        cfg = await self.get_config_for_ref(ref=pr.baseRefName)
+        cfg = await self.get_config_for_ref(
+            ref=pr.baseRefName, org_repo_default_branch=org_repo_default_branch
+        )
         if cfg is None:
             log.info("no config found")
             return None

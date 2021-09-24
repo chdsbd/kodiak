@@ -76,7 +76,7 @@ async def test_get_config_for_ref_error(
         return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
     )
 
-    res = await api_client.get_config_for_ref(ref="main")
+    res = await api_client.get_config_for_ref(ref="main", org_repo_default_branch=None)
     assert res is None
 
 
@@ -104,7 +104,7 @@ async def test_get_config_for_ref_dot_github(
         ),
     )
 
-    res = await api_client.get_config_for_ref(ref="main")
+    res = await api_client.get_config_for_ref(ref="main", org_repo_default_branch=None)
     assert res is not None
     assert isinstance(res.parsed, V1) and res.parsed.merge.method == MergeMethod.rebase
 
