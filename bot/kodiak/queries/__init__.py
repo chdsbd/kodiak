@@ -42,7 +42,7 @@ class GraphQLError(TypedDict):
     path: Optional[List[str]]
 
 
-class GraphQLResponse(TypedDict):
+class GraphQLResponse(TypedDict, total=False):
     data: Optional[Dict[Any, Any]]
     errors: Optional[List[GraphQLError]]
 
@@ -149,7 +149,8 @@ def parse_config(data: dict[Any, Any]) -> ParsedConfig | None:
     return None
 
 
-GET_EVENT_INFO_QUERY = """
+def get_event_info_query(requires_conversation_resolution: bool) -> str:
+    return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
@@ -166,7 +167,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         requiresStrictStatusChecks
         requiresCodeOwnerReviews
         requiresCommitSignatures
-        requiresConversationResolution
+        %(requiresConversationResolution)s
         restrictsPushes
         pushAllowances(first: 100) {
           nodes {
@@ -305,7 +306,11 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   }
 }
 
-"""
+""" % dict(
+        requiresConversationResolution="requiresConversationResolution"
+        if requires_conversation_resolution
+        else ""
+    )
 
 
 def get_org_config_default_branch(data: dict[Any, Any]) -> str | None:
@@ -473,7 +478,7 @@ class BranchProtectionRule(BaseModel):
     requiresStrictStatusChecks: bool
     requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
-    requiresConversationResolution: bool
+    requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
 
@@ -794,6 +799,14 @@ class CfgInfo:
     file_expression: str
 
 
+@dataclass
+class ApiFeatures:
+    requires_conversation_resolution: bool
+
+
+_api_features_cache: ApiFeatures | None = None
+
+
 class ThrottlerProtocol(Protocol):
     async def __aenter__(self) -> None:
         ...
@@ -866,6 +879,54 @@ class Client:
             log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
+
+    async def get_api_features(self) -> ApiFeatures | None:
+        """
+        Check if we can use recently added schema fields.
+
+        For GitHub Enterprise installations, the latest GraphQL fields may not
+        be available.
+
+        To query the GraphQL API, we need an installation token, so for the
+        first client to make an API request, we use their credentials to view
+        schema metadata and cache the results.
+        """
+        global _api_features_cache
+        if _api_features_cache is not None:
+            return _api_features_cache
+        res = await self.send_query(
+            query="""
+query {
+   __type(name:"BranchProtectionRule") {
+      fields(includeDeprecated: true) {
+         name
+      }  
+   }
+}
+""",
+            variables=dict(),
+            installation_id=self.installation_id,
+        )
+        if res is None:
+            self.log.warning("failed to fetching api features")
+            return None
+        errors = res.get("errors")
+        data = res.get("data")
+        if errors or not data:
+            self.log.warning("errors fetching api features", errors=errors, data=data)
+            return None
+
+        try:
+            fields = data["__type"]["fields"]
+        except (TypeError, KeyError):
+            self.log.warning("problem parsing api features", exc_info=True)
+            return None
+        _api_features_cache = ApiFeatures(
+            requires_conversation_resolution=any(
+                field["name"] == "requiresConversationResolution" for field in fields
+            )
+        )
+        return _api_features_cache
 
     async def get_permissions_for_username(self, username: str) -> Permission:
         headers = await get_headers(
@@ -1013,8 +1074,14 @@ class Client:
 
         log = self.log.bind(pr=pr_number)
 
+        api_features = await self.get_api_features()
+
         res = await self.send_query(
-            query=GET_EVENT_INFO_QUERY,
+            query=get_event_info_query(
+                requires_conversation_resolution=api_features.requires_conversation_resolution
+                if api_features
+                else True
+            ),
             variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
         )
