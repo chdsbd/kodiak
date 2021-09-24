@@ -201,11 +201,6 @@ def get_merge_body(
         MergeBodyStyle.pull_request_body,
         MergeBodyStyle.empty,
     ):
-        if config.merge.message.include_pull_request_url:
-            if merge_body.commit_message is None:
-                merge_body.commit_message = pull_request.url
-            else:
-                merge_body.commit_message += "\n\n" + pull_request.url
 
         # we share coauthor logic between include_pull_request_author and
         # include_coauthors.
@@ -237,12 +232,20 @@ def get_merge_body(
             pull_request_author_id=pull_request.author.databaseId,
         )
 
+        trailer_block = ""
+        if config.merge.message.include_pull_request_url:
+            trailer_block += f"PR-URL: {pull_request.url}"
+
         if coauthor_trailers:
-            trailer_block = "\n".join(coauthor_trailers)
-            if merge_body.commit_message:
+            if trailer_block:
+                trailer_block += "\n"
+            trailer_block += "\n".join(coauthor_trailers)
+
+        if merge_body.commit_message:
+            if trailer_block:
                 merge_body.commit_message += "\n\n" + trailer_block
-            else:
-                merge_body.commit_message = trailer_block
+        else:
+            merge_body.commit_message = trailer_block
 
     return merge_body
 

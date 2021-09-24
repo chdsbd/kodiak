@@ -44,7 +44,7 @@ def test_get_merge_body_includes_pull_request_url() -> None:
         commit_message="""\
 # some description
 
-https://github.com/example_org/example_repo/pull/65""",
+PR-URL: https://github.com/example_org/example_repo/pull/65""",
     )
     assert actual == expected
 
@@ -96,8 +96,7 @@ def test_get_merge_body_includes_pull_request_url_with_coauthor() -> None:
         commit_message="""\
 # some description
 
-https://github.com/example_org/example_repo/pull/65
-
+PR-URL: https://github.com/example_org/example_repo/pull/65
 Co-authored-by: Barry Berkman <828352+barry@users.noreply.github.com>""",
     )
     assert actual == expected
