@@ -53,8 +53,8 @@ query (
     $repo: String!,
     $rootConfigFileExpression: String!,
     $githubConfigFileExpression: String!,
-    $orgRootConfigFileExpression: String!,
-    $orgGithubConfigFileExpression: String!
+    $orgRootConfigFileExpression: String,
+    $orgGithubConfigFileExpression: String
   ) {
   repository(owner: $owner, name: $repo) {
     rootConfigFile: object(expression: $rootConfigFileExpression) {
