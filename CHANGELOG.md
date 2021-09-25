@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.46.0 - 2021-09-24
+
+### Added
+- `.github/` repository support for configuration. Create a repository named `.github` with your `.kodiak.toml` to centralize your `.kodiak.toml` configuration. Thanks @LeoQuote! (#729)
+
+### Changed
+- `merge.message.include_pull_request_url` to prefix URL with `PR-URL:`. Thanks @jbergstroem! (#730)
+
+### Fixed
+- support GitHub Enterprise 3.0. (#734)
+
 ## 0.45.0 - 2021-08-23
 
 ### Added
