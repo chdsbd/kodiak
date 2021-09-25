@@ -5,6 +5,8 @@ title: Configuration Reference
 
 Kodiak's configuration file is a TOML file and should be placed at `.kodiak.toml` (repository root) or `.github/.kodiak.toml`.
 
+If Kodiak cannot find configuration in your repository, Kodiak will look in your `.github` repository. Kodiak must be installed on your `.github` repository to read from it.
+
 For Kodiak to run on a pull request:
 
 1. Kodiak must be installed on the repository.
@@ -387,6 +389,19 @@ Append the pull request's URL to the commit message body, prefixed with `PR-URL:
 This can make accessing the relevant PR for a given commit easier.
 
 This setting only applies when `merge.message.body = "pull_request"` is set.
+
+#### Example commit
+
+Notice the `PR-URL` trailer added by this option.
+
+```text
+Add new github login flow (#17)
+
+This change adds the new GitHub social login flow.
+
+PR-URL: https://github.com/ghost/app/pull/17
+```
+
 
 ### `update.always`
 
