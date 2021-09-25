@@ -402,7 +402,6 @@ This change adds the new GitHub social login flow.
 PR-URL: https://github.com/ghost/app/pull/17
 ```
 
-
 ### `update.always`
 
 - **type:** `boolean`
