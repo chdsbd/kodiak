@@ -23,6 +23,7 @@ requests = "^2.22"
 rure = "^0.2.2"
 zstandard = "^0.13.0"
 httpx = "^0.18.1"
+httpcore = "0.13.2"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
