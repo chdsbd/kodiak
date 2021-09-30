@@ -633,6 +633,29 @@ async def test_mergeable_blocking_title_regex() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_blocking_title_regex_invalid() -> None:
+    """
+    raise config error if regex is invalid.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.blocking_title_regex = "^((?!chore(deps).*)"
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 1
+    assert "Invalid blocking_title_regex" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_blocking_title_regex_default() -> None:
     """
     We should default to "^WIP.*" if unset.

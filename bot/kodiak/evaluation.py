@@ -760,15 +760,22 @@ async def mergeable(
 
     title_blocker = get_blocking_title_regex(config)
 
-    if (
-        title_blocker.pattern
-        and re.search(title_blocker.pattern, pull_request.title) is not None
-    ):
-        await block_merge(
-            api,
-            pull_request,
-            f"title matches {title_blocker.config_key}: {title_blocker.pattern!r}",
+    try:
+        if (
+            title_blocker.pattern
+            and re.search(title_blocker.pattern, pull_request.title) is not None
+        ):
+            await block_merge(
+                api,
+                pull_request,
+                f"title matches {title_blocker.config_key}: {title_blocker.pattern!r}",
+            )
+            return
+    except re.exceptions.RegexError:
+        await set_status(
+            f"⚠️ Invalid blocking_title_regex: {title_blocker.pattern!r}",
         )
+        await api.dequeue()
         return
 
     if is_draft_pull_request:
