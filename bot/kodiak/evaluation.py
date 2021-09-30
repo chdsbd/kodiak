@@ -773,7 +773,7 @@ async def mergeable(
             return
     except re.exceptions.RegexError:
         await set_status(
-            f"⚠️ Invalid title regex pattern: {title_blocker.pattern!r}",
+            f"⚠️ Invalid blocking_title_regex: {title_blocker.pattern!r}",
         )
         await api.dequeue()
         return

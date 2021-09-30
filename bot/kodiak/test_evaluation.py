@@ -646,7 +646,7 @@ async def test_mergeable_blocking_title_regex_invalid() -> None:
 
     await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
-    assert "Invalid title regex" in api.set_status.calls[0]["msg"]
+    assert "Invalid blocking_title_regex" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
 
     # verify we haven't tried to update/merge the PR
