@@ -859,7 +859,7 @@ class Client:
         query: str,
         variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
-    ) -> Optional[GraphQLResponse]:
+    ) -> GraphQLResponse:
         log = self.log
 
         token = await get_token_for_install(
@@ -912,9 +912,6 @@ query {
             variables=dict(),
             installation_id=self.installation_id,
         )
-        if res is None:
-            self.log.warning("failed to fetching api features")
-            return None
         errors = res.get("errors")
         data = res.get("data")
         if errors or not data:
@@ -1039,8 +1036,6 @@ query {
             ),
             installation_id=self.installation_id,
         )
-        if res is None:
-            return None
         data = res.get("data")
         if data is None:
             self.log.error("could not fetch default branch name", res=res)
@@ -1090,8 +1085,6 @@ query {
             variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
         )
-        if res is None:
-            return None
 
         data = res.get("data")
         if data is None:
