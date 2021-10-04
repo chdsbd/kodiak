@@ -145,6 +145,7 @@ async def evaluate_pr(
                 log.info("problem contacting remote api. retrying")
                 continue
             log.warning("api_call_retries_remaining", exc_info=True)
+            return
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
             # We're in a while loop, so we won't loose our spot if we're merging.
