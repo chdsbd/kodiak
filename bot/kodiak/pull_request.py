@@ -147,6 +147,7 @@ async def evaluate_pr(
             return
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
+            # We're in a while loop, so we won't loose our spot if we're merging.
             log.warning("mergeable_timeout", exc_info=True)
             await requeue_callback()
 

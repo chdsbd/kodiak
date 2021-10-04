@@ -18,6 +18,7 @@ from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import ApiCallException
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
@@ -877,7 +878,11 @@ class Client:
             res.raise_for_status()
         except http.HTTPError:
             log.warning("github api request error", res=res, exc_info=True)
-            return None
+            raise ApiCallException(
+                method="github/graphql",
+                http_status_code=res.status_code,
+                response=res.content,
+            )
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
