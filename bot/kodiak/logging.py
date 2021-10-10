@@ -188,8 +188,6 @@ def configure_sentry_and_logging() -> None:
             add_request_info_processor,
             sanitize_keyword_names,
             SentryProcessor(level=logging.WARNING),
-            # structlog.processors.JSONRenderer()
-            # structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
