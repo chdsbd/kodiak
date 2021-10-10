@@ -114,7 +114,6 @@ def add_request_info_processor(
     Structlog processor for adding more information to log events that provide
     `res` with a requests Response object.
     """
-    # print('event_dict=',event_dict)
     response = event_dict.get("res", None)
     if isinstance(response, Response):
         event_dict["response_content"] = cast(Any, response)._content
@@ -140,6 +139,9 @@ def sanitize_keyword_names(
     _: Any, __: Any, event_dict: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
+    Rename any keywords in our `extra` dict that would conflict with built in
+    keywords.
+
     https://stackoverflow.com/questions/40862192/why-is-it-forbidden-to-override-log-record-attributes
     """
     extra = event_dict.get("extra")
