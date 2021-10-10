@@ -778,6 +778,14 @@ pytest = ">=5.0"
 dev = ["pre-commit", "tox", "pytest-asyncio"]
 
 [[package]]
+name = "python-json-logger"
+version = "2.0.2"
+description = "A python library adding a json log formatter"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "regex"
 version = "2021.8.28"
 description = "Alternative regular expression module, to replace re."
@@ -1047,7 +1055,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "18f3c6b2591b684d75c40380ab199311bf5ec5bebe384a17a2c7005673c65ec9"
+content-hash = "de7a10500d372f795e4f1329a69eeaf04294757fa053612f8a3ecd63bf08f0e5"
 
 [metadata.files]
 appnope = [
@@ -1577,6 +1585,10 @@ pytest-cov = [
 pytest-mock = [
     {file = "pytest-mock-3.3.1.tar.gz", hash = "sha256:a4d6d37329e4a893e77d9ffa89e838dd2b45d5dc099984cf03c703ac8411bb82"},
     {file = "pytest_mock-3.3.1-py3-none-any.whl", hash = "sha256:024e405ad382646318c4281948aadf6fe1135632bea9cc67366ea0c4098ef5f2"},
+]
+python-json-logger = [
+    {file = "python-json-logger-2.0.2.tar.gz", hash = "sha256:202a4f29901a4b8002a6d1b958407eeb2dd1d83c18b18b816f5b64476dde9096"},
+    {file = "python_json_logger-2.0.2-py3-none-any.whl", hash = "sha256:99310d148f054e858cd5f4258794ed6777e7ad2c3fd7e1c1b527f1cba4d08420"},
 ]
 regex = [
     {file = "regex-2021.8.28-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9d05ad5367c90814099000442b2125535e9d77581855b9bee8780f1b41f2b1a2"},
