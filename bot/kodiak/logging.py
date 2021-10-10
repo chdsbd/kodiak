@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
@@ -122,10 +124,17 @@ def add_request_info_processor(
         event_dict["request_method"] = response.request.method
     return event_dict
 
-CLASHING_KEYWORDS = {key for key in dir(logging.LogRecord(None, None, "", 0, "", (), None, None)) if "__" not in key} | {
-    "message", 
-    "asctime"
-}
+
+CLASHING_KEYWORDS = {
+    key
+    for key in dir(
+        logging.LogRecord(
+            name="", level=0, pathname="", lineno=0, msg="", args=(), exc_info=None
+        )
+    )
+    if "__" not in key
+} | {"message", "asctime"}
+
 
 def sanitize_keyword_names(
     _: Any, __: Any, event_dict: Dict[str, Any]
@@ -133,11 +142,11 @@ def sanitize_keyword_names(
     """
     https://stackoverflow.com/questions/40862192/why-is-it-forbidden-to-override-log-record-attributes
     """
-    extra = event_dict.get('extra')
+    extra = event_dict.get("extra")
     if extra:
         for key in extra:
             if key in CLASHING_KEYWORDS:
-                event_dict['extra'][key + "_" ] = event_dict['extra'].pop(key)
+                event_dict["extra"][key + "_"] = event_dict["extra"].pop(key)
     return event_dict
 
 
@@ -149,8 +158,13 @@ def configure_sentry_and_logging() -> None:
     handler = logging.StreamHandler(sys.stdout)
 
     class CustomJsonFormatter(jsonlogger.JsonFormatter):
-        def add_fields(self, log_record, record, message_dict):
-            print('here')
+        def add_fields(
+            self,
+            log_record: dict[str, Any],
+            record: logging.LogRecord,
+            message_dict: dict[str, Any],
+        ) -> None:
+            print("here")
             super(CustomJsonFormatter, self).add_fields(
                 log_record, record, message_dict
             )

@@ -13,7 +13,6 @@ from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette import status
 from starlette.requests import Request
-from uvicorn import config
 
 from kodiak import app_config as conf
 from kodiak.logging import (
