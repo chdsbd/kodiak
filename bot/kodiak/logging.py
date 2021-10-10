@@ -164,10 +164,7 @@ def configure_sentry_and_logging() -> None:
             record: logging.LogRecord,
             message_dict: dict[str, Any],
         ) -> None:
-            print("here")
-            super(CustomJsonFormatter, self).add_fields(
-                log_record, record, message_dict
-            )
+            super().add_fields(log_record, record, message_dict)
             log_record["log_path"] = f"{record.name}:{record.filename}:{record.lineno}"
 
     handler.setFormatter(CustomJsonFormatter())

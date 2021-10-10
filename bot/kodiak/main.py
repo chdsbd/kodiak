@@ -3,11 +3,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-import sys
 from typing import Any, Dict, Optional, cast
 
-import sentry_sdk
-import structlog
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -15,11 +12,7 @@ from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
-from kodiak.logging import (
-    SentryProcessor,
-    add_request_info_processor,
-    configure_sentry_and_logging,
-)
+from kodiak.logging import configure_sentry_and_logging
 from kodiak.queue import handle_webhook_event, redis_webhook_queue
 
 # disable uvicorn log handlers. We use our own that matches our JSON log formatting.

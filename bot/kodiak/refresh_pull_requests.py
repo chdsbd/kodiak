@@ -11,26 +11,18 @@ the mergeability.
 from __future__ import annotations
 
 import asyncio
-import logging
-import sys
 import time
 from typing import cast
 
 import asyncio_redis
-import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
 from httpx import AsyncClient
 from pydantic import BaseModel
-from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
-from kodiak.logging import (
-    SentryProcessor,
-    add_request_info_processor,
-    configure_sentry_and_logging,
-)
+from kodiak.logging import configure_sentry_and_logging
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
 
