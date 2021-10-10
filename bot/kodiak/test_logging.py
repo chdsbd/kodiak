@@ -6,7 +6,12 @@ import pytest
 from requests import PreparedRequest, Request, Response
 
 from kodiak.app_config import get_logging_level
-from kodiak.logging import SentryLevel, SentryProcessor, add_request_info_processor
+from kodiak.logging import (
+    SentryLevel,
+    SentryProcessor,
+    add_request_info_processor,
+    sanitize_keyword_names,
+)
 
 # MIT License
 
@@ -173,3 +178,10 @@ def test_add_request_info_processor() -> None:
     assert event_dict["request_url"] == req.url
     assert event_dict["request_method"] == "POST"
     assert event_dict["res"] is res
+
+
+def test_sanitize_keyword_names() -> None:
+    event_dict = sanitize_keyword_names(
+        None, None, dict(extra=dict(message="hello world"))
+    )
+    assert event_dict["extra"]["message_"] == "hello world"
