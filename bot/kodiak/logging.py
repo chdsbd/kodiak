@@ -137,7 +137,6 @@ def sanitize_keyword_names(
     if extra:
         for key in extra:
             if key in CLASHING_KEYWORDS:
-                val = 
                 event_dict['extra'][key + "_" ] = event_dict['extra'].pop(key)
     return event_dict
 
