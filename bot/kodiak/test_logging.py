@@ -5,12 +5,8 @@ from typing import Any, cast
 import pytest
 from requests import PreparedRequest, Request, Response
 
-from kodiak.logging import (
-    SentryLevel,
-    SentryProcessor,
-    add_request_info_processor,
-    get_logging_level,
-)
+from kodiak.app_config import get_logging_level
+from kodiak.logging import SentryLevel, SentryProcessor, add_request_info_processor
 
 # MIT License
 

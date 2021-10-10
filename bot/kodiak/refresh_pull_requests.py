@@ -26,39 +26,15 @@ from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
-from kodiak.logging import SentryProcessor, add_request_info_processor
+from kodiak.logging import (
+    SentryProcessor,
+    add_request_info_processor,
+    configure_sentry_and_logging,
+)
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
 
-sentry_sdk.init()
-
-logging.basicConfig(
-    stream=sys.stdout,
-    level=conf.LOGGING_LEVEL,
-    format="%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s",
-)
-
-# disable sentry logging middleware as the structlog processor provides more
-# info via the extra data field
-sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        add_request_info_processor,
-        SentryProcessor(level=logging.WARNING),
-        structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
-
+configure_sentry_and_logging()
 
 logger = structlog.get_logger()
 

@@ -11,41 +11,24 @@ import structlog
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
+from uvicorn import config
 
 from kodiak import app_config as conf
-from kodiak.logging import SentryProcessor, add_request_info_processor
+from kodiak.logging import (
+    SentryProcessor,
+    add_request_info_processor,
+    configure_sentry_and_logging,
+)
 from kodiak.queue import handle_webhook_event, redis_webhook_queue
 
-# for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
-logging.basicConfig(
-    stream=sys.stdout,
-    level=conf.LOGGING_LEVEL,
-    format="%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s",
-)
+# disable uvicorn log handlers. We use our own that matches our JSON log formatting.
+logging.getLogger("uvicorn.access").handlers = []
+logging.getLogger("uvicorn.access").propagate = True
+logging.getLogger("uvicorn").handlers = []
 
-# disable sentry logging middleware as the structlog processor provides more
-# info via the extra data field
-sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        add_request_info_processor,
-        SentryProcessor(level=logging.WARNING),
-        structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
+configure_sentry_and_logging()
 
 app = FastAPI()
 app.add_middleware(SentryAsgiMiddleware)

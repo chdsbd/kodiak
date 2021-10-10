@@ -2,10 +2,16 @@ import logging
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
+import sentry_sdk
+import structlog
+from pythonjsonlogger import jsonlogger
 from requests import Response
 from sentry_sdk import capture_event
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import event_from_exception
 from typing_extensions import Literal
+
+from kodiak import app_config as conf
 
 ################################################################################
 # based on https://github.com/kiwicom/structlog-sentry/blob/18adbfdac85930ca5578e7ef95c1f2dc169c2f2f/structlog_sentry/__init__.py#L10-L86
@@ -34,10 +40,6 @@ from typing_extensions import Literal
 EventDict = Dict[str, Any]
 SentryLevel = Literal["fatal", "error", "warning", "info", "debug"]
 SentryTagKeys = Optional[Union[List[str], Literal["__all__"]]]
-
-
-def get_logging_level(name: str) -> int:
-    return logging._nameToLevel[name.upper()]
 
 
 def _get_event_and_hint(
@@ -89,7 +91,7 @@ class SentryProcessor:
     def __call__(
         self, logger: Any, level: SentryLevel, event_dict: EventDict
     ) -> EventDict:
-        if get_logging_level(level) < self.level:
+        if conf.get_logging_level(level) < self.level:
             return event_dict
 
         event_dict["sentry_id"] = send_event_to_sentry(
@@ -110,6 +112,7 @@ def add_request_info_processor(
     Structlog processor for adding more information to log events that provide
     `res` with a requests Response object.
     """
+    # print('event_dict=',event_dict)
     response = event_dict.get("res", None)
     if isinstance(response, Response):
         event_dict["response_content"] = cast(Any, response)._content
@@ -118,3 +121,68 @@ def add_request_info_processor(
         event_dict["request_url"] = response.request.url
         event_dict["request_method"] = response.request.method
     return event_dict
+
+CLASHING_KEYWORDS = {key for key in dir(logging.LogRecord(None, None, "", 0, "", (), None, None)) if "__" not in key} | {
+    "message", 
+    "asctime"
+}
+
+def sanitize_keyword_names(
+    _: Any, __: Any, event_dict: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    https://stackoverflow.com/questions/40862192/why-is-it-forbidden-to-override-log-record-attributes
+    """
+    extra = event_dict.get('extra')
+    if extra:
+        for key in extra:
+            if key in CLASHING_KEYWORDS:
+                val = 
+                event_dict['extra'][key + "_" ] = event_dict['extra'].pop(key)
+    return event_dict
+
+
+def configure_sentry_and_logging() -> None:
+    # disable sentry logging middleware as the structlog processor provides more
+    # info via the extra data field
+    sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
+
+    handler = logging.StreamHandler(sys.stdout)
+
+    class CustomJsonFormatter(jsonlogger.JsonFormatter):
+        def add_fields(self, log_record, record, message_dict):
+            print('here')
+            super(CustomJsonFormatter, self).add_fields(
+                log_record, record, message_dict
+            )
+            log_record["log_path"] = f"{record.name}:{record.filename}:{record.lineno}"
+
+    handler.setFormatter(CustomJsonFormatter())
+
+    # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
+    logging.basicConfig(
+        handlers=[handler],
+        level=conf.LOGGING_LEVEL,
+    )
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.stdlib.render_to_log_kwargs,
+            add_request_info_processor,
+            sanitize_keyword_names,
+            SentryProcessor(level=logging.WARNING),
+            # structlog.processors.JSONRenderer()
+            # structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )

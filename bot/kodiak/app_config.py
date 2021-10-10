@@ -1,4 +1,5 @@
 import base64
+import logging
 from pathlib import Path
 from typing import Any, Optional, Type, TypeVar, overload
 
@@ -6,7 +7,10 @@ import databases
 from starlette.config import Config, undefined
 from starlette.datastructures import CommaSeparatedStrings
 
-from kodiak.logging import get_logging_level
+
+def get_logging_level(name: str) -> int:
+    return logging._nameToLevel[name.upper()]
+
 
 T = TypeVar("T")
 
