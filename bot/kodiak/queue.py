@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import signal
 import time
 import typing
 import urllib
@@ -9,6 +11,7 @@ from datetime import timedelta
 from typing import Iterator, Optional
 
 import asyncio_redis
+import objgraph  # type: ignore[import]
 import sentry_sdk
 import structlog
 import zstandard as zstd
@@ -30,6 +33,15 @@ from kodiak.events import (
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+
+
+def handler(signum: int, frame: object) -> None:
+    print("objgraph-output")
+    objgraph.show_growth(limit=5)
+
+
+signal.signal(signal.SIGHUP, handler)
+
 
 logger = structlog.get_logger()
 
