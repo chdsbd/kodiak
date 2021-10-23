@@ -5,52 +5,21 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import logging
-import sys
 from typing import Any, Dict, Optional, cast
 
 import asyncio_redis
-import sentry_sdk
-import structlog
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
-from kodiak.logging import SentryProcessor, add_request_info_processor
+from kodiak.logging import configure_logging
+from kodiak.queue import QUEUE_INGEST
 from kodiak.schemas import RawWebhookEvent
 
-# XXX: move logging stuff
-# for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
-logging.basicConfig(
-    stream=sys.stdout,
-    level=conf.LOGGING_LEVEL,
-    format="%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s",
-)
-
-# disable sentry logging middleware as the structlog processor provides more
-# info via the extra data field
-sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        add_request_info_processor,
-        SentryProcessor(level=logging.WARNING),
-        structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
+configure_logging()
 
 app = FastAPI()
 app.add_middleware(SentryAsgiMiddleware)
@@ -61,6 +30,7 @@ async def root() -> str:
     return "OK"
 
 
+# TODO(sbdchd): should this be a pool?
 _redis: asyncio_redis.Pool | None = None
 
 
@@ -73,6 +43,7 @@ async def get_redis() -> asyncio_redis.Pool:
             password=(
                 conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
             ),
+            # XXX: which var?
             poolsize=conf.USAGE_REPORTING_POOL_SIZE,
             encoder=asyncio_redis.encoders.BytesEncoder(),
             ssl=conf.REDIS_URL.scheme == "rediss",
@@ -118,10 +89,10 @@ async def webhook_event(
 
     redis = await get_redis()
     await redis.rpush(
-        "kodiak:ingest",
+        QUEUE_INGEST,
         [RawWebhookEvent(event_name=github_event, payload=event).json()],
     )
-    await redis.ltrim("kodiak:ingest", 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+    await redis.ltrim(QUEUE_INGEST, 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
 
 
 if __name__ == "__main__":
