@@ -1,3 +1,6 @@
+"""
+Accept webhooks from GitHub and add them to the Redis queues.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -6,6 +9,7 @@ import logging
 import sys
 from typing import Any, Dict, Optional, cast
 
+import asyncio_redis
 import sentry_sdk
 import structlog
 import uvicorn
@@ -17,8 +21,9 @@ from starlette.requests import Request
 
 from kodiak import app_config as conf
 from kodiak.logging import SentryProcessor, add_request_info_processor
-from kodiak.queue import handle_webhook_event, redis_webhook_queue
+from kodiak.schemas import RawWebhookEvent
 
+# XXX: move logging stuff
 # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
 logging.basicConfig(
     stream=sys.stdout,
@@ -54,6 +59,25 @@ app.add_middleware(SentryAsgiMiddleware)
 @app.get("/")
 async def root() -> str:
     return "OK"
+
+
+_redis: asyncio_redis.Pool | None = None
+
+
+async def get_redis() -> asyncio_redis.Pool:
+    global _redis  # pylint: disable=global-statement
+    if _redis is None:
+        _redis = await asyncio_redis.Pool.create(
+            host=conf.REDIS_URL.hostname or "localhost",
+            port=conf.REDIS_URL.port or 6379,
+            password=(
+                conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
+            ),
+            poolsize=conf.USAGE_REPORTING_POOL_SIZE,
+            encoder=asyncio_redis.encoders.BytesEncoder(),
+            ssl=conf.REDIS_URL.scheme == "rediss",
+        )
+    return _redis
 
 
 @app.post("/api/github/hook")
@@ -92,14 +116,12 @@ async def webhook_event(
             detail="Invalid signature: X-Hub-Signature",
         )
 
-    await handle_webhook_event(
-        queue=redis_webhook_queue, event_name=github_event, payload=event
+    redis = await get_redis()
+    await redis.rpush(
+        "kodiak:ingest",
+        [RawWebhookEvent(event_name=github_event, payload=event).json()],
     )
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    await redis_webhook_queue.create()
+    await redis.ltrim("kodiak:ingest", 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
 
 
 if __name__ == "__main__":

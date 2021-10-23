@@ -6,7 +6,7 @@ import time
 import typing
 import urllib
 from datetime import timedelta
-from typing import Iterator, Optional
+from typing import Awaitable, Callable, Iterator, Optional
 
 import asyncio_redis
 import sentry_sdk
@@ -458,6 +458,7 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
 ONE_DAY = int(timedelta(days=1).total_seconds())
 
 
+# TODO(sbdchd): this probably shouldn't be a class
 class RedisWebhookQueue:
     connection: asyncio_redis.Pool
 
@@ -591,6 +592,3 @@ def get_merge_queue_name(event: WebhookEvent) -> str:
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
-
-
-redis_webhook_queue = RedisWebhookQueue()
