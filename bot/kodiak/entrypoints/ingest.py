@@ -92,3 +92,7 @@ async def webhook_event(
         [RawWebhookEvent(event_name=github_event, payload=event).json()],
     )
     await redis.ltrim(QUEUE_INGEST, 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+
+
+if __name__ == "__main__":
+    uvicorn.run("kodiak.main:app", host="0.0.0.0", port=conf.PORT)
