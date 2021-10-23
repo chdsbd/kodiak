@@ -55,7 +55,7 @@ async def main() -> NoReturn:
         for idx, worker_task in enumerate(tasks):
             if not worker_task.done():
                 continue
-            logger.info("task failed")
+            logger.info("worker task failed", kind="ingest")
             # task failed. record result and restart
             exception = worker_task.exception()
             logger.info("exception", excep=exception)
@@ -64,7 +64,7 @@ async def main() -> NoReturn:
         for task_meta, cur_task in queue.all_tasks():
             if not cur_task.done():
                 continue
-            logger.info("task failed")
+            logger.info("worker task failed", kind=task_meta.kind)
             # task failed. record result and restart
             exception = cur_task.exception()
             logger.info("exception", excep=exception)
