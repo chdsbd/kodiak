@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
+from kodiak import redis_client
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
@@ -179,17 +180,7 @@ class RefreshPullRequestsMessage(BaseModel):
 
 
 async def main_async() -> None:
-    redis_db = 0
-    try:
-        redis_db = int(conf.REDIS_URL.database)
-    except ValueError:
-        pass
-    redis = await asyncio_redis.Connection.create(
-        host=conf.REDIS_URL.hostname or "localhost",
-        port=conf.REDIS_URL.port or 6379,
-        password=conf.REDIS_URL.password or None,
-        db=redis_db,
-    )
+    redis = await redis_client.create_connection()
     while True:
         try:
             res: BlockingPopReply = await redis.blpop(

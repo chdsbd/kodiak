@@ -6,11 +6,11 @@ from __future__ import annotations
 import asyncio
 from typing import NoReturn
 
-import asyncio_redis
 import sentry_sdk
 import structlog
 
 from kodiak import app_config as conf
+from kodiak import redis_client
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
 from kodiak.queue import (
@@ -27,14 +27,7 @@ logger = structlog.get_logger()
 
 
 async def work_ingest_queue(queue: WebhookQueueProtocol) -> NoReturn:
-    redis = await asyncio_redis.Connection.create(
-        host=conf.REDIS_URL.hostname or "localhost",
-        port=conf.REDIS_URL.port or 6379,
-        password=(
-            conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
-        ),
-        ssl=conf.REDIS_URL.scheme == "rediss",
-    )
+    redis = await redis_client.create_connection()
 
     while True:
         raw_event = await redis.blpop([QUEUE_INGEST])
