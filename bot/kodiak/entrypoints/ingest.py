@@ -45,7 +45,6 @@ async def get_redis() -> asyncio_redis.Pool:
             ),
             # XXX: which var?
             poolsize=conf.USAGE_REPORTING_POOL_SIZE,
-            encoder=asyncio_redis.encoders.BytesEncoder(),
             ssl=conf.REDIS_URL.scheme == "rediss",
         )
     return _redis

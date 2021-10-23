@@ -33,7 +33,6 @@ async def work_ingest_queue(queue: WebhookQueueProtocol) -> NoReturn:
         password=(
             conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
         ),
-        encoder=asyncio_redis.encoders.BytesEncoder(),
         ssl=conf.REDIS_URL.scheme == "rediss",
     )
 
