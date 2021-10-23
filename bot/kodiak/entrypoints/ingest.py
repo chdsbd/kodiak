@@ -95,4 +95,4 @@ async def webhook_event(
 
 
 if __name__ == "__main__":
-    uvicorn.run("kodiak.main:app", host="0.0.0.0", port=conf.PORT)
+    uvicorn.run("kodiak.entrypoints.ingest:app", host="0.0.0.0", port=conf.PORT)
