@@ -2,7 +2,7 @@ FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138e
 
 RUN set -ex && mkdir -p /var/app
 
-RUN apt-get install -y supervisor
+RUN apt-get update && apt-get install -y supervisor
 
 RUN mkdir -p /var/log/supervisor
 
