@@ -2,9 +2,15 @@ FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138e
 
 RUN set -ex && mkdir -p /var/app
 
+RUN apt-get install -y supervisor
+
+RUN mkdir -p /var/log/supervisor
+
 RUN python3 -m pip install poetry===1.1.8
 
 RUN poetry config virtualenvs.in-project true
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 WORKDIR /var/app
 
@@ -21,4 +27,4 @@ RUN rm -rf /var/app/pip-wheel-metadata/
 # install cli
 RUN poetry install
 
-CMD ["/var/app/.venv/bin/python", "-m", "kodiak.main"]
+CMD ["/usr/bin/supervisord"]
