@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -eux
 
-./.venv/bin/python3 -m kodiak.entrypoints.worker
+exec ./.venv/bin/python3 -m kodiak.entrypoints.worker
