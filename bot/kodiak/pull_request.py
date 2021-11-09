@@ -87,7 +87,7 @@ async def evaluate_pr(
                     requeue_callback=requeue_callback,
                     queue_for_merge_callback=queue_for_merge_callback,
                 ),
-                timeout=30,
+                timeout=60,
             )
             if pr is None:
                 log.info("failed to get_pr")
@@ -116,7 +116,7 @@ async def evaluate_pr(
                         api_call_errors=api_call_errors,
                         api_call_retries_remaining=api_call_retries_remaining,
                     ),
-                    timeout=30,
+                    timeout=60,
                 )
                 log.info("evaluate_pr successful")
             except RetryForSkippableChecks:
