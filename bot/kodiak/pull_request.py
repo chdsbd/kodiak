@@ -73,7 +73,7 @@ async def evaluate_pr(
     skippable_check_timeout = 4
     api_call_retries_remaining = 5
     api_call_errors = []  # type: List[APICallError]
-    log = logger.bind(install=install, owner=owner, repo=repo, number=number)
+    log = logger.bind(install=install, owner=owner, repo=repo, number=number, merging=merging)
     while True:
         log.info("get_pr")
         try:

@@ -54,7 +54,6 @@ USAGE_REPORTING_EVENTS = set(
         default=["pull_request", "pull_request_review", "pull_request_comment"],
     )
 )
-QUEUE_WORKER_COUNT = config("QUEUE_WORKER_COUNT", cast=int, default=5)
 USAGE_REPORTING_POOL_SIZE = config("USAGE_REPORTING_POOL_SIZE", cast=int, default=50)
 USAGE_REPORTING_QUEUE_LENGTH = config(
     "USAGE_REPORTING_QUEUE_LENGTH", cast=int, default=10_000

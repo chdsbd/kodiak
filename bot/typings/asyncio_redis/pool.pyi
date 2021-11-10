@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
+from asyncio_redis.connection import Subscription
 from asyncio_redis.encoders import BaseEncoder
 from asyncio_redis.protocol import Transaction
 from asyncio_redis.replies import (
@@ -55,6 +56,7 @@ class Pool:
         only_if_exists: bool = ...,
         return_num_changed: bool = ...,
     ) -> int: ...
+    async def publish(self, channel: _Key, message: _Key) -> int: ...
     async def set(
         self,
         key: _Key,
@@ -65,6 +67,7 @@ class Pool:
         only_if_exists: bool = ...,
     ) -> Optional[StatusReply]: ...
     async def smembers(self, key: _Key) -> SetReply: ...
+    async def start_subscribe(self) -> Subscription: ...
     async def multi(self) -> Transaction: ...
 
 __all__ = ["Pool"]

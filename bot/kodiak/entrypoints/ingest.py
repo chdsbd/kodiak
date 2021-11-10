@@ -15,8 +15,9 @@ from starlette import status
 from starlette.requests import Request
 
 from kodiak import app_config as conf
+from kodiak.entrypoints.worker import PubsubIngestQueueSchema
 from kodiak.logging import configure_logging
-from kodiak.queue import QUEUE_INGEST
+from kodiak.queue import INGEST_QUEUE_NAMES, QUEUE_PUBSUB_INGEST, get_ingest_queue
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
@@ -85,13 +86,22 @@ async def webhook_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature: X-Hub-Signature",
         )
+    installation_id: int | None = event.get("installation", {}).get("id")
+    assert installation_id is not None
 
+    ingest_queue = get_ingest_queue(installation_id)
     redis = await get_redis()
     await redis.rpush(
-        QUEUE_INGEST,
+        ingest_queue,
         [RawWebhookEvent(event_name=github_event, payload=event).json()],
     )
-    await redis.ltrim(QUEUE_INGEST, 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+
+    await redis.ltrim(ingest_queue, 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+    await redis.sadd(INGEST_QUEUE_NAMES, [ingest_queue])
+    await redis.publish(
+        QUEUE_PUBSUB_INGEST,
+        PubsubIngestQueueSchema(installation_id=installation_id).json(),
+    )
 
 
 if __name__ == "__main__":
