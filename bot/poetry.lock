@@ -445,11 +445,11 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 
 [[package]]
 name = "markdown-html-finder"
-version = "0.2.2"
+version = "0.2.3"
 description = "A Python library to find html in strings"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = "^3.7"
 
 [[package]]
 name = "markupsafe"
@@ -1047,7 +1047,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "18f3c6b2591b684d75c40380ab199311bf5ec5bebe384a17a2c7005673c65ec9"
+content-hash = "c46e679a8a20316d87bf883d450d68d978addbc6cb1bd29507e79bdf89407001"
 
 [metadata.files]
 appnope = [
@@ -1363,14 +1363,16 @@ lazy-object-proxy = [
     {file = "lazy_object_proxy-1.6.0-cp39-cp39-win_amd64.whl", hash = "sha256:f5144c75445ae3ca2057faac03fda5a902eff196702b0a24daf1d6ce0650514b"},
 ]
 markdown-html-finder = [
-    {file = "markdown_html_finder-0.2.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:f4c294e6dbbb3125411fbef8211a67322316df1bcbfa339d70127da503fbdb42"},
-    {file = "markdown_html_finder-0.2.2-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:84afd5ea416f9a7d04c74324af210e8475f51f69c89a25f6821cdc754ecc25cd"},
-    {file = "markdown_html_finder-0.2.2-cp37-cp37m-macosx_10_7_x86_64.whl", hash = "sha256:a850edeb28054be12253b9b91e31e810fe1f4977113b75853f64be848238258c"},
-    {file = "markdown_html_finder-0.2.2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:4cf8a8b274354835831391d61d30e12b5202ec4c0c8a97fe4af7465cd64d4d97"},
-    {file = "markdown_html_finder-0.2.2-cp38-cp38-macosx_10_7_x86_64.whl", hash = "sha256:3bd9abf7cd26e142c3985a22b02047ad8eed75c21e64e2bf83f21adce27624aa"},
-    {file = "markdown_html_finder-0.2.2-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:83121a98833dcbdf2ece019ac259f64989520723f6ec1063bcfa1e2db409d1f7"},
-    {file = "markdown_html_finder-0.2.2-cp39-cp39-macosx_10_7_x86_64.whl", hash = "sha256:030c8c46a735a0f4b8c9b4d214bf5c8f7377b8eaa9140f3d7654e2a8d0d89426"},
-    {file = "markdown_html_finder-0.2.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:e26286c6b9e97a5e231e1dc5078bf314da5f9e6265f35f37cf4188550456cc37"},
+    {file = "markdown_html_finder-0.2.3-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:45dc89c5d0c0cc79d00fe7befd3cbbdd23f7e238969f74d344e1226f5159f84c"},
+    {file = "markdown_html_finder-0.2.3-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:f2eab2f7f255e0420159e540cdc68ab06908acbaf319040ccc3576289169f148"},
+    {file = "markdown_html_finder-0.2.3-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:94453537ec55c65e7476157726b04bf1dbc8a5506ad3e91579ab84029b573718"},
+    {file = "markdown_html_finder-0.2.3-cp37-cp37m-macosx_10_7_x86_64.whl", hash = "sha256:68b510cff64b141cd32ad82bc76140212fc2b5e6549c8311bc762eed5a115dbe"},
+    {file = "markdown_html_finder-0.2.3-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:31074214f9b526e314b51537275148fc52542339e3c7d8efdb0766de6ca320ac"},
+    {file = "markdown_html_finder-0.2.3-cp38-cp38-macosx_10_7_x86_64.whl", hash = "sha256:1db24ec29935f0ecab3c04d755c90fceb39f71b1e88d83a4f887b9fff26b53cd"},
+    {file = "markdown_html_finder-0.2.3-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:8ddf00d4831658add9ed333a10c1f38d3941ec77afa5ab6408314f4922c4a0db"},
+    {file = "markdown_html_finder-0.2.3-cp39-cp39-macosx_10_7_x86_64.whl", hash = "sha256:9f41e4111161006dbb1fd857ef467882308733d865a0d468c481cfe9f4f67655"},
+    {file = "markdown_html_finder-0.2.3-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:bda949152d9202773ba4e1a97fd7553b96e906a1abe94cad6f19701ac19451ec"},
+    {file = "markdown_html_finder-0.2.3.tar.gz", hash = "sha256:00fc8d63580fa4b80c75a693c96f2fe43ecf93088d78dd470114f947b8a44eb3"},
 ]
 markupsafe = [
     {file = "MarkupSafe-1.1.1-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:09027a7803a62ca78792ad89403b1b7a73a01c8cb65909cd876f7fcebd79b161"},
