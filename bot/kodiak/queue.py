@@ -5,8 +5,10 @@ import json
 import time
 import typing
 import urllib
+from asyncio.tasks import Task
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator, Optional
+from typing import Iterator, MutableMapping, NoReturn, Optional
 
 import asyncio_redis
 import sentry_sdk
@@ -15,7 +17,7 @@ import zstandard as zstd
 from asyncio_redis import Pool as RedisConnection
 from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
-from typing_extensions import Protocol
+from typing_extensions import Literal, Protocol
 
 from kodiak import app_config as conf
 from kodiak import queries
@@ -34,10 +36,15 @@ from kodiak.queries import Client
 logger = structlog.get_logger()
 
 
+INGEST_QUEUE_NAMES = "kodiak_ingest_queue_names"
 MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
+QUEUE_PUBSUB_INGEST = "kodiak:pubsub:ingest"
 
-WORKER_TASKS: typing.MutableMapping[str, asyncio.Task[None]] = {}
+
+def get_ingest_queue(installation_id: int) -> str:
+    return f"kodiak:ingest:{installation_id}"
+
 
 RETRY_RATE_SECONDS = 2
 
@@ -433,11 +440,12 @@ async def repo_queue_consumer(
     We only run one of these per repo as we can only merge one PR at a time
     to be efficient. This also alleviates the need of locks.
     """
+    installation = installation_id_from_queue(queue_name)
     with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
         with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
-            scope.set_tag("installation", installation_id_from_queue(queue_name))
-        log = logger.bind(queue=queue_name)
+            scope.set_tag("installation", installation)
+        log = logger.bind(queue=queue_name, install=installation)
         log.info("start repo_consumer")
         while True:
             await process_repo_queue(log, connection, queue_name)
@@ -458,8 +466,19 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
 ONE_DAY = int(timedelta(days=1).total_seconds())
 
 
+@dataclass(frozen=True)
+class TaskMeta:
+    kind: Literal["repo", "webhook"]
+    queue_name: str
+
+
 class RedisWebhookQueue:
     connection: asyncio_redis.Pool
+
+    def __init__(self) -> None:
+        self.worker_tasks: MutableMapping[
+            str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
+        ] = {}  # type: ignore [assignment]
 
     async def create(self) -> None:
         redis_db = 0
@@ -484,7 +503,7 @@ class RedisWebhookQueue:
         )
         for merge_result in merge_queues:
             queue_name = await merge_result
-            self.start_repo_worker(queue_name)
+            self.start_repo_worker(queue_name=queue_name)
 
         for webhook_result in webhook_queues:
             queue_name = await webhook_result
@@ -493,20 +512,28 @@ class RedisWebhookQueue:
     def start_webhook_worker(self, *, queue_name: str) -> None:
         self._start_worker(
             queue_name,
+            "webhook",
             webhook_event_consumer(
                 connection=self.connection, webhook_queue=self, queue_name=queue_name
             ),
         )
 
-    def start_repo_worker(self, queue_name: str) -> None:
+    def start_repo_worker(self, *, queue_name: str) -> None:
         self._start_worker(
             queue_name,
+            "repo",
             repo_queue_consumer(queue_name=queue_name, connection=self.connection),
         )
 
-    def _start_worker(self, key: str, fut: typing.Coroutine[None, None, None]) -> None:
-        worker_task = WORKER_TASKS.get(key)
-        if worker_task is not None:
+    def _start_worker(
+        self,
+        key: str,
+        kind: Literal["repo", "webhook"],
+        fut: typing.Coroutine[None, None, NoReturn],
+    ) -> None:
+        worker_task_result = self.worker_tasks.get(key)
+        if worker_task_result is not None:
+            worker_task, _task_kind = worker_task_result
             if not worker_task.done():
                 return
             logger.info("task failed")
@@ -516,7 +543,7 @@ class RedisWebhookQueue:
             sentry_sdk.capture_exception(exception)
         logger.info("creating task for queue")
         # create new task for queue
-        WORKER_TASKS[key] = asyncio.create_task(fut)
+        self.worker_tasks[key] = (asyncio.create_task(fut), kind)
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
         """
@@ -575,13 +602,17 @@ class RedisWebhookQueue:
         )
 
         log.info("enqueue repo event")
-        self.start_repo_worker(queue_name)
+        self.start_repo_worker(queue_name=queue_name)
         results = await future_results
         dictionary = await results.asdict()
         kvs = sorted(
             ((key, value) for key, value in dictionary.items()), key=lambda x: x[1]
         )
         return find_position((key for key, value in kvs), event.json())
+
+    def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
+        for queue_name, (task, task_kind) in self.worker_tasks.items():
+            yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
@@ -591,6 +622,3 @@ def get_merge_queue_name(event: WebhookEvent) -> str:
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
     return f"webhook:{event.installation_id}"
-
-
-redis_webhook_queue = RedisWebhookQueue()

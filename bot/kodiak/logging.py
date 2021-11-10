@@ -2,10 +2,15 @@ import logging
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
+import sentry_sdk
+import structlog
 from requests import Response
 from sentry_sdk import capture_event
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import event_from_exception
 from typing_extensions import Literal
+
+from kodiak import app_config as conf
 
 ################################################################################
 # based on https://github.com/kiwicom/structlog-sentry/blob/18adbfdac85930ca5578e7ef95c1f2dc169c2f2f/structlog_sentry/__init__.py#L10-L86
@@ -118,3 +123,34 @@ def add_request_info_processor(
         event_dict["request_url"] = response.request.url
         event_dict["request_method"] = response.request.method
     return event_dict
+
+
+def configure_logging() -> None:
+
+    # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=conf.LOGGING_LEVEL,
+        format="%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s",
+    )
+
+    # disable sentry logging middleware as the structlog processor provides more
+    # info via the extra data field
+    sentry_sdk.init(integrations=[LoggingIntegration(level=None, event_level=None)])
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            add_request_info_processor,
+            SentryProcessor(level=logging.WARNING),
+            structlog.processors.KeyValueRenderer(key_order=["event"], sort_keys=True),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )

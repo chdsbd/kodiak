@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -eux
-
-./.venv/bin/uvicorn kodiak.main:app "$@"

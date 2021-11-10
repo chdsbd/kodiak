@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eux
+
+./.venv/bin/uvicorn kodiak.entrypoints.ingest:app "$@"
