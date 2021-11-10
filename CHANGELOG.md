@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.47.0 - 2021-11-10
+
+### Fixed
+- Improved webhook and merge queue latencies by reducing concurrent API requests made by raw webhook ingestion. (#744)
+
 ## 0.46.0 - 2021-09-24
 
 ### Added
