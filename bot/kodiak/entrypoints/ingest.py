@@ -96,7 +96,7 @@ async def webhook_event(
         [RawWebhookEvent(event_name=github_event, payload=event).json()],
     )
 
-    await redis.ltrim(ingest_queue, 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+    await redis.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
     await redis.sadd(INGEST_QUEUE_NAMES, [ingest_queue])
     await redis.publish(
         QUEUE_PUBSUB_INGEST,

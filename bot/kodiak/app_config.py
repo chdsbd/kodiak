@@ -58,6 +58,7 @@ USAGE_REPORTING_POOL_SIZE = config("USAGE_REPORTING_POOL_SIZE", cast=int, defaul
 USAGE_REPORTING_QUEUE_LENGTH = config(
     "USAGE_REPORTING_QUEUE_LENGTH", cast=int, default=10_000
 )
+INGEST_QUEUE_LENGTH = config("INGEST_QUEUE_LENGTH", cast=int, default=1_000)
 
 SUBSCRIPTIONS_ENABLED = config("SUBSCRIPTIONS_ENABLED", cast=bool, default=False)
 
