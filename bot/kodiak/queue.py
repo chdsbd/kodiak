@@ -36,9 +36,14 @@ from kodiak.queries import Client
 logger = structlog.get_logger()
 
 
+INGEST_QUEUE_NAMES = "kodiak_ingest_queue_names"
 MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
-QUEUE_INGEST = "kodiak:ingest"
+QUEUE_PUBSUB_INGEST = "kodiak:pubsub:ingest"
+
+
+def get_ingest_queue(installation_id: int) -> str:
+    return f"kodiak:ingest:{installation_id}"
 
 
 RETRY_RATE_SECONDS = 2
@@ -435,11 +440,12 @@ async def repo_queue_consumer(
     We only run one of these per repo as we can only merge one PR at a time
     to be efficient. This also alleviates the need of locks.
     """
+    installation = installation_id_from_queue(queue_name)
     with sentry_sdk.Hub(sentry_sdk.Hub.current) as hub:
         with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
-            scope.set_tag("installation", installation_id_from_queue(queue_name))
-        log = logger.bind(queue=queue_name)
+            scope.set_tag("installation", installation)
+        log = logger.bind(queue=queue_name, install=installation)
         log.info("start repo_consumer")
         while True:
             await process_repo_queue(log, connection, queue_name)

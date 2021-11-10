@@ -40,12 +40,20 @@ class FakeRedis:
     def __init__(self) -> None:
         self.called_rpush_cnt = 0
         self.called_ltrim_cnt = 0
+        self.called_sadd_cnt = 0
+        self.called_publish_cnt = 0
 
     async def rpush(self, key: str, events: list[object]) -> None:
         self.called_rpush_cnt += 1
 
     async def ltrim(self, key: str, start: int, end: int) -> None:
         self.called_ltrim_cnt += 1
+
+    async def sadd(self, key: str, values: list[str]) -> None:
+        self.called_sadd_cnt += 1
+
+    async def publish(self, channel: str, message: str) -> None:
+        self.called_publish_cnt += 1
 
 
 @pytest.mark.parametrize("event_name", (event_name for event_name, _schema in MAPPING))
