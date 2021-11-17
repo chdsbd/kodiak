@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.47.1 - 2021-11-17
+
+### Fixed
+- Fix Redis password auth support. Thanks @etiennetremel (#754)
+
 ## 0.47.0 - 2021-11-10
 
 ### Fixed
