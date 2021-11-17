@@ -238,9 +238,7 @@ async def get_redis() -> asyncio_redis.Pool:
         _redis = await asyncio_redis.Pool.create(
             host=conf.REDIS_URL.hostname or "localhost",
             port=conf.REDIS_URL.port or 6379,
-            password=(
-                conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
-            ),
+            password=conf.REDIS_URL.password,
             poolsize=conf.USAGE_REPORTING_POOL_SIZE,
             encoder=asyncio_redis.encoders.BytesEncoder(),
             ssl=conf.REDIS_URL.scheme == "rediss",

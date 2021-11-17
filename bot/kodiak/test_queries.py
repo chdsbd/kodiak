@@ -266,9 +266,7 @@ async def setup_redis(github_installation_id: str) -> None:
     r = await asyncio_redis.Connection.create(
         host=host,
         port=port,
-        password=(
-            conf.REDIS_URL.password.encode() if conf.REDIS_URL.password else None
-        ),
+        password=conf.REDIS_URL.password,
     )
     key = f"kodiak:subscription:{github_installation_id}"
     await r.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
