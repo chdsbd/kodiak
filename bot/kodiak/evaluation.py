@@ -713,11 +713,12 @@ async def mergeable(
         and not has_automerge_label
         and not should_dependency_automerge
     ):
-        await block_merge(
-            api,
-            pull_request,
-            f"missing automerge_label: {config.merge.automerge_label!r}",
-        )
+        await api.dequeue()
+        # Update status when "show_missing_automerge_label_message" is enabled or label has been removed while already in merging state
+        if config.merge.show_missing_automerge_label_message or merging:
+            await api.set_status(
+                f"Ignored (no automerge label: {config.merge.automerge_label!r})"
+            )
         return
 
     # We want users to get notified a merge conflict even if the PR matches a
