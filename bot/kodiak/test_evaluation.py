@@ -503,7 +503,30 @@ async def test_mergeable_missing_automerge_label() -> None:
     await mergeable(api=api, config=config, pull_request=pull_request)
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
-    assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "Ignored (no automerge label:" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_missing_automerge_label_no_message() -> None:
+    """
+    No status message if missing_automerge_label_message is disabled
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.require_automerge_label = True
+    config.merge.missing_automerge_label_message = False
+    pull_request.labels = []
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.set_status.call_count == 0
+    assert api.dequeue.call_count == 1
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
@@ -544,6 +567,7 @@ async def test_mergeable_has_blacklist_labels() -> None:
     config = create_config()
     pull_request = create_pull_request()
 
+    config.merge.require_automerge_label = False
     config.merge.blacklist_labels = ["dont merge!"]
     pull_request.labels = ["bug", "dont merge!", "needs review"]
 
@@ -551,6 +575,7 @@ async def test_mergeable_has_blacklist_labels() -> None:
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "has blacklist_labels" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
@@ -568,6 +593,7 @@ async def test_mergeable_has_blocking_labels() -> None:
     config = create_config()
     pull_request = create_pull_request()
 
+    config.merge.require_automerge_label = False
     config.merge.blocking_labels = ["dont merge!"]
     pull_request.labels = ["bug", "dont merge!", "needs review"]
 
@@ -575,6 +601,7 @@ async def test_mergeable_has_blocking_labels() -> None:
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
     assert "cannot merge" in api.set_status.calls[0]["msg"]
+    assert "has merge.blocking_labels" in api.set_status.calls[0]["msg"]
 
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False

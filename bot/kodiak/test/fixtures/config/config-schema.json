@@ -19,6 +19,7 @@
           "usernames": []
         },
         "require_automerge_label": true,
+        "missing_automerge_label_message": true,
         "blacklist_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blocking_title_regex": ":::|||kodiak|||internal|||reserved|||:::",
         "blacklist_labels": [],
@@ -251,6 +252,11 @@
         },
         "require_automerge_label": {
           "title": "Require Automerge Label",
+          "default": true,
+          "type": "boolean"
+        },
+        "missing_automerge_label_message": {
+          "title": "Missing Automerge Label Message",
           "default": true,
           "type": "boolean"
         },
