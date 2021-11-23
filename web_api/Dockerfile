@@ -1,4 +1,4 @@
-FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138ecbdb092
+FROM python:3.8@sha256:cb03bb011e5dca2d0d48f842187fd789062e234e829e96f417542e7ffcaf41cf
 
 RUN set -ex && mkdir -p /var/app
 
