@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.48.0 - 2021-11-23
 
 ### Added
-- Added `merge.show_missing_automerge_label_message` option to toggle missing automerge label. Thanks @paescuj! (#757)
+- Added `merge.show_missing_automerge_label_message` option to toggle missing automerge label message. Thanks @paescuj! (#757)
 
 ## 0.47.1 - 2021-11-17
 
