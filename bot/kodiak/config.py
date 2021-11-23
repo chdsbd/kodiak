@@ -66,7 +66,7 @@ class Merge(BaseModel):
     # if disabled, kodiak won't require a label to queue a PR for merge
     require_automerge_label: bool = True
     # Show message when automerge label is missing on a PR
-    missing_automerge_label_message: bool = True
+    show_missing_automerge_label_message: bool = True
     # regex to match against title and block merging. Set to empty string to
     # disable check.
     blacklist_title_regex: str = (

@@ -52,7 +52,7 @@ Require that the automerge label (`merge.automerge_label`) be set for Kodiak to 
 
 When disabled, Kodiak will immediately attempt to merge any PR that passes all GitHub branch protection requirements.
 
-### `merge.missing_automerge_label_message`
+### `merge.show_missing_automerge_label_message`
 
 - **type:** `boolean`
 - **default:** `true`

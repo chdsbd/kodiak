@@ -714,8 +714,8 @@ async def mergeable(
         and not should_dependency_automerge
     ):
         await api.dequeue()
-        # Update status when "missing_automerge_label_message" is enabled or label has been removed while already in merging state
-        if config.merge.missing_automerge_label_message or merging:
+        # Update status when "show_missing_automerge_label_message" is enabled or label has been removed while already in merging state
+        if config.merge.show_missing_automerge_label_message or merging:
             await api.set_status(
                 f"Ignored (no automerge label: {config.merge.automerge_label!r})"
             )
