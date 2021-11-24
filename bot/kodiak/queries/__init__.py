@@ -160,12 +160,9 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
             name
           }
         }
-        requiresApprovingReviews
-        requiredApprovingReviewCount
         requiresStatusChecks
         requiredStatusCheckContexts
         requiresStrictStatusChecks
-        requiresCodeOwnerReviews
         requiresCommitSignatures
         %(requiresConversationResolution)s
         restrictsPushes
