@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 import pytest
 
 from kodiak.config import MergeMethod
