@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import textwrap
-from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, List, MutableMapping, Optional, Sequence, Set, Union
+from typing import Dict, List, Optional, Sequence, Set, Union
 
 import inflection
 import pydantic
@@ -45,7 +44,6 @@ from kodiak.queries import (
     Commit,
     MergeableState,
     MergeStateStatus,
-    Permission,
     PRReview,
     PRReviewRequest,
     PRReviewState,
