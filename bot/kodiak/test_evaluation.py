@@ -257,12 +257,9 @@ def create_pull_request() -> PullRequest:
 
 def create_branch_protection() -> BranchProtectionRule:
     return BranchProtectionRule(
-        requiresApprovingReviews=True,
-        requiredApprovingReviewCount=1,
         requiresStatusChecks=True,
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
-        requiresCodeOwnerReviews=True,
         requiresCommitSignatures=False,
         requiresConversationResolution=False,
         restrictsPushes=False,
@@ -330,7 +327,7 @@ class MergeableType(Protocol):
         pull_request: PullRequest = ...,
         branch_protection: Optional[BranchProtectionRule] = ...,
         review_requests: List[PRReviewRequest] = ...,
-        reviews: List[PRReview] = ...,
+        bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
         check_runs: List[CheckRun] = ...,
         commits: List[Commit] = ...,
@@ -358,7 +355,7 @@ def create_mergeable() -> MergeableType:
         pull_request: PullRequest = create_pull_request(),
         branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
         review_requests: List[PRReviewRequest] = [],
-        reviews: List[PRReview] = [create_review()],
+        bot_reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
         check_runs: List[CheckRun] = [create_check_run()],
         commits: List[Commit] = [],
@@ -388,7 +385,7 @@ def create_mergeable() -> MergeableType:
             pull_request=pull_request,
             branch_protection=branch_protection,
             review_requests=review_requests,
-            reviews=reviews,
+            bot_reviews=bot_reviews,
             contexts=contexts,
             check_runs=check_runs,
             commits=commits,
@@ -1832,7 +1829,7 @@ async def test_mergeable_auto_approve() -> None:
     pull_request = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
-    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
+    await mergeable(api=api, config=config, pull_request=pull_request, bot_reviews=[])
     assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -1858,7 +1855,9 @@ async def test_mergeable_auto_approve_existing_approval() -> None:
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
     review.state = PRReviewState.APPROVED
-    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[review])
+    await mergeable(
+        api=api, config=config, pull_request=pull_request, bot_reviews=[review]
+    )
     assert api.approve_pull_request.call_count == 0
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -1884,7 +1883,9 @@ async def test_mergeable_auto_approve_old_approval() -> None:
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
     review.state = PRReviewState.DISMISSED
-    await mergeable(api=api, config=config, pull_request=pull_request, reviews=[review])
+    await mergeable(
+        api=api, config=config, pull_request=pull_request, bot_reviews=[review]
+    )
     assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1
     assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
@@ -1909,7 +1910,9 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs() -> None:
         config.approve.auto_approve_usernames = ["dependency-updater"]
         pull_request.author.login = "dependency-updater"
         pull_request.state = pull_request_state
-        await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
+        await mergeable(
+            api=api, config=config, pull_request=pull_request, bot_reviews=[]
+        )
         assert api.approve_pull_request.call_count == 0
         assert api.set_status.call_count == 0
         assert api.queue_for_merge.call_count == 0
@@ -1944,7 +1947,9 @@ async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
         pull_request_via_merge_state_status,
     ):
         api = create_api()
-        await mergeable(api=api, config=config, pull_request=pull_request, reviews=[])
+        await mergeable(
+            api=api, config=config, pull_request=pull_request, bot_reviews=[]
+        )
         assert api.approve_pull_request.call_count == 0
         assert api.set_status.call_count == 1
         assert (

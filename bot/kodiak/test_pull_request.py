@@ -56,15 +56,12 @@ def create_event() -> EventInfoResponse:
         delete_branch_on_merge=False,
     )
     branch_protection = BranchProtectionRule(
-        requiresApprovingReviews=True,
-        requiredApprovingReviewCount=2,
         requiresStatusChecks=True,
         requiredStatusCheckContexts=[
             "ci/circleci: frontend_lint",
             "ci/circleci: frontend_test",
         ],
         requiresStrictStatusChecks=True,
-        requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
         requiresConversationResolution=False,
         restrictsPushes=False,
@@ -84,7 +81,7 @@ method = "squash"
         repository=rep_info,
         branch_protection=branch_protection,
         review_requests=[],
-        reviews=[],
+        bot_reviews=[],
         status_contexts=[],
         check_runs=[],
         valid_merge_methods=[MergeMethod.squash],
