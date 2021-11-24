@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import httpx as http
 import jwt

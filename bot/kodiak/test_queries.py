@@ -11,7 +11,6 @@ from pytest_mock import MockFixture
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
-    Actor,
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
@@ -25,9 +24,7 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewAuthor,
-    PRReviewAuthorSchema,
     PRReviewRequest,
-    PRReviewSchema,
     PRReviewState,
     PullRequest,
     PullRequestAuthor,

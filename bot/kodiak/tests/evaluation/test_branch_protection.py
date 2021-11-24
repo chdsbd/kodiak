@@ -8,10 +8,6 @@ from kodiak.queries import (
     CheckConclusionState,
     MergeStateStatus,
     NodeListPushAllowance,
-    Permission,
-    PRReview,
-    PRReviewAuthor,
-    PRReviewState,
     PullRequestReviewDecision,
     PushAllowance,
     PushAllowanceActor,
@@ -26,8 +22,6 @@ from kodiak.test_evaluation import (
     create_context,
     create_mergeable,
     create_pull_request,
-    create_review,
-    create_review_request,
 )
 
 
