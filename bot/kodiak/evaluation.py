@@ -836,36 +836,6 @@ async def mergeable(
         # - failing required status checks
         # - branch not up to date (should be handled before this)
         # - missing required signature
-        if (
-            branch_protection.requiresApprovingReviews
-            and branch_protection.requiredApprovingReviewCount
-        ):
-            reviews_by_author: MutableMapping[str, List[PRReview]] = defaultdict(list)
-            for review in sorted(reviews, key=lambda x: x.createdAt):
-                if review.author.permission not in {Permission.ADMIN, Permission.WRITE}:
-                    continue
-                reviews_by_author[review.author.login].append(review)
-
-            successful_reviews = 0
-            for author_name, review_list in reviews_by_author.items():
-                review_state = review_status(review_list)
-                # blocking review
-                if review_state == PRReviewState.CHANGES_REQUESTED:
-                    await block_merge(
-                        api, pull_request, f"changes requested by {author_name!r}"
-                    )
-                    return
-                # successful review
-                if review_state == PRReviewState.APPROVED:
-                    successful_reviews += 1
-            # missing required review count
-            if successful_reviews < branch_protection.requiredApprovingReviewCount:
-                await block_merge(
-                    api,
-                    pull_request,
-                    f"missing required reviews, have {successful_reviews!r}/{branch_protection.requiredApprovingReviewCount!r}",
-                )
-                return
 
         if pull_request.reviewDecision == PullRequestReviewDecision.REVIEW_REQUIRED:
             await block_merge(api, pull_request, "missing required reviews")
