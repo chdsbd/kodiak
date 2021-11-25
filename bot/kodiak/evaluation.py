@@ -839,6 +839,10 @@ async def mergeable(
             await block_merge(api, pull_request, "missing required reviews")
             return
 
+        if pull_request.reviewDecision == PullRequestReviewDecision.CHANGES_REQUESTED:
+            await block_merge(api, pull_request, "changes requested")
+            return
+
         if (
             branch_protection.requiresConversationResolution
             and pull_request.reviewThreads.nodes is not None
