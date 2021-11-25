@@ -69,13 +69,12 @@ async def evaluate_pr(
     requeue_callback: Callable[[], Awaitable[None]],
     queue_for_merge_callback: QueueForMergeCallback,
     is_active_merging: bool,
+    log: structlog.BoundLogger,
 ) -> None:
     skippable_check_timeout = 4
     api_call_retries_remaining = 5
     api_call_errors = []  # type: List[APICallError]
-    log = logger.bind(
-        install=install, owner=owner, repo=repo, number=number, merging=merging
-    )
+    log = log.bind(owner=owner, repo=repo, number=number, merging=merging)
     while True:
         log.info("get_pr")
         try:
