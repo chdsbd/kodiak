@@ -210,6 +210,32 @@ async def test_mergeable_missing_required_review() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mergeable_missing_changes_requested() -> None:
+    """
+    Don't merge when a changes requested.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+    pull_request.reviewDecision = PullRequestReviewDecision.CHANGES_REQUESTED
+
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+    )
+    assert api.set_status.call_count == 1
+    assert api.dequeue.call_count == 1
+    assert "changes requested" in api.set_status.calls[0]["msg"]
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
 async def test_mergeable_update_branch_immediately() -> None:
     """
     update branch immediately if configured
