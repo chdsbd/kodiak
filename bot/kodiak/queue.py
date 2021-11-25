@@ -354,6 +354,7 @@ async def process_webhook_event(
         requeue_callback=requeue,
         queue_for_merge_callback=queue_for_merge,
         is_active_merging=is_active_merging,
+        log=log,
     )
 
 
@@ -378,7 +379,9 @@ async def webhook_event_consumer(
         with hub.configure_scope() as scope:
             scope.set_tag("queue", queue_name)
             scope.set_tag("installation", installation_id_from_queue(queue_name))
-        log = logger.bind(queue=queue_name)
+        log = logger.bind(
+            queue=queue_name, install=installation_id_from_queue(queue_name)
+        )
         log.info("start webhook event consumer")
         while True:
             await process_webhook_event(connection, webhook_queue, queue_name, log)
@@ -421,6 +424,7 @@ async def process_repo_queue(
         merging=True,
         is_active_merging=False,
         queue_for_merge_callback=queue_for_merge,
+        log=log,
     )
     log.info("merge completed, remove target marker", target_name=target_name)
     await connection.delete([target_name])
@@ -529,17 +533,18 @@ class RedisWebhookQueue:
         kind: Literal["repo", "webhook"],
         fut: typing.Coroutine[None, None, NoReturn],
     ) -> None:
+        log = logger.bind(queue_name=key, kind=kind)
         worker_task_result = self.worker_tasks.get(key)
         if worker_task_result is not None:
             worker_task, _task_kind = worker_task_result
             if not worker_task.done():
                 return
-            logger.info("task failed")
+            log.info("task failed")
             # task failed. record result and restart
             exception = worker_task.exception()
-            logger.info("exception", excep=exception)
+            log.info("exception", excep=exception)
             sentry_sdk.capture_exception(exception)
-        logger.info("creating task for queue")
+        log.info("creating task for queue")
         # create new task for queue
         self.worker_tasks[key] = (asyncio.create_task(fut), kind)
 
