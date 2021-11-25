@@ -107,7 +107,7 @@ async def evaluate_pr(
                         pull_request=pr.event.pull_request,
                         branch_protection=pr.event.branch_protection,
                         review_requests=pr.event.review_requests,
-                        reviews=pr.event.reviews,
+                        bot_reviews=pr.event.bot_reviews,
                         contexts=pr.event.status_contexts,
                         check_runs=pr.event.check_runs,
                         commits=pr.event.commits,

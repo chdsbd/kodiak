@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 import pytest
 
 from kodiak.config import MergeMethod
@@ -8,10 +6,6 @@ from kodiak.queries import (
     CheckConclusionState,
     MergeStateStatus,
     NodeListPushAllowance,
-    Permission,
-    PRReview,
-    PRReviewAuthor,
-    PRReviewState,
     PullRequestReviewDecision,
     PushAllowance,
     PushAllowanceActor,
@@ -26,8 +20,6 @@ from kodiak.test_evaluation import (
     create_context,
     create_mergeable,
     create_pull_request,
-    create_review,
-    create_review_request,
 )
 
 
@@ -189,15 +181,13 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_missing_required_approving_reviews_code_owners() -> None:
+async def test_mergeable_missing_required_review() -> None:
     """
-    Don't merge when code owners are required for review.
+    Don't merge when a review is required.
     """
     api = create_api()
     mergeable = create_mergeable()
     pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    review = create_review()
 
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     pull_request.reviewDecision = PullRequestReviewDecision.REVIEW_REQUIRED
@@ -205,19 +195,9 @@ async def test_mergeable_missing_required_approving_reviews_code_owners() -> Non
     # request, even if the pull request was blocked from merging.
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
 
-    branch_protection.requiresApprovingReviews = True
-    branch_protection.requiredApprovingReviewCount = 1
-    branch_protection.requiresCodeOwnerReviews = True
-    # this pull request meets requiredApprovingReviewCount, but is missing a
-    # code owner approval.
-    review.state = PRReviewState.APPROVED
-    review.author.permission = Permission.WRITE
-
     await mergeable(
         api=api,
         pull_request=pull_request,
-        branch_protection=branch_protection,
-        reviews=[review],
     )
     assert api.set_status.call_count == 1
     assert api.dequeue.call_count == 1
@@ -530,144 +510,6 @@ async def test_mergeable_wait_for_checks() -> None:
     # verify we haven't tried to merge the PR
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
-
-
-@pytest.mark.asyncio
-async def test_regression_mishandling_multiple_reviews_okay_reviews() -> None:
-    mergeable = create_mergeable()
-    api = create_api()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    review_request = create_review_request()
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresApprovingReviews = True
-    branch_protection.requiredApprovingReviewCount = 1
-    first_review_date = datetime(2010, 5, 15)
-    latest_review_date = first_review_date + timedelta(minutes=20)
-
-    await mergeable(
-        api=api,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[review_request],
-        reviews=[
-            PRReview(
-                state=PRReviewState.CHANGES_REQUESTED,
-                createdAt=first_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
-            ),
-            PRReview(
-                state=PRReviewState.COMMENTED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
-            ),
-            PRReview(
-                state=PRReviewState.APPROVED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
-            ),
-            PRReview(
-                state=PRReviewState.APPROVED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-        ],
-    )
-    assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
-    assert api.dequeue.call_count == 0
-    assert api.queue_for_merge.call_count == 1
-
-    # verify we haven't tried to update/merge the PR
-    assert api.merge.called is False
-    assert api.update_branch.called is False
-
-
-@pytest.mark.asyncio
-async def test_regression_mishandling_multiple_reviews_okay_dismissed_reviews() -> None:
-    mergeable = create_mergeable()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    review_request = create_review_request()
-    api = create_api()
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresApprovingReviews = True
-    branch_protection.requiredApprovingReviewCount = 1
-    first_review_date = datetime(2010, 5, 15)
-    latest_review_date = first_review_date + timedelta(minutes=20)
-
-    await mergeable(
-        api=api,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[review_request],
-        reviews=[
-            PRReview(
-                state=PRReviewState.CHANGES_REQUESTED,
-                createdAt=first_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
-            ),
-            PRReview(
-                state=PRReviewState.DISMISSED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.WRITE),
-            ),
-            PRReview(
-                state=PRReviewState.APPROVED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-        ],
-    )
-    assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
-    assert api.dequeue.call_count == 0
-    assert api.queue_for_merge.call_count == 1
-
-    # verify we haven't tried to update/merge the PR
-    assert api.merge.called is False
-    assert api.update_branch.called is False
-
-
-@pytest.mark.asyncio
-async def test_regression_mishandling_multiple_reviews_okay_non_member_reviews() -> None:
-    mergeable = create_mergeable()
-    pull_request = create_pull_request()
-    branch_protection = create_branch_protection()
-    review_request = create_review_request()
-    api = create_api()
-    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
-    branch_protection.requiresApprovingReviews = True
-    branch_protection.requiredApprovingReviewCount = 1
-    first_review_date = datetime(2010, 5, 15)
-    latest_review_date = first_review_date + timedelta(minutes=20)
-
-    await mergeable(
-        api=api,
-        pull_request=pull_request,
-        branch_protection=branch_protection,
-        review_requests=[review_request],
-        reviews=[
-            PRReview(
-                state=PRReviewState.CHANGES_REQUESTED,
-                createdAt=first_review_date,
-                author=PRReviewAuthor(login="chdsbd", permission=Permission.NONE),
-            ),
-            PRReview(
-                state=PRReviewState.APPROVED,
-                createdAt=latest_review_date,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-        ],
-    )
-    assert api.set_status.call_count == 1
-    assert "enqueued for merge (position=" in api.set_status.calls[0]["msg"]
-    assert api.dequeue.call_count == 0
-    assert api.queue_for_merge.call_count == 1
-
-    # verify we haven't tried to update/merge the PR
-    assert api.merge.called is False
-    assert api.update_branch.called is False
 
 
 @pytest.mark.asyncio

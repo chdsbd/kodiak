@@ -11,7 +11,6 @@ from pytest_mock import MockFixture
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.queries import (
-    Actor,
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
@@ -25,9 +24,7 @@ from kodiak.queries import (
     Permission,
     PRReview,
     PRReviewAuthor,
-    PRReviewAuthorSchema,
     PRReviewRequest,
-    PRReviewSchema,
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
@@ -161,8 +158,6 @@ def block_event() -> EventInfoResponse:
         is_private=True,
     )
     branch_protection = BranchProtectionRule(
-        requiresApprovingReviews=True,
-        requiredApprovingReviewCount=2,
         requiresStatusChecks=True,
         requiredStatusCheckContexts=[
             "ci/circleci: backend_lint",
@@ -172,7 +167,6 @@ def block_event() -> EventInfoResponse:
             "WIP (beta)",
         ],
         requiresStrictStatusChecks=True,
-        requiresCodeOwnerReviews=False,
         requiresCommitSignatures=False,
         requiresConversationResolution=False,
         restrictsPushes=True,
@@ -204,32 +198,7 @@ method = "squash"
             PRReviewRequest(name="ghost-team"),
             PRReviewRequest(name="ghost-mannequin"),
         ],
-        reviews=[
-            PRReview(
-                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
-                state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-            PRReview(
-                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
-                state=PRReviewState.CHANGES_REQUESTED,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-            PRReview(
-                createdAt=datetime.fromisoformat("2019-05-22T15:30:52+00:00"),
-                state=PRReviewState.COMMENTED,
-                author=PRReviewAuthor(login="kodiak", permission=Permission.ADMIN),
-            ),
-            PRReview(
-                createdAt=datetime.fromisoformat("2019-05-22T15:43:17+00:00"),
-                state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
-            ),
-            PRReview(
-                createdAt=datetime.fromisoformat("2019-05-23T15:13:29+00:00"),
-                state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="walrus", permission=Permission.WRITE),
-            ),
+        bot_reviews=[
             PRReview(
                 createdAt=datetime.fromisoformat("2019-05-24T10:21:32+00:00"),
                 state=PRReviewState.APPROVED,
@@ -769,48 +738,6 @@ def test_get_commits_error_handling_missing_response() -> None:
     pull_request_data = {"commitHistory": None}
     res = get_commits(pr=pull_request_data)
     assert res == []
-
-
-@pytest.mark.asyncio
-async def test_get_reviewers_and_permissions_empty_author(
-    mocker: MockFixture, api_client: Client
-) -> None:
-    """
-    We should ignore reviews with missing authors.
-
-    `author` becomes null if the GitHub user's account is deleted. This is shown
-    in the GitHub UI as the "ghost" user.
-    """
-
-    async def get_permissions_for_username_patch(username: str) -> Permission:
-        if username == "jdoe":
-            return Permission.WRITE
-        raise Exception
-
-    mocker.patch.object(
-        api_client, "get_permissions_for_username", get_permissions_for_username_patch
-    )
-    res = await api_client.get_reviewers_and_permissions(
-        reviews=[
-            PRReviewSchema(
-                createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
-                state=PRReviewState.COMMENTED,
-                author=PRReviewAuthorSchema(login="jdoe", type=Actor.User),
-            ),
-            PRReviewSchema(
-                createdAt=datetime.fromisoformat("2019-05-22T15:29:52+00:00"),
-                state=PRReviewState.APPROVED,
-                author=None,
-            ),
-        ]
-    )
-    assert res == [
-        PRReview(
-            createdAt=datetime.fromisoformat("2019-05-22T15:29:34+00:00"),
-            state=PRReviewState.COMMENTED,
-            author=PRReviewAuthor(login="jdoe", permission=Permission.WRITE),
-        )
-    ]
 
 
 def generate_page_of_prs(numbers: Iterable[int]) -> Response:

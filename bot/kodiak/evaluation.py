@@ -463,7 +463,7 @@ async def mergeable(
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
-    reviews: List[PRReview],
+    bot_reviews: List[PRReview],
     contexts: List[StatusContext],
     check_runs: List[CheckRun],
     commits: List[Commit],
@@ -657,7 +657,7 @@ async def mergeable(
     ):
         # if the PR was created by an approve author and we have not previously
         # given an approval, approve the PR.
-        sorted_reviews = sorted(reviews, key=lambda x: x.createdAt)
+        sorted_reviews = sorted(bot_reviews, key=lambda x: x.createdAt)
         kodiak_reviews = [
             review for review in sorted_reviews if review.author.login == KODIAK_LOGIN
         ]

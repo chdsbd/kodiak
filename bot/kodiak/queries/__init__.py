@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Set, Union, cast
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import httpx as http
 import jwt
@@ -160,12 +159,9 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
             name
           }
         }
-        requiresApprovingReviews
-        requiredApprovingReviewCount
         requiresStatusChecks
         requiredStatusCheckContexts
         requiresStrictStatusChecks
-        requiresCodeOwnerReviews
         requiresCommitSignatures
         %(requiresConversationResolution)s
         restrictsPushes
@@ -394,8 +390,9 @@ class PullRequest(BaseModel):
     author: PullRequestAuthor
     isDraft: bool
     mergeStateStatus: MergeStateStatus
-    # null if the pull request does not require a review by default (no branch
-    # protection), and no review was requested or submitted yet.
+    # null if the pull request does not require a review (no branch protection
+    # rule). Otherwise shows if the pull request meets the branch protection
+    # requirements.
     reviewDecision: Optional[PullRequestReviewDecision]
     reviewThreads: ReviewThreadConnection
     state: PullRequestState
@@ -428,7 +425,7 @@ class EventInfoResponse:
     branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
-    reviews: List[PRReview] = field(default_factory=list)
+    bot_reviews: List[PRReview] = field(default_factory=list)
     status_contexts: List[StatusContext] = field(default_factory=list)
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
@@ -471,12 +468,9 @@ class BranchProtectionRule(BaseModel):
     https://developer.github.com/v4/object/branchprotectionrule/
     """
 
-    requiresApprovingReviews: bool
-    requiredApprovingReviewCount: Optional[int]
     requiresStatusChecks: bool
     requiredStatusCheckContexts: List[str]
     requiresStrictStatusChecks: bool
-    requiresCodeOwnerReviews: bool
     requiresCommitSignatures: bool
     requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
@@ -952,24 +946,12 @@ query {
             log.exception("get_permissions parse error")
             return Permission.NONE
 
-    # TODO(chdsbd): We may want to cache this response to improve performance as
-    # we could encounter a lot of throttling when hitting the Github API
-    async def get_reviewers_and_permissions(
-        self, *, reviews: List[PRReviewSchema]
-    ) -> List[PRReview]:
-        reviewer_names: Set[str] = {
-            review.author.login
-            for review in reviews
-            if review.author and review.author.type != Actor.Bot
-        }
-
+    async def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
         bot_reviews: List[PRReview] = []
         for review in reviews:
             if not review.author:
                 continue
-            if review.author.type == Actor.User:
-                reviewer_names.add(review.author.login)
-            elif review.author.type == Actor.Bot:
+            if review.author.type == Actor.Bot:
                 # Bots either have read or write permissions for a pull request,
                 # so if they've been able to write a review on a PR, their
                 # review counts as a user with write access.
@@ -983,27 +965,8 @@ query {
                     )
                 )
 
-        requests = [
-            self.get_permissions_for_username(username) for username in reviewer_names
-        ]
-        permissions = await asyncio.gather(*requests)
-
-        user_permission_mapping = dict(zip(reviewer_names, permissions))
-
         return sorted(
-            bot_reviews
-            + [
-                PRReview(
-                    state=review.state,
-                    createdAt=review.createdAt,
-                    author=PRReviewAuthor(
-                        login=review.author.login,
-                        permission=user_permission_mapping[review.author.login],
-                    ),
-                )
-                for review in reviews
-                if review.author and review.author.type == Actor.User
-            ],
+            bot_reviews,
             key=lambda x: x.createdAt,
         )
 
@@ -1130,9 +1093,7 @@ query {
         )
 
         partial_reviews = get_reviews(pr=pull_request)
-        reviews_with_permissions = await self.get_reviewers_and_permissions(
-            reviews=partial_reviews
-        )
+        bot_reviews = await self.get_bot_reviews(reviews=partial_reviews)
         return EventInfoResponse(
             config=cfg.parsed,
             config_str=cfg.text,
@@ -1148,7 +1109,7 @@ query {
             subscription=subscription,
             branch_protection=branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
-            reviews=reviews_with_permissions,
+            bot_reviews=bot_reviews,
             status_contexts=get_status_contexts(pr=pull_request),
             commits=get_commits(pr=pull_request),
             check_runs=get_check_runs(pr=pull_request),
