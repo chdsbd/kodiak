@@ -21,7 +21,6 @@ from kodiak.queries import (
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
-    Permission,
     PRReview,
     PRReviewAuthor,
     PRReviewRequest,
@@ -271,7 +270,7 @@ def create_review() -> PRReview:
     return PRReview(
         state=PRReviewState.APPROVED,
         createdAt=datetime(2015, 5, 25),
-        author=PRReviewAuthor(login="ghost", permission=Permission.WRITE),
+        author=PRReviewAuthor(login="ghost"),
     )
 
 
