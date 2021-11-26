@@ -554,8 +554,6 @@ class CheckRun(BaseModel):
     conclusion: Optional[CheckConclusionState]
 
 
-
-
 class TokenResponse(BaseModel):
     token: str
     expires_at: datetime
@@ -912,7 +910,6 @@ query {
         )
         return _api_features_cache
 
- 
     def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
         bot_reviews: List[PRReview] = []
         for review in reviews:
@@ -926,9 +923,7 @@ query {
                     PRReview(
                         state=review.state,
                         createdAt=review.createdAt,
-                        author=PRReviewAuthor(
-                            login=review.author.login
-                        ),
+                        author=PRReviewAuthor(login=review.author.login),
                     )
                 )
 
