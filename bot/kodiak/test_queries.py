@@ -265,18 +265,6 @@ async def test_get_event_info_blocked(
             )
         ),
     )
-
-    async def get_permissions_for_username_patch(username: str) -> Permission:
-        if username in ("walrus", "ghost"):
-            return Permission.WRITE
-        if username in ("kodiak",):
-            return Permission.ADMIN
-        raise Exception
-
-    mocker.patch.object(
-        api_client, "get_permissions_for_username", get_permissions_for_username_patch
-    )
-
     res = await api_client.get_event_info(pr_number=100)
     assert res is not None
     assert res == block_event
@@ -293,19 +281,6 @@ def mock_get_token_for_install(mocker: MockFixture) -> None:
     mocker.patch(
         "kodiak.queries.get_token_for_install", return_value=wrap_future(MOCK_HEADERS)
     )
-
-
-@pytest.mark.asyncio
-async def test_get_permissions_for_username_missing(
-    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
-) -> None:
-    not_found = Response(status_code=404, request=Request(method="", url=""))
-    mocker.patch(
-        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(not_found)
-    )
-    async with api_client as api_client:
-        res = await api_client.get_permissions_for_username("_invalid_username")
-    assert res == Permission.NONE
 
 
 PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
@@ -333,24 +308,6 @@ PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
         },
     }
 ).encode()
-
-
-@pytest.mark.asyncio
-async def test_get_permissions_for_username_read(
-    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
-) -> None:
-    response = Response(
-        status_code=200,
-        content=PERMISSION_OK_READ_USER_RESPONSE,
-        request=Request(method="", url=""),
-    )
-
-    mocker.patch(
-        "kodiak.queries.http.AsyncClient.get", return_value=wrap_future(response)
-    )
-    async with api_client as api_client:
-        res = await api_client.get_permissions_for_username("ghost")
-    assert res == Permission.READ
 
 
 def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:

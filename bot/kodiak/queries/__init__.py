@@ -922,30 +922,7 @@ query {
         )
         return _api_features_cache
 
-    async def get_permissions_for_username(self, username: str) -> Permission:
-        headers = await get_headers(
-            session=self.session, installation_id=self.installation_id
-        )
-        async with self.throttler:
-            res = await self.session.get(
-                conf.v3_url(
-                    f"/repos/{self.owner}/{self.repo}/collaborators/{username}/permission"
-                ),
-                headers=headers,
-            )
-        log = self.log.bind(res=res, username=username)
-        try:
-            res.raise_for_status()
-        except http.HTTPError:
-            log.warning("get_permissions request_failure", exc_info=True)
-            return Permission.NONE
-
-        try:
-            return Permission(res.json()["permission"])
-        except (IndexError, TypeError, ValueError):
-            log.exception("get_permissions parse error")
-            return Permission.NONE
-
+ 
     async def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
         bot_reviews: List[PRReview] = []
         for review in reviews:
