@@ -505,7 +505,6 @@ class PRReviewAuthorSchema(BaseModel):
 @dataclass
 class PRReviewAuthor:
     login: str
-    permission: Permission
 
 
 class PRReviewSchema(BaseModel):
@@ -553,17 +552,6 @@ class CheckConclusionState(Enum):
 class CheckRun(BaseModel):
     name: str
     conclusion: Optional[CheckConclusionState]
-
-
-class Permission(Enum):
-    """
-    https://developer.github.com/v3/repos/collaborators/#review-a-users-permission-level
-    """
-
-    ADMIN = "admin"
-    WRITE = "write"
-    READ = "read"
-    NONE = "none"
 
 
 class TokenResponse(BaseModel):
@@ -922,7 +910,7 @@ query {
         )
         return _api_features_cache
 
-    async def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
+    def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
         bot_reviews: List[PRReview] = []
         for review in reviews:
             if not review.author:
@@ -935,9 +923,7 @@ query {
                     PRReview(
                         state=review.state,
                         createdAt=review.createdAt,
-                        author=PRReviewAuthor(
-                            login=review.author.login, permission=Permission.WRITE
-                        ),
+                        author=PRReviewAuthor(login=review.author.login),
                     )
                 )
 
@@ -1068,8 +1054,8 @@ query {
             repo=repository, ref_name=pr.baseRefName
         )
 
-        partial_reviews = get_reviews(pr=pull_request)
-        bot_reviews = await self.get_bot_reviews(reviews=partial_reviews)
+        all_reviews = get_reviews(pr=pull_request)
+        bot_reviews = self.get_bot_reviews(reviews=all_reviews)
         return EventInfoResponse(
             config=cfg.parsed,
             config_str=cfg.text,

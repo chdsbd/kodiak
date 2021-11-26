@@ -21,7 +21,6 @@ from kodiak.queries import (
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
-    Permission,
     PRReview,
     PRReviewAuthor,
     PRReviewRequest,
@@ -202,7 +201,7 @@ method = "squash"
             PRReview(
                 createdAt=datetime.fromisoformat("2019-05-24T10:21:32+00:00"),
                 state=PRReviewState.APPROVED,
-                author=PRReviewAuthor(login="kodiakhq", permission=Permission.WRITE),
+                author=PRReviewAuthor(login="kodiakhq"),
             ),
         ],
         status_contexts=[
