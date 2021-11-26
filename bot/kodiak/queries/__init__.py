@@ -922,7 +922,6 @@ query {
         )
         return _api_features_cache
 
- 
     async def get_bot_reviews(self, *, reviews: List[PRReviewSchema]) -> List[PRReview]:
         bot_reviews: List[PRReview] = []
         for review in reviews:
