@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.49.0 - 2021-11-26
+
+### Fixed
+- Improved robustness for handling pull request required reviews. (#762, #763, #765)
+
 ## 0.48.0 - 2021-11-23
 
 ### Added
