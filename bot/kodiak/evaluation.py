@@ -74,6 +74,7 @@ def get_body_content(
     strip_html_comments: bool,
     cut_body_before: str,
     cut_body_after: str,
+    cut_body_and_text: bool,
     pull_request: PullRequest,
 ) -> str:
     if body_type is BodyText.markdown:
@@ -82,10 +83,14 @@ def get_body_content(
             start_index = body.find(cut_body_before)
             if start_index != -1:
                 body = body[start_index:]
+                if cut_body_and_text:
+                    body = body.replace(cut_body_before, "", 1)
         if cut_body_after != "":
             end_index = body.find(cut_body_after)
             if end_index != -1:
                 body = body[: end_index + len(cut_body_after)]
+                if cut_body_and_text:
+                    body = body.replace(cut_body_after, "", 1)
         if strip_html_comments:
             return strip_html_comments_from_markdown(body)
         return body
@@ -182,6 +187,7 @@ def get_merge_body(
         body = get_body_content(
             body_type=config.merge.message.body_type,
             strip_html_comments=config.merge.message.strip_html_comments,
+            cut_body_and_text=config.merge.message.cut_body_and_text,
             cut_body_before=config.merge.message.cut_body_before,
             cut_body_after=config.merge.message.cut_body_after,
             pull_request=pull_request,
