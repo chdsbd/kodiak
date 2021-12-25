@@ -44,7 +44,7 @@ def test_get_merge_body_cut_body_and_text_after() -> None:
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     cut_body_after="<!-- testing -->",
-                    cut_body_and_text=True
+                    cut_body_and_text=True,
                 )
             ),
         ),
@@ -69,7 +69,7 @@ def test_get_merge_body_cut_body_and_text_before() -> None:
                 message=MergeMessage(
                     body=MergeBodyStyle.pull_request_body,
                     cut_body_before="<!-- testing -->",
-                    cut_body_and_text=True
+                    cut_body_and_text=True,
                 )
             ),
         ),
