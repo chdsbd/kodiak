@@ -39,7 +39,8 @@
           "include_coauthors": false,
           "include_pull_request_url": false,
           "cut_body_before": "",
-          "cut_body_after": ""
+          "cut_body_after": "",
+          "cut_body_and_text": false
         },
         "dont_wait_on_status_checks": [],
         "update_branch_immediately": false,
@@ -216,6 +217,11 @@
           "title": "Cut Body After",
           "default": "",
           "type": "string"
+        },
+        "cut_body_and_text": {
+          "title": "Cut Body And Text",
+          "default": false,
+          "type": "boolean"
         }
       }
     },
@@ -321,7 +327,8 @@
             "include_coauthors": false,
             "include_pull_request_url": false,
             "cut_body_before": "",
-            "cut_body_after": ""
+            "cut_body_after": "",
+            "cut_body_and_text": false
           },
           "allOf": [
             {

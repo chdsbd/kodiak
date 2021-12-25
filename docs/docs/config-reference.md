@@ -350,6 +350,17 @@ This setting is useful when we want to include only a part of the pull request d
 
 This option only applies when `merge.message.body_type = "markdown"`.
 
+### `merge.message.cut_body_and_text`
+
+- **type:** `boolean`
+- **default:** `False`
+
+Remove the string used to handle body in `cut_body_before` and `cut_body_after`.
+
+This setting is useful if you believe that the separator doesn't belong in the commit message.
+
+This option only applies if `cut_body_after` or `cut_body_before` is in use.
+
 ### `merge.message.include_coauthors`
 
 - **type:** `boolean`
