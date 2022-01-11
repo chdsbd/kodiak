@@ -851,7 +851,11 @@ function HomeSplash(props) {
   return (
     <SplashContainer>
       <div className="projLogo">
-        <Logo img_src={`${baseUrl}img/kodiak-pr-flow.svg`} />
+        <Logo
+          img_src={`${baseUrl}img/kodiak-pr-flow.svg`}
+          height={349}
+          width={271}
+        />
       </div>
       <div className="inner">
         <ProjectTitle />
