@@ -19,5 +19,5 @@ yarn install
 s/dev
 s/typecheck --watch
 s/fmt
-AGOLIA_API_KEY= AGOLIA_INDEX_NAME= yarn build
+ALGOLIA_APP_ID= AGOLIA_API_KEY= AGOLIA_INDEX_NAME= yarn build
 ```
