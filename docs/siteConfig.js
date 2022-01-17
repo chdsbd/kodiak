@@ -32,6 +32,7 @@ const siteConfig = {
   //   organizationName: 'JoelMarcey'
 
   algolia: {
+    appId: process.env.ALGOLIA_APP_ID,
     apiKey: process.env.AGOLIA_API_KEY,
     indexName: process.env.AGOLIA_INDEX_NAME,
   },
