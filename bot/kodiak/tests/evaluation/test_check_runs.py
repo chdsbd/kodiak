@@ -602,3 +602,32 @@ async def test_duplicate_check_suites() -> None:
     )
     assert "enqueued for merge" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_neutral_required_check_runs() -> None:
+    """
+    When merge.block_on_neutral_required_check_runs is enabled, we should block
+    merge if a required check run has a neutral conclusion.
+    """
+    api = create_api()
+    config = create_config()
+    config.merge.block_on_neutral_required_check_runs = True
+    branch_protection = create_branch_protection()
+    branch_protection.requiresStatusChecks = True
+    branch_protection.requiredStatusCheckContexts = ["Pre-merge checks"]
+
+    mergeable = create_mergeable()
+    await mergeable(
+        api=api,
+        branch_protection=branch_protection,
+        config=config,
+        check_runs=[
+            create_check_run(
+                name="Pre-merge checks", conclusion=CheckConclusionState.NEUTRAL
+            ),
+        ],
+    )
+    assert "neutral required check runs" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 0
+    assert api.dequeue.call_count == 1

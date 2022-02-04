@@ -27,6 +27,7 @@
         "method": null,
         "delete_branch_on_merge": false,
         "block_on_reviews_requested": false,
+        "block_on_neutral_required_check_runs": false,
         "notify_on_conflict": true,
         "optimistic_updates": true,
         "message": {
@@ -302,6 +303,11 @@
         },
         "block_on_reviews_requested": {
           "title": "Block On Reviews Requested",
+          "default": false,
+          "type": "boolean"
+        },
+        "block_on_neutral_required_check_runs": {
+          "title": "Block On Neutral Required Check Runs",
           "default": false,
           "type": "boolean"
         },
