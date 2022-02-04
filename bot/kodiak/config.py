@@ -88,6 +88,8 @@ class Merge(BaseModel):
     #
     # block merging if there are outstanding review requests
     block_on_reviews_requested: bool = False
+    # block merging if there are neutral required check runs.
+    block_on_neutral_required_check_runs: bool = False
     # comment on merge conflict and remove automerge label
     notify_on_conflict: bool = True
     # don't wait for status checks to run before updating branch

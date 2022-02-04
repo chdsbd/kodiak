@@ -824,6 +824,23 @@ async def mergeable(
         # status checks. we may want to handle this via config
         pass
 
+    if config.merge.block_on_neutral_required_check_runs:
+        required = set(branch_protection.requiredStatusCheckContexts)
+        neutral_check_runs = {
+            check_run.name
+            for check_run in deduplicate_check_runs(check_runs)
+            if check_run.conclusion == CheckConclusionState.NEUTRAL
+        }
+
+        failing_required_status_checks = neutral_check_runs & required
+        if failing_required_status_checks:
+            await block_merge(
+                api,
+                pull_request,
+                f"neutral required check runs: {failing_required_status_checks!r}",
+            )
+            return
+
     wait_for_checks = False
     if pull_request.mergeStateStatus in (
         MergeStateStatus.BLOCKED,
@@ -888,7 +905,10 @@ async def mergeable(
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
 
+            neutral_check_runs = set()
             for check_run in deduplicate_check_runs(check_runs):
+                if check_run.conclusion == CheckConclusionState.NEUTRAL:
+                    neutral_check_runs.add(check_run.name)
                 if (
                     check_run.name in config.merge.dont_wait_on_status_checks
                     and check_run.conclusion in (None, CheckConclusionState.NEUTRAL)
