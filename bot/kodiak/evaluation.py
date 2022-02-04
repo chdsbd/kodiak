@@ -905,10 +905,7 @@ async def mergeable(
                     assert status_context.state == StatusState.SUCCESS
                     passing_contexts.append(status_context.context)
 
-            neutral_check_runs = set()
             for check_run in deduplicate_check_runs(check_runs):
-                if check_run.conclusion == CheckConclusionState.NEUTRAL:
-                    neutral_check_runs.add(check_run.name)
                 if (
                     check_run.name in config.merge.dont_wait_on_status_checks
                     and check_run.conclusion in (None, CheckConclusionState.NEUTRAL)
