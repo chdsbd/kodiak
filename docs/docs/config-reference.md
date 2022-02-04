@@ -111,6 +111,15 @@ versions = ["minor", "patch"]
 usernames = ["dependabot", "renovate"]
 ```
 
+### `merge.block_on_neutral_required_check_runs`
+
+- **type:** `boolean`
+- **default:** `false`
+
+GitHub considers a "neutral" check run conclusion as passing GitHub branch protection requirements.
+
+When enabled, pull requests won't be merged if a required check run has a neutral conclusion.
+
 <span id="mergeblacklist_title_regex"/> <!-- handle old links -->
 
 ### `merge.blocking_title_regex`

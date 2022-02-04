@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.50.0 - 2022-02-03
+
+### Added
+- Added `merge.block_on_neutral_required_check_runs` option to stop Kodiak from merging a pull request if a require check run has a neutral conclusion. (#785)
+
 ## 0.49.0 - 2021-11-26
 
 ### Fixed
