@@ -824,15 +824,15 @@ async def mergeable(
         # status checks. we may want to handle this via config
         pass
 
+    required_status_checks = set(branch_protection.requiredStatusCheckContexts)
     if config.merge.block_on_neutral_required_check_runs:
-        required = set(branch_protection.requiredStatusCheckContexts)
         neutral_check_runs = {
             check_run.name
             for check_run in deduplicate_check_runs(check_runs)
             if check_run.conclusion == CheckConclusionState.NEUTRAL
         }
 
-        failing_required_status_checks = neutral_check_runs & required
+        failing_required_status_checks = neutral_check_runs & required_status_checks
         if failing_required_status_checks:
             await block_merge(
                 api,
@@ -874,7 +874,6 @@ async def mergeable(
             await block_merge(api, pull_request, "unresolved conversations")
             return
 
-        required: Set[str] = set()
         passing: Set[str] = set()
 
         if branch_protection.requiresStatusChecks:
@@ -882,7 +881,6 @@ async def mergeable(
             failing_contexts: List[str] = []
             pending_contexts: List[str] = []
             passing_contexts: List[str] = []
-            required = set(branch_protection.requiredStatusCheckContexts)
             for status_context in contexts:
                 # handle dont_wait_on_status_checks. We want to consider a
                 # status_check failed if it is incomplete and in the
@@ -928,13 +926,13 @@ async def mergeable(
             passing = set(passing_contexts)
             failing = set(failing_contexts)
             # we have failing statuses that are required
-            failing_required_status_checks = failing & required
+            failing_required_status_checks = failing & required_status_checks
             # GitHub has undocumented logic for travis-ci checks in GitHub
             # branch protection rules. GitHub compresses
             # "continuous-integration/travis-ci/{pr,push}" to
             # "continuous-integration/travis-ci". There is only special handling
             # for these specific checks.
-            if "continuous-integration/travis-ci" in required:
+            if "continuous-integration/travis-ci" in required_status_checks:
                 if "continuous-integration/travis-ci/pr" in failing:
                     failing_required_status_checks.add(
                         "continuous-integration/travis-ci/pr"
@@ -949,7 +947,7 @@ async def mergeable(
                     "continuous-integration/travis-ci/pr" in passing
                     or "continuous-integration/travis-ci/push" in passing
                 ):
-                    required.remove("continuous-integration/travis-ci")
+                    required_status_checks.remove("continuous-integration/travis-ci")
             if failing_required_status_checks:
                 # NOTE(chdsbd): We need to skip this PR because it would block
                 # the merge queue. We may be able to bump it to the back of the
@@ -980,7 +978,7 @@ async def mergeable(
                 )
                 return
 
-        missing_required_status_checks = required - passing
+        missing_required_status_checks = required_status_checks - passing
         wait_for_checks = bool(
             branch_protection.requiresStatusChecks and missing_required_status_checks
         )
