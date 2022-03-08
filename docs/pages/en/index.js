@@ -783,7 +783,7 @@ const Logos = {
   PicPay: function() {
     return (
       <svg
-        height={LogoHeight}
+        height={40}
         xmlns="http://www.w3.org/2000/svg"
         id="svg"
         viewBox="0 0 129 44"
