@@ -90,10 +90,15 @@ async def evaluate_pr(
                 ),
                 timeout=60,
             )
-            if pr is None:
-                log.info("failed to get_pr")
-                return
             try:
+                if pr is None:
+                    if merging:
+                        raise ApiCallException(
+                            method="kodiak/get_pull_request",
+                            http_status_code=0,
+                            response=b"",
+                        )
+                    return None
                 await asyncio.wait_for(
                     mergeable(
                         api=pr,

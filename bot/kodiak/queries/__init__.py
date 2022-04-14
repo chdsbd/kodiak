@@ -968,6 +968,7 @@ query {
 
         parsed_config = parse_config(data)
         if parsed_config is None:
+            self.log.info("no config found")
             return None
 
         def get_file_expression() -> str:
@@ -990,7 +991,7 @@ query {
             file_expression=get_file_expression(),
         )
 
-    async def get_event_info(self, pr_number: int) -> EventInfoResponse | Literal["no_repository", "no_pr", "empty_response", "pr_parse_failure", "no_config"]:
+    async def get_event_info(self, pr_number: int) -> EventInfoResponse:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -1011,6 +1012,7 @@ query {
             installation_id=self.installation_id,
         )
         if res is None:
+            log.warning("empty API response")
             return None
 
         data = res.get("data")
