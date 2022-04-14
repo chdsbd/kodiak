@@ -840,7 +840,7 @@ class Client:
         query: str,
         variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
-    ) -> Optional[GraphQLResponse]:
+    ) -> GraphQLResponse | http.HTTPError:
         log = self.log
 
         token = await get_token_for_install(
@@ -857,9 +857,9 @@ class Client:
         log = log.bind(rate_limit=rate_limit)
         try:
             res.raise_for_status()
-        except http.HTTPError:
+        except http.HTTPError as e:
             log.warning("github api request error", res=res, exc_info=True)
-            return None
+            return e
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
@@ -990,7 +990,7 @@ query {
             file_expression=get_file_expression(),
         )
 
-    async def get_event_info(self, pr_number: int) -> Optional[EventInfoResponse]:
+    async def get_event_info(self, pr_number: int) -> EventInfoResponse | Literal["no_repository", "no_pr", "empty_response", "pr_parse_failure", "no_config"]:
         """
         Retrieve all the information we need to evaluate a pull request
 
