@@ -90,12 +90,18 @@ Add cool new feature (#123)
 
 ### :label: Jira ticket
 
+
+
 https://company.atlassian.net/browse/COOL-123
 
 ### :loudspeaker: Type of change
 
+
+
 - New feature (non-breaking change which adds functionality)
 ### :scroll: Description
+
+
 
 Add feature which is really cool and useful.
 
