@@ -287,7 +287,7 @@ Never merge a PR. This option can be used with `update.always` to automatically 
 - **default:** `"github_default"`
 - **options:** `"github_default"`, `"pull_request_title"`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the title cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 By default (`"github_default"`), the title depends on [merge.method](config-reference.md#mergemethod):
 
@@ -303,7 +303,7 @@ For `"pull_request_title"`, Kodiak uses the pull request title for both merge an
 - **default:** `"github_default"`
 - **options:** `"github_default"`, `"pull_request_body"`, `"empty"`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 By default (`"github_default"`), GitHub combines the titles of a PR's commits to create the body
 text of a merge commit. `"pull_request_body"` uses the content of the PR to generate
@@ -314,7 +314,7 @@ the body content while `"empty"` sets an empty body.
 - **type:** `boolean`
 - **default:** `true`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the title cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Add the PR number to the merge commit title.
 
@@ -328,7 +328,7 @@ This option only applies when `merge.message.title` does not equal `"github_defa
 - **default:** `"markdown"`
 - **options:** `"markdown"`, `"plain_text"`, `"html"`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Control the text used in the merge commit. The GitHub default is markdown, but `"plain_text"` or `"html"` can be used to render the pull request body as text or HTML.
 
@@ -339,7 +339,7 @@ This option only applies when `merge.message.body = "pull_request_body"`.
 - **type:** `boolean`
 - **default:** `false`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Strip HTML comments (`<!-- some HTML comment -->`) from merge commit body.
 
@@ -352,7 +352,7 @@ This option only applies when `merge.message.body_type = "markdown"`.
 - **type:** `string`
 - **default:** `null`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Remove all content _before_ the configured string in the pull request body.
 
@@ -365,7 +365,7 @@ This option only applies when `merge.message.body_type = "markdown"`.
 - **type:** `string`
 - **default:** `null`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Remove all content _after_ the configured string in the pull request body.
 
@@ -378,7 +378,7 @@ This option only applies when `merge.message.body_type = "markdown"`.
 - **type:** `boolean`
 - **default:** `False`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Remove the string used to handle body in `cut_body_before` and `cut_body_after`.
 
@@ -391,7 +391,7 @@ This option only applies if `cut_body_after` or `cut_body_before` is in use.
 - **type:** `boolean`
 - **default:** `false`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 If a PR includes commits authored by other users, add those users as coauthors to the pull request.
 
@@ -418,7 +418,7 @@ Co-authored-by: Steve Dignam <7340772+sbdchd@users.noreply.github.com>
 - **type:** `boolean`
 - **default:** `false`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Add the pull request author as a coauthor of the merge commit using `Co-authored-by: jdoe <828352+jdoe@users.noreply.github.com>` syntax.
 
@@ -433,7 +433,7 @@ March 6th, 2020, making this option no longer necessary.
 - **type:** `boolean`
 - **default:** `false`
 
-> **NOTE:** This configuration option only works for `"merge"` and `"squash"` merge methods. The `"rebase"` merge method doesn't create a new commit, so the body cannot be edited.
+> **NOTE:** This configuration option doesn't work with the `"rebase"` merge method.
 
 Append the pull request's URL to the commit message body, prefixed with `PR-URL:`.
 
