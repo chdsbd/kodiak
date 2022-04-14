@@ -14,6 +14,9 @@
     },
     {
       "path": "infrastructure"
+    },
+    {
+      "path": "."
     }
   ],
   "settings": {}
