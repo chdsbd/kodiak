@@ -58,6 +58,49 @@ this is an example comment message with a comment from a PR template
 
 
 """,
+        ),        (
+            """\
+Add cool new feature (#123)
+
+### :label: Jira ticket
+
+<!-- Add the Jira ticket corresponding to this Pull request -->
+
+https://company.atlassian.net/browse/COOL-123
+
+### :loudspeaker: Type of change
+
+<!--- Remove what's irrelevant -->
+
+- New feature (non-breaking change which adds functionality)
+### :scroll: Description
+
+<!--
+   Describe your changes in detail.
+   Mainly answer the "What" and "How". What is the PR changing? What is it adding/modifying/removing? What will the new behavior be?
+   How is the change introduced?
+-->
+
+Add feature which is really cool and useful.
+
+...
+""",
+            """\
+Add cool new feature (#123)
+
+### :label: Jira ticket
+
+https://company.atlassian.net/browse/COOL-123
+
+### :loudspeaker: Type of change
+
+- New feature (non-breaking change which adds functionality)
+### :scroll: Description
+
+Add feature which is really cool and useful.
+
+...
+""",
         ),
     ],
 )
