@@ -3,7 +3,8 @@ import logging
 from typing import Any, cast
 
 import pytest
-from requests import PreparedRequest, Request, Response
+from httpx import Request, Response
+from requests import PreparedRequest
 
 from kodiak.logging import (
     SentryLevel,

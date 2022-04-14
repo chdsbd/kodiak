@@ -935,6 +935,7 @@ query {
     async def get_config_for_ref(
         self, *, ref: str, org_repo_default_branch: str | None
     ) -> CfgInfo | None:
+        log = self.log.bind(ref=ref, org_repo_default_branch=org_repo_default_branch)
         repo_root_config_expression = create_root_config_file_expression(branch=ref)
         repo_github_config_expression = create_github_config_file_expression(branch=ref)
         org_root_config_expression: str | None = None
@@ -959,16 +960,18 @@ query {
             ),
             installation_id=self.installation_id,
         )
+        log = log.bind(res=res)
         if res is None:
+            log.info("get_config api error")
             return None
         data = res.get("data")
         if data is None:
-            self.log.error("could not fetch default branch name", res=res)
+            log.error("could not fetch default branch name")
             return None
 
         parsed_config = parse_config(data)
         if parsed_config is None:
-            self.log.info("no config found")
+            log.info("no config in response")
             return None
 
         def get_file_expression() -> str:
