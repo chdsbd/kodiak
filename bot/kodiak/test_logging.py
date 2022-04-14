@@ -4,7 +4,6 @@ from typing import Any, cast
 
 import pytest
 from httpx import Request, Response
-from requests import PreparedRequest
 
 from kodiak.logging import (
     SentryLevel,
@@ -161,14 +160,12 @@ def test_add_request_info_processor() -> None:
     url = "https://api.example.com/v1/me"
     payload = dict(user_id=54321)
     req = Request("POST", url, json=payload)
-    res = Response()
-    res.status_code = 500
-    res.url = url
-    res.reason = "Internal Server Error"
-    cast(
-        Any, res
-    )._content = b"Your request could not be completed due to an internal error."
-    res.request = cast(PreparedRequest, req.prepare())  # type: ignore
+    res = Response(
+        status_code=500,
+        content=b"Your request could not be completed due to an internal error.",
+        request=req,
+    )
+
     event_dict = add_request_info_processor(
         None, None, dict(event="request failed", res=res)
     )
