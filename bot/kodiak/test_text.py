@@ -60,9 +60,9 @@ this is an example comment message with a comment from a PR template
 """,
         ),
         (
-'### 🏷️ Jira ticket\r\n <!-- Add the Jira ticket corresponding to this Pull request -->\r\n https://company.atlassian.net/browse/COOL-123\r\n ### 📢 Type of change\r\n <!--- Remove what\'s irrelevant -->\r\n - New feature (non-breaking change which adds functionality)\r\n ### 📜 Description\r\n <!--\r\n    Describe your changes in detail.\r\n    Mainly answer the "What" and "How". What is the PR changing? What is it adding/modifying/removing? What will the new behavior be?\r\n    How is the change introduced?\r\n -->\r\n Add feature which is really cool and useful.\r\n ...\r\n\r\n\r\n\r\n'
+'### 🏷️ Jira ticket\r\n <!-- Add the Jira ticket corresponding to this Pull request -->\r\n'
 ,
-'### 🏷️ Jira ticket\r\n \r\n https://company.atlassian.net/browse/COOL-123\r\n ### 📢 Type of change\r\n \r\n - New feature (non-breaking change which adds functionality)\r\n ### 📜 Description\r\n \r\n Add feature which is really cool and useful.\r\n ...\r\n\r\n\r\n\r\n'
+'### 🏷️ Jira ticket\r\n \r\n'
 )
     ],
 )
