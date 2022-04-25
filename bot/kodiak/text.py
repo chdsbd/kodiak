@@ -46,10 +46,13 @@ def strip_html_comments_from_markdown(raw_message: str) -> str:
 
     message_bytes = stripped_message.encode()
     for html_start, html_end in html_node_positions:
-        # snippet of HTML bytes
+        # extract unicode snippet of HTML from bytes
         html_text = message_bytes[html_start:html_end].decode()
+        # parse comment locations within HTML
         html_parser.feed(html_text)
         for comment_start, comment_end in html_parser.comments:
+            # html locations are byte offsets, while comment locations are
+            # unicode offsets.
             comment_locations[(html_start, html_end)].append(
                 (comment_start, comment_end)
             )
@@ -60,16 +63,20 @@ def strip_html_comments_from_markdown(raw_message: str) -> str:
         comment_locations.items(), key=lambda x: -x[0][0]
     ):
         html_start_bytes, html_end_bytes = html_positions
+        # snip message along html byte boundaries
         new_message_piece_start = new_message_bytes[:html_start_bytes]
         new_message_piece_middle = new_message_bytes[
             html_start_bytes:html_end_bytes
         ].decode()
         new_message_piece_end = new_message_bytes[html_end_bytes:]
+        # working from the last comment backwards, remove the comments from the
+        # unicode html snippet.
         for comment_start, comment_end in reversed(comment_pos):
             new_message_piece_middle = (
                 new_message_piece_middle[:comment_start]
                 + new_message_piece_middle[comment_end:]
             )
+        # reassemble our message.
         new_message_bytes = (
             new_message_piece_start
             + new_message_piece_middle.encode()
