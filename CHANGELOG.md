@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.51.0 - 2022-04-24
+
+### Fixed
+- Fixed `merge.message.strip_html_comments` to correctly handle non-ascii pull request bodies. (#805)
+
 ## 0.50.0 - 2022-02-05
 
 ### Added
