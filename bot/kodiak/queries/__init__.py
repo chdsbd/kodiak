@@ -840,7 +840,7 @@ class Client:
         query: str,
         variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
-    ) -> Optional[GraphQLResponse]:
+    ) -> GraphQLResponse | http.HTTPError:
         log = self.log
 
         token = await get_token_for_install(
@@ -857,9 +857,9 @@ class Client:
         log = log.bind(rate_limit=rate_limit)
         try:
             res.raise_for_status()
-        except http.HTTPError:
+        except http.HTTPError as e:
             log.warning("github api request error", res=res, exc_info=True)
-            return None
+            return e
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
@@ -935,6 +935,7 @@ query {
     async def get_config_for_ref(
         self, *, ref: str, org_repo_default_branch: str | None
     ) -> CfgInfo | None:
+        log = self.log.bind(ref=ref, org_repo_default_branch=org_repo_default_branch)
         repo_root_config_expression = create_root_config_file_expression(branch=ref)
         repo_github_config_expression = create_github_config_file_expression(branch=ref)
         org_root_config_expression: str | None = None
@@ -959,15 +960,18 @@ query {
             ),
             installation_id=self.installation_id,
         )
+        log = log.bind(res=res)
         if res is None:
+            log.info("get_config api error")
             return None
         data = res.get("data")
         if data is None:
-            self.log.error("could not fetch default branch name", res=res)
+            log.error("could not fetch default branch name")
             return None
 
         parsed_config = parse_config(data)
         if parsed_config is None:
+            log.info("no config in response")
             return None
 
         def get_file_expression() -> str:
@@ -990,7 +994,7 @@ query {
             file_expression=get_file_expression(),
         )
 
-    async def get_event_info(self, pr_number: int) -> Optional[EventInfoResponse]:
+    async def get_event_info(self, pr_number: int) -> EventInfoResponse:
         """
         Retrieve all the information we need to evaluate a pull request
 
@@ -1011,6 +1015,7 @@ query {
             installation_id=self.installation_id,
         )
         if res is None:
+            log.warning("empty API response")
             return None
 
         data = res.get("data")

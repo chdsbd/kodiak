@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import sentry_sdk
 import structlog
-from requests import Response
+from httpx import Response
 from sentry_sdk import capture_event
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import event_from_exception
