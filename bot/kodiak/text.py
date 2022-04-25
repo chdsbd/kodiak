@@ -1,7 +1,8 @@
+from collections import defaultdict
 from html.parser import HTMLParser
 from typing import List, Tuple
 
-from markdown_html_finder import find_html_positions
+from markdown_html_finder import find_html_positions as find_html_byte_positions
 
 
 class CommentHTMLParser(HTMLParser):
@@ -39,19 +40,39 @@ def strip_html_comments_from_markdown(raw_message: str) -> str:
     # html correctly. pulldown-cmark doesn't handle carriage returns well.
     # remark-parse also doesn't handle carriage returns:
     # https://github.com/remarkjs/remark/issues/195#issuecomment-230760892
-    message = raw_message.replace("\r", "")
-    html_node_positions = find_html_positions(message)
-    comment_locations = []
+    stripped_message = raw_message.replace("\r", "")
+    html_node_positions = find_html_byte_positions(stripped_message)
+    comment_locations = defaultdict(list)
+
+    message_bytes = stripped_message.encode()
     for html_start, html_end in html_node_positions:
-        html_text = message[html_start:html_end]
+        # snippet of HTML bytes
+        html_text = message_bytes[html_start:html_end].decode()
         html_parser.feed(html_text)
         for comment_start, comment_end in html_parser.comments:
-            comment_locations.append(
-                (html_start + comment_start, html_start + comment_end)
+            comment_locations[(html_start, html_end)].append(
+                (comment_start, comment_end)
             )
         html_parser.reset()
 
-    new_message = message
-    for comment_start, comment_end in reversed(comment_locations):
-        new_message = new_message[:comment_start] + new_message[comment_end:]
-    return new_message
+    new_message_bytes = message_bytes
+    for html_positions, comment_pos in sorted(
+        comment_locations.items(), key=lambda x: -x[0][0]
+    ):
+        html_start_bytes, html_end_bytes = html_positions
+        new_message_piece_start = new_message_bytes[:html_start_bytes]
+        new_message_piece_middle = new_message_bytes[
+            html_start_bytes:html_end_bytes
+        ].decode()
+        new_message_piece_end = new_message_bytes[html_end_bytes:]
+        for comment_start, comment_end in reversed(comment_pos):
+            new_message_piece_middle = (
+                new_message_piece_middle[:comment_start]
+                + new_message_piece_middle[comment_end:]
+            )
+        new_message_bytes = (
+            new_message_piece_start
+            + new_message_piece_middle.encode()
+            + new_message_piece_end
+        )
+    return new_message_bytes.decode()

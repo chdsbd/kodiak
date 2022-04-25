@@ -59,11 +59,7 @@ this is an example comment message with a comment from a PR template
 
 """,
         ),
-        (
-'### 🏷️ Jira ticket\r\n <!-- Add the Jira ticket corresponding to this Pull request -->\r\n'
-,
-'### 🏷️ Jira ticket\r\n \r\n'
-)
+        ("🏷️<!-- -->", "🏷️"),
     ],
 )
 def test_strip_html_comments_from_markdown(original: str, stripped: str) -> None:
