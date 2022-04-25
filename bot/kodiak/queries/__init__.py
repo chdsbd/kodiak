@@ -400,7 +400,7 @@ class PullRequest(BaseModel):
     isCrossRepository: bool
     labels: List[str]
     # the SHA of the most recent commit
-    latest_sha: str
+    latest_sha: Optional[str]
     baseRefName: str
     headRefName: str
     url: str
@@ -694,7 +694,8 @@ def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
             for check_run_node in check_suite_nodes:
                 check_run_nodes = check_run_node["checkRuns"]["nodes"]
                 for check_run in check_run_nodes:
-                    check_run_dicts.append(check_run)
+                    if check_run is not None:
+                        check_run_dicts.append(check_run)
     except (KeyError, TypeError):
         pass
 
