@@ -97,7 +97,7 @@ async def evaluate_pr(
                         raise ApiCallException(
                             method="kodiak/get_pr",
                             http_status_code=0,
-                            response="",
+                            response=b"",
                         )
                     else:
                         return
