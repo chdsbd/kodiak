@@ -99,8 +99,7 @@ async def evaluate_pr(
                             http_status_code=0,
                             response=b"",
                         )
-                    else:
-                        return
+                    return
                 await asyncio.wait_for(
                     mergeable(
                         api=pr,
