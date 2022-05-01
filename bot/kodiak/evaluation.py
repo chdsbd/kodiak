@@ -512,7 +512,7 @@ async def mergeable(
         return
 
     if api_call_retries_remaining == 0:
-        log.warning("timeout reached for api calls to GitHub")
+        log.info("api_call_timeout")
         if api_call_errors:
             first_error = api_call_errors[0]
             await set_status(

@@ -17,6 +17,7 @@ from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import identify_github_graphql_error
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
@@ -34,7 +35,7 @@ class ErrorLocation(TypedDict):
     column: int
 
 
-class GraphQLError(TypedDict):
+class GraphQLError(TypedDict, total=False):
     message: str
     locations: List[ErrorLocation]
     type: Optional[str]
@@ -1014,8 +1015,19 @@ query {
             return None
 
         data = res.get("data")
+        errors = res.get("errors")
+        log = log.bind(res=res, errors=errors)
+        if errors is not None:
+            error_kinds = identify_github_graphql_error(errors)
+            log = log.bind(error_kinds=error_kinds)
+            if "unknown" in error_kinds:
+                log.warning("unknown_error_found")
+            else:
+                log.info("api_error")
+            return None
+
         if data is None:
-            log.error("could not fetch event info", res=res)
+            log.error("no data returned in api call")
             return None
 
         repository = get_repo(data=data)
