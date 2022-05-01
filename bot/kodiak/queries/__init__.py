@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, ca
 import httpx as http
 import jwt
 import pydantic
+import sentry_sdk
 import structlog
 import toml
 from mypy_extensions import TypedDict
@@ -858,9 +859,11 @@ class Client:
         log = log.bind(rate_limit=rate_limit)
         try:
             res.raise_for_status()
-        except http.HTTPError:
-            log.warning("github api request error", res=res, exc_info=True)
-            return None
+        except http.HTTPStatusError as e:
+            with sentry_sdk.configure_scope() as scope:
+                scope.set_tag("http_error_code", e.response.status_code)
+                log.warning("github api request error", res=res, exc_info=True)
+                return None
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
@@ -1024,7 +1027,6 @@ query {
                 log.warning("unknown_error_found")
             else:
                 log.info("api_error")
-            return None
 
         if data is None:
             log.error("no data returned in api call")

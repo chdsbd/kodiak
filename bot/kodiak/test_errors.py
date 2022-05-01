@@ -32,6 +32,17 @@ from kodiak import errors
             {"unknown"},
         ),
         (
+            [
+                {
+                    "locations": [{"column": "3", "line": "147"}],
+                    "message": "Could not resolve to a Repository with the name 'chdsbd/.github'.",
+                    "path": ["orgConfigRepo"],
+                    "type": "NOT_FOUND",
+                }
+            ],
+            {"not_found"},
+        ),
+        (
             {},
             set(),
         ),
