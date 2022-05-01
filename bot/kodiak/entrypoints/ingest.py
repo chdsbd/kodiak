@@ -90,11 +90,15 @@ async def webhook_event(
     log = logger.bind(event_name=x_github_event, event=event)
     installation_id: int | None = event.get("installation", {}).get("id")
 
-    if github_event in {"github_app_authorization", "installation", "installation_repositories"}:
+    if github_event in {
+        "github_app_authorization",
+        "installation",
+        "installation_repositories",
+    }:
         log.info("administrative_event_received")
         return
 
-    if installation_id is not None:
+    if installation_id is None:
         log.warning("unexpected_event_skipped")
         return
 
