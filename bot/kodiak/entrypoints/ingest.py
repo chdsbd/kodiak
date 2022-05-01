@@ -8,6 +8,7 @@ import hmac
 from typing import Any, Dict, Optional, cast
 
 import asyncio_redis
+import structlog
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -21,6 +22,8 @@ from kodiak.queue import INGEST_QUEUE_NAMES, QUEUE_PUBSUB_INGEST, get_ingest_que
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
+
+logger = structlog.get_logger()
 
 app = FastAPI()
 app.add_middleware(SentryAsgiMiddleware)
@@ -84,8 +87,20 @@ async def webhook_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature: X-Hub-Signature",
         )
+    log = logger.bind(event_name=x_github_event, event=event)
     installation_id: int | None = event.get("installation", {}).get("id")
-    assert installation_id is not None
+
+    if github_event in {
+        "github_app_authorization",
+        "installation",
+        "installation_repositories",
+    }:
+        log.info("administrative_event_received")
+        return
+
+    if installation_id is None:
+        log.warning("unexpected_event_skipped")
+        return
 
     ingest_queue = get_ingest_queue(installation_id)
     redis = await get_redis()
