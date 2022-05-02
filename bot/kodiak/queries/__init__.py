@@ -1021,7 +1021,6 @@ query {
         errors = res.get("errors")
         if errors is not None:
             error_kinds = identify_github_graphql_error(errors)
-            log = log.bind(error_kinds=error_kinds)
             if "unknown" in error_kinds:
                 log.warning("unknown_error_found", errors=errors)
             else:
