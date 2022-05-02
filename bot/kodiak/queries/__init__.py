@@ -1019,17 +1019,16 @@ query {
 
         data = res.get("data")
         errors = res.get("errors")
-        log = log.bind(res=res, errors=errors)
         if errors is not None:
             error_kinds = identify_github_graphql_error(errors)
             log = log.bind(error_kinds=error_kinds)
             if "unknown" in error_kinds:
-                log.warning("unknown_error_found")
+                log.warning("unknown_error_found", errors=errors)
             else:
                 log.info("api_error")
 
         if data is None:
-            log.error("no data returned in api call")
+            log.error("no data returned in api call", res=res)
             return None
 
         repository = get_repo(data=data)
