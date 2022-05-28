@@ -834,6 +834,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "types-dj-database-url"
+version = "0.5.0"
+description = "Typing stubs for dj-database-url"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "types-redis"
 version = "0.1.18"
 description = "Typing stubs for redis"
@@ -914,7 +922,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "f1d60de19e2c7d82b2e7d3f984b4454aecf2d040ca94ee11f82ee1595e633a46"
+content-hash = "597f5f90c64659558993da5a42e8def31fafe3c4f65137b4ab4b6990ebfe8952"
 
 [metadata.files]
 appdirs = [
@@ -1218,6 +1226,8 @@ prompt-toolkit = [
     {file = "prompt_toolkit-3.0.20.tar.gz", hash = "sha256:eb71d5a6b72ce6db177af4a7d4d7085b99756bf656d98ffcc4fecd36850eea6c"},
 ]
 psycopg2 = [
+    {file = "psycopg2-2.9.1-cp310-cp310-win32.whl", hash = "sha256:25615574419dd9bda6fdfdcd58afb22e721f5b807cb3d5e62f488c8acf8cb754"},
+    {file = "psycopg2-2.9.1-cp310-cp310-win_amd64.whl", hash = "sha256:e5a8ed9dbfca8dc162c4ada5ab017e10d5a66c542b4c73569f103fa5f342f498"},
     {file = "psycopg2-2.9.1-cp36-cp36m-win32.whl", hash = "sha256:7f91312f065df517187134cce8e395ab37f5b601a42446bdc0f0d51773621854"},
     {file = "psycopg2-2.9.1-cp36-cp36m-win_amd64.whl", hash = "sha256:830c8e8dddab6b6716a4bf73a09910c7954a92f40cf1d1e702fb93c8a919cc56"},
     {file = "psycopg2-2.9.1-cp37-cp37m-win32.whl", hash = "sha256:89409d369f4882c47f7ea20c42c5046879ce22c1e4ea20ef3b00a4dfc0a7f188"},
@@ -1420,6 +1430,10 @@ typed-ast = [
     {file = "typed_ast-1.4.3-cp39-cp39-win32.whl", hash = "sha256:209596a4ec71d990d71d5e0d312ac935d86930e6eecff6ccc7007fe54d703808"},
     {file = "typed_ast-1.4.3-cp39-cp39-win_amd64.whl", hash = "sha256:9c6d1a54552b5330bc657b7ef0eae25d00ba7ffe85d9ea8ae6540d2197a3788c"},
     {file = "typed_ast-1.4.3.tar.gz", hash = "sha256:fb1bbeac803adea29cedd70781399c99138358c26d05fcbd23c13016b7f5ec65"},
+]
+types-dj-database-url = [
+    {file = "types-dj-database-url-0.5.0.tar.gz", hash = "sha256:fba9876b2cf87e3477f55b8974f0bc7fd81b30124a4617a62ea8bf8195ef85a7"},
+    {file = "types_dj_database_url-0.5.0-py3-none-any.whl", hash = "sha256:3d00ad5d23d0751e0886a1521dd9df1d3c191d874d429195b50ec5bf5de8bd43"},
 ]
 types-redis = [
     {file = "types_redis-0.1.18-py2.py3-none-any.whl", hash = "sha256:2faa1afd6305706ce5420d9fb7ae78d0c1d4a56b2695fdac1f23b2e66e1c11dc"},
