@@ -15,7 +15,8 @@ load_dotenv()
 patch_django()
 
 
-sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)
+# Waiting on https://github.com/getsentry/sentry-python/issues/1415
+sentry_sdk.init(integrations=[DjangoIntegration()], send_default_pii=True)  # type: ignore[abstract]
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -38,7 +38,7 @@ def login_required(view_func: _F) -> _F:
         request: AuthedHttpRequest, *args: object, **kwargs: object
     ) -> HttpResponse:
         if request.user.is_authenticated:
-            return view_func(request, *args, **kwargs)  # type: ignore [call-arg]
+            return view_func(request, *args, **kwargs)
         raise AuthenticationRequired
 
     return cast(_F, wrapped_view)
