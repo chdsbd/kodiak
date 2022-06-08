@@ -225,9 +225,9 @@ method = "squash"
     )
 
 
-@pytest.fixture  # type: ignore
+@pytest.fixture
 @pytest.mark.asyncio
-async def setup_redis(github_installation_id: str) -> None:
+async def setup_redis(github_installation_id: str) -> None:  # type: ignore
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port
