@@ -512,6 +512,18 @@ This setting is useful when the "Required approving reviews" GitHub Branch Prote
 
 See the "[Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot)" recipe for an example of this feature in action.
 
+### `approve.auto_approve_labels`
+
+- **type:** `string[]`
+- **default:** `[]`
+- **options:** List of label names
+
+If a PR has a label assigned which is in the `approve.auto_approve_labels` list, Kodiak will automatically add an approval to the PR.
+
+If Kodiak's review is dismissed, it will add a review again.
+
+This setting is useful when the "Required approving reviews" GitHub Branch Protection setting is configured and dependency upgrade bots like dependabot, greenkeeper, etc, run on the repository. When these bots open a PR with the specified label(s), Kodiak can automatically add a review so dependency upgrade PRs can be automatically merged.
+
 ## configuration labels
 
 Some configuration options set in `.kodiak.toml` can be overriden with pull request labels.
@@ -711,6 +723,16 @@ always = false # default: false
 # (configured via `merge.automerge_label`). When disable, Kodiak will update any
 # PR. This option only applies when `update.always = true`.
 require_automerge_label = true # default: true
+
+[approve]
+
+# If a PR is opened by a user with a username in the `approve.auto_approve_usernames` list,
+# Kodiak will automatically add an approval to the PR.
+auto_approve_usernames = ["dependabot"] # default: []
+
+# If a PR has a label assigned which is in the `approve.auto_approve_labels` list,
+# Kodiak will automatically add an approval to the PR.
+auto_approve_labels = ["dependencies"] # default: []
 ```
 
 ## other resources
