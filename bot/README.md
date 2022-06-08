@@ -10,7 +10,7 @@ The follow shows how to run commands for testing and development. For informatio
 # bot/
 
 # install dependencies
-poetry config settings.virtualenvs.in-project true
+poetry config virtualenvs.in-project true
 poetry install
 
 # format and lint using black, isort, mypy, flake8, pylint
