@@ -73,7 +73,8 @@
     "approve": {
       "title": "Approve",
       "default": {
-        "auto_approve_usernames": []
+        "auto_approve_usernames": [],
+        "auto_approve_labels": []
       },
       "allOf": [
         {
@@ -413,6 +414,14 @@
       "properties": {
         "auto_approve_usernames": {
           "title": "Auto Approve Usernames",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "auto_approve_labels": {
+          "title": "Auto Approve Labels",
           "default": [],
           "type": "array",
           "items": {
