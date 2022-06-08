@@ -32,3 +32,8 @@ ngrok http 3000
 # running
 s/dev --reload
 ```
+
+If you have made any changes concerning the config, run the following command to update the schema:
+```shell
+poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json
+```
