@@ -656,13 +656,20 @@ async def mergeable(
     is_draft_pull_request = (
         pull_request.isDraft or pull_request.mergeStateStatus == MergeStateStatus.DRAFT
     )
+    pull_request_auto_approve_labels = set(
+        config.approve.auto_approve_labels
+    ).intersection(pull_request_labels)
+    has_auto_approve_label = len(pull_request_auto_approve_labels) > 0
     if (
-        pull_request.author.login in config.approve.auto_approve_usernames
+        (
+            pull_request.author.login in config.approve.auto_approve_usernames
+            or has_auto_approve_label
+        )
         and pull_request.state == PullRequestState.OPEN
         and not is_draft_pull_request
     ):
-        # if the PR was created by an approve author and we have not previously
-        # given an approval, approve the PR.
+        # if the PR was created by an approve author or has an approve label
+        # and we have not previously given an approval, approve the PR.
         sorted_reviews = sorted(bot_reviews, key=lambda x: x.createdAt)
         kodiak_reviews = [
             review for review in sorted_reviews if review.author.login == KODIAK_LOGIN

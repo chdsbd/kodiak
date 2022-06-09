@@ -29,4 +29,5 @@ always = true
 require_automerge_label = false
 
 [approve]
-auto_approve_usernames = ["dependabot"]
+auto_approve_usernames = ["dependabot"] # default: []
+auto_approve_labels = ["autoapprove"] # default: []

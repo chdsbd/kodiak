@@ -1818,7 +1818,7 @@ async def test_mergeable_passing_update_always_enabled() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mergeable_auto_approve() -> None:
+async def test_mergeable_auto_approve_username() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
     """
@@ -1828,6 +1828,27 @@ async def test_mergeable_auto_approve() -> None:
     pull_request = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
     pull_request.author.login = "dependency-updater"
+    await mergeable(api=api, config=config, pull_request=pull_request, bot_reviews=[])
+    assert api.approve_pull_request.call_count == 1
+    assert api.set_status.call_count == 1
+    assert "enqueued for merge (position=4th)" in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 1
+    assert api.dequeue.call_count == 0
+    assert api.merge.call_count == 0
+    assert api.update_branch.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mergeable_auto_approve_label() -> None:
+    """
+    If a PR has a label which is in the `approve.auto_approve_labels` list Kodiak should approve the PR.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    pull_request = create_pull_request()
+    config.approve.auto_approve_labels = ["autoapprove"]
+    pull_request.labels.append("autoapprove")
     await mergeable(api=api, config=config, pull_request=pull_request, bot_reviews=[])
     assert api.approve_pull_request.call_count == 1
     assert api.set_status.call_count == 1

@@ -10,7 +10,7 @@ The follow shows how to run commands for testing and development. For informatio
 # bot/
 
 # install dependencies
-poetry config settings.virtualenvs.in-project true
+poetry config virtualenvs.in-project true
 poetry install
 
 # format and lint using black, isort, mypy, flake8, pylint
@@ -31,4 +31,9 @@ ngrok http 3000
 # start development webserver. The Redis server specified in `.env` must be
 # running
 s/dev --reload
+```
+
+If you have made any changes concerning the config, run the following command to update the schema:
+```shell
+poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json
 ```

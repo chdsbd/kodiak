@@ -136,6 +136,8 @@ class Update(BaseModel):
 class Approve(BaseModel):
     # auto approve any PR created by a listed user.
     auto_approve_usernames: List[str] = []
+    # auto approve any PR to which a listed label is assigned.
+    auto_approve_labels: List[str] = []
 
 
 class InvalidVersion(ValueError):

@@ -63,7 +63,10 @@ def test_config_default() -> None:
                     ),
                 ),
                 update=Update(always=True, require_automerge_label=False),
-                approve=Approve(auto_approve_usernames=["dependabot"]),
+                approve=Approve(
+                    auto_approve_usernames=["dependabot"],
+                    auto_approve_labels=["autoapprove"],
+                ),
             ),
         ),
         (
@@ -94,7 +97,10 @@ def test_config_default() -> None:
                     ),
                 ),
                 update=Update(always=True, require_automerge_label=False),
-                approve=Approve(auto_approve_usernames=["dependabot"]),
+                approve=Approve(
+                    auto_approve_usernames=["dependabot"],
+                    auto_approve_labels=["autoapprove"],
+                ),
             ),
         ),
     ],

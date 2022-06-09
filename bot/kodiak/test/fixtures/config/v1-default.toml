@@ -30,3 +30,4 @@ require_automerge_label = true
 
 [approve]
 auto_approve_usernames = []
+auto_approve_labels = []

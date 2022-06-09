@@ -1,6 +1,10 @@
 from re import Match, RegexFlag
 from typing import AnyStr, Optional, Pattern, overload
 
+from rure import exceptions
+
+__all__ = ["exceptions"]
+
 _FlagsType = RegexFlag
 
 @overload
