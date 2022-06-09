@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.52.0 - 2022-06-06
+
+### Added 
+- Added `approve.auto_approve_labels` configuration option to auto approve PRs (#817). Thanks @paescuj!
+
 ## 0.51.0 - 2022-04-24
 
 ### Fixed
