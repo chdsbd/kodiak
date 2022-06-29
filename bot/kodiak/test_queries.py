@@ -1,4 +1,5 @@
 import json
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, cast
@@ -225,9 +226,9 @@ method = "squash"
     )
 
 
-@pytest.fixture  # type: ignore
+@pytest.fixture
 @pytest.mark.asyncio
-async def setup_redis(github_installation_id: str) -> None:
+async def setup_redis(github_installation_id: str) -> AsyncGenerator[None, None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port

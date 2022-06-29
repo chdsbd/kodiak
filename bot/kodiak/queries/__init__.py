@@ -1317,7 +1317,7 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
     issued_at = int(datetime.now().timestamp())
     expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())
     payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
-    return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
+    return jwt.encode(payload=payload, key=private_key, algorithm="RS256")
 
 
 async def get_token_for_install(
