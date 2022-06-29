@@ -23,6 +23,7 @@ kodiak_rure = "^0.2.2"
 zstandard = "^0.13.0"
 httpx = "^0.18.1"
 httpcore = "0.13.2"
+pydantic = "^1.9.1"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
@@ -30,7 +31,7 @@ kodiak = 'kodiak.cli:cli'
 [tool.poetry.dev-dependencies]
 pytest = "6.0.1"
 black = "^21.9b0"
-mypy = "^0.961"
+mypy = "^0.960"
 ipdb = "^0.13.9"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "3.3.1"
