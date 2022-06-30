@@ -183,7 +183,7 @@ jobs:
 
   web_api_test:
     docker:
-      - image: python:3.10
+      - image: python:3.7
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -236,7 +236,7 @@ jobs:
 
   web_api_lint:
     docker:
-      - image: python:3.10
+      - image: python:3.7
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -272,7 +272,7 @@ jobs:
 
   web_api_squawk:
     docker:
-      - image: python:3.10
+      - image: python:3.7
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
