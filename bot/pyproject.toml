@@ -23,6 +23,7 @@ kodiak_rure = "^0.2.2"
 zstandard = "^0.13.0"
 httpx = "^0.18.2"
 pydantic = "^1.9.1"
+cryptography = "^37.0.3"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
