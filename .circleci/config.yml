@@ -3,7 +3,7 @@ version: 2
 jobs:
   bot_test:
     docker:
-      - image: python:3.7
+      - image: python:3.10
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -28,7 +28,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.9
+            command -v poetry || python -m pip install --user poetry==1.1.13
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -47,7 +47,7 @@ jobs:
 
   bot_lint:
     docker:
-      - image: python:3.7
+      - image: python:3.10
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -68,7 +68,7 @@ jobs:
             # Use our new PATH so we can call poetry from bash
             echo 'export PATH="$PATH":"$HOME"/.local/bin' >> $BASH_ENV
             source $BASH_ENV
-            command -v poetry || python -m pip install --user poetry==1.1.9
+            command -v poetry || python -m pip install --user poetry==1.1.13
             poetry config virtualenvs.in-project true
             poetry install
       - save_cache:
@@ -183,7 +183,7 @@ jobs:
 
   web_api_test:
     docker:
-      - image: python:3.7
+      - image: python:3.10
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -236,7 +236,7 @@ jobs:
 
   web_api_lint:
     docker:
-      - image: python:3.7
+      - image: python:3.10
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -272,7 +272,7 @@ jobs:
 
   web_api_squawk:
     docker:
-      - image: python:3.7
+      - image: python:3.10
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
