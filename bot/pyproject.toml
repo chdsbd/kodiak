@@ -5,7 +5,7 @@ description = ""
 authors = ["Christopher Dignam <chris@dignam.xyz>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.10"
 uvicorn = "^0.15.0"
 toml = "^0.10.0"
 PyJWT = "^2.4.0"
