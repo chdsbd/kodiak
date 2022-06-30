@@ -1317,9 +1317,14 @@ lazy-object-proxy = [
 ]
 markdown-html-finder = [
     {file = "markdown_html_finder-0.2.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c7b893f56650d0013ed1061cc883b4f67185b16113d02a3b96a688d47db34016"},
+    {file = "markdown_html_finder-0.2.5-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:6ac8de530f5209de88a056287c3836266db02f2ad27e5f666e65dcb624852371"},
+    {file = "markdown_html_finder-0.2.5-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:0a2637763a23d4bad98ad40e1d6563e28cea19faa9508dfaa69c9b8cf0ddda78"},
     {file = "markdown_html_finder-0.2.5-cp37-cp37m-macosx_11_0_arm64.whl", hash = "sha256:5588c0dcba92c8425d5e7d17a57fe6db22a94d78313094b701b6b3a8ce1d2c23"},
+    {file = "markdown_html_finder-0.2.5-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:a24e093b21dc699c638283a58598cbbb2489e029bcc8d90fddc608ddd8e78f9a"},
     {file = "markdown_html_finder-0.2.5-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:dfeca5ae00b1e5e19c1c4b93e63976c8279c98aca74d525f0cdf85c5501c3c03"},
+    {file = "markdown_html_finder-0.2.5-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:2ea98e46c67747190620afeb5ccfffef3b8090df281465917d8d4a025a2c39cc"},
     {file = "markdown_html_finder-0.2.5-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:fbecdd05ac013b27a1ed130cdbc9d0ff1fc367a9f242697f4c3897854440b877"},
+    {file = "markdown_html_finder-0.2.5-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:86afbb199c139e7eef27e9ad134c0781867b54124461721db261bdb3bb82f6ce"},
     {file = "markdown_html_finder-0.2.5.tar.gz", hash = "sha256:12188883422f6342a78f8acf60e2c753e09946d00696b1f9ba86d8f532192f1c"},
 ]
 markupsafe = [
