@@ -1,38 +1,13 @@
 import base64
 from pathlib import Path
-from typing import Any, Optional, Type, TypeVar, overload
 
 import databases
-from starlette.config import Config, undefined
+from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from kodiak.logging import get_logging_level
 
-T = TypeVar("T")
-
-
-class TypedConfig(Config):
-    @overload
-    def __call__(self, key: str, cast: Type[T], default: T = ...) -> T:
-        ...
-
-    @overload
-    def __call__(self, key: str, cast: Type[str] = ..., default: str = ...) -> str:
-        ...
-
-    @overload
-    def __call__(
-        self, key: str, cast: Type[str] = ..., default: None = ...
-    ) -> Optional[str]:
-        ...
-
-    def __call__(
-        self, key: str, cast: Optional[type] = None, default: Any = undefined
-    ) -> Any:
-        return super().get(key, cast=cast, default=default)  # type: ignore [arg-type]
-
-
-config = TypedConfig(".env")
+config = Config(".env")
 
 PORT = config("PORT", cast=int, default=8000)
 REDIS_URL = config("REDIS_URL", cast=databases.DatabaseURL, default=None) or config(
