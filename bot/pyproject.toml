@@ -24,6 +24,7 @@ kodiak_rure = "^0.2.2"
 zstandard = "^0.13.0"
 httpx = "^0.18.1"
 httpcore = "0.13.2"
+pydantic = "^1.9.1"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
@@ -42,6 +43,8 @@ flake8-pie = "0.7.1"
 isort = "^4.3"
 pytest-cov = "^2.10"
 flake8-pyi = "^20.10"
+types-requests = "^2.28.0"
+types-toml = "^0.10.7"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"
