@@ -3,7 +3,7 @@ version: 2
 jobs:
   bot_test:
     docker:
-      - image: python:3.10
+      - image: python:3.7
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -47,7 +47,7 @@ jobs:
 
   bot_lint:
     docker:
-      - image: python:3.10
+      - image: python:3.7
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
