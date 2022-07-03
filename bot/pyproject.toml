@@ -9,10 +9,11 @@ python = "^3.7"
 uvicorn = "^0.15.0"
 toml = "^0.10.0"
 PyJWT = "^1.7"
-cryptography = "2.8"
+cryptography = "^3.4.6"
 structlog = "^19.1"
 colorama = "^0.4.1"
 databases = "0.3.2"
+# bzpopmin and bzpopmax support. connection pool is built concurrently. TLS support.
 asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git", branch="master"}
 inflection = "0.5.1"
 markdown-html-finder = "^0.2.3"
@@ -20,10 +21,12 @@ markupsafe = "^1.1"
 fastapi = "^0.47.0"
 sentry-sdk = "^1.5.12"
 requests = "^2.22"
-rure = "^0.2.2"
+# same as `rure` on pypi, but with arm64 builds for macos.
+kodiak_rure = "^0.2.2"
 zstandard = "^0.13.0"
 httpx = "^0.18.1"
 httpcore = "0.13.2"
+pydantic = "^1.9.1"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
@@ -31,7 +34,7 @@ kodiak = 'kodiak.cli:cli'
 [tool.poetry.dev-dependencies]
 pytest = "6.0.1"
 black = "^21.9b0"
-mypy = "^0.812"
+mypy = "^0.960"
 ipdb = "^0.13.9"
 pytest-asyncio = "^0.10.0"
 pytest-mock = "3.3.1"
@@ -42,6 +45,8 @@ flake8-pie = "0.7.1"
 isort = "^4.3"
 pytest-cov = "^2.10"
 flake8-pyi = "^20.10"
+types-requests = "^2.28.0"
+types-toml = "^0.10.7"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"

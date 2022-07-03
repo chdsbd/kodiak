@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y supervisor
 
 RUN mkdir -p /var/log/supervisor
 
-RUN python3 -m pip install poetry===1.1.8
+RUN python3 -m pip install poetry===1.1.13
 
 RUN poetry config virtualenvs.in-project true
 
