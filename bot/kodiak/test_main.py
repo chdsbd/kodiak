@@ -20,7 +20,7 @@ from kodiak.test_utils import wrap_future
 def test_root(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == "OK"
+    assert response.content == b"OK"
 
 
 @pytest.fixture
