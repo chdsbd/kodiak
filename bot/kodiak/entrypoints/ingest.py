@@ -5,15 +5,17 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from typing import Any, Dict, Optional, cast
+from typing import Any
 
 import asyncio_redis
 import structlog
 import uvicorn
-from fastapi import FastAPI, Header, HTTPException
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette import status
+from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 
 from kodiak import app_config as conf
 from kodiak.entrypoints.worker import PubsubIngestQueueSchema
@@ -25,14 +27,8 @@ configure_logging()
 
 logger = structlog.get_logger()
 
-app = FastAPI()
+app = Starlette()
 app.add_middleware(SentryAsgiMiddleware)
-
-
-@app.get("/")
-async def root() -> str:
-    return "OK"
-
 
 # TODO(sbdchd): should this be a pool?
 _redis: asyncio_redis.Pool | None = None
@@ -52,42 +48,42 @@ async def get_redis() -> asyncio_redis.Pool:
     return _redis
 
 
-@app.post("/api/github/hook")
-async def webhook_event(
-    event: Dict[str, Any],
-    *,
-    request: Request,
-    x_github_event: str = Header(None),
-    x_hub_signature: str = Header(None),
-) -> None:
-    """
-    Verify and accept GitHub Webhook payloads.
-    """
-    # FastAPI allows x_github_event to be nullable and we cannot type it as
-    # Optional in the function definition
-    # https://github.com/tiangolo/fastapi/issues/179
-    github_event = cast(Optional[str], x_github_event)
-    github_signature = cast(Optional[str], x_hub_signature)
+@app.route("/", methods=["GET"])
+async def root(_: Request) -> Response:
+    return PlainTextResponse("OK")
+
+
+@app.route("/api/github/hook", methods=["POST"])
+async def github_webhook_event(request: Request) -> Response:
+    body = await request.body()
     expected_sha = hmac.new(
         key=conf.SECRET_KEY.encode(), msg=(await request.body()), digestmod=hashlib.sha1
     ).hexdigest()
-    if github_event is None:
+
+    try:
+        github_event = request.headers["X-Github-Event"]
+    except KeyError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing required header: X-Github-Event",
-        )
-    if github_signature is None:
+            detail="missing required X-Github-Event header",
+        ) from e
+    try:
+        hub_signature = request.headers["X-Hub-Signature"]
+    except KeyError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing required signature: X-Hub-Signature",
-        )
-    sha = github_signature.replace("sha1=", "")
+            detail="missing required X-Hub-Signature header",
+        ) from e
+
+    sha = hub_signature.replace("sha1=", "")
     if not hmac.compare_digest(sha, expected_sha):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature: X-Hub-Signature",
         )
-    log = logger.bind(event_name=x_github_event, event=event)
+    log = logger.bind(event_name=github_event, event=body)
+
+    event: dict[str, Any] = await request.json()
     installation_id: int | None = event.get("installation", {}).get("id")
 
     if github_event in {
@@ -96,11 +92,11 @@ async def webhook_event(
         "installation_repositories",
     }:
         log.info("administrative_event_received")
-        return
+        return JSONResponse({"ok": True})
 
     if installation_id is None:
         log.warning("unexpected_event_skipped")
-        return
+        return JSONResponse({"ok": True})
 
     ingest_queue = get_ingest_queue(installation_id)
     redis = await get_redis()
@@ -115,6 +111,7 @@ async def webhook_event(
         QUEUE_PUBSUB_INGEST,
         PubsubIngestQueueSchema(installation_id=installation_id).json(),
     )
+    return JSONResponse({"ok": True})
 
 
 if __name__ == "__main__":
