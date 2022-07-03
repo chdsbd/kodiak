@@ -55,7 +55,6 @@ async def root(_: Request) -> Response:
 
 @app.route("/api/github/hook", methods=["POST"])
 async def github_webhook_event(request: Request) -> Response:
-    body = await request.body()
     expected_sha = hmac.new(
         key=conf.SECRET_KEY.encode(), msg=(await request.body()), digestmod=hashlib.sha1
     ).hexdigest()
@@ -81,9 +80,9 @@ async def github_webhook_event(request: Request) -> Response:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature: X-Hub-Signature",
         )
-    log = logger.bind(event_name=github_event, event=body)
-
     event: dict[str, Any] = await request.json()
+
+    log = logger.bind(event_name=github_event, event=event)
     installation_id: int | None = event.get("installation", {}).get("id")
 
     if github_event in {
