@@ -1827,6 +1827,7 @@ async def test_mergeable_auto_approve_username() -> None:
     config = create_config()
     pull_request = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
+    assert pull_request.author is not None
     pull_request.author.login = "dependency-updater"
     await mergeable(api=api, config=config, pull_request=pull_request, bot_reviews=[])
     assert api.approve_pull_request.call_count == 1
@@ -1872,6 +1873,7 @@ async def test_mergeable_auto_approve_existing_approval() -> None:
     pull_request = create_pull_request()
     review = create_review()
     config.approve.auto_approve_usernames = ["dependency-updater"]
+    assert pull_request.author is not None
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
     review.state = PRReviewState.APPROVED
@@ -1900,6 +1902,7 @@ async def test_mergeable_auto_approve_old_approval() -> None:
     pull_request = create_pull_request()
     review = create_review()
     config.approve.auto_approve_usernames = ["dependency-updater"]
+    assert pull_request.author is not None
     pull_request.author.login = "dependency-updater"
     review.author.login = "kodiak-test-app"
     review.state = PRReviewState.DISMISSED
@@ -1928,6 +1931,7 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs() -> None:
         config = create_config()
         pull_request = create_pull_request()
         config.approve.auto_approve_usernames = ["dependency-updater"]
+        assert pull_request.author is not None
         pull_request.author.login = "dependency-updater"
         pull_request.state = pull_request_state
         await mergeable(
@@ -1955,7 +1959,9 @@ async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
     pull_request_via_merge_state_status = create_pull_request()
     pull_request_via_is_draft = create_pull_request()
     config.approve.auto_approve_usernames = ["dependency-updater"]
+    assert pull_request_via_is_draft.author
     pull_request_via_is_draft.author.login = "dependency-updater"
+    assert pull_request_via_merge_state_status.author
     pull_request_via_merge_state_status.author.login = "dependency-updater"
 
     pull_request_via_is_draft.isDraft = True
@@ -2210,6 +2216,7 @@ async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
     mergeable = create_mergeable()
     pull_request = create_pull_request()
     repository = create_repo_info()
+    assert pull_request.author is not None
     pull_request.author.databaseId = 234234234
     repository.is_private = True
     await mergeable(

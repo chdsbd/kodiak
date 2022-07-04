@@ -24,6 +24,7 @@ async def test_merge_okay() -> None:
     config.merge.automerge_dependencies.usernames = ["my-custom-dependabot"]
     pull_request = create_pull_request()
     pull_request.labels = []
+    assert pull_request.author
     pull_request.author.login = "my-custom-dependabot"
     pull_request.title = "Bump lodash from 4.17.15 to 4.17.19"
     api = create_api()
@@ -47,6 +48,7 @@ async def test_merge_mismatch_username() -> None:
     config.merge.automerge_dependencies.usernames = ["dependabot"]
     pull_request = create_pull_request()
     pull_request.labels = []
+    assert pull_request.author
     pull_request.author.login = "my-custom-dependabot"
     pull_request.title = "Bump lodash from 4.17.15 to 4.17.19"
     api = create_api()
@@ -68,6 +70,7 @@ async def test_merge_no_version_found() -> None:
     config.merge.automerge_dependencies.usernames = ["my-custom-dependabot"]
     pull_request = create_pull_request()
     pull_request.labels = []
+    assert pull_request.author
     pull_request.author.login = "my-custom-dependabot"
 
     for title in ("Bump lodash from 4.17.15 to", "Bump lodash from griffin to phoenix"):
@@ -92,6 +95,7 @@ async def test_merge_disallowed_version() -> None:
     config.merge.automerge_dependencies.usernames = ["my-custom-dependabot"]
     pull_request = create_pull_request()
     pull_request.labels = []
+    assert pull_request.author
     pull_request.author.login = "my-custom-dependabot"
     pull_request.title = "Bump lodash from 4.17.15 to 5.0.1"
     api = create_api()
@@ -108,6 +112,7 @@ async def test_merge_renovate(pr: FakePR, update_type: MatchType) -> None:
     config.merge.automerge_dependencies.usernames = ["my-custom-renovate"]
     pull_request = create_pull_request()
     pull_request.labels = []
+    assert pull_request.author
     pull_request.author.login = "my-custom-renovate"
     pull_request.title = pr.title
     pull_request.body = pr.body
