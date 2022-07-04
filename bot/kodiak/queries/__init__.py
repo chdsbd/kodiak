@@ -687,7 +687,7 @@ def get_status_contexts(*, pr: Dict[str, Any]) -> List[StatusContext]:
 
 
 def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
-    check_run_dicts: List[Dict[str, Any]] = []
+    check_run_dicts: List[Dict[str, Any] | None] = []
     try:
         for commit_node in pr["commits"]["nodes"]:
             check_suite_nodes = commit_node["commit"]["checkSuites"]["nodes"]
@@ -700,6 +700,8 @@ def get_check_runs(*, pr: Dict[str, Any]) -> List[CheckRun]:
 
     check_runs: List[CheckRun] = []
     for check_run_dict in check_run_dicts:
+        if check_run_dict is None:
+            continue
         try:
             check_runs.append(CheckRun.parse_obj(check_run_dict))
         except ValueError:
