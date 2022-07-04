@@ -387,7 +387,7 @@ class PullRequest(BaseModel):
     body: str
     bodyText: str
     bodyHTML: str
-    author: PullRequestAuthor
+    author: Optional[PullRequestAuthor]
     isDraft: bool
     mergeStateStatus: MergeStateStatus
     # null if the pull request does not require a review (no branch protection
@@ -884,7 +884,7 @@ query {
    __type(name:"BranchProtectionRule") {
       fields(includeDeprecated: true) {
          name
-      }  
+      }
    }
 }
 """,
