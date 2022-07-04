@@ -350,6 +350,57 @@ async def test_get_event_info_no_author(
     ] == EXPECTED_ERRORS
 
 
+@pytest.mark.asyncio
+async def test_get_event_info_no_latest_sha(
+    api_client: Client,
+    mocker: MockFixture,
+    block_event: EventInfoResponse,
+    setup_redis: object,
+    caplog: Any,
+) -> None:
+    """
+    When a PR doesn't have a changeset aka a diff, the latest_sha will be None.
+    """
+    caplog.set_level(logging.WARNING)
+    blocked_response = json.loads(
+        (
+            Path(__file__).parent
+            / "test"
+            / "fixtures"
+            / "api"
+            / "get_event"
+            / "no_latest_sha.json"
+        ).read_text()
+    )
+    assert (
+        len(blocked_response["data"]["repository"]["pullRequest"]["commits"]["nodes"])
+        == 0
+    ), "Shouldn't have any commits."
+    block_event.pull_request.author = None
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(
+            GraphQLResponse(
+                data=blocked_response.get("data"), errors=blocked_response.get("errors")
+            )
+        ),
+    )
+    res = await api_client.get_event_info(pr_number=100)
+    assert res is None
+
+    assert [
+        (mod, level, msg_to_dict(msg)["event"])
+        for mod, level, msg in caplog.record_tuples
+    ] == [
+        (
+            "kodiak.queries",
+            30,
+            "problem parsing api features",
+        )
+    ]
+
+
 MOCK_HEADERS = dict(
     Authorization="token some-json-web-token",
     Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
