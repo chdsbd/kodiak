@@ -1036,9 +1036,15 @@ query {
             log.warning("Could not find PR")
             return None
 
+        latest_sha = get_sha(pr=pull_request)
+        if latest_sha is None:
+            # PR didn't have a diff associated with it!
+            log.info("pull request missing sha")
+            return None
+
         # update the dictionary to match what we need for parsing
         pull_request["labels"] = get_labels(pr=pull_request)
-        pull_request["latest_sha"] = get_sha(pr=pull_request)
+        pull_request["latest_sha"] = latest_sha
         pull_request["number"] = pr_number
         try:
             pr = PullRequest.parse_obj(pull_request)
