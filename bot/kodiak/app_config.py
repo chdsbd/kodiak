@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Optional, Type, TypeVar, overload
 
 import databases
-from starlette.config import Config
+from starlette.config import Config, undefined
 from starlette.datastructures import CommaSeparatedStrings
 
 from kodiak.logging import get_logging_level
