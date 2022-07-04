@@ -595,6 +595,7 @@ async def test_mergeable_update_username_blacklist() -> None:
     ignored_config.update.require_automerge_label = True
 
     pull_request = create_pull_request()
+    assert pull_request.author
     pull_request.author.login = "mr-test"
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
 

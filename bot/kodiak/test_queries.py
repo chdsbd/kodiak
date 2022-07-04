@@ -1,9 +1,10 @@
+import asyncio
 import json
 import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, cast
+from typing import Any, Dict, Iterable, Iterator, cast
 
 import asyncio_redis
 import pytest
@@ -227,6 +228,16 @@ method = "squash"
     )
 
 
+@pytest.fixture(scope="session")
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    # from: https://github.com/pytest-dev/pytest-asyncio/issues/38#issuecomment-264418154
+    # fixes 'got Future <Future pending> attached to a different loop' type errors
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest.fixture  # type: ignore
 @pytest.mark.asyncio
 async def setup_redis(github_installation_id: str) -> None:
@@ -252,6 +263,17 @@ def msg_to_dict(msg: str) -> Dict[str, str]:
     l_iter = iter(z[::-1].strip() for z in result if z)
     return {v: k for k, v in dict(zip(l_iter, l_iter)).items()}
 
+
+# TODO(sbdchd): these logs probably indicate a problem with the test setup
+
+EXPECTED_ERRORS = [
+    (
+        "kodiak.queries",
+        30,
+        "problem parsing api features",
+    ),
+    ("kodiak.queries.commits", 40, "problem parsing commit authors"),
+]
 
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @requires_redis
@@ -279,18 +301,53 @@ async def test_get_event_info_blocked(
     assert res is not None
     assert res == block_event
 
-    # TODO(sbdchd): these logs probably indicate a problem with the test setup
     assert [
         (mod, level, msg_to_dict(msg)["event"])
         for mod, level, msg in caplog.record_tuples
-    ] == [
+    ] == EXPECTED_ERRORS
+
+
+@requires_redis
+@pytest.mark.asyncio
+async def test_get_event_info_no_author(
+    api_client: Client,
+    mocker: MockFixture,
+    block_event: EventInfoResponse,
+    setup_redis: object,
+    caplog: Any,
+) -> None:
+    """
+    When a PR account author is deleted, the PR's author becomes null, so we
+    need to handle that.
+    """
+    caplog.set_level(logging.WARNING)
+    blocked_response = json.loads(
         (
-            "kodiak.queries",
-            30,
-            "problem parsing api features",
+            Path(__file__).parent
+            / "test"
+            / "fixtures"
+            / "api"
+            / "get_event"
+            / "no_author.json"
+        ).read_text()
+    )
+    block_event.pull_request.author = None
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(
+            GraphQLResponse(
+                data=blocked_response.get("data"), errors=blocked_response.get("errors")
+            )
         ),
-        ("kodiak.queries.commits", 40, "problem parsing commit authors"),
-    ]
+    )
+    res = await api_client.get_event_info(pr_number=100)
+    assert res == block_event
+
+    assert [
+        (mod, level, msg_to_dict(msg)["event"])
+        for mod, level, msg in caplog.record_tuples
+    ] == EXPECTED_ERRORS
 
 
 MOCK_HEADERS = dict(

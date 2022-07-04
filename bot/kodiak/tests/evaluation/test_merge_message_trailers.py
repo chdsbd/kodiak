@@ -130,6 +130,7 @@ def test_get_merge_body_include_pull_request_author_user() -> None:
 def test_get_merge_body_include_pull_request_author_bot() -> None:
     pull_request = create_pull_request()
     pull_request.body = "hello world"
+    assert pull_request.author
     pull_request.author.name = None
     pull_request.author.type = "Bot"
 
@@ -160,6 +161,7 @@ def test_get_merge_body_include_pull_request_author_mannequin() -> None:
     """
     pull_request = create_pull_request()
     pull_request.body = "hello world"
+    assert pull_request.author
     pull_request.author.name = None
     pull_request.author.type = "Mannequin"
 
@@ -211,6 +213,7 @@ def test_get_merge_body_include_coauthors() -> None:
     Verify we include coauthor trailers for MergeBodyStyle.pull_request_body.
     """
     pull_request = create_pull_request()
+    assert pull_request.author
     pull_request.body = "hello world"
     config = create_config()
     config.merge.message.body = MergeBodyStyle.pull_request_body
@@ -274,6 +277,7 @@ def test_get_merge_body_include_coauthors_include_pr_author() -> None:
     config.merge.message.body = MergeBodyStyle.pull_request_body
     config.merge.message.include_coauthors = True
     config.merge.message.include_pull_request_author = True
+    assert pull_request.author
 
     actual = get_merge_body(
         config=config,

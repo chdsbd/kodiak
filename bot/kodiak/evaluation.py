@@ -136,7 +136,7 @@ def get_coauthor_trailers(
     *,
     coauthors: List[PullRequestCommitUser],
     include_pull_request_author: bool,
-    pull_request_author_id: int,
+    pull_request_author_id: int | None,
 ) -> List[str]:
     """
     Deduplicate coauthors and convert to strings.
@@ -210,14 +210,15 @@ def get_merge_body(
         # include_coauthors.
         coauthors = []  # type: List[PullRequestCommitUser]
         if config.merge.message.include_pull_request_author:
-            coauthors.append(
-                PullRequestCommitUser(
-                    login=pull_request.author.login,
-                    databaseId=pull_request.author.databaseId,
-                    name=pull_request.author.name,
-                    type=pull_request.author.type,
+            if pull_request.author is not None:
+                coauthors.append(
+                    PullRequestCommitUser(
+                        login=pull_request.author.login,
+                        databaseId=pull_request.author.databaseId,
+                        name=pull_request.author.name,
+                        type=pull_request.author.type,
+                    )
                 )
-            )
         if config.merge.message.include_coauthors:
             for commit in commits:
                 if (
@@ -233,7 +234,9 @@ def get_merge_body(
         coauthor_trailers = get_coauthor_trailers(
             coauthors=coauthors,
             include_pull_request_author=config.merge.message.include_pull_request_author,
-            pull_request_author_id=pull_request.author.databaseId,
+            pull_request_author_id=pull_request.author.databaseId
+            if pull_request.author is not None
+            else None,
         )
 
         trailer_block = ""
@@ -354,7 +357,10 @@ def get_paywall_status_for_blocker(
     log: structlog.BoundLogger,
 ) -> Optional[str]:
     if isinstance(subscription_blocker, SeatsExceeded):
-        if pull_request.author.databaseId in subscription_blocker.allowed_user_ids:
+        if (
+            pull_request.author is not None
+            and pull_request.author.databaseId in subscription_blocker.allowed_user_ids
+        ):
             return None
         return "usage has exceeded licensed seats"
     if isinstance(subscription_blocker, TrialExpired):
@@ -621,7 +627,8 @@ async def mergeable(
     has_automerge_label = len(pull_request_automerge_labels) > 0
 
     should_dependency_automerge = (
-        pull_request.author.login in config.merge.automerge_dependencies.usernames
+        pull_request.author is not None
+        and pull_request.author.login in config.merge.automerge_dependencies.usernames
         and dep_versions_from_pr(pull_request)
         in config.merge.automerge_dependencies.versions
     )
@@ -662,7 +669,10 @@ async def mergeable(
     has_auto_approve_label = len(pull_request_auto_approve_labels) > 0
     if (
         (
-            pull_request.author.login in config.approve.auto_approve_usernames
+            (
+                pull_request.author is not None
+                and pull_request.author.login in config.approve.auto_approve_usernames
+            )
             or has_auto_approve_label
         )
         and pull_request.state == PullRequestState.OPEN
@@ -696,14 +706,20 @@ async def mergeable(
     # If `update.autoupdate_label` is applied to the pull request, bypass
     # `update.ignored_usernames` and let the pull request update.
     if need_branch_update and not has_autoupdate_label:
-        if pull_request.author.login in config.update.blacklist_usernames:
+        if (
+            pull_request.author is not None
+            and pull_request.author.login in config.update.blacklist_usernames
+        ):
             await set_status(
                 f"🛑 updates blocked by update.blacklist_usernames: {config.update.blacklist_usernames!r}",
                 markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
             )
             await api.dequeue()
             return
-        if pull_request.author.login in config.update.ignored_usernames:
+        if (
+            pull_request.author is not None
+            and pull_request.author.login in config.update.ignored_usernames
+        ):
             await set_status(
                 f"🛑 updates blocked by update.ignored_usernames: {config.update.ignored_usernames!r}",
                 markdown_content="Apply the `update.autoupdate_label` label to enable updates for this pull request.",
