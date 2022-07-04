@@ -1,9 +1,10 @@
+import asyncio
 import json
 import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, cast
+from typing import Any, Dict, Iterable, Iterator, cast
 
 import asyncio_redis
 import pytest
@@ -225,6 +226,16 @@ method = "squash"
         ],
         valid_merge_methods=[MergeMethod.squash],
     )
+
+
+@pytest.fixture(scope="session")
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    # from: https://github.com/pytest-dev/pytest-asyncio/issues/38#issuecomment-264418154
+    # fixes 'got Future <Future pending> attached to a different loop' type errors
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture  # type: ignore
