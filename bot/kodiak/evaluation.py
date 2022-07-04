@@ -507,7 +507,7 @@ async def mergeable(
         await api.set_status(msg, markdown_content=markdown_content)
 
     if not isinstance(config, V1):
-        log.warning("problem fetching config")
+        log.info("invalid config")
         await set_status(
             '⚠️ Invalid configuration (Click "Details" for more info.)',
             markdown_content=get_markdown_for_config(
