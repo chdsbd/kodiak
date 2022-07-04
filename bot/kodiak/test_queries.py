@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, cast
@@ -244,6 +246,13 @@ async def setup_redis(github_installation_id: str) -> None:
     r.close()
 
 
+def msg_to_dict(msg: str) -> Dict[str, str]:
+    # hack to parse the key value format from https://github.com/hynek/structlog/blob/a8936b9a6f07b5da55c4c28fc73dfab30c20a06d/src/structlog/processors.py#L107-L111
+    result = re.split("'(.+?)'=", msg[::-1])
+    l_iter = iter(z[::-1].strip() for z in result if z)
+    return {v: k for k, v in dict(zip(l_iter, l_iter)).items()}
+
+
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @requires_redis
 @pytest.mark.asyncio
@@ -253,7 +262,9 @@ async def test_get_event_info_blocked(
     block_event: EventInfoResponse,
     mocker: MockFixture,
     setup_redis: object,
+    caplog: Any,
 ) -> None:
+    caplog.set_level(logging.WARNING)
 
     mocker.patch.object(
         api_client,
@@ -267,6 +278,19 @@ async def test_get_event_info_blocked(
     res = await api_client.get_event_info(pr_number=100)
     assert res is not None
     assert res == block_event
+
+    # TODO(sbdchd): these logs probably indicate a problem with the test setup
+    assert [
+        (mod, level, msg_to_dict(msg)["event"])
+        for mod, level, msg in caplog.record_tuples
+    ] == [
+        (
+            "kodiak.queries",
+            30,
+            "problem parsing api features",
+        ),
+        ("kodiak.queries.commits", 40, "problem parsing commit authors"),
+    ]
 
 
 MOCK_HEADERS = dict(
