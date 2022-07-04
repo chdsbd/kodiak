@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.54.0 - 2022-07-04
+
+### Fixed
+
+- Fix parsing a PR without an author / without commits / with null CheckRuns (#828, #831, #827)
+- internal: remove FastAPI dependency and use Starlette (#826)
+
 ## 0.53.0 - 2022-07-03
 
 ### Fixed
@@ -15,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.52.0 - 2022-06-06
 
-### Added 
+### Added
 - Added `approve.auto_approve_labels` configuration option to auto approve PRs (#817). Thanks @paescuj!
 
 ## 0.51.0 - 2022-04-24
@@ -248,7 +255,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kodiak is now free for personal GitHub accounts (#367, #368)
 - merge conflict notifications now takes priority over [`merge.blacklist_title_regex`](https://kodiakhq.com/docs/config-reference#mergeblacklist_title_regex). (#371)
 - skip branch deletion if GitHub branch deletion is enabled on the repository (#382)
-- 
+-
 
 ### Fixed
 - fix trial/subscription expiration timezone to show correct timezone. Previously it was just saying "UTC". (#363)
