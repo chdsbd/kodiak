@@ -11,8 +11,9 @@ from kodiak.logging import get_logging_level
 T = TypeVar("T")
 
 
+# TODO: Remove when https://github.com/encode/starlette/pull/1732 is merged.
 class TypedConfig(Config):
-    @overload
+    @overload  # type: ignore [override]
     def __call__(self, key: str, cast: Type[T], default: T = ...) -> T:
         ...
 
@@ -29,7 +30,7 @@ class TypedConfig(Config):
     def __call__(
         self, key: str, cast: Optional[type] = None, default: Any = undefined
     ) -> Any:
-        return super().get(key, cast=cast, default=default)  # type: ignore [arg-type]
+        return super().get(key, cast=cast, default=default)
 
 
 config = TypedConfig(".env")
