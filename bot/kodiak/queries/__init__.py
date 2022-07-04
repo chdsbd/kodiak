@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, ca
 import httpx as http
 import jwt
 import pydantic
+import sentry_sdk
 import structlog
 import toml
 from mypy_extensions import TypedDict
@@ -17,6 +18,7 @@ from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import identify_github_graphql_error
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
@@ -34,7 +36,7 @@ class ErrorLocation(TypedDict):
     column: int
 
 
-class GraphQLError(TypedDict):
+class GraphQLError(TypedDict, total=False):
     message: str
     locations: List[ErrorLocation]
     type: Optional[str]
@@ -859,9 +861,11 @@ class Client:
         log = log.bind(rate_limit=rate_limit)
         try:
             res.raise_for_status()
-        except http.HTTPError:
-            log.warning("github api request error", res=res, exc_info=True)
-            return None
+        except http.HTTPStatusError as e:
+            with sentry_sdk.configure_scope() as scope:
+                scope.set_tag("http_error_code", e.response.status_code)
+                log.warning("github api request error", res=res, exc_info=True)
+                return None
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
@@ -1016,8 +1020,16 @@ query {
             return None
 
         data = res.get("data")
+        errors = res.get("errors")
+        if errors is not None:
+            error_kinds = identify_github_graphql_error(errors)
+            if "unknown" in error_kinds:
+                log.warning("unknown_error_found", errors=errors)
+            else:
+                log.info("api_error")
+
         if data is None:
-            log.error("could not fetch event info", res=res)
+            log.error("no data returned in api call", res=res)
             return None
 
         repository = get_repo(data=data)
