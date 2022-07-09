@@ -407,7 +407,7 @@ jobs:
       - run:
           name: run shellcheck
           command: |
-            ./s/shellcheck
+            git ls-files --exclude='*.sh' --ignored --cached -z | xargs -0 -r shellcheck
 
   # https://circleci.com/docs/2.0/building-docker-images/
   web_ui_build_container:
