@@ -14,8 +14,6 @@ import asyncio_redis
 import sentry_sdk
 import structlog
 import zstandard as zstd
-from asyncio_redis import Pool as RedisConnection
-from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
@@ -32,6 +30,9 @@ from kodiak.events import (
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+from kodiak.redis import BlockingZPopReply
+from kodiak.redis import Connection as RedisConnection
+from kodiak.redis import create_pool
 
 logger = structlog.get_logger()
 
@@ -475,7 +476,7 @@ class TaskMeta:
 
 
 class RedisWebhookQueue:
-    connection: asyncio_redis.Pool
+    connection: RedisConnection
 
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
@@ -483,20 +484,7 @@ class RedisWebhookQueue:
         ] = {}  # type: ignore [assignment]
 
     async def create(self) -> None:
-        redis_db = 0
-        try:
-            redis_db = int(conf.REDIS_URL.database)
-        except ValueError:
-            pass
-
-        self.connection = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password or None,
-            db=redis_db,
-            poolsize=conf.REDIS_POOL_SIZE,
-            ssl=conf.REDIS_URL.scheme == "rediss",
-        )
+        self.connection = await create_pool()
 
         # restart repo workers
         merge_queues, webhook_queues = await asyncio.gather(
