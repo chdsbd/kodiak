@@ -538,11 +538,11 @@ class RedisWebhookQueue:
     async def create(self) -> None:
         self.pool = await create_pool()
 
-        async with self.pool as pool:
+        async with self.pool as conn:
             # restart repo workers
             merge_queues, webhook_queues = await asyncio.gather(
-                pool.smembers(MERGE_QUEUE_NAMES),
-                pool.smembers(WEBHOOK_QUEUE_NAMES),
+                conn.smembers(MERGE_QUEUE_NAMES),
+                conn.smembers(WEBHOOK_QUEUE_NAMES),
             )
             for merge_result in merge_queues:
                 queue_name = await merge_result
