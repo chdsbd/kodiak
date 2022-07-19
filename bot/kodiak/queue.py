@@ -55,6 +55,7 @@ class RedisPool:
         while retries:
             try:
                 await pool.ping()
+                return pool
             except ConnectionLostError:
                 retries -= 1
                 if retries <= 0:
@@ -62,7 +63,7 @@ class RedisPool:
                     raise
                 logger.info("connection error. retrying")
                 await asyncio.sleep(0.5 / retries)
-        return pool
+        raise ValueError("shouldn't get here")
 
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
         return
