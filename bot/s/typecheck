@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ./.venv/bin/mypy .
+exec ./.venv/bin/mypy "${@:-.}"
