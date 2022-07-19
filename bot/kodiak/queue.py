@@ -58,6 +58,7 @@ class RedisPool:
             except ConnectionLostError:
                 retries -= 1
                 if retries <= 0:
+                    logger.warning("ran out of retries", exc_info=True)
                     raise
                 logger.info("connection error. retrying")
                 await asyncio.sleep(0.5 / retries)
