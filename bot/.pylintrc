@@ -227,6 +227,8 @@ disable=print-statement,
         consider-using-f-string,
         # mypy covers this and doesn't give false positives,
         unexpected-keyword-arg,
+        # false positives
+        non-iterator-returned,
 
 
 # Enable the message, report, category or checker with the given id(s). You can
