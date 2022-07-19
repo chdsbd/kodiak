@@ -51,4 +51,4 @@ async def test_flakey_redis_dequeue(mocker: MockFixture) -> None:
     mocker.patch.object(pool._pool, "ping", wraps=wrapper)
 
     async with pool as conn:
-        await conn.get("foo")
+        await conn.ping()
