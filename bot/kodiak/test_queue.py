@@ -3,7 +3,7 @@ import structlog
 from asyncio_redis.exceptions import ConnectionLostError
 from pytest_mock import MockFixture
 
-from kodiak.queue import RedisPool, create_pool, installation_id_from_queue
+from kodiak.queue import create_pool, installation_id_from_queue
 from kodiak.tests.fixtures import requires_redis
 
 logger = structlog.get_logger()
