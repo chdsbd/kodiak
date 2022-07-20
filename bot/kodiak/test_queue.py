@@ -30,14 +30,14 @@ def test_installation_id_from_queue(
 
 @requires_redis
 @pytest.mark.asyncio
-async def test_flakey_redis_dequeue(mocker: MockFixture) -> None:
+async def test_flakey_redis_success(mocker: MockFixture) -> None:
     """
     Checking our redis retry logic
     """
 
     pool = await create_pool()
 
-    cnt = 4
+    cnt = 2
 
     async def wrapper() -> None:
         logger.info("attemping ping")
@@ -52,3 +52,30 @@ async def test_flakey_redis_dequeue(mocker: MockFixture) -> None:
 
     async with pool as conn:
         await conn.ping()
+
+
+@requires_redis
+@pytest.mark.asyncio
+async def test_flakey_redis_failure(mocker: MockFixture) -> None:
+    """
+    Checking our redis retry logic when it fails
+    """
+
+    pool = await create_pool()
+
+    cnt = 6
+
+    async def wrapper() -> None:
+        logger.info("attemping ping")
+        nonlocal cnt
+        cnt -= 1
+        if cnt <= 0:
+            logger.info("ping success!")
+            return
+        raise ConnectionLostError("foo")
+
+    mocker.patch.object(pool._pool, "ping", wraps=wrapper)
+
+    with pytest.raises(ConnectionLostError):
+        async with pool as conn:
+            await conn.ping()
