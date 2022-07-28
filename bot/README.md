@@ -30,7 +30,9 @@ ngrok http 3000
 
 # start development webserver. The Redis server specified in `.env` must be
 # running
-s/dev --reload
+s/dev-ingest --reload
+# in another terminal start the workers
+s/dev-workers
 ```
 
 If you have made any changes concerning the config, run the following command to update the schema:
