@@ -556,6 +556,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         raise BadRequest
 
     sentry_sdk.set_tag("stripe_event_type", event.type)
+    logger.info("stripe_event_type=%s", event.type)
 
     # https://stripe.com/docs/billing/lifecycle#subscription-lifecycle
 
