@@ -6,6 +6,7 @@ from urllib.parse import parse_qsl
 
 import pydantic
 import requests
+import sentry_sdk
 import stripe
 from django.conf import settings
 from django.http import (
@@ -554,6 +555,9 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         logger.warning("invalid signature for webhook request", exc_info=True)
         raise BadRequest
 
+    sentry_sdk.set_tag("stripe_event_type", event.type)
+    logger.info("stripe_event_type=%s", event.type)
+
     # https://stripe.com/docs/billing/lifecycle#subscription-lifecycle
 
     # triggered when a customer completes the Stripe Checkout form.
@@ -611,9 +615,9 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
             raise BadRequest
         stripe_customer.update_from_stripe()
     elif event.type == "customer.subscription.deleted":
-        # I don't think we need to do anything on subscription deletion. We can
-        # let the subscription time run out.
-        pass
+        StripeCustomerInformation.objects.filter(
+            customer_id=event.data.object.customer
+        ).delete()
     elif event.type == "invoice.payment_action_required":
         logger.warning("more action required for payment %s", event)
     elif event.type == "invoice.payment_failed":
