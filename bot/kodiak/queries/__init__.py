@@ -1043,6 +1043,7 @@ query {
         # I think it's better to revert to using the markdown body for bodyHTML instead of failing to merge the PR completely.
         errors = res.get("errors")
         if errors is not None and has_body_html_error(errors):
+            log.info("has_body_html_error")
             res = await self.send_query(
                 query=get_event_info_query(
                     requires_conversation_resolution=api_features.requires_conversation_resolution
