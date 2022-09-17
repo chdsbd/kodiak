@@ -1022,7 +1022,7 @@ query {
                 requires_conversation_resolution=api_features.requires_conversation_resolution
                 if api_features
                 else True,
-                fetch_body_html=True
+                fetch_body_html=True,
             ),
             variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
@@ -1037,7 +1037,7 @@ query {
 
         # NOTE(chdsbd): The GitHub GraphQL API has a bug where querying for
         # the bodyHTML field sometimes breaks and returns errors. I don't know why and I've tried to talk with GitHub Support.
-        # 
+        #
         # In these cases, we retry without the bodyHTML edge. Instead we map the markdown body edge to bodyHTML. This let's us workaround the issue.
         #
         # I think it's better to revert to using the markdown body for bodyHTML instead of failing to merge the PR completely.
@@ -1048,7 +1048,7 @@ query {
                     requires_conversation_resolution=api_features.requires_conversation_resolution
                     if api_features
                     else True,
-                    fetch_body_html=False
+                    fetch_body_html=False,
                 ),
                 variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
                 installation_id=self.installation_id,
