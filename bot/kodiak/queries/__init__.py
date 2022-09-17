@@ -226,7 +226,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       title
       body
       bodyText
-      $(bodyHTMLQuery)s
+      %(bodyHTMLQuery)s
       url
       reviews(first: 100) {
         nodes {
