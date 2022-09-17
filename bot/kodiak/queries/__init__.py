@@ -791,7 +791,7 @@ class ApiFeatures:
     requires_conversation_resolution: bool
 
 
-def has_body_html_error(errors: dict[str, object]) -> bool:
+def has_body_html_error(errors: list[GraphQLError]) -> bool:
     for error in errors:
         if (
             error.get("type") == "FORBIDDEN"
