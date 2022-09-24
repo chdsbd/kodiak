@@ -148,7 +148,9 @@ def parse_config(data: dict[Any, Any]) -> ParsedConfig | None:
     return None
 
 
-def get_event_info_query(requires_conversation_resolution: bool) -> str:
+def get_event_info_query(
+    requires_conversation_resolution: bool, fetch_body_html: bool
+) -> str:
     return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -224,7 +226,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       title
       body
       bodyText
-      bodyHTML
+      %(bodyHTMLQuery)s
       url
       reviews(first: 100) {
         nodes {
@@ -305,7 +307,8 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
 """ % dict(
         requiresConversationResolution="requiresConversationResolution"
         if requires_conversation_resolution
-        else ""
+        else "",
+        bodyHTMLQuery="bodyHTML" if fetch_body_html else "bodyHTML: body",
     )
 
 
@@ -788,6 +791,17 @@ class ApiFeatures:
     requires_conversation_resolution: bool
 
 
+def has_body_html_error(errors: list[GraphQLError]) -> bool:
+    for error in errors:
+        if (
+            error.get("type") == "FORBIDDEN"
+            and error.get("message") == "Resource not accessible by integration"
+            and error.get("path") == ["repository", "pullRequest", "headRef"]
+        ):
+            return True
+    return False
+
+
 _api_features_cache: ApiFeatures | None = None
 
 
@@ -1007,7 +1021,8 @@ query {
             query=get_event_info_query(
                 requires_conversation_resolution=api_features.requires_conversation_resolution
                 if api_features
-                else True
+                else True,
+                fetch_body_html=True,
             ),
             variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
@@ -1019,6 +1034,33 @@ query {
         if data is None:
             log.error("could not fetch event info", res=res)
             return None
+
+        # NOTE(chdsbd): The GitHub GraphQL API has a bug where querying for
+        # the bodyHTML field sometimes breaks and returns errors. I don't know why and I've tried to talk with GitHub Support.
+        #
+        # In these cases, we retry without the bodyHTML edge. Instead we map the markdown body edge to bodyHTML. This let's us workaround the issue.
+        #
+        # I think it's better to revert to using the markdown body for bodyHTML instead of failing to merge the PR completely.
+        errors = res.get("errors")
+        if errors is not None and has_body_html_error(errors):
+            log.info("has_body_html_error")
+            res = await self.send_query(
+                query=get_event_info_query(
+                    requires_conversation_resolution=api_features.requires_conversation_resolution
+                    if api_features
+                    else True,
+                    fetch_body_html=False,
+                ),
+                variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
+                installation_id=self.installation_id,
+            )
+            if res is None:
+                return None
+
+            data = res.get("data")
+            if data is None:
+                log.error("could not fetch event info", res=res)
+                return None
 
         repository = get_repo(data=data)
         if not repository:

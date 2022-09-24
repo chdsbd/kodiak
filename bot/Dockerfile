@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y supervisor
 
 RUN mkdir -p /var/log/supervisor
 
+# use cryptography version for poetry that doesn't require Rust
+RUN python3 -m pip install cryptography===37.0.4
 RUN python3 -m pip install poetry===1.1.13
 
 RUN poetry config virtualenvs.in-project true
