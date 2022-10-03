@@ -88,6 +88,7 @@ def dep_version_from_title(x: str) -> MatchType | None:
     return _compare_versions(old_version, new_version)
 
 
+# `^4.14.0` -> `v4.15.0`
 renovate_body_regex = re.compile(
     r"`\^?v?(?P<old_version>.*)` -> `\^?v?(?P<new_version>.*)`", re.MULTILINE
 )
@@ -123,6 +124,26 @@ def dep_versions_from_renovate_pr_body(body: str) -> MatchType | None:
     return largest_match_type
 
 
+# Updates jest from 29.1.1 to 29.1.2
+dependabot_body_regex = re.compile(
+    r"from (?P<old_version>.*) to (?P<new_version>.*)", re.MULTILINE
+)
+
+
+def dep_versions_from_dependabot_pr_body(body: str) -> MatchType | None:
+    largest_match_type: MatchType | None = None
+    for match in dependabot_body_regex.finditer(body):
+        group = match.groupdict()
+        if "old_version" not in group or "new_version" not in group:
+            continue
+        match_type = _compare_versions(group["old_version"], group["new_version"])
+        if not match_type:
+            continue
+        if compare_match_type(match_type, largest_match_type):
+            largest_match_type = match_type
+    return largest_match_type
+
+
 class PRLike(Protocol):
     title: str
     body: str
@@ -130,6 +151,10 @@ class PRLike(Protocol):
 
 def dep_versions_from_pr(pr: PRLike) -> MatchType | None:
     match_type = dep_versions_from_renovate_pr_body(pr.body)
+    if match_type is not None:
+        return match_type
+
+    match_type = dep_versions_from_dependabot_pr_body(pr.body)
     if match_type is not None:
         return match_type
 

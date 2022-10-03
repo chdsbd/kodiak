@@ -27,7 +27,7 @@ def generate_test_cases() -> Iterator[tuple[FakePR, str]]:
     """
     update_type_regex = re.compile("^update-(?P<update_type>.*)-.*.txt$")
     renovate_examples = (
-        Path(__file__).parent.parent / "dependencies" / "renovate_pull_requests"
+        Path(__file__).parent.parent / "dependencies" / "pull_requests"
     )
 
     for file_name in renovate_examples.glob("*"):

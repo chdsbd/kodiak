@@ -1,6 +1,10 @@
 """
 Tests for dependabot PRs.
 """
+from __future__ import annotations
+
+import pytest
+
 from kodiak.dependencies import (
     _compare_versions,
     _extract_versions,
@@ -10,8 +14,9 @@ from kodiak.dependencies import (
 from kodiak.tests.dependencies.test_dependencies import FakePR
 
 
-def test_extract_versions() -> None:
-    for title, version, upgrade in [
+@pytest.mark.parametrize(
+    "title,version,upgrade",
+    [
         (
             "Bump pip from 20.2.4 to 20.3 in /.github/workflows",
             ("20.2.4", "20.3"),
@@ -37,14 +42,19 @@ def test_extract_versions() -> None:
         ("Bump lodash", None, None),
         ("Bump lodash to 4.17.19", None, None),
         ("Bump lodash from 4.17.15 to", None, None),
-    ]:
-        assert _extract_versions(title) == version
-        assert dep_version_from_title(title) == upgrade
-        assert dep_versions_from_pr(FakePR(title=title, body="")) == upgrade
+    ],
+)
+def test_extract_versions(
+    title: str, version: tuple[str, str] | None, upgrade: str | None
+) -> None:
+    assert _extract_versions(title) == version
+    assert dep_version_from_title(title) == upgrade
+    assert dep_versions_from_pr(FakePR(title=title, body="")) == upgrade
 
 
-def test_compare_versions() -> None:
-    for old_version, new_version, change in [
+@pytest.mark.parametrize(
+    "old_version, new_version, change",
+    [
         ("20.2.4", "20.3", "minor"),
         ("4.17.15", "4.17.19", "patch"),
         ("0.2", "0.3", "minor"),
@@ -52,8 +62,9 @@ def test_compare_versions() -> None:
         ("4.0", "4.1", "minor"),
         ("1.5", "2.0", "major"),
         ("feb", "may", None),
-    ]:
-        assert (
-            _compare_versions(old_version=old_version, new_version=new_version)
-            == change
-        )
+    ],
+)
+def test_compare_versions(
+    old_version: str, new_version: str, change: str | None
+) -> None:
+    assert _compare_versions(old_version=old_version, new_version=new_version) == change

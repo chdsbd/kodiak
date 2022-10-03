@@ -16,7 +16,7 @@ Errors encountered when contacting GitHub API.
 
 - API call 'pull_request/merge' failed with HTTP status '405' and response: '{"message":"This branch must not contain merge commits.","documentation_url":"https://docs.github.com/articles/about-protected-branches”}'
 - API call 'pull_request/merge' failed with HTTP status '405' and response: '{"message":"This branch must not contain merge commits.","documentation_url":"https://docs.github.com/articles/about-protected-branches”}'
-        
+
 
 If you need help, you can open a GitHub issue, check the docs, or reach us privately at support@kodiakhq.com.
 
