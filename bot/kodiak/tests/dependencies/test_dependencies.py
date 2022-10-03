@@ -26,9 +26,7 @@ def generate_test_cases() -> Iterator[tuple[FakePR, str]]:
     The first line of the file is the PR title. The remainder is the body.
     """
     update_type_regex = re.compile("^update-(?P<update_type>.*)-.*.txt$")
-    renovate_examples = (
-        Path(__file__).parent.parent / "dependencies" / "pull_requests"
-    )
+    renovate_examples = Path(__file__).parent.parent / "dependencies" / "pull_requests"
 
     for file_name in renovate_examples.glob("*"):
         match = update_type_regex.match(file_name.name)
