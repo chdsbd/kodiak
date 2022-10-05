@@ -1,0 +1,6 @@
+Bump lodash from 4.17.15 to 4.17.19
+Bumps [lodash](https://github.com/lodash/lodash) from 4.17.15 to 4.17.19.
+- [Release notes](https://github.com/lodash/lodash/releases)
+- [Commits](lodash/lodash@4.17.15...4.17.19)
+
+Signed-off-by: dependabot[bot] <support@github.com>
