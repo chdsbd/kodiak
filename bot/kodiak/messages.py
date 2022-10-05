@@ -99,5 +99,5 @@ def get_markdown_for_api_call_errors(*, errors: Sequence[APICallRetry]) -> str:
 Errors encountered when contacting GitHub API.
 
 {formatted_errors}
-        """
+"""
     )
