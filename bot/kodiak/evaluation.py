@@ -1071,7 +1071,9 @@ async def mergeable(
                     response=b"",
                 )
             if not is_active_merge:
-                await api.set_status("Retrying (Merging blocked by GitHub requirements)")
+                await api.set_status(
+                    "Retrying (Merging blocked by GitHub requirements)"
+                )
             await api.requeue()
             return
 
