@@ -717,6 +717,6 @@ async def test_mergeable_uncollapsed_reviews() -> None:
     )
     assert api.set_status.call_count == 1
     assert (
-        "cannot merge (Merging blocked by GitHub requirements)"
+        "Merging blocked by GitHub requirements"
         in api.set_status.calls[0]["msg"]
     )
