@@ -26,6 +26,7 @@ from kodiak.config import (
 )
 from kodiak.dependencies import dep_versions_from_pr
 from kodiak.errors import (
+    ApiCallException,
     GitHubApiInternalServerError,
     PollForever,
     RetryForSkippableChecks,
@@ -518,9 +519,8 @@ async def mergeable(
         return
 
     if api_call_retries_remaining == 0:
-        log.warning("timeout reached for api calls to GitHub")
-        if api_call_errors:
-            first_error = api_call_errors[0]
+        first_error = api_call_errors[0] if api_call_errors else None
+        if first_error:
             await set_status(
                 f"⚠️ problem contacting GitHub API with method {first_error.api_name!r}",
                 markdown_content=get_markdown_for_api_call_errors(
@@ -529,6 +529,15 @@ async def mergeable(
             )
         else:
             await set_status("⚠️ problem contacting GitHub API")
+        log.warning(
+            "timeout reached for api calls to GitHub",
+            merged_blocked_unknown_reason=any(
+                e.api_name == "kodiak/merged_blocked_unknown_reason"
+                for e in api_call_errors
+            ),
+            api_call_errors=api_call_errors,
+            exc_info=True,
+        )
         return
 
     # if we have an app_id in the config then we only want to work on this repo
@@ -1041,13 +1050,29 @@ async def mergeable(
                     await api.update_branch()
                     raise PollForever
 
-        # if we reach this point and we don't need to wait for checks or update a branch we've failed to calculate why the PR is blocked. This should _not_ happen normally.
+        # if we reach this point and we don't need to wait for checks or update a branch
+        # we've failed to calculate why the PR is blocked. This should _not_ happen
+        # normally.
+        #
+        # We trigger an ApiCallException to trigger the retry handling. Usually
         if not (wait_for_checks or need_branch_update):
-            await block_merge(
-                api, pull_request, "Merging blocked by GitHub requirements"
+            log.info(
+                "merge blocked for unknown reason",
+                merging=merging,
+                wait_for_checks=wait_for_checks,
+                need_branch_update=need_branch_update,
             )
-            log.warning("merge blocked for unknown reason")
+            if merging:
+                # maybe we want to convert this to be a PollForever exception, but I'm not
+                # confident enough that we'll always want to poll in this scenario.
+                raise ApiCallException(
+                    method="kodiak/merged_blocked_unknown_reason",
+                    http_status_code=0,
+                    response=b"",
+                )
+            await api.requeue()
             return
+
     ready_to_merge = not (wait_for_checks or need_branch_update)
 
     if config.merge.do_not_merge:
