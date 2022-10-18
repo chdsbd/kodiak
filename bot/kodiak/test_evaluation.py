@@ -1529,9 +1529,10 @@ async def test_mergeable_unknown_merge_blockage() -> None:
     await mergeable(api=api, pull_request=pull_request)
 
     assert api.set_status.call_count == 1
-    assert api.dequeue.call_count == 1
+    assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert "Merging blocked by GitHub" in api.set_status.calls[0]["msg"]
+    assert api.requeue.call_count == 1, "we want to retry when we hit this status"
     # verify we haven't tried to merge the PR
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
