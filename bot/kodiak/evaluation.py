@@ -1061,12 +1061,11 @@ async def mergeable(
                 merging=merging,
                 wait_for_checks=wait_for_checks,
                 need_branch_update=need_branch_update,
+                codeowner_review_required=pull_request.mergeStateStatus
+                == MergeStateStatus.BLOCKED
+                and pull_request.reviewDecision is None
+                and any(x.asCodeOwner for x in review_requests),
             )
-            if pull_request.mergeStateStatus == MergeStateStatus.BLOCKED and pull_request.reviewDecision is None and any(x.asCodeOwner for x in review_requests):
-                await block_merge(
-                    api, pull_request, "Codeowner review required."
-                )
-                return
 
             if merging:
                 # maybe we want to convert this to be a PollForever exception, but I'm not

@@ -643,14 +643,16 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     review_requests: List[PRReviewRequest] = []
     for request_dict in get_review_requests_dicts(pr=pr):
         try:
-            asCodeOwner = request_dict['asCodeOwner']
+            asCodeOwner = request_dict["asCodeOwner"]
             request = request_dict["requestedReviewer"]
             typename = request["__typename"]
             if typename in {"User", "Mannequin"}:
                 name = request["login"]
             else:
                 name = request["name"]
-            review_requests.append(PRReviewRequest(name=name, asCodeOwner=bool(asCodeOwner)))
+            review_requests.append(
+                PRReviewRequest(name=name, asCodeOwner=bool(asCodeOwner))
+            )
         except ValueError:
             logger.warning("Could not parse PRReviewRequest", exc_info=True)
     return review_requests
