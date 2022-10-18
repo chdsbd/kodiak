@@ -26,7 +26,6 @@ from kodiak.config import (
 )
 from kodiak.dependencies import dep_versions_from_pr
 from kodiak.errors import (
-    ApiCallException,
     GitHubApiInternalServerError,
     PollForever,
     RetryForSkippableChecks,
@@ -1063,13 +1062,7 @@ async def mergeable(
                 need_branch_update=need_branch_update,
             )
             if merging:
-                # maybe we want to convert this to be a PollForever exception, but I'm not
-                # confident enough that we'll always want to poll in this scenario.
-                raise ApiCallException(
-                    method="kodiak/merged_blocked_unknown_reason",
-                    http_status_code=0,
-                    response=b"",
-                )
+                raise PollForever
             if not is_active_merge:
                 await api.set_status(
                     "Retrying (Merging blocked by GitHub requirements)"
