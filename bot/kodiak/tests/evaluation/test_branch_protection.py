@@ -717,3 +717,38 @@ async def test_mergeable_uncollapsed_reviews() -> None:
     )
     assert api.set_status.call_count == 1
     assert "Merging blocked by GitHub requirements" in api.set_status.calls[0]["msg"]
+
+
+@pytest.mark.asyncio
+async def test_merge_blocked_multiple_contexts() -> None:
+    """
+    When we have a required status check of "build", if we have any context with the same
+    name that's failing, we should block merge. This matches GitHub's behavior.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    pull_request = create_pull_request()
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    branch_protection = create_branch_protection()
+    branch_protection.requiredStatusCheckContexts = ["build"]
+
+    context_go = create_context()
+    context_go.context = "build"
+    context_ts = create_context()
+    context_ts.context = "build"
+
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        branch_protection=branch_protection,
+        contexts=[context_go, context_ts],
+    )
+
+    assert api.set_status.called is True
+    assert api.queue_for_merge.called is False
+
+    assert "failing required status checks" in api.set_status.calls[0]["msg"]
+
+    assert api.dequeue.call_count == 1
+    assert api.update_branch.called is False
+    assert api.merge.called is False
