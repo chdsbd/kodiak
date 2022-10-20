@@ -552,8 +552,26 @@ class CheckConclusionState(Enum):
     TIMED_OUT = "TIMED_OUT"
 
 
+class App(BaseModel):
+    databaseId: Optional[int]
+
+
+class Workflow(BaseModel):
+    databaseId: Optional[int]
+
+
+class WorkflowRun(BaseModel):
+    workflow: Workflow
+
+
+class CheckSuite(BaseModel):
+    app: Optional[App]
+    workflowRun: Optional[WorkflowRun]
+
+
 class CheckRun(BaseModel):
     name: str
+    checkSuite: CheckSuite
     conclusion: Optional[CheckConclusionState]
 
 

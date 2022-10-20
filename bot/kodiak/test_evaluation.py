@@ -14,9 +14,11 @@ from kodiak.evaluation import mergeable as mergeable_func
 from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
+    App,
     BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
+    CheckSuite,
     Commit,
     MergeableState,
     MergeStateStatus,
@@ -36,6 +38,8 @@ from kodiak.queries import (
     Subscription,
     SubscriptionExpired,
     TrialExpired,
+    Workflow,
+    WorkflowRun,
 )
 
 log = logging.getLogger(__name__)
@@ -282,8 +286,17 @@ def create_check_run(
     *,
     name: str = "WIP (beta)",
     conclusion: CheckConclusionState = CheckConclusionState.SUCCESS,
+    app_id: Optional[int] = None,
+    workflow_id: Optional[int] = None,
 ) -> CheckRun:
-    return CheckRun(name=name, conclusion=conclusion)
+    return CheckRun(
+        name=name,
+        conclusion=conclusion,
+        checkSuite=CheckSuite(
+            app=App(databaseId=app_id),
+            workflowRun=WorkflowRun(workflow=Workflow(databaseId=workflow_id)),
+        ),
+    )
 
 
 def create_review_request() -> PRReviewRequest:

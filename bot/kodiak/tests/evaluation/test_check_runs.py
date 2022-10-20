@@ -582,7 +582,11 @@ async def test_duplicate_check_suites() -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BEHIND
     branch_protection = create_branch_protection()
     branch_protection.requiresStatusChecks = True
-    branch_protection.requiredStatusCheckContexts = ["Pre-merge checks"]
+    branch_protection.requiredStatusCheckContexts = [
+        "Pre-merge checks",
+        "build",
+        "circleci-test",
+    ]
     mergeable = create_mergeable()
     await mergeable(
         api=api,
@@ -590,18 +594,54 @@ async def test_duplicate_check_suites() -> None:
         branch_protection=branch_protection,
         check_runs=[
             create_check_run(
-                name="Pre-merge checks", conclusion=CheckConclusionState.NEUTRAL
+                name="Pre-merge checks",
+                conclusion=CheckConclusionState.NEUTRAL,
+                app_id=1000,
+                workflow_id=8888,
             ),
             create_check_run(
-                name="Pre-merge checks", conclusion=CheckConclusionState.FAILURE
+                name="Pre-merge checks",
+                conclusion=CheckConclusionState.FAILURE,
+                app_id=1000,
+                workflow_id=8888,
             ),
             create_check_run(
-                name="Pre-merge checks", conclusion=CheckConclusionState.SUCCESS
+                name="Pre-merge checks",
+                conclusion=CheckConclusionState.SUCCESS,
+                app_id=1000,
+                workflow_id=8888,
+            ),
+            create_check_run(
+                name="build",
+                conclusion=CheckConclusionState.FAILURE,
+                app_id=1000,
+                workflow_id=2222,
+            ),
+            create_check_run(
+                name="build",
+                conclusion=CheckConclusionState.SUCCESS,
+                app_id=1000,
+                workflow_id=33333,
+            ),
+            create_check_run(
+                name="build",
+                conclusion=CheckConclusionState.SUCCESS,
+                app_id=1000,
+                workflow_id=444444,
+            ),
+            create_check_run(
+                name="circleci-test",
+                conclusion=CheckConclusionState.FAILURE,
+                app_id=1000,
+                workflow_id=None,
             ),
         ],
     )
-    assert "enqueued for merge" in api.set_status.calls[0]["msg"]
-    assert api.queue_for_merge.call_count == 1
+    assert "required status checks" in api.set_status.calls[0]["msg"]
+    assert "build" in api.set_status.calls[0]["msg"]
+    assert "circleci-test" in api.set_status.calls[0]["msg"]
+    assert "Pre-merge" not in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.call_count == 0
 
 
 @pytest.mark.asyncio
