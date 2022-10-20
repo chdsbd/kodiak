@@ -270,6 +270,16 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
                 checkRuns(first: 100) {
                   nodes {
                     name
+                    checkSuite {
+                        app {
+                            databaseId
+                        }
+                        workflowRun {
+                            workflow {
+                                databaseId
+                            }
+                        }
+                    }
                     conclusion
                   }
                 }
