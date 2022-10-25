@@ -136,24 +136,26 @@ async def evaluate_pr(
                 log.info("polling")
                 await asyncio.sleep(POLL_RATE_SECONDS)
                 continue
-            except ApiCallException as e:
-                # if we have some api exception, it's likely a temporary error that
-                # can be resolved by calling GitHub again.
-                if api_call_retries_remaining:
-                    api_call_errors.append(
-                        APICallError(
-                            api_name=e.method,
-                            http_status=str(e.status_code),
-                            response_body=str(e.response),
-                        )
+            return
+        except ApiCallException as e:
+            # if we have some api exception, it's likely a temporary error that
+            # can be resolved by calling GitHub again.
+            if api_call_retries_remaining:
+                api_call_errors.append(
+                    APICallError(
+                        api_name=e.method,
+                        http_status=str(e.status_code),
+                        response_body=str(e.response),
                     )
-                    api_call_retries_remaining -= 1
-                    log.info("problem contacting remote api. retrying")
-                    continue
-                log.warning("api_call_retries_remaining", exc_info=True)
+                )
+                api_call_retries_remaining -= 1
+                log.info("problem contacting remote api. retrying")
+                continue
+            log.warning("api_call_retries_remaining", exc_info=True)
             return
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
+            # We're in a while loop, so we won't loose our spot if we're merging.
             log.warning("mergeable_timeout", exc_info=True)
             await requeue_callback()
 

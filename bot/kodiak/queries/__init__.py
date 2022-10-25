@@ -17,6 +17,7 @@ from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import ApiCallException
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
@@ -858,7 +859,7 @@ class Client:
         query: str,
         variables: Mapping[str, Union[str, int, None]],
         installation_id: str,
-    ) -> Optional[GraphQLResponse]:
+    ) -> GraphQLResponse:
         log = self.log
 
         token = await get_token_for_install(
@@ -877,7 +878,11 @@ class Client:
             res.raise_for_status()
         except http.HTTPError:
             log.warning("github api request error", res=res, exc_info=True)
-            return None
+            raise ApiCallException(
+                method="github/graphql",
+                http_status_code=res.status_code,
+                response=res.content,
+            )
         return cast(GraphQLResponse, res.json())
 
     async def get_api_features(self) -> ApiFeatures | None:
@@ -907,9 +912,6 @@ query {
             variables=dict(),
             installation_id=self.installation_id,
         )
-        if res is None:
-            self.log.warning("failed to fetching api features")
-            return None
         errors = res.get("errors")
         data = res.get("data")
         if errors or not data:
@@ -977,8 +979,6 @@ query {
             ),
             installation_id=self.installation_id,
         )
-        if res is None:
-            return None
         data = res.get("data")
         if data is None:
             self.log.error("could not fetch default branch name", res=res)
@@ -1029,8 +1029,6 @@ query {
             variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
             installation_id=self.installation_id,
         )
-        if res is None:
-            return None
 
         data = res.get("data")
         if data is None:
