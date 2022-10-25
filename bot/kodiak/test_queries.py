@@ -8,11 +8,11 @@ from typing import Any, Dict, Iterable, Iterator, cast
 
 import asyncio_redis
 import pytest
-from httpx import Request, Response
 from pytest_mock import MockFixture
 
 from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
+from kodiak.http import Request, Response
 from kodiak.queries import (
     BranchProtectionRule,
     CheckConclusionState,
