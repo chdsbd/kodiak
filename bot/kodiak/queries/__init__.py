@@ -643,6 +643,8 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     for request_dict in get_review_requests_dicts(pr=pr):
         try:
             request = request_dict["requestedReviewer"]
+            if request is None:
+                continue
             typename = request["__typename"]
             if typename in {"User", "Mannequin"}:
                 name = request["login"]
