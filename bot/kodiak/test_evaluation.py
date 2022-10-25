@@ -1538,7 +1538,6 @@ async def test_mergeable_unknown_merge_blockage() -> None:
     assert api.queue_for_merge.called is False
 
 
-
 @pytest.mark.asyncio
 async def test_mergeable_unknown_merge_blockage_code_owner() -> None:
     """
@@ -1550,12 +1549,16 @@ async def test_mergeable_unknown_merge_blockage_code_owner() -> None:
     pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
     pull_request.reviewDecision = None
 
-    await mergeable(api=api, pull_request=pull_request,review_requests=[PRReviewRequest(name="chdsbd", asCodeOwner=True)])
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        review_requests=[PRReviewRequest(name="chdsbd", asCodeOwner=True)],
+    )
 
     assert api.set_status.call_count == 1
     assert "Codeowner review required" in api.set_status.calls[0]["msg"]
     assert api.dequeue.call_count == 1
-    
+
     assert api.update_branch.called is False
     assert api.requeue.called is False
     assert api.merge.called is False
