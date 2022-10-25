@@ -13,6 +13,7 @@ if sys.version_info < (3, 8):
         fut.set_result(x)
         return fut
 
+
 else:
 
     def wrap_future(x: T) -> "T":

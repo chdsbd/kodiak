@@ -21,7 +21,6 @@ import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
-from httpx import AsyncClient
 from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -107,7 +106,7 @@ query ($login: String!) {
 """
 
 
-async def get_login_for_install(*, http: AsyncClient, installation_id: str) -> str:
+async def get_login_for_install(*, http: HttpClient, installation_id: str) -> str:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )

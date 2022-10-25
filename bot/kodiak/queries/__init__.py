@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
-import httpx as http
 import jwt
 import pydantic
 import structlog
@@ -16,6 +15,7 @@ from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
+from kodiak import http
 from kodiak.config import V1, MergeMethod
 from kodiak.http import HttpClient
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
