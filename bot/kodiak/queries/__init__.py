@@ -21,6 +21,7 @@ from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
 from kodiak.throttle import get_thottler_for_installation
+from kodiak.http import HttpClient
 
 logger = structlog.get_logger()
 
@@ -823,7 +824,7 @@ class Client:
         self.installation_id = installation_id
         # NOTE: We must call `await session.close()` when we are finished with our session.
         # We implement an async context manager this handle this.
-        self.session = http.AsyncClient(
+        self.session = HttpClient(
             # infinite timeout to match behavior of old, requests_async http
             # client. As a backup we have an asyncio timeout of 30 seconds.
             timeout=None

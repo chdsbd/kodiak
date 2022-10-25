@@ -30,6 +30,7 @@ from kodiak import redis_client
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
+from kodiak.http import HttpClient
 
 sentry_sdk.init()
 
@@ -124,7 +125,7 @@ async def get_login_for_install(*, http: AsyncClient, installation_id: str) -> s
 async def refresh_pull_requests_for_installation(
     *, installation_id: str, redis: RedisConnection
 ) -> None:
-    async with AsyncClient() as http:
+    async with HttpClient() as http:
         login = await get_login_for_install(http=http, installation_id=installation_id)
         token = await get_token_for_install(
             session=http, installation_id=installation_id
