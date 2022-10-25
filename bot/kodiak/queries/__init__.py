@@ -17,11 +17,11 @@ from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
 from kodiak.config import V1, MergeMethod
+from kodiak.http import HttpClient
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
 from kodiak.throttle import get_thottler_for_installation
-from kodiak.http import HttpClient
 
 logger = structlog.get_logger()
 

@@ -27,10 +27,10 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
 from kodiak import redis_client
+from kodiak.http import HttpClient
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
-from kodiak.http import HttpClient
 
 sentry_sdk.init()
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
+
 import ssl
 
 from httpx import AsyncClient
-from httpx._types import (
-    TimeoutTypes,
-)
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
+from httpx._types import TimeoutTypes
 
 # NOTE: this has a cost to create so we may want to set this lazily on the first HttpClient creation
 context = ssl.create_default_context()

@@ -3,11 +3,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import click
-from kodiak.http import HttpClient
 import requests
 
 from kodiak import app_config as conf
 from kodiak.config import V1
+from kodiak.http import HttpClient
 from kodiak.queries import generate_jwt, get_token_for_install
 
 
