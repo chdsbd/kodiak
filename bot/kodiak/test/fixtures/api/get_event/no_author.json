@@ -57,24 +57,28 @@
         "reviewRequests": {
           "nodes": [
             {
+              "asCodeOwner": false,
               "requestedReviewer": {
                 "__typename": "User",
                 "login": "ghost"
               }
             },
             {
+              "asCodeOwner": false,
               "requestedReviewer": {
                 "__typename": "Team",
                 "name": "ghost-team"
               }
             },
             {
+              "asCodeOwner": false,
               "requestedReviewer": {
                 "__typename": "Mannequin",
                 "login": "ghost-mannequin"
               }
             },
             {
+              "asCodeOwner": false,
               "requestedReviewer": null
             }
           ]

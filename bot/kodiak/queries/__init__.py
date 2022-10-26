@@ -205,6 +205,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       isCrossRepository
       reviewRequests(first: 100) {
         nodes {
+          asCodeOwner
           requestedReviewer {
             __typename
             ... on User {
@@ -527,6 +528,7 @@ class PRReview:
 @dataclass
 class PRReviewRequest:
     name: str
+    asCodeOwner: bool = False
 
 
 class StatusState(Enum):
@@ -642,6 +644,7 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     review_requests: List[PRReviewRequest] = []
     for request_dict in get_review_requests_dicts(pr=pr):
         try:
+            asCodeOwner = request_dict["asCodeOwner"]
             request = request_dict["requestedReviewer"]
             if request is None:
                 continue
@@ -650,7 +653,9 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
                 name = request["login"]
             else:
                 name = request["name"]
-            review_requests.append(PRReviewRequest(name=name))
+            review_requests.append(
+                PRReviewRequest(name=name, asCodeOwner=bool(asCodeOwner))
+            )
         except ValueError:
             logger.warning("Could not parse PRReviewRequest", exc_info=True)
     return review_requests

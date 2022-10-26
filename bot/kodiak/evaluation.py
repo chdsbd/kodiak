@@ -1056,12 +1056,19 @@ async def mergeable(
         #
         # We trigger an ApiCallException to trigger the retry handling. Usually
         if not (wait_for_checks or need_branch_update):
+            codeowner_review_required = (
+                pull_request.mergeStateStatus == MergeStateStatus.BLOCKED
+                and pull_request.reviewDecision is None
+                and any(x.asCodeOwner for x in review_requests)
+            )
             log.info(
                 "merge blocked for unknown reason",
                 merging=merging,
                 wait_for_checks=wait_for_checks,
                 need_branch_update=need_branch_update,
+                codeowner_review_required=codeowner_review_required,
             )
+
             if merging:
                 # maybe we want to convert this to be a PollForever exception, but I'm not
                 # confident enough that we'll always want to poll in this scenario.

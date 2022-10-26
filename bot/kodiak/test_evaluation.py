@@ -1538,6 +1538,49 @@ async def test_mergeable_unknown_merge_blockage() -> None:
     assert api.queue_for_merge.called is False
 
 
+@pytest.mark.xfail
+@pytest.mark.asyncio
+async def test_mergeable_unknown_merge_blockage_code_owner() -> None:
+    mergeable = create_mergeable()
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.mergeStateStatus = MergeStateStatus.BLOCKED
+    pull_request.reviewDecision = None
+
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        review_requests=[PRReviewRequest(name="chdsbd", asCodeOwner=True)],
+    )
+
+    assert api.set_status.call_count == 1
+    assert "Codeowner review required" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+
+    assert api.update_branch.called is False
+    assert api.requeue.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+@pytest.mark.asyncio
+async def test_mergeable_unknown_merge_blockage_code_owner_approval() -> None:
+    mergeable = create_mergeable()
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.mergeStateStatus = MergeStateStatus.CLEAN
+    pull_request.reviewDecision = None
+
+    await mergeable(
+        api=api,
+        pull_request=pull_request,
+        review_requests=[PRReviewRequest(name="sbdchd", asCodeOwner=True)],
+    )
+
+    assert api.queue_for_merge.called is True
+    assert api.dequeue.call_count == 0
+
+
 @pytest.mark.asyncio
 async def test_mergeable_prioritize_ready_to_merge() -> None:
     """
