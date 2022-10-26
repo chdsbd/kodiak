@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Type, cast
 
-import httpx as requests
 import pytest
-from httpx import Request
 from typing_extensions import Protocol
 
+import kodiak.http as requests
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.errors import ApiCallException
+from kodiak.http import Request
 from kodiak.pull_request import PRV2, EventInfoResponse, QueueForMergeCallback
 from kodiak.queries import (
     BranchProtectionRule,

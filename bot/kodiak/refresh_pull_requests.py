@@ -21,12 +21,12 @@ import sentry_sdk
 import structlog
 from asyncio_redis.connection import Connection as RedisConnection
 from asyncio_redis.replies import BlockingPopReply
-from httpx import AsyncClient
 from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
 from kodiak import redis_client
+from kodiak.http import HttpClient
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent
@@ -106,7 +106,7 @@ query ($login: String!) {
 """
 
 
-async def get_login_for_install(*, http: AsyncClient, installation_id: str) -> str:
+async def get_login_for_install(*, http: HttpClient, installation_id: str) -> str:
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
@@ -124,7 +124,7 @@ async def get_login_for_install(*, http: AsyncClient, installation_id: str) -> s
 async def refresh_pull_requests_for_installation(
     *, installation_id: str, redis: RedisConnection
 ) -> None:
-    async with AsyncClient() as http:
+    async with HttpClient() as http:
         login = await get_login_for_install(http=http, installation_id=installation_id)
         token = await get_token_for_install(
             session=http, installation_id=installation_id

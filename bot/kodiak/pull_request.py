@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable, List, Optional, Type
 
 import structlog
-from httpx import HTTPStatusError as HTTPError
 from typing_extensions import Protocol
 
 import kodiak.app_config as conf
@@ -16,6 +15,7 @@ from kodiak.errors import (
     RetryForSkippableChecks,
 )
 from kodiak.evaluation import mergeable
+from kodiak.http import HTTPStatusError as HTTPError
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()

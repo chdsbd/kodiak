@@ -76,6 +76,9 @@
                 "__typename": "Mannequin",
                 "login": "ghost-mannequin"
               }
+            },
+            {
+              "requestedReviewer": null
             }
           ]
         },
