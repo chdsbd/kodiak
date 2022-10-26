@@ -78,6 +78,7 @@
               }
             },
             {
+              "asCodeOwner": false,
               "requestedReviewer": null
             }
           ]
