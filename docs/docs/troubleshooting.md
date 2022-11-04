@@ -17,6 +17,12 @@ Verify you have granted Kodiak access to that repository for your installation.
 1. Visit https://github.com/settings/installations and click "Configure" on your kodiakhq installation
 2. Verify you have granted repository access to "All repositories" or have selected your specific repository if you chose "Only select repositories"
 
+### Kodiak isn't working on any of my repositories
+
+If all else fails, you can reinstall the Kodiak GitHub App. After reinstalling, follow the "workarounds" section above to trigger Kodiak to evaluate your exiting pull requests.
+
+If you need to do this, please also contact support@github.com as this is likely a bug.
+
 ## Known issues
 
 ### Branch protection requirement
