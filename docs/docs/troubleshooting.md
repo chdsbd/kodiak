@@ -21,7 +21,7 @@ Verify you have granted Kodiak access to that repository for your installation.
 
 If all else fails, you can reinstall the Kodiak GitHub App. After reinstalling, follow the "workarounds" section above to trigger Kodiak to evaluate your exiting pull requests.
 
-If you need to do this, please also contact support@github.com.
+If you need to do this, please also contact support@github.com as this is likely a bug.
 
 ## Known issues
 
