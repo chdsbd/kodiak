@@ -48,6 +48,8 @@ def get_ingest_queue(installation_id: int) -> str:
 
 RETRY_RATE_SECONDS = 2
 
+MAX_HEARTBEAT_THRESHOLD = 60 * 5  # 5 mins
+
 
 def installation_id_from_queue(queue_name: str) -> str:
     """
@@ -479,8 +481,9 @@ class RedisWebhookQueue:
 
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
-            str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
+            str, tuple[Task[NoReturn], Literal["repo", "webhook"], str]
         ] = {}  # type: ignore [assignment]
+        self.worker_task_heatbeats: MutableMapping[str, int] = {}
 
     async def create(self) -> None:
         redis_db = 0
@@ -536,8 +539,14 @@ class RedisWebhookQueue:
         log = logger.bind(queue_name=key, kind=kind)
         worker_task_result = self.worker_tasks.get(key)
         if worker_task_result is not None:
-            worker_task, _task_kind = worker_task_result
+            worker_task, _task_kind, task_id = worker_task_result
+            last_heartbeat = self.worker_task_heatbeats[task_id]
+            if time.monotonic() - last_heartbeat > MAX_HEARTBEAT_THRESHOLD:
+                log.info("worker task stale heartbeat")
+                worker_task.cancel()
             if not worker_task.done():
+                # 4. then we get here
+                log.info("worker task already running")
                 return
             log.info("task failed")
             # task failed. record result and restart
@@ -546,7 +555,8 @@ class RedisWebhookQueue:
             sentry_sdk.capture_exception(exception)
         log.info("creating task for queue")
         # create new task for queue
-        self.worker_tasks[key] = (asyncio.create_task(fut), kind)
+        # TODO: before merge fix this
+        self.worker_tasks[key] = (asyncio.create_task(fut), kind, "TODO-id")
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
         """
