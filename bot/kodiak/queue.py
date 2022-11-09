@@ -554,7 +554,6 @@ class RedisWebhookQueue:
             sentry_sdk.capture_exception(exception)
         log.info("creating task for queue")
         # create new task for queue
-        # TODO: before merge fix this
         self.worker_tasks[key] = (asyncio.create_task(fut), kind)
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
