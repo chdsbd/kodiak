@@ -481,7 +481,7 @@ class RedisWebhookQueue:
 
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
-            str, tuple[Task[NoReturn], Literal["repo", "webhook"], str]
+            str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
         ] = {}  # type: ignore [assignment]
         self.worker_task_heatbeats: MutableMapping[str, int] = {}
 
@@ -539,13 +539,12 @@ class RedisWebhookQueue:
         log = logger.bind(queue_name=key, kind=kind)
         worker_task_result = self.worker_tasks.get(key)
         if worker_task_result is not None:
-            worker_task, _task_kind, task_id = worker_task_result
-            last_heartbeat = self.worker_task_heatbeats[task_id]
+            worker_task, _task_kind = worker_task_result
+            last_heartbeat = self.worker_task_heatbeats[key]
             if time.monotonic() - last_heartbeat > MAX_HEARTBEAT_THRESHOLD:
                 log.info("worker task stale heartbeat")
                 worker_task.cancel()
             if not worker_task.done():
-                # 4. then we get here
                 log.info("worker task already running")
                 return
             log.info("task failed")
@@ -556,7 +555,7 @@ class RedisWebhookQueue:
         log.info("creating task for queue")
         # create new task for queue
         # TODO: before merge fix this
-        self.worker_tasks[key] = (asyncio.create_task(fut), kind, "TODO-id")
+        self.worker_tasks[key] = (asyncio.create_task(fut), kind)
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
         """
