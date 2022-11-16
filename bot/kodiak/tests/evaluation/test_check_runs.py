@@ -18,7 +18,6 @@ from kodiak.test_evaluation import (
 )
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_requires_status_checks_failing_status_context() -> None:
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
@@ -55,7 +54,6 @@ async def test_mergeable_missing_requires_status_checks_failing_status_context()
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_requires_status_checks_failing_check_run() -> None:
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
@@ -103,7 +101,6 @@ async def test_mergeable_missing_requires_status_checks_failing_check_run() -> N
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_travis_ci_checks() -> None:
     """
     GitHub has some weird, _undocumented_ logic for continuous-integration/travis-ci where "continuous-integration/travis-ci/{pr,push}" become "continuous-integration/travis-ci" in requiredStatusChecks.
@@ -140,7 +137,6 @@ async def test_mergeable_travis_ci_checks() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_travis_ci_checks_success() -> None:
     """
     If continuous-integration/travis-ci/pr passes we shouldn't say we're waiting for continuous-integration/travis-ci.
@@ -182,7 +178,6 @@ async def test_mergeable_travis_ci_checks_success() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_skippable_contexts_with_status_check() -> None:
     """
     If a skippable check hasn't finished, we shouldn't do anything.
@@ -225,7 +220,6 @@ async def test_mergeable_skippable_contexts_with_status_check() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_skippable_contexts_with_check_run() -> None:
     """
     If a skippable check hasn't finished, we shouldn't do anything.
@@ -268,7 +262,6 @@ async def test_mergeable_skippable_contexts_with_check_run() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_skippable_contexts_passing() -> None:
     """
     If a skippable check is passing we should queue the PR for merging
@@ -308,7 +301,6 @@ async def test_mergeable_skippable_contexts_passing() -> None:
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_skippable_contexts_merging_pull_request() -> None:
     """
     If a skippable check hasn't finished but we're merging, we need to raise an exception to retry for a short period of time to allow the check to finish. We won't retry forever because skippable checks will likely never finish.
@@ -353,7 +345,6 @@ async def test_mergeable_skippable_contexts_merging_pull_request() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_skippable_check_timeout() -> None:
     """
     we wait for skippable checks when merging because it takes time for check statuses to be sent and acknowledged by GitHub. We time out after some time because skippable checks are likely to never complete. In this case we want to notify the user of this via status check.
@@ -397,7 +388,6 @@ async def test_mergeable_skippable_check_timeout() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_always() -> None:
     """
     Kodiak should update PR even when failing requirements for merge
@@ -435,7 +425,6 @@ async def test_mergeable_update_always() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_autoupdate_label() -> None:
     """
     Kodiak should update the PR when the autoupdate_label is set on the PR.
@@ -489,7 +478,6 @@ async def test_mergeable_update_autoupdate_label() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_always_require_automerge_label_missing_label() -> None:
     """
     Kodiak should not update branch if update.require_automerge_label is True and we're missing the automerge label.
@@ -529,7 +517,6 @@ async def test_mergeable_update_always_require_automerge_label_missing_label() -
     assert api.merge.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_always_no_require_automerge_label_missing_label() -> None:
     """
     Kodiak should update branch if update.require_automerge_label is True and we're missing the automerge label.
@@ -569,7 +556,6 @@ async def test_mergeable_update_always_no_require_automerge_label_missing_label(
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_duplicate_check_suites() -> None:
     """
     Kodiak should only consider the most recent check run when evaluating a PR
@@ -604,7 +590,6 @@ async def test_duplicate_check_suites() -> None:
     assert api.queue_for_merge.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_neutral_required_check_runs() -> None:
     """
     When merge.block_on_neutral_required_check_runs is enabled, we should block

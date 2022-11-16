@@ -1,10 +1,7 @@
-import pytest
-
 from kodiak.config import MergeMethod
 from kodiak.test_evaluation import create_api, create_config, create_mergeable
 
 
-@pytest.mark.asyncio
 async def test_rebase_merge_fast_forward() -> None:
     """
     Happy case.

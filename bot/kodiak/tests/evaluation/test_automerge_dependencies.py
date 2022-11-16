@@ -10,7 +10,6 @@ from kodiak.test_evaluation import (
 from kodiak.tests.dependencies.test_dependencies import FakePR, generate_test_cases
 
 
-@pytest.mark.asyncio
 async def test_merge_okay() -> None:
     """
     Happy case.
@@ -35,7 +34,6 @@ async def test_merge_okay() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_merge_mismatch_username() -> None:
     """
     We should only merge the pull request if the userrname is specified within
@@ -57,7 +55,6 @@ async def test_merge_mismatch_username() -> None:
     assert api.dequeue.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_merge_no_version_found() -> None:
     """
     If we can't find a version from the PR title, we shouldn't merge.
@@ -81,7 +78,6 @@ async def test_merge_no_version_found() -> None:
         assert api.dequeue.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_merge_disallowed_version() -> None:
     """
     We should only auto merge if the upgrade type is specified in "versions".
@@ -104,7 +100,6 @@ async def test_merge_disallowed_version() -> None:
     assert api.dequeue.call_count == 1
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("pr,update_type", generate_test_cases())
 async def test_merge_renovate(pr: FakePR, update_type: MatchType) -> None:
     mergeable = create_mergeable()

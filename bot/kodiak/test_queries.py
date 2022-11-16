@@ -62,7 +62,6 @@ def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
     return client
 
 
-@pytest.mark.asyncio
 async def test_get_config_for_ref_error(
     api_client: Client, mocker: MockFixture
 ) -> None:
@@ -79,7 +78,6 @@ async def test_get_config_for_ref_error(
     assert res is None
 
 
-@pytest.mark.asyncio
 async def test_get_config_for_ref_dot_github(
     api_client: Client, mocker: MockFixture
 ) -> None:
@@ -239,7 +237,6 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture  # type: ignore
-@pytest.mark.asyncio
 async def setup_redis(github_installation_id: str) -> None:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
@@ -277,7 +274,6 @@ EXPECTED_ERRORS = [
 
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @requires_redis
-@pytest.mark.asyncio
 async def test_get_event_info_blocked(
     api_client: Client,
     blocked_response: Dict[str, Any],
@@ -308,7 +304,6 @@ async def test_get_event_info_blocked(
 
 
 @requires_redis
-@pytest.mark.asyncio
 async def test_get_event_info_no_author(
     api_client: Client,
     mocker: MockFixture,
@@ -350,7 +345,6 @@ async def test_get_event_info_no_author(
     ] == EXPECTED_ERRORS
 
 
-@pytest.mark.asyncio
 async def test_get_event_info_no_latest_sha(
     api_client: Client,
     mocker: MockFixture,
@@ -455,7 +449,6 @@ def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
     return FakeRedis
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_missing_blocker(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -477,7 +470,6 @@ async def test_get_subscription_missing_blocker(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_missing_blocker_and_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -499,7 +491,6 @@ async def test_get_subscription_missing_blocker_and_data(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_missing_blocker_fully(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -514,7 +505,6 @@ async def test_get_subscription_missing_blocker_fully(
     assert res is None
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -538,7 +528,6 @@ async def test_get_subscription_seats_exceeded(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded_no_seats(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -561,7 +550,6 @@ async def test_get_subscription_seats_exceeded_no_seats(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded_missing_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -585,7 +573,6 @@ async def test_get_subscription_seats_exceeded_missing_data(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded_invalid_data(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -609,7 +596,6 @@ async def test_get_subscription_seats_exceeded_invalid_data(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_seats_exceeded_invalid_kind(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -634,7 +620,6 @@ async def test_get_subscription_seats_exceeded_invalid_kind(
     )
 
 
-@pytest.mark.asyncio
 async def test_get_subscription_unknown_blocker(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
@@ -842,7 +827,6 @@ def generate_page_of_prs(numbers: Iterable[int]) -> Response:
     )
 
 
-@pytest.mark.asyncio
 async def test_get_open_pull_requests(
     mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
 ) -> None:
@@ -867,7 +851,6 @@ async def test_get_open_pull_requests(
     assert patched_session_get.call_count == 4
 
 
-@pytest.mark.asyncio
 async def test_get_open_pull_requests_page_limit(
     mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
 ) -> None:

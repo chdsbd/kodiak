@@ -7,8 +7,6 @@ Tested configuration options:
 - merge.message.include_pull_request_author
 """
 
-import pytest
-
 from kodiak.config import V1, Merge, MergeBodyStyle, MergeMessage, MergeMethod
 from kodiak.evaluation import MergeBody, get_merge_body
 from kodiak.test_evaluation import (
@@ -328,7 +326,6 @@ def test_get_merge_body_include_coauthors_invalid_body_style() -> None:
     assert actual == expected
 
 
-@pytest.mark.asyncio
 async def test_mergeable_include_coauthors() -> None:
     """
     Include coauthors should attach coauthor when `merge.message.body = "pull_request_body"`

@@ -23,7 +23,6 @@ from kodiak.test_evaluation import (
 )
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_push_allowance() -> None:
     """
     We should warn when user is missing a push allowance with restrictsPushes
@@ -47,7 +46,6 @@ async def test_mergeable_missing_push_allowance() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_push_allowance_correct() -> None:
     """
     When restrictsPushes is enabled, but Kodiak is added as a push allowance, we
@@ -69,7 +67,6 @@ async def test_mergeable_missing_push_allowance_correct() -> None:
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_push_allowance_correct_null_database_id() -> None:
     """
     Verify we can handle a null databaseId for the PushAllowanceActor
@@ -92,7 +89,6 @@ async def test_mergeable_missing_push_allowance_correct_null_database_id() -> No
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
     """
     When merge.do_not_merge is enabled, we should ignore any issues with restrictPushes because Kodiak isn't pushing.
@@ -116,7 +112,6 @@ async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_requires_commit_signatures_rebase() -> None:
     """
     requiresCommitSignatures doesn't work with Kodiak when rebase is configured
@@ -149,7 +144,6 @@ async def test_mergeable_requires_commit_signatures_rebase() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
     """
     requiresCommitSignatures works with merge commits and squash
@@ -180,7 +174,6 @@ async def test_mergeable_requires_commit_signatures_squash_and_merge() -> None:
         assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_required_review() -> None:
     """
     Don't merge when a review is required.
@@ -209,7 +202,6 @@ async def test_mergeable_missing_required_review() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_changes_requested() -> None:
     """
     Don't merge when a changes requested.
@@ -235,7 +227,6 @@ async def test_mergeable_missing_changes_requested() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_branch_immediately() -> None:
     """
     update branch immediately if configured
@@ -267,7 +258,6 @@ async def test_mergeable_update_branch_immediately() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_branch_immediately_mode_merging() -> None:
     """
     update branch immediately if configured. When we are merging we should raise the PollForever exception to keep the merge loop going instead of returning.
@@ -301,7 +291,6 @@ async def test_mergeable_update_branch_immediately_mode_merging() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_optimistic_update_need_branch_update() -> None:
     """
     prioritize branch update over waiting for checks when merging if merge.optimistic_updates enabled.
@@ -340,7 +329,6 @@ async def test_mergeable_optimistic_update_need_branch_update() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_need_branch_update() -> None:
     """
     prioritize waiting for checks over branch updates when merging if merge.optimistic_updates is disabled.
@@ -382,7 +370,6 @@ async def test_mergeable_need_branch_update() -> None:
     assert api.update_branch.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_queue_in_progress() -> None:
     """
     If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
@@ -419,7 +406,6 @@ async def test_mergeable_queue_in_progress() -> None:
     assert api.update_branch.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_queue_in_progress_with_ready_to_merge() -> None:
     """
     If a PR has pending status checks or is behind, we still consider it eligible for merge and throw it in the merge queue.
@@ -463,7 +449,6 @@ async def test_mergeable_queue_in_progress_with_ready_to_merge() -> None:
     assert api.update_branch.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_optimistic_update_wait_for_checks() -> None:
     """
     test merge.optimistic_updates when we don't need a branch update. Since merge.optimistic_updates is enabled we should wait_for_checks
@@ -506,7 +491,6 @@ async def test_mergeable_optimistic_update_wait_for_checks() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_wait_for_checks() -> None:
     """
     test merge.optimistic_updates when we don't have checks to wait for. Since merge.optimistic_updates is disabled we should update the branch.
@@ -538,7 +522,6 @@ async def test_mergeable_wait_for_checks() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for_checks() -> None:
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
@@ -577,7 +560,6 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_username_blacklist() -> None:
     """
     Kodiak should not update PR if user is blacklisted.
@@ -627,7 +609,6 @@ async def test_mergeable_update_username_blacklist() -> None:
             assert api.merge.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_update_always_enabled_merging_behind_pull_request() -> None:
     """
     When we're merging with update.always enabled we don't want to update the
@@ -662,7 +643,6 @@ async def test_mergeable_update_always_enabled_merging_behind_pull_request() -> 
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_requires_conversation_resolution() -> None:
     """
     When requiresConversationResolution is enabled and we have unresolved review
@@ -691,7 +671,6 @@ async def test_mergeable_requires_conversation_resolution() -> None:
     assert "cannot merge (unresolved conversations)" in api.set_status.calls[0]["msg"]
 
 
-@pytest.mark.asyncio
 async def test_mergeable_uncollapsed_reviews() -> None:
     """
     We should only block merge for unresolved review threads if
