@@ -237,7 +237,6 @@ def create_prv2(
     )
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_merge() -> None:
     """
     We should be able to merge successfully
@@ -257,7 +256,6 @@ async def test_pr_v2_merge() -> None:
     assert client.merge_pull_request.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_merge_rebase_error() -> None:
     """
     We should raise ApiCallException when we get a bad API response.
@@ -279,7 +277,6 @@ async def test_pr_v2_merge_rebase_error() -> None:
     assert b"merge-a-pull-request-merge-button" in e.value.response
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_merge_service_unavailable() -> None:
     """
     We should raise ApiCallException when we get a bad API response.
@@ -300,7 +297,6 @@ async def test_pr_v2_merge_service_unavailable() -> None:
     assert b"Service Unavailable" in e.value.response
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_update_branch_ok() -> None:
     """
     We should be able to update a branch.
@@ -313,7 +309,6 @@ async def test_pr_v2_update_branch_ok() -> None:
     assert client.update_branch.calls[0]["pull_number"] == pr_v2.number
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_update_branch_service_unavailable() -> None:
     """
     We should raise ApiCallException when we get a bad API response.
@@ -332,7 +327,6 @@ async def test_pr_v2_update_branch_service_unavailable() -> None:
     assert b"Service Unavailable" in e.value.response
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_add_label_ok() -> None:
     """
     We should be able to add a label.
@@ -345,7 +339,6 @@ async def test_pr_v2_add_label_ok() -> None:
     assert client.add_label.calls[0]["label"] == "some-label-to-delete"
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_add_label_service_unavailable() -> None:
     """
     We should raise ApiCallException when we get a bad API response.
@@ -364,7 +357,6 @@ async def test_pr_v2_add_label_service_unavailable() -> None:
     assert b"Service Unavailable" in e.value.response
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_remove_label_ok() -> None:
     """
     Check that remove_label works when
@@ -377,7 +369,6 @@ async def test_pr_v2_remove_label_ok() -> None:
     assert client.delete_label.calls[0]["label"] == "some-label-to-delete"
 
 
-@pytest.mark.asyncio
 async def test_pr_v2_remove_label_service_unavailable() -> None:
     """
     We should raise ApiCallException when we get a bad API response.
@@ -396,7 +387,6 @@ async def test_pr_v2_remove_label_service_unavailable() -> None:
     assert b"Service Unavailable" in e.value.response
 
 
-@pytest.mark.asyncio
 async def test_update_ref_ok() -> None:
     """
     Check that update_ref works
@@ -411,7 +401,6 @@ async def test_update_ref_ok() -> None:
     )
 
 
-@pytest.mark.asyncio
 async def test_update_ref_service_unavailable() -> None:
     """
     We should raise ApiCallException when we get a bad API response.

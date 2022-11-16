@@ -207,7 +207,6 @@ class MockPrApi:
         return False
 
 
-@pytest.mark.asyncio
 async def test_mock_pr_api() -> None:
     api = MockPrApi()
     await api.dequeue()
@@ -403,7 +402,6 @@ def create_mergeable() -> MergeableType:
     return mergeable
 
 
-@pytest.mark.asyncio
 async def test_mergeable_abort_is_active_merge() -> None:
     """
     If we set is_active_merge, that means that in the merge queue the current PR
@@ -423,7 +421,6 @@ async def test_mergeable_abort_is_active_merge() -> None:
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_config_error_sets_warning() -> None:
     """
     If we have a problem finding or parsing a configuration error we should set
@@ -446,7 +443,6 @@ async def test_mergeable_config_error_sets_warning() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_different_app_id() -> None:
     """
     If our app id doesn't match the one in the config, we shouldn't touch the repo.
@@ -465,7 +461,6 @@ async def test_mergeable_different_app_id() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_branch_protection() -> None:
     """
     We should warn when we cannot retrieve branch protection settings.
@@ -484,7 +479,6 @@ async def test_mergeable_missing_branch_protection() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_automerge_label() -> None:
     """
     If we're missing an automerge label we should not merge the PR.
@@ -507,7 +501,6 @@ async def test_mergeable_missing_automerge_label() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_automerge_label_no_message() -> None:
     """
     No status message if show_missing_automerge_label_message is disabled
@@ -530,7 +523,6 @@ async def test_mergeable_missing_automerge_label_no_message() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_missing_automerge_label_require_automerge_label() -> None:
     """
     We can work on a PR if we're missing labels and we have require_automerge_label disabled.
@@ -553,7 +545,6 @@ async def test_mergeable_missing_automerge_label_require_automerge_label() -> No
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_has_blacklist_labels() -> None:
     """
     blacklist labels should prevent merge
@@ -579,7 +570,6 @@ async def test_mergeable_has_blacklist_labels() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_has_blocking_labels() -> None:
     """
     blocking labels should prevent merge
@@ -605,7 +595,6 @@ async def test_mergeable_has_blocking_labels() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blacklist_title_regex() -> None:
     """
     block merge if blacklist_title_regex matches pull request
@@ -630,7 +619,6 @@ async def test_mergeable_blacklist_title_regex() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blocking_title_regex() -> None:
     """
     block merge if blocking_title_regex matches pull request
@@ -655,7 +643,6 @@ async def test_mergeable_blocking_title_regex() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blocking_title_regex_invalid() -> None:
     """
     raise config error if regex is invalid.
@@ -678,7 +665,6 @@ async def test_mergeable_blocking_title_regex_invalid() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blocking_title_regex_default() -> None:
     """
     We should default to "^WIP.*" if unset.
@@ -705,7 +691,6 @@ async def test_mergeable_blocking_title_regex_default() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blocking_title_disabled() -> None:
     """
     We should be able to disable the title regex by setting it to empty string.
@@ -738,7 +723,6 @@ async def test_mergeable_blocking_title_disabled() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_blacklist_title_match_with_exp_regex(mocker: Any) -> None:
     """
     Ensure Kodiak uses a linear time regex engine.
@@ -765,7 +749,6 @@ async def test_mergeable_blacklist_title_match_with_exp_regex(mocker: Any) -> No
     assert kodiak_evaluation_re_search.called, "we should hit our regex search"
 
 
-@pytest.mark.asyncio
 async def test_mergeable_draft_pull_request() -> None:
     """
     block merge if pull request is in draft state
@@ -791,7 +774,6 @@ async def test_mergeable_draft_pull_request() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_draft_pull_request_is_draft_field() -> None:
     """
     block merge if pull request is in draft state.
@@ -817,7 +799,6 @@ async def test_mergeable_draft_pull_request_is_draft_field() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_invalid_merge_method() -> None:
     """
     block merge if configured merge method is not enabled
@@ -842,7 +823,6 @@ async def test_mergeable_invalid_merge_method() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_default_merge_method() -> None:
     """
     Should default to `merge` commits.
@@ -864,7 +844,6 @@ async def test_mergeable_default_merge_method() -> None:
     assert api.update_branch.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_single_merge_method() -> None:
     """
     If an account only has one merge method configured, use that if they haven't
@@ -894,7 +873,6 @@ async def test_mergeable_single_merge_method() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_two_merge_methods() -> None:
     """
     If we have two options available, choose the first one, based on our ordered
@@ -925,7 +903,6 @@ async def test_mergeable_two_merge_methods() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_no_valid_methods() -> None:
     """
     We should always have at least one valid_merge_method in production, but
@@ -949,7 +926,6 @@ async def test_mergeable_no_valid_methods() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_method_override_with_label() -> None:
     """
     We should be able to override merge methods with a label.
@@ -984,7 +960,6 @@ async def test_mergeable_method_override_with_label() -> None:
         assert api.update_branch.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_block_on_reviews_requested() -> None:
     """
     block merge if reviews are requested and merge.block_on_reviews_requested is
@@ -1009,7 +984,6 @@ async def test_mergeable_block_on_reviews_requested() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merged_no_delete_branch() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
@@ -1036,7 +1010,6 @@ async def test_mergeable_pull_request_merged_no_delete_branch() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merged_delete_branch() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
@@ -1064,7 +1037,6 @@ async def test_mergeable_pull_request_merged_delete_branch() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependencies() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
@@ -1092,7 +1064,6 @@ async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependenc
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr() -> None:
     """
     if a PR is already merged we shouldn't take anymore action on it besides
@@ -1122,7 +1093,6 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr() -> No
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled() -> None:
     """
     If the repository has delete_branch_on_merge enabled we shouldn't bother
@@ -1151,7 +1121,6 @@ async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled()
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_closed() -> None:
     """
     if a PR is closed we don't want to act on it.
@@ -1172,7 +1141,6 @@ async def test_mergeable_pull_request_closed() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
@@ -1201,7 +1169,6 @@ async def test_mergeable_pull_request_merge_conflict() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
@@ -1231,7 +1198,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict() -> Non
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex() -> None:
     """
     if a PR has a merge conflict we can't merge. If the title matches the
@@ -1264,7 +1230,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklis
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_label() -> None:
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
@@ -1290,7 +1255,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerge_labels() -> None:
     """
     We should only notify on conflict when we have an automerge label.
@@ -1324,7 +1288,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerg
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label() -> None:
     """
     if a PR has a merge conflict we can't merge. If require_automerge_label is set then we shouldn't notify even if notify_on_conflict is configured. This allows prevents infinite commenting.
@@ -1353,7 +1316,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_pull_request_merged() -> None:
     """
     If the pull request is merged we shouldn't error on merge conflict.
@@ -1390,7 +1352,6 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_pull_req
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_need_test_commit() -> None:
     """
     When you view a PR on GitHub, GitHub makes a test commit to see if a PR can
@@ -1415,7 +1376,6 @@ async def test_mergeable_pull_request_need_test_commit() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_need_test_commit_merging() -> None:
     """
     If we're merging a PR we should raise the PollForever exception instead of
@@ -1440,7 +1400,6 @@ async def test_mergeable_pull_request_need_test_commit_merging() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
     """
     If a pull request mergeable status is UNKNOWN we should trigger a test
@@ -1473,7 +1432,6 @@ async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open() -> None:
     """
     If a pull request mergeable status is UNKNOWN _and_ it is OPEN we should
@@ -1516,7 +1474,6 @@ async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open()
         assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_unknown_merge_blockage() -> None:
     """
     Test how kodiak behaves when we cannot figure out why a PR is blocked.
@@ -1539,7 +1496,6 @@ async def test_mergeable_unknown_merge_blockage() -> None:
 
 
 @pytest.mark.xfail
-@pytest.mark.asyncio
 async def test_mergeable_unknown_merge_blockage_code_owner() -> None:
     mergeable = create_mergeable()
     api = create_api()
@@ -1563,7 +1519,6 @@ async def test_mergeable_unknown_merge_blockage_code_owner() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_unknown_merge_blockage_code_owner_approval() -> None:
     mergeable = create_mergeable()
     api = create_api()
@@ -1581,7 +1536,6 @@ async def test_mergeable_unknown_merge_blockage_code_owner_approval() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_prioritize_ready_to_merge() -> None:
     """
     If we enabled merge.prioritize_ready_to_merge, then if a PR is ready to merge when it reaches Kodiak, we merge it immediately. merge.prioritize_ready_to_merge is basically the sibling of merge.update_branch_immediately.
@@ -1605,7 +1559,6 @@ async def test_mergeable_prioritize_ready_to_merge() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_merge() -> None:
     """
     If we're merging we should call api.merge
@@ -1628,7 +1581,6 @@ async def test_mergeable_merge() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_queue_for_merge_no_position() -> None:
     """
     If we're attempting to merge from the frontend we should place the PR on the queue.
@@ -1647,7 +1599,6 @@ async def test_mergeable_queue_for_merge_no_position() -> None:
     assert api.queue_for_merge.call_count == 1
 
 
-@pytest.mark.asyncio
 async def test_mergeable_passing() -> None:
     """
     This is the happy case where we want to enqueue the PR for merge.
@@ -1661,7 +1612,6 @@ async def test_mergeable_passing() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_merge_automerge_labels() -> None:
     """
     Test merge.automerge_label array allows a pull request to be merged.
@@ -1679,7 +1629,6 @@ async def test_mergeable_merge_automerge_labels() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_need_update() -> None:
     """
     When a PR isn't in the queue but needs an update we should enqueue it for merge.
@@ -1695,7 +1644,6 @@ async def test_mergeable_need_update() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_do_not_merge() -> None:
     """
     merge.do_not_merge should disable merging a PR.
@@ -1714,7 +1662,6 @@ async def test_mergeable_do_not_merge() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_do_not_merge_behind_no_update_immediately() -> None:
     """
     merge.do_not_merge without merge.update_branch_immediately means that any PR
@@ -1742,7 +1689,6 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update() -> None:
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
@@ -1764,7 +1710,6 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update()
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update() -> None:
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
@@ -1786,7 +1731,6 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update
     assert api.merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_api_call_retry_timeout() -> None:
     """
     if we enounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
@@ -1822,7 +1766,6 @@ async def test_mergeable_api_call_retry_timeout() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
     """
     if we enounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
@@ -1843,7 +1786,6 @@ async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
     assert api.queue_for_merge.called is False
 
 
-@pytest.mark.asyncio
 async def test_mergeable_passing_update_always_enabled() -> None:
     """
     Test happy case with update.always enabled. We should shouldn't see any
@@ -1861,7 +1803,6 @@ async def test_mergeable_passing_update_always_enabled() -> None:
     assert api.dequeue.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_username() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
@@ -1883,7 +1824,6 @@ async def test_mergeable_auto_approve_username() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_label() -> None:
     """
     If a PR has a label which is in the `approve.auto_approve_labels` list Kodiak should approve the PR.
@@ -1904,7 +1844,6 @@ async def test_mergeable_auto_approve_label() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_existing_approval() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
@@ -1933,7 +1872,6 @@ async def test_mergeable_auto_approve_existing_approval() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_old_approval() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
@@ -1962,7 +1900,6 @@ async def test_mergeable_auto_approve_old_approval() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_ignore_closed_merged_prs() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
@@ -1991,7 +1928,6 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs() -> None:
         assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
     """
     If a PR is opened by a user on the `approve.auto_approve_usernames` list Kodiak should approve the PR.
@@ -2032,7 +1968,6 @@ async def test_mergeable_auto_approve_ignore_draft_pr() -> None:
         assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_missing_subscription() -> None:
     """
     If a subscription is missing we should not raise the paywall. The web_api
@@ -2061,7 +1996,6 @@ async def test_mergeable_paywall_missing_subscription() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_subscription_blocker() -> None:
     """
     If an account has a subscription_blocker we should display the paywall.
@@ -2095,7 +2029,6 @@ async def test_mergeable_paywall_subscription_blocker() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_public_repository() -> None:
     """
     Public repositories should never see a paywall.
@@ -2128,7 +2061,6 @@ async def test_mergeable_paywall_public_repository() -> None:
         assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_missing_env(mocker: Any) -> None:
     """
     If the environment variable is disabled we should not throw up the paywall.
@@ -2158,7 +2090,6 @@ async def test_mergeable_paywall_missing_env(mocker: Any) -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_subscription_expired() -> None:
     """
     When a subscription is expired we should not merge a pull request.
@@ -2189,7 +2120,6 @@ async def test_mergeable_paywall_subscription_expired() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_trial_expired() -> None:
     """
     When a trial has expired we should not act on a pull request.
@@ -2217,7 +2147,6 @@ async def test_mergeable_paywall_trial_expired() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_seats_exceeded() -> None:
     """
     When an account has exceeded their seat usage they should hit the paywall.
@@ -2245,7 +2174,6 @@ async def test_mergeable_paywall_seats_exceeded() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
     """
     Users that have a seat should be allowed to continue using Kodiak even if
@@ -2282,7 +2210,6 @@ async def test_mergeable_paywall_seats_exceeded_allowed_user() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_merge_pull_request_api_exception() -> None:
     """
     If we attempt to merge a pull request but get an internal server error from
@@ -2320,7 +2247,6 @@ async def test_mergeable_merge_pull_request_api_exception() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_merge_failure_label() -> None:
     """
     Kodiak should take no action on a pull request when
@@ -2348,7 +2274,6 @@ async def test_mergeable_merge_failure_label() -> None:
     assert api.update_branch.call_count == 0
 
 
-@pytest.mark.asyncio
 async def test_mergeable_priority_merge_label() -> None:
     """
     When a PR has merge.priority_merge_label, we should place it at the front of

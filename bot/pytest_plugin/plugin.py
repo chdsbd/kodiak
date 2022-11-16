@@ -3,7 +3,7 @@ import os
 import pytest
 
 
-@pytest.hookimpl(tryfirst=True)
+@pytest.hookimpl(tryfirst=True)  # type: ignore[misc]
 def pytest_load_initial_conftests(
     args: object, early_config: object, parser: object
 ) -> None:
