@@ -10,7 +10,7 @@ Automate your GitHub Pull Requests
 
 - Auto Update – Keep your PRs up to date with `master` automatically
 - Auto Merge – Add the `automerge` label to auto merge once CI and Approvals pass.
-- Bot Collaboration – Combine Kodiak with a dependency bot (dependabot, snyk, greenskeeper.io) to automate updating of dependencies
+- Bot Collaboration – Combine Kodiak with a dependency bot (dependabot, snyk, greenkeeper.io) to automate updating of dependencies
 
 And more! Checkout [the Kodiak docs](https://kodiakhq.com/docs/quickstart) to get started automating your GitHub PRs.
 
