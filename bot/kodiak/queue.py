@@ -313,6 +313,19 @@ class WebhookEvent(BaseModel):
         )
 
 
+async def bzpopmin_with_timeout(
+    connection: RedisConnection, queue_name: str
+) -> BlockingZPopReply | None:
+    try:
+        webhook_event_json: BlockingZPopReply = await asyncio.wait_for(
+            connection.bzpopmin([queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_MS),
+            timeout=conf.BLOCKING_POP_TIMEOUT_MS,
+        )
+    except (asyncio.TimeoutError, asyncio_redis.exceptions.TimeoutError):
+        return None
+    return webhook_event_json
+
+
 async def process_webhook_event(
     connection: RedisConnection,
     webhook_queue: RedisWebhookQueue,
@@ -320,7 +333,10 @@ async def process_webhook_event(
     log: structlog.BoundLogger,
 ) -> None:
     log.info("block for new webhook event")
-    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    webhook_event_json = await bzpopmin_with_timeout(connection, queue_name)
+    if webhook_event_json is None:
+        log.info("bzpopmin timeout")
+        return
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
     is_active_merging = (
@@ -391,7 +407,10 @@ async def process_repo_queue(
     log: structlog.BoundLogger, connection: RedisConnection, queue_name: str
 ) -> None:
     log.info("block for new repo event")
-    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    webhook_event_json = await bzpopmin_with_timeout(connection, queue_name)
+    if webhook_event_json is None:
+        log.info("bzpopmin timeout")
+        return
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
     target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
