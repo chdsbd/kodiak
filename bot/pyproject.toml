@@ -52,6 +52,65 @@ pytest = "^7.2.0"
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"
 
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 88
+known_third_party = ["redis", "asyncio_redis"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "recipeyak.django.settings"
+python_files = "*_test.py *_tests.py"
+addopts = "-s --pdbcls IPython.terminal.debugger:TerminalPdb --reuse-db -p no:warnings"
+
+[tool.mypy]
+mypy_path = "./typings"
+
+show_column_numbers = true
+show_error_codes = true
+
+# nice to allow using types for docs even when they are Any
+disallow_any_unimported=false
+disallow_any_expr=false
+disallow_any_decorated=false
+disallow_any_explicit=false
+disallow_any_generics=true
+disallow_subclassing_any=true
+
+disallow_untyped_calls=true
+disallow_untyped_defs=true
+disallow_incomplete_defs=true
+check_untyped_defs=true
+disallow_untyped_decorators=true
+
+no_implicit_optional=true
+strict_optional=true
+
+warn_redundant_casts=true
+warn_unused_ignores=true
+warn_no_return=true
+warn_return_any=true
+# doesn't consider how methods can change the value of properties
+warn_unreachable=false
+
+strict_equality=true
+
+ignore_missing_imports=false
+
+# enable pydantic mypy plugin.
+plugins = [
+  "pydantic.mypy"
+]
+
+# https://pydantic-docs.helpmanual.io/mypy_plugin/#plugin-settings
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
 [build-system]
 requires = ["poetry>=1.1.8", "setuptools"]
 build-backend = "poetry.masonry.api"
