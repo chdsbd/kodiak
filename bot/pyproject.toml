@@ -81,14 +81,15 @@ ignore = [
     "RET505", # if, elif, else are fine with returns
     "RET507", # if, elif, else with continue is also fine
     "RET508", # if, elif, else with break is also fine
-    "UP006", # we're on an old python version
-    "UP007", # we're on an old python version
 ]
 unfixable = [
     "UP018" # see: https://github.com/charliermarsh/ruff/issues/1615
 ]
 update-check = false
 target-version = "py37"
+
+[tool.ruff.pyupgrade]
+keep-runtime-typing = true
 
 [tool.ruff.isort]
 known-third-party = ["redis", "asyncio_redis", "structlog", "rure", "uvicorn"]
