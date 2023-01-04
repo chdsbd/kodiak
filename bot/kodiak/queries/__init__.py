@@ -568,7 +568,7 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
+installation_cache: MutableMapping[str, Optional[TokenResponse]] = {}
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
@@ -872,7 +872,7 @@ class Client:
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
+                conf.GITHUB_V4_API_URL, json=({"query": query, "variables": variables})
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")

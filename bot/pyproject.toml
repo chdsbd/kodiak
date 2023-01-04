@@ -51,6 +51,7 @@ ruff = "^0.0.209"
 select = [
     "E",
     "F",
+    "TID251",
     "TID252",
     "I001",
     "T20",
@@ -96,9 +97,8 @@ known-first-party = ["kodiak"]
 [tool.ruff.flake8-tidy-imports]
 # Disallow all relative imports.
 ban-relative-imports = "all"
-# on ice: see https://github.com/charliermarsh/ruff/issues/1614
-# [tool.ruff.flake8-tidy-imports.banned-api]
-# "httpx".msg = "Use kodiak.http"
+[tool.ruff.flake8-tidy-imports.banned-api]
+"httpx".msg = "Use kodiak.http"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

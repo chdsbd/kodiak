@@ -100,6 +100,7 @@ def get_body_content(
     if body_type is BodyText.html:
         return pull_request.bodyHTML
     assert_never(body_type)
+    return None
 
 
 EMPTY_STRING = ""
