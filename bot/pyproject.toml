@@ -61,9 +61,17 @@ line_length = 88
 known_third_party = ["redis", "asyncio_redis"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "recipeyak.django.settings"
-python_files = "*_test.py *_tests.py"
-addopts = "-s --pdbcls IPython.terminal.debugger:TerminalPdb --reuse-db -p no:warnings"
+asyncio_mode = "auto"
+filterwarnings = [
+  # all warnings that are not ignored should raise an error
+  "error",
+  # pytest wants to remove the `message` kwarg to pytest.raises, but there isn't
+  # an alternative at the moment.
+  # https://github.com/pytest-dev/pytest/issues/3974
+  "ignore::pytest.PytestDeprecationWarning",
+  "ignore::DeprecationWarning:asyncio_redis"
+]
+addopts = "--pdbcls IPython.terminal.debugger:TerminalPdb"
 
 [tool.mypy]
 mypy_path = "./typings"
