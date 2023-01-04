@@ -267,7 +267,7 @@ class PRV2:
             except HTTPError:
                 self.log.warning("failed to update branch", res=res, exc_info=True)
                 # we raise an exception to retry this request.
-                raise ApiCallException(
+                raise ApiCallException(  # noqa: B904
                     method="pull_request/update_branch",
                     http_status_code=res.status_code,
                     response=res.content,
@@ -329,9 +329,9 @@ class PRV2:
                         "failed to merge pull request", res=res, exc_info=True
                     )
                 if e.response is not None and e.response.status_code == 500:
-                    raise GitHubApiInternalServerError
+                    raise GitHubApiInternalServerError  # noqa: B904
                 # we raise an exception to retry this request.
-                raise ApiCallException(
+                raise ApiCallException(  # noqa: B904
                     method="pull_request/merge",
                     http_status_code=res.status_code,
                     response=res.content,
@@ -351,7 +351,7 @@ class PRV2:
                 else:
                     self.log.warning("failed to update ref", res=res, exc_info=True)
                 # we raise an exception to retry this request.
-                raise ApiCallException(
+                raise ApiCallException(  # noqa: B904
                     method="pull_request/update_ref",
                     http_status_code=res.status_code,
                     response=res.content,
@@ -376,7 +376,7 @@ class PRV2:
                 self.log.warning(
                     "failed to add label", label=label, res=res, exc_info=True
                 )
-                raise ApiCallException(
+                raise ApiCallException(  # noqa: B904
                     method="pull_request/add_label",
                     http_status_code=res.status_code,
                     response=res.content,
@@ -398,7 +398,7 @@ class PRV2:
                     "failed to delete label", label=label, res=res, exc_info=True
                 )
                 # we raise an exception to retry this request.
-                raise ApiCallException(
+                raise ApiCallException(  # noqa: B904
                     method="pull_request/delete_label",
                     http_status_code=res.status_code,
                     response=res.content,

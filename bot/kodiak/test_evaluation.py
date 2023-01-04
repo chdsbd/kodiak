@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import pydantic
@@ -67,47 +67,47 @@ class BaseMockFunc:
 
 class MockDequeue(BaseMockFunc):
     async def __call__(self) -> None:
-        self.log_call(dict())
+        self.log_call({})
 
 
 class MockSetStatus(BaseMockFunc):
     async def __call__(
         self, msg: str, *, markdown_content: Optional[str] = None
     ) -> None:
-        self.log_call(dict(msg=msg, markdown_content=markdown_content))
+        self.log_call({"msg": msg, "markdown_content": markdown_content})
 
 
 class MockPullRequestsForRef(BaseMockFunc):
     return_value: Optional[int] = 0
 
     async def __call__(self, ref: str) -> Optional[int]:
-        self.log_call(dict(ref=ref))
+        self.log_call({"ref": ref})
         return self.return_value
 
 
 class MockDeleteBranch(BaseMockFunc):
     async def __call__(self, branch_name: str) -> None:
-        self.log_call(dict(branch_name=branch_name))
+        self.log_call({"branch_name": branch_name})
 
 
 class MockRemoveLabel(BaseMockFunc):
     async def __call__(self, label: str) -> None:
-        self.log_call(dict(label=label))
+        self.log_call({"label": label})
 
 
 class MockAddLabel(BaseMockFunc):
     async def __call__(self, label: str) -> None:
-        self.log_call(dict(label=label))
+        self.log_call({"label": label})
 
 
 class MockCreateComment(BaseMockFunc):
     async def __call__(self, body: str) -> None:
-        self.log_call(dict(body=body))
+        self.log_call({"body": body})
 
 
 class MockTriggerTestCommit(BaseMockFunc):
     async def __call__(self) -> None:
-        self.log_call(dict())
+        self.log_call({})
 
 
 class MockMerge(BaseMockFunc):
@@ -120,11 +120,11 @@ class MockMerge(BaseMockFunc):
         commit_message: Optional[str],
     ) -> None:
         self.log_call(
-            dict(
-                merge_method=merge_method,
-                commit_title=commit_title,
-                commit_message=commit_message,
-            )
+            {
+                "merge_method": merge_method,
+                "commit_title": commit_title,
+                "commit_message": commit_message,
+            }
         )
         if self.raises is not None:
             raise self.raises
@@ -132,7 +132,7 @@ class MockMerge(BaseMockFunc):
 
 class MockUpdateRef(BaseMockFunc):
     async def __call__(self, *, ref: str, sha: str) -> None:
-        self.log_call(dict(ref=ref, sha=sha))
+        self.log_call({"ref": ref, "sha": sha})
 
 
 class MockQueueForMerge(BaseMockFunc):
@@ -141,23 +141,23 @@ class MockQueueForMerge(BaseMockFunc):
     return_value: Optional[int] = 3
 
     async def __call__(self, *, first: bool) -> Optional[int]:
-        self.log_call(dict(first=first))
+        self.log_call({"first": first})
         return self.return_value
 
 
 class MockUpdateBranch(BaseMockFunc):
     async def __call__(self) -> None:
-        self.log_call(dict())
+        self.log_call({})
 
 
 class MockApprovePullRequest(BaseMockFunc):
     async def __call__(self) -> None:
-        self.log_call(dict())
+        self.log_call({})
 
 
 class MockRequeue(BaseMockFunc):
     async def __call__(self) -> None:
-        self.log_call(dict())
+        self.log_call({})
 
 
 class MockPrApi:
@@ -268,7 +268,7 @@ def create_branch_protection() -> BranchProtectionRule:
 def create_review() -> PRReview:
     return PRReview(
         state=PRReviewState.APPROVED,
-        createdAt=datetime(2015, 5, 25),
+        createdAt=datetime(2015, 5, 25, tzinfo=timezone.utc),
         author=PRReviewAuthor(login="ghost"),
     )
 
@@ -343,7 +343,6 @@ class MergeableType(Protocol):
 
 
 def create_mergeable() -> MergeableType:
-    # pylint: disable=dangerous-default-value
     async def mergeable(
         *,
         api: PRAPI = create_api(),
@@ -352,12 +351,12 @@ def create_mergeable() -> MergeableType:
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
         branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
-        review_requests: List[PRReviewRequest] = [],
-        bot_reviews: List[PRReview] = [create_review()],
-        contexts: List[StatusContext] = [create_context()],
-        check_runs: List[CheckRun] = [create_check_run()],
-        commits: List[Commit] = [],
-        valid_merge_methods: List[MergeMethod] = [
+        review_requests: List[PRReviewRequest] = [],  # noqa: B006
+        bot_reviews: List[PRReview] = [create_review()],  # noqa: B006
+        contexts: List[StatusContext] = [create_context()],  # noqa: B006
+        check_runs: List[CheckRun] = [create_check_run()],  # noqa: B006
+        commits: List[Commit] = [],  # noqa: B006
+        valid_merge_methods: List[MergeMethod] = [  # noqa: B006
             MergeMethod.merge,
             MergeMethod.squash,
             MergeMethod.rebase,
@@ -398,7 +397,6 @@ def create_mergeable() -> MergeableType:
             app_id=app_id,
         )
 
-    # pylint: enable=dangerous-default-value
     return mergeable
 
 
@@ -1740,7 +1738,7 @@ async def test_mergeable_api_call_retry_timeout() -> None:
     api_call_error = APICallError(
         api_name="pull_request/merge",
         http_status="405",
-        response_body=str(
+        response_body=str(  # noqa: UP018
             b'{"message":"This branch can\'t be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}'
         ),
     )

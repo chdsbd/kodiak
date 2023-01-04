@@ -124,12 +124,12 @@ class MockMergePullRequest(BaseMockFunc):
         self, number: int, merge_method: str, commit_title: str, commit_message: str
     ) -> requests.Response:
         self.log_call(
-            dict(
-                number=number,
-                merge_method=merge_method,
-                commit_title=commit_title,
-                commit_message=commit_message,
-            )
+            {
+                "number": number,
+                "merge_method": merge_method,
+                "commit_title": commit_title,
+                "commit_message": commit_message,
+            }
         )
         return self.response
 
@@ -138,7 +138,7 @@ class MockDeleteLabel(BaseMockFunc):
     response: requests.Response
 
     async def __call__(self, label: str, pull_number: int) -> requests.Response:
-        self.log_call(dict(label=label, pull_number=pull_number))
+        self.log_call({"label": label, "pull_number": pull_number})
         return self.response
 
 
@@ -146,7 +146,7 @@ class MockAddLabel(BaseMockFunc):
     response: requests.Response
 
     async def __call__(self, label: str, pull_number: int) -> requests.Response:
-        self.log_call(dict(label=label, pull_number=pull_number))
+        self.log_call({"label": label, "pull_number": pull_number})
         return self.response
 
 
@@ -154,7 +154,7 @@ class MockUpdateBranch(BaseMockFunc):
     response: requests.Response
 
     async def __call__(self, pull_number: int) -> requests.Response:
-        self.log_call(dict(pull_number=pull_number))
+        self.log_call({"pull_number": pull_number})
         return self.response
 
 
@@ -162,7 +162,7 @@ class MockUpdateRef(BaseMockFunc):
     response: requests.Response
 
     async def __call__(self, *, ref: str, sha: str) -> requests.Response:
-        self.log_call(dict(ref=ref, sha=sha))
+        self.log_call({"ref": ref, "sha": sha})
         return self.response
 
 
@@ -396,9 +396,10 @@ async def test_update_ref_ok() -> None:
     pr_v2 = create_prv2(client=client)
     await pr_v2.update_ref(ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd")
     assert client.update_ref.call_count == 1
-    assert client.update_ref.calls[0] == dict(
-        ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
-    )
+    assert client.update_ref.calls[0] == {
+        "ref": "master",
+        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+    }
 
 
 async def test_update_ref_service_unavailable() -> None:
@@ -415,9 +416,10 @@ async def test_update_ref_service_unavailable() -> None:
             ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
         )
     assert client.update_ref.call_count == 1
-    assert client.update_ref.calls[0] == dict(
-        ref="master", sha="aa218f56b14c9653891f9e74264a383fa43fefbd"
-    )
+    assert client.update_ref.calls[0] == {
+        "ref": "master",
+        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+    }
     assert e.value.method == "pull_request/update_ref"
     assert e.value.status_code == 503
     assert b"Service Unavailable" in e.value.response

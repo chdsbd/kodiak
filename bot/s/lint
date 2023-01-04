@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 set -ex
 
-# format code
+# format & lint code
 if [[ $CI ]]; then
     ./.venv/bin/black --check .
-    ./.venv/bin/isort --check-only
+    ./.venv/bin/ruff .
 else
     ./.venv/bin/black .
-    ./.venv/bin/isort -y
+    ./.venv/bin/ruff . --fix
 fi
 
 # type check code
 ./.venv/bin/mypy .
-
-# lint
-./.venv/bin/flake8 kodiak
-./.venv/bin/pylint --rcfile='.pylintrc' kodiak

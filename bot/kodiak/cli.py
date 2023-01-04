@@ -34,10 +34,10 @@ def list_installs() -> None:
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
     results: List[Dict[str, Any]] = []
-    headers = dict(
-        Accept="application/vnd.github.machine-man-preview+json",
-        Authorization=f"Bearer {app_token}",
-    )
+    headers = {
+        "Accept": "application/vnd.github.machine-man-preview+json",
+        "Authorization": f"Bearer {app_token}",
+    }
     url = conf.v3_url("/app/installations")
     while True:
         res = requests.get(url, headers=headers)

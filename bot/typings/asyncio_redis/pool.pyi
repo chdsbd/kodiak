@@ -28,7 +28,8 @@ class Pool:
         loop: Optional[Any] = ...,
         protocol_class: Any = ...,
         ssl: Optional[bool] = ...,
-    ) -> Pool: ...
+        # false positive, see: https://github.com/charliermarsh/ruff/issues/1613
+    ) -> Pool: ...  # noqa: F821
     # NOTE(sbdchd): asyncio_redis does some hackery with __getattr__, so we copy
     # the methods from Connection
     def close(self) -> None: ...

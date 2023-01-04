@@ -75,7 +75,7 @@ async def main() -> NoReturn:
     queue = RedisWebhookQueue()
     await queue.create()
 
-    ingest_workers = dict()
+    ingest_workers = {}
 
     redis = await redis_client.create_connection()
     ingest_queue_names = await redis.smembers(INGEST_QUEUE_NAMES)

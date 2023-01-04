@@ -35,7 +35,7 @@ _redis: asyncio_redis.Pool | None = None
 
 
 async def get_redis() -> asyncio_redis.Pool:
-    global _redis  # pylint: disable=global-statement
+    global _redis
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
             host=conf.REDIS_URL.hostname or "localhost",

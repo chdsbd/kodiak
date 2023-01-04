@@ -158,7 +158,7 @@ def test_get_logging_level(level: str, expected: int) -> None:
 
 def test_add_request_info_processor() -> None:
     url = "https://api.example.com/v1/me"
-    payload = dict(user_id=54321)
+    payload = {"user_id": 54321}
     req = Request("POST", url, json=payload)
     res = Response()
     res.status_code = 500
@@ -169,7 +169,7 @@ def test_add_request_info_processor() -> None:
     )._content = b"Your request could not be completed due to an internal error."
     res.request = cast(PreparedRequest, req.prepare())  # type: ignore
     event_dict = add_request_info_processor(
-        None, None, dict(event="request failed", res=res)
+        None, None, {"event": "request failed", "res": res}
     )
     assert event_dict["response_content"] == cast(Any, res)._content
     assert event_dict["response_status_code"] == res.status_code

@@ -112,10 +112,10 @@ async def get_login_for_install(*, http: HttpClient, installation_id: str) -> st
     )
     res = await http.get(
         conf.v3_url(f"/app/installations/{installation_id}"),
-        headers=dict(
-            Accept="application/vnd.github.machine-man-preview+json",
-            Authorization=f"Bearer {app_token}",
-        ),
+        headers={
+            "Accept": "application/vnd.github.machine-man-preview+json",
+            "Authorization": f"Bearer {app_token}",
+        },
     )
     res.raise_for_status()
     return cast(str, res.json()["account"]["login"])
@@ -131,8 +131,8 @@ async def refresh_pull_requests_for_installation(
         )
         res = await http.post(
             conf.GITHUB_V4_API_URL,
-            json=dict(query=QUERY, variables=dict(login=login)),
-            headers=dict(Authorization=f"Bearer {token}"),
+            json={"query": QUERY, "variables": {"login": login}},
+            headers={"Authorization": f"Bearer {token}"},
         )
     res.raise_for_status()
 

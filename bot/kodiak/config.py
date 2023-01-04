@@ -141,6 +141,7 @@ class Approve(BaseModel):
 
 
 class InvalidVersion(ValueError):
+class InvalidVersion(ValueError):  # noqa: N818
     pass
 
 
