@@ -37,28 +37,69 @@ mypy = "^0.960"
 ipdb = "^0.13.9"
 pytest-mock = "3.3.1"
 typing_extensions = "^3.7"
-pylint = "^2.3"
-flake8 = "3.8.4"
-flake8-pie = "0.7.1"
-isort = "^4.3"
 pytest-cov = "^2.10"
-flake8-pyi = "^20.10"
 types-requests = "^2.28.0"
 types-toml = "^0.10.7"
-flake8-tidy-imports = "^4.8.0"
 pytest-asyncio = "0.20.1"
 pytest = "^7.2.0"
+ruff = "^0.0.209"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"
 
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 88
-known_third_party = ["redis", "asyncio_redis"]
+[tool.ruff]
+select = [
+    "E",
+    "F",
+    "TID251",
+    "TID252",
+    "I001",
+    "T20",
+    "C4",
+    "UP",
+    "N",
+    "BLE",
+    "B",
+    "RET",
+    "SIM",
+    "ARG",
+    "DTZ",
+    "ERA",
+    "RUF",
+]
+src = ["kodiak", "typings"]
+ignore = [
+    "E501", # line length is handled by black
+    "ARG001", # pytest fixtures mess with this
+    "ARG002", # sometimes parent classes require params
+    "N806", # django migrations violate this a lot
+    "B008", # type.Argument violates this
+    "N815", # we mix and match casing in serializers
+    "ARG005", # monkey patching false positive with *args, and **kwargs
+    "N805", # false positive with pydantic
+    "N802", # DRF serializers mess with this
+    "RET505", # if, elif, else are fine with returns
+    "RET507", # if, elif, else with continue is also fine
+    "RET508", # if, elif, else with break is also fine
+]
+unfixable = [
+    "UP018" # see: https://github.com/charliermarsh/ruff/issues/1615
+]
+update-check = false
+target-version = "py37"
+
+[tool.ruff.pyupgrade]
+keep-runtime-typing = true
+
+[tool.ruff.isort]
+known-third-party = ["redis", "asyncio_redis", "structlog", "rure", "uvicorn"]
+known-first-party = ["kodiak"]
+
+[tool.ruff.flake8-tidy-imports]
+# Disallow all relative imports.
+ban-relative-imports = "all"
+[tool.ruff.flake8-tidy-imports.banned-api]
+"httpx".msg = "Use kodiak.http"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

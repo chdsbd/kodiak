@@ -18,9 +18,8 @@ import kodiak.app_config as conf
 from kodiak import http
 from kodiak.config import V1, MergeMethod
 from kodiak.http import HttpClient
-from kodiak.queries.commits import Commit, CommitConnection, GitActor
+from kodiak.queries.commits import Commit, CommitConnection, GitActor, get_commits
 from kodiak.queries.commits import User as PullRequestCommitUser
-from kodiak.queries.commits import get_commits
 from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -306,12 +305,12 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   }
 }
 
-""" % dict(
-        requiresConversationResolution="requiresConversationResolution"
+""" % {
+        "requiresConversationResolution": "requiresConversationResolution"
         if requires_conversation_resolution
         else "",
-        bodyHTMLQuery="bodyHTML" if fetch_body_html else "bodyHTML: body",
-    )
+        "bodyHTMLQuery": "bodyHTML" if fetch_body_html else "bodyHTML: body",
+    }
 
 
 def get_org_config_default_branch(data: dict[Any, Any]) -> str | None:
@@ -569,7 +568,7 @@ class TokenResponse(BaseModel):
         return self.expires_at - timedelta(minutes=5) < datetime.now(timezone.utc)
 
 
-installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
+installation_cache: MutableMapping[str, Optional[TokenResponse]] = {}
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
@@ -873,7 +872,7 @@ class Client:
         self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
+                conf.GITHUB_V4_API_URL, json=({"query": query, "variables": variables})
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
@@ -897,7 +896,7 @@ class Client:
         first client to make an API request, we use their credentials to view
         schema metadata and cache the results.
         """
-        global _api_features_cache  # pylint: disable=global-statement
+        global _api_features_cache
         if _api_features_cache is not None:
             return _api_features_cache
         res = await self.send_query(
@@ -910,7 +909,7 @@ query {
    }
 }
 """,
-            variables=dict(),
+            variables={},
             installation_id=self.installation_id,
         )
         if res is None:
@@ -973,14 +972,14 @@ query {
             )
         res = await self.send_query(
             query=GET_CONFIG_QUERY,
-            variables=dict(
-                owner=self.owner,
-                repo=self.repo,
-                rootConfigFileExpression=repo_root_config_expression,
-                githubConfigFileExpression=repo_github_config_expression,
-                orgRootConfigFileExpression=org_root_config_expression,
-                orgGithubConfigFileExpression=org_github_config_file_expression,
-            ),
+            variables={
+                "owner": self.owner,
+                "repo": self.repo,
+                "rootConfigFileExpression": repo_root_config_expression,
+                "githubConfigFileExpression": repo_github_config_expression,
+                "orgRootConfigFileExpression": org_root_config_expression,
+                "orgGithubConfigFileExpression": org_github_config_file_expression,
+            },
             installation_id=self.installation_id,
         )
         if res is None:
@@ -1032,7 +1031,7 @@ query {
                 else True,
                 fetch_body_html=True,
             ),
-            variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
+            variables={"owner": self.owner, "repo": self.repo, "PRNumber": pr_number},
             installation_id=self.installation_id,
         )
         if res is None:
@@ -1059,7 +1058,11 @@ query {
                     else True,
                     fetch_body_html=False,
                 ),
-                variables=dict(owner=self.owner, repo=self.repo, PRNumber=pr_number),
+                variables={
+                    "owner": self.owner,
+                    "repo": self.repo,
+                    "PRNumber": pr_number,
+                },
                 installation_id=self.installation_id,
             )
             if res is None:
@@ -1147,7 +1150,7 @@ query {
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
         )
-        params = dict(state="open", sort="updated", per_page="100")
+        params = {"state": "open", "sort": "updated", "per_page": "100"}
         if base is not None:
             params["base"] = base
         if head is not None:
@@ -1214,7 +1217,7 @@ query {
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
         )
-        body = dict(event="APPROVE")
+        body = {"event": "APPROVE"}
         async with self.throttler:
             return await self.session.post(
                 conf.v3_url(
@@ -1239,7 +1242,7 @@ query {
         commit_title: Optional[str],
         commit_message: Optional[str],
     ) -> http.Response:
-        body = dict(merge_method=merge_method)
+        body = {"merge_method": merge_method}
         # we must not pass the keys for commit_title or commit_message when they
         # are null because GitHub will error saying the title/message cannot be
         # null. When the keys are not passed, GitHub creates a title and
@@ -1264,7 +1267,7 @@ query {
         )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/git/refs/heads/{ref}")
         async with self.throttler:
-            return await self.session.patch(url, headers=headers, json=dict(sha=sha))
+            return await self.session.patch(url, headers=headers, json={"sha": sha})
 
     async def create_notification(
         self, head_sha: str, message: str, summary: Optional[str] = None
@@ -1273,14 +1276,14 @@ query {
             session=self.session, installation_id=self.installation_id
         )
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/check-runs")
-        body = dict(
-            name=CHECK_RUN_NAME,
-            head_sha=head_sha,
-            status="completed",
-            completed_at=datetime.now(timezone.utc).isoformat(),
-            conclusion="neutral",
-            output=dict(title=message, summary=summary or ""),
-        )
+        body = {
+            "name": CHECK_RUN_NAME,
+            "head_sha": head_sha,
+            "status": "completed",
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "conclusion": "neutral",
+            "output": {"title": message, "summary": summary or ""},
+        }
         async with self.throttler:
             return await self.session.post(url, headers=headers, json=body)
 
@@ -1293,7 +1296,7 @@ query {
                 conf.v3_url(
                     f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/labels"
                 ),
-                json=dict(labels=[label]),
+                json={"labels": [label]},
                 headers=headers,
             )
 
@@ -1319,7 +1322,7 @@ query {
                 conf.v3_url(
                     f"/repos/{self.owner}/{self.repo}/issues/{pull_number}/comments"
                 ),
-                json=dict(body=body),
+                json={"body": body},
                 headers=headers,
             )
 
@@ -1372,9 +1375,11 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
 
     This is different from authenticating as an installation
     """
-    issued_at = int(datetime.now().timestamp())
-    expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())
-    payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
+    issued_at = int(datetime.now(timezone.utc).timestamp())
+    expiration = int(
+        (datetime.now(timezone.utc) + timedelta(minutes=9, seconds=30)).timestamp()
+    )
+    payload = {"iat": issued_at, "exp": expiration, "iss": app_identifier}
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
 
@@ -1398,10 +1403,10 @@ async def get_token_for_install(
     async with throttler:
         res = await session.post(
             conf.v3_url(f"/app/installations/{installation_id}/access_tokens"),
-            headers=dict(
-                Accept="application/vnd.github.machine-man-preview+json",
-                Authorization=f"Bearer {app_token}",
-            ),
+            headers={
+                "Accept": "application/vnd.github.machine-man-preview+json",
+                "Authorization": f"Bearer {app_token}",
+            },
         )
     if res.status_code > 300:
         raise Exception(f"Failed to get token, github response: {res.text}")
@@ -1416,10 +1421,10 @@ async def get_headers(
     token = await get_token_for_install(
         session=session, installation_id=installation_id
     )
-    return dict(
-        Authorization=f"token {token}",
-        Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
-    )
+    return {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json,application/vnd.github.lydian-preview+json",
+    }
 
 
 __all__ = ["Commit", "GitActor", "CommitConnection", "PullRequestCommitUser"]

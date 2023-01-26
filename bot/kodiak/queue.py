@@ -216,7 +216,7 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
         prs = await api_client.get_open_pull_requests(base=branch_name)
         if prs is None:
             log.info("api call to find pull requests failed")
-            return None
+            return
         for pr in prs:
             await queue.enqueue(
                 event=WebhookEvent(
@@ -233,7 +233,7 @@ _redis: asyncio_redis.Pool | None = None
 
 
 async def get_redis() -> asyncio_redis.Pool:
-    global _redis  # pylint: disable=global-statement
+    global _redis
     if _redis is None:
         _redis = await asyncio_redis.Pool.create(
             host=conf.REDIS_URL.hostname or "localhost",
@@ -264,7 +264,7 @@ async def handle_webhook_event(
         redis = await get_redis()
         await redis.rpush(
             b"kodiak:webhook_event",
-            [compress_payload(dict(event_name=event_name, payload=payload))],
+            [compress_payload({"event_name": event_name, "payload": payload})],
         )
         await redis.ltrim(b"kodiak:webhook_event", 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
         log = log.bind(usage_reported=True)

@@ -140,7 +140,7 @@ class Approve(BaseModel):
     auto_approve_labels: List[str] = []
 
 
-class InvalidVersion(ValueError):
+class InvalidVersion(ValueError):  # noqa: N818
     pass
 
 

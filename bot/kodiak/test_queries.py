@@ -71,7 +71,7 @@ async def test_get_config_for_ref_error(
     mocker.patch.object(
         api_client,
         "send_query",
-        return_value=wrap_future(dict(data=None, errors=[{"test": 123}])),
+        return_value=wrap_future({"data": None, "errors": [{"test": 123}]}),
     )
 
     res = await api_client.get_config_for_ref(ref="main", org_repo_default_branch=None)
@@ -88,16 +88,16 @@ async def test_get_config_for_ref_dot_github(
         api_client,
         "send_query",
         return_value=wrap_future(
-            dict(
-                data=dict(
-                    repository=dict(
-                        rootConfigFile=None,
-                        githubConfigFile=dict(
-                            text="# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
-                        ),
-                    )
-                )
-            )
+            {
+                "data": {
+                    "repository": {
+                        "rootConfigFile": None,
+                        "githubConfigFile": {
+                            "text": "# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
+                        },
+                    }
+                }
+            }
         ),
     )
 
@@ -395,10 +395,10 @@ async def test_get_event_info_no_latest_sha(
     ]
 
 
-MOCK_HEADERS = dict(
-    Authorization="token some-json-web-token",
-    Accept="application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
-)
+MOCK_HEADERS = {
+    "Authorization": "token some-json-web-token",
+    "Accept": "application/vnd.github.machine-man-preview+json,application/vnd.github.antiope-preview+json",
+}
 
 
 @pytest.fixture
@@ -443,7 +443,7 @@ def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
 
     class FakeRedis:
         @staticmethod
-        async def hgetall(key: bytes) -> Any:
+        async def hgetall(key: bytes) -> Any:  # noqa: ARG004
             return FakeDictReply
 
     return FakeRedis

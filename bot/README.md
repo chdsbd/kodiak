@@ -13,7 +13,7 @@ The follow shows how to run commands for testing and development. For informatio
 poetry config virtualenvs.in-project true
 poetry install
 
-# format and lint using black, isort, mypy, flake8, pylint
+# format and lint
 s/lint
 
 # run tests using pytest
@@ -36,6 +36,7 @@ s/dev-workers
 ```
 
 If you have made any changes concerning the config, run the following command to update the schema:
+
 ```shell
 poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json
 ```

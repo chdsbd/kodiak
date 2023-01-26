@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import ssl
 
-from httpx import (  # noqa: I251
+from httpx import (  # noqa: TID251
     AsyncClient,
     HTTPError,
     HTTPStatusError,
     Request,
     Response,
 )
-from httpx._config import DEFAULT_TIMEOUT_CONFIG  # noqa: I251
-from httpx._types import TimeoutTypes  # noqa: I251
+from httpx._config import DEFAULT_TIMEOUT_CONFIG  # noqa: TID251
+from httpx._types import TimeoutTypes  # noqa: TID251
 
 __all__ = ["Response", "Request", "HTTPError", "HttpClient", "HTTPStatusError"]
 
