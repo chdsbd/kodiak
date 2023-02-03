@@ -400,7 +400,10 @@ async def webhook_event_consumer(
         )
         log.info("start webhook event consumer")
         while True:
-            await process_webhook_event(connection, webhook_queue, queue_name, log)
+            await asyncio.wait_for(
+                process_webhook_event(connection, webhook_queue, queue_name, log),
+                5 * 60,
+            )
 
 
 async def process_repo_queue(
@@ -414,19 +417,27 @@ async def process_repo_queue(
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
     target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-    await connection.set(target_name, webhook_event.json())
-    await connection.set(target_name + ":time", str(webhook_event_json.score))
+    await asyncio.wait_for(connection.set(target_name, webhook_event.json()), 30)
+    await asyncio.wait_for(
+        connection.set(target_name + ":time", str(webhook_event_json.score)), 30
+    )
 
     async def dequeue() -> None:
-        await connection.zrem(
-            webhook_event.get_merge_queue_name(), [webhook_event.json()]
+        await asyncio.wait_for(
+            connection.zrem(
+                webhook_event.get_merge_queue_name(), [webhook_event.json()]
+            ),
+            30,
         )
 
     async def requeue() -> None:
-        await connection.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            only_if_not_exists=True,
+        await asyncio.wait_for(
+            connection.zadd(
+                webhook_event.get_webhook_queue_name(),
+                {webhook_event.json(): time.time()},
+                only_if_not_exists=True,
+            ),
+            30,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
@@ -446,8 +457,8 @@ async def process_repo_queue(
         log=log,
     )
     log.info("merge completed, remove target marker", target_name=target_name)
-    await connection.delete([target_name])
-    await connection.delete([target_name + ":time"])
+    await asyncio.wait_for(connection.delete([target_name]), 30)
+    await asyncio.wait_for(connection.delete([target_name + ":time"]), 30)
 
 
 async def repo_queue_consumer(
