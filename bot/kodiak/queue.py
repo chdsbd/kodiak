@@ -340,24 +340,36 @@ async def process_webhook_event(
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
     is_active_merging = (
-        await connection.get(webhook_event.get_merge_target_queue_name())
+        await asyncio.wait_for(
+            connection.get(webhook_event.get_merge_target_queue_name()),
+            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        )
         == webhook_event.json()
     )
 
     async def dequeue() -> None:
-        await connection.zrem(
-            webhook_event.get_merge_queue_name(), [webhook_event.json()]
+        await asyncio.wait_for(
+            connection.zrem(
+                webhook_event.get_merge_queue_name(), [webhook_event.json()]
+            ),
+            conf.REDIS_REQUEST_TIMEOUT_SEC,
         )
 
     async def requeue() -> None:
-        await connection.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            only_if_not_exists=True,
+        await asyncio.wait_for(
+            connection.zadd(
+                webhook_event.get_webhook_queue_name(),
+                {webhook_event.json(): time.time()},
+                only_if_not_exists=True,
+            ),
+            conf.REDIS_REQUEST_TIMEOUT_SEC,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
-        return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
+        return await asyncio.wait_for(
+            webhook_queue.enqueue_for_repo(event=webhook_event, first=first),
+            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        )
 
     log.info("evaluate pr for webhook event")
     await evaluate_pr(
@@ -400,10 +412,7 @@ async def webhook_event_consumer(
         )
         log.info("start webhook event consumer")
         while True:
-            await asyncio.wait_for(
-                process_webhook_event(connection, webhook_queue, queue_name, log),
-                conf.REDIS_REQUEST_TIMEOUT_SEC,
-            )
+            await process_webhook_event(connection, webhook_queue, queue_name, log)
 
 
 async def process_repo_queue(
