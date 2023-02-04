@@ -179,9 +179,9 @@ async def main_async() -> None:
         res = await redis_bot.blpop(
             ["kodiak:refresh_pull_requests_for_installation"], timeout=5
         )
-        logger.info("pull_request_refresh", timeout_reached=True)
 
         if res is None:
+            logger.info("pull_request_refresh", timeout_reached=True)
             continue
         _key, value = res
         pr_refresh_message = RefreshPullRequestsMessage.parse_raw(value)

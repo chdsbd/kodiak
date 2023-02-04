@@ -35,7 +35,9 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
 
     log.info("start working ingest_queue")
     while True:
-        res = await redis_bot.blpop([queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC)
+        res = await redis_bot.blpop(
+            [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
+        )
         if res is None:
             continue
         _, value = res

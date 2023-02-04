@@ -12,7 +12,6 @@ PyJWT = "^1.7"
 structlog = "^19.1"
 colorama = "^0.4.1"
 databases = "0.3.2"
-# bzpopmin and bzpopmax support. connection pool is built concurrently. TLS support.
 inflection = "0.5.1"
 markdown-html-finder = "^0.2.3"
 markupsafe = "^1.1"

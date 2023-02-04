@@ -296,7 +296,9 @@ class WebhookEvent(BaseModel):
 
 
 async def bzpopmin_with_timeout(queue_name: str) -> Tuple[bytes, bytes, float] | None:
-    return await redis_bot.bzpopmin([queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC)
+    return await redis_bot.bzpopmin(
+        [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
+    )
 
 
 async def process_webhook_event(
