@@ -39,7 +39,6 @@ PORT = config("PORT", cast=int, default=8000)
 REDIS_URL = config("REDIS_URL", cast=databases.DatabaseURL, default=None) or config(
     "REDISCLOUD_URL", cast=databases.DatabaseURL
 )
-REDIS_POOL_SIZE = config("REDIS_POOL_SIZE", cast=int, default=20)
 SECRET_KEY = config("SECRET_KEY")
 GITHUB_APP_ID = config("GITHUB_APP_ID")
 GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
@@ -55,7 +54,6 @@ USAGE_REPORTING_EVENTS = set(
         default=["pull_request", "pull_request_review", "pull_request_comment"],
     )
 )
-USAGE_REPORTING_POOL_SIZE = config("USAGE_REPORTING_POOL_SIZE", cast=int, default=50)
 USAGE_REPORTING_QUEUE_LENGTH = config(
     "USAGE_REPORTING_QUEUE_LENGTH", cast=int, default=10_000
 )
