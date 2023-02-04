@@ -21,8 +21,8 @@ from kodiak.http import HttpClient
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
-from kodiak.throttle import get_thottler_for_installation
 from kodiak.redis_client import redis_web_api
+from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
 
