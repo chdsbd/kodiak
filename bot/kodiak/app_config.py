@@ -61,7 +61,7 @@ INGEST_QUEUE_LENGTH = config("INGEST_QUEUE_LENGTH", cast=int, default=1_000)
 REDIS_BLOCKING_POP_TIMEOUT_SEC = config(
     "REDIS_BLOCKING_POP_TIMEOUT_SEC", cast=int, default=10
 )
-# if we don't get a reply from Redis within a short period, we have an error because we always expect short response times from redis. We specify a timeout for blocking oeprations
+# if we don't get a reply from Redis within a short period, we have an error because we always expect short response times from redis. We specify a timeout for blocking operations
 REDIS_SOCKET_TIMEOUT_SEC = config("REDIS_SOCKET_TIMEOUT_SEC", cast=int, default=90)
 # if we can't open a TCP connection quickly, we should raise a timeout.
 REDIS_SOCKET_CONNECT_TIMEOUT_SEC = config(
