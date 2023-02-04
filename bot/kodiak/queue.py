@@ -8,14 +8,11 @@ import urllib
 from asyncio.tasks import Task
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator, MutableMapping, NoReturn, Optional
+from typing import Iterator, MutableMapping, NoReturn, Optional, Tuple
 
-import asyncio_redis
 import sentry_sdk
 import structlog
 import zstandard as zstd
-from asyncio_redis import Pool as RedisConnection
-from asyncio_redis.replies import BlockingZPopReply
 from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
@@ -32,6 +29,7 @@ from kodiak.events import (
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+from kodiak.redis_client import redis_bot, redis_web_api
 
 logger = structlog.get_logger()
 
@@ -229,23 +227,6 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
             )
 
 
-_redis: asyncio_redis.Pool | None = None
-
-
-async def get_redis() -> asyncio_redis.Pool:
-    global _redis  # pylint: disable=global-statement
-    if _redis is None:
-        _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password,
-            poolsize=conf.USAGE_REPORTING_POOL_SIZE,
-            encoder=asyncio_redis.encoders.BytesEncoder(),
-            ssl=conf.REDIS_URL.scheme == "rediss",
-        )
-    return _redis
-
-
 def compress_payload(data: dict[str, object]) -> bytes:
     cctx = zstd.ZstdCompressor()
     return cctx.compress(json.dumps(data).encode())
@@ -261,12 +242,13 @@ async def handle_webhook_event(
         #
         # We limit the queue length to ensure that if the dequeue job fails, we
         # won't overload Redis.
-        redis = await get_redis()
-        await redis.rpush(
+        await redis_web_api.rpush(
             b"kodiak:webhook_event",
-            [compress_payload(dict(event_name=event_name, payload=payload))],
+            compress_payload(dict(event_name=event_name, payload=payload)),
         )
-        await redis.ltrim(b"kodiak:webhook_event", 0, conf.USAGE_REPORTING_QUEUE_LENGTH)
+        await redis_web_api.ltrim(
+            b"kodiak:webhook_event", 0, conf.USAGE_REPORTING_QUEUE_LENGTH
+        )
         log = log.bind(usage_reported=True)
 
     if event_name == "check_run":
@@ -313,31 +295,36 @@ class WebhookEvent(BaseModel):
         )
 
 
+async def bzpopmin_with_timeout(queue_name: str) -> Tuple[bytes, bytes, float] | None:
+    return await redis_bot.bzpopmin(
+        [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
+    )
+
+
 async def process_webhook_event(
-    connection: RedisConnection,
     webhook_queue: RedisWebhookQueue,
     queue_name: str,
     log: structlog.BoundLogger,
 ) -> None:
     log.info("block for new webhook event")
-    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
+    webhook_event_json = await bzpopmin_with_timeout(queue_name)
+    if webhook_event_json is None:
+        return
     log.info("parsing webhook event")
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
     is_active_merging = (
-        await connection.get(webhook_event.get_merge_target_queue_name())
-        == webhook_event.json()
+        await redis_bot.get(webhook_event.get_merge_target_queue_name())
+        == webhook_event.json().encode()
     )
 
     async def dequeue() -> None:
-        await connection.zrem(
-            webhook_event.get_merge_queue_name(), [webhook_event.json()]
-        )
+        await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await connection.zadd(
+        await redis_bot.zadd(
             webhook_event.get_webhook_queue_name(),
             {webhook_event.json(): time.time()},
-            only_if_not_exists=True,
+            nx=True,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
@@ -359,7 +346,7 @@ async def process_webhook_event(
 
 
 async def webhook_event_consumer(
-    *, connection: RedisConnection, webhook_queue: RedisWebhookQueue, queue_name: str
+    *, webhook_queue: RedisWebhookQueue, queue_name: str
 ) -> typing.NoReturn:
     """
     Worker to process incoming webhook events from redis
@@ -384,30 +371,29 @@ async def webhook_event_consumer(
         )
         log.info("start webhook event consumer")
         while True:
-            await process_webhook_event(connection, webhook_queue, queue_name, log)
+            await process_webhook_event(webhook_queue, queue_name, log)
 
 
-async def process_repo_queue(
-    log: structlog.BoundLogger, connection: RedisConnection, queue_name: str
-) -> None:
+async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> None:
     log.info("block for new repo event")
-    webhook_event_json: BlockingZPopReply = await connection.bzpopmin([queue_name])
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json.value)
+    result = await bzpopmin_with_timeout(queue_name)
+    if result is None:
+        return
+    _key, value, score = result
+    webhook_event = WebhookEvent.parse_raw(value)
     target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-    await connection.set(target_name, webhook_event.json())
-    await connection.set(target_name + ":time", str(webhook_event_json.score))
+    await redis_bot.set(target_name, webhook_event.json())
+    await redis_bot.set(target_name + ":time", str(score))
 
     async def dequeue() -> None:
-        await connection.zrem(
-            webhook_event.get_merge_queue_name(), [webhook_event.json()]
-        )
+        await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await connection.zadd(
+        await redis_bot.zadd(
             webhook_event.get_webhook_queue_name(),
             {webhook_event.json(): time.time()},
-            only_if_not_exists=True,
+            nx=True,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
@@ -427,13 +413,11 @@ async def process_repo_queue(
         log=log,
     )
     log.info("merge completed, remove target marker", target_name=target_name)
-    await connection.delete([target_name])
-    await connection.delete([target_name + ":time"])
+    await redis_bot.delete(target_name)
+    await redis_bot.delete(target_name + ":time")
 
 
-async def repo_queue_consumer(
-    *, queue_name: str, connection: RedisConnection
-) -> typing.NoReturn:
+async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
     """
     Worker for a repo given by :queue_name:
 
@@ -450,7 +434,7 @@ async def repo_queue_consumer(
         log = logger.bind(queue=queue_name, install=installation)
         log.info("start repo_consumer")
         while True:
-            await process_repo_queue(log, connection, queue_name)
+            await process_repo_queue(log, queue_name)
 
 
 T = typing.TypeVar("T")
@@ -475,56 +459,39 @@ class TaskMeta:
 
 
 class RedisWebhookQueue:
-    connection: asyncio_redis.Pool
-
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
             str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
         ] = {}  # type: ignore [assignment]
 
     async def create(self) -> None:
-        redis_db = 0
-        try:
-            redis_db = int(conf.REDIS_URL.database)
-        except ValueError:
-            pass
-
-        self.connection = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password or None,
-            db=redis_db,
-            poolsize=conf.REDIS_POOL_SIZE,
-            ssl=conf.REDIS_URL.scheme == "rediss",
-        )
-
         # restart repo workers
         merge_queues, webhook_queues = await asyncio.gather(
-            self.connection.smembers(MERGE_QUEUE_NAMES),
-            self.connection.smembers(WEBHOOK_QUEUE_NAMES),
+            redis_bot.smembers(MERGE_QUEUE_NAMES),
+            redis_bot.smembers(WEBHOOK_QUEUE_NAMES),
         )
         for merge_result in merge_queues:
-            queue_name = await merge_result
+            queue_name = merge_result.decode()
             self.start_repo_worker(queue_name=queue_name)
 
         for webhook_result in webhook_queues:
-            queue_name = await webhook_result
+            queue_name = webhook_result.decode()
             self.start_webhook_worker(queue_name=queue_name)
 
     def start_webhook_worker(self, *, queue_name: str) -> None:
         self._start_worker(
             queue_name,
             "webhook",
-            webhook_event_consumer(
-                connection=self.connection, webhook_queue=self, queue_name=queue_name
-            ),
+            webhook_event_consumer(webhook_queue=self, queue_name=queue_name),
         )
 
     def start_repo_worker(self, *, queue_name: str) -> None:
         self._start_worker(
             queue_name,
             "repo",
-            repo_queue_consumer(queue_name=queue_name, connection=self.connection),
+            repo_queue_consumer(
+                queue_name=queue_name,
+            ),
         )
 
     def _start_worker(
@@ -553,12 +520,10 @@ class RedisWebhookQueue:
         add :event: to webhook queue
         """
         queue_name = get_webhook_queue_name(event)
-        transaction = await self.connection.multi()
-        await transaction.sadd(WEBHOOK_QUEUE_NAMES, [queue_name])
-        await transaction.zadd(
-            queue_name, {event.json(): time.time()}, only_if_not_exists=True
-        )
-        await transaction.exec()
+        async with redis_bot.pipeline(transaction=True) as pipe:
+            pipe.sadd(WEBHOOK_QUEUE_NAMES, queue_name)
+            pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
+            await pipe.execute()
         log = logger.bind(
             owner=event.repo_owner,
             repo=event.repo_name,
@@ -581,22 +546,20 @@ class RedisWebhookQueue:
         returns position of event in queue
         """
         queue_name = get_merge_queue_name(event)
-        transaction = await self.connection.multi()
-        merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
-        await transaction.sadd(merge_queues_by_install, [queue_name])
-        await transaction.expire(merge_queues_by_install, seconds=ONE_DAY)
-        if first:
-            # place at front of queue. To allow us to always place this PR at
-            # the front, we should not pass only_if_not_exists.
-            await transaction.zadd(queue_name, {event.json(): 1.0})
-        else:
-            # use only_if_not_exists to prevent changing queue positions on new
-            # webhook events.
-            await transaction.zadd(
-                queue_name, {event.json(): time.time()}, only_if_not_exists=True
-            )
-        future_results = await transaction.zrange(queue_name, 0, 1000)
-        await transaction.exec()
+        async with redis_bot.pipeline(transaction=True) as pipe:
+            merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
+            pipe.sadd(merge_queues_by_install, queue_name)
+            pipe.expire(merge_queues_by_install, time=ONE_DAY)
+            if first:
+                # place at front of queue. To allow us to always place this PR at
+                # the front, we should not pass only_if_not_exists.
+                pipe.zadd(queue_name, {event.json(): 1.0})
+            else:
+                # use only_if_not_exists to prevent changing queue positions on new
+                # webhook events.
+                pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
+            pipe.zrange(queue_name, 0, 1000, withscores=True)
+            results = await pipe.execute()
         log = logger.bind(
             owner=event.repo_owner,
             repo=event.repo_name,
@@ -606,12 +569,12 @@ class RedisWebhookQueue:
 
         log.info("enqueue repo event")
         self.start_repo_worker(queue_name=queue_name)
-        results = await future_results
-        dictionary = await results.asdict()
+
+        zrange_results = results[-1]  # type: list[tuple[bytes, float]]
         kvs = sorted(
-            ((key, value) for key, value in dictionary.items()), key=lambda x: x[1]
+            ((key, value) for key, value in zrange_results), key=lambda x: x[1]
         )
-        return find_position((key for key, value in kvs), event.json())
+        return find_position((key for key, value in kvs), event.json().encode())
 
     def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
         for queue_name, (task, task_kind) in self.worker_tasks.items():

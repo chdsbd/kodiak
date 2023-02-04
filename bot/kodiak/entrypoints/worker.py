@@ -11,7 +11,7 @@ import pydantic
 import sentry_sdk
 import structlog
 
-from kodiak import redis_client
+from kodiak import app_config as conf
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
 from kodiak.queue import (
@@ -22,6 +22,7 @@ from kodiak.queue import (
     get_ingest_queue,
     handle_webhook_event,
 )
+from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
@@ -30,13 +31,17 @@ logger = structlog.get_logger()
 
 
 async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoReturn:
-    redis = await redis_client.create_connection()
     log = logger.bind(queue_name=queue_name, task="work_ingest_queue")
 
     log.info("start working ingest_queue")
     while True:
-        raw_event = await redis.blpop([queue_name])
-        parsed_event = RawWebhookEvent.parse_raw(raw_event.value)
+        res = await redis_bot.blpop(
+            [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
+        )
+        if res is None:
+            continue
+        _, value = res
+        parsed_event = RawWebhookEvent.parse_raw(value)
         await handle_webhook_event(
             queue=queue,
             event_name=parsed_event.event_name,
@@ -55,14 +60,17 @@ async def ingest_queue_starter(
     """
     Listen on Redis Pubsub and start queue worker if we don't have one already.
     """
-    redis = await redis_client.create_connection()
-    subscriber = await redis.start_subscribe()
-    await subscriber.subscribe([QUEUE_PUBSUB_INGEST])
+    pubsub = redis_bot.pubsub()
+    await pubsub.subscribe(QUEUE_PUBSUB_INGEST)
     log = logger.bind(task="ingest_queue_starter")
     log.info("start watch for ingest_queues")
     while True:
-        reply = await subscriber.next_published()
-        installation_id = PubsubIngestQueueSchema.parse_raw(reply.value).installation_id
+        reply = await pubsub.get_message(ignore_subscribe_messages=True, timeout=10)
+        if reply is None:
+            continue
+        installation_id = PubsubIngestQueueSchema.parse_raw(
+            reply["data"]
+        ).installation_id
         queue_name = get_ingest_queue(installation_id)
         if queue_name not in ingest_workers:
             ingest_workers[queue_name] = asyncio.create_task(
@@ -77,12 +85,11 @@ async def main() -> NoReturn:
 
     ingest_workers = dict()
 
-    redis = await redis_client.create_connection()
-    ingest_queue_names = await redis.smembers(INGEST_QUEUE_NAMES)
+    ingest_queue_names = await redis_bot.smembers(INGEST_QUEUE_NAMES)
     log = logger.bind(task="main_worker")
 
-    for queue_result in ingest_queue_names:
-        queue_name = await queue_result
+    for queue_name_bytes in ingest_queue_names:
+        queue_name = queue_name_bytes.decode()
         if queue_name not in ingest_workers:
             log.info("start ingest_queue_worker", queue_name=queue_name)
             ingest_workers[queue_name] = asyncio.create_task(

@@ -21,6 +21,7 @@ from kodiak.http import HttpClient
 from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
+from kodiak.redis_client import redis_web_api
 from kodiak.throttle import get_thottler_for_installation
 
 logger = structlog.get_logger()
@@ -1327,20 +1328,12 @@ query {
         """
         Get subscription information for installation.
         """
-        from kodiak.queue import get_redis
-
-        redis = await get_redis()
-        res = await redis.hgetall(
+        res = await redis_web_api.hgetall(
             f"kodiak:subscription:{self.installation_id}".encode()
         )
         if not res:
             return None
-        real_response = await res.asdict()
-        if not real_response:
-            return None
-        subscription_blocker_kind = (
-            real_response.get(b"subscription_blocker") or b""
-        ).decode()
+        subscription_blocker_kind = (res.get(b"subscription_blocker") or b"").decode()
         subscription_blocker: Optional[
             Union[SubscriptionExpired, TrialExpired, SeatsExceeded]
         ] = None
@@ -1350,7 +1343,7 @@ query {
                 subscription_blocker = SeatsExceeded.parse_raw(
                     # Pydantic says it doesn't allow Nones, but passing a None
                     # raises a ValidationError which is fine.
-                    real_response.get(b"data")  # type: ignore
+                    res.get(b"data")  # type: ignore
                 )
             except pydantic.ValidationError:
                 logger.exception("failed to parse seats_exceeded data", exc_info=True)
@@ -1360,7 +1353,7 @@ query {
         if subscription_blocker_kind == "subscription_expired":
             subscription_blocker = SubscriptionExpired()
         return Subscription(
-            account_id=real_response[b"account_id"].decode(),
+            account_id=res[b"account_id"].decode(),
             subscription_blocker=subscription_blocker,
         )
 

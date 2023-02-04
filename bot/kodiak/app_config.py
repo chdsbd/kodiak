@@ -39,7 +39,6 @@ PORT = config("PORT", cast=int, default=8000)
 REDIS_URL = config("REDIS_URL", cast=databases.DatabaseURL, default=None) or config(
     "REDISCLOUD_URL", cast=databases.DatabaseURL
 )
-REDIS_POOL_SIZE = config("REDIS_POOL_SIZE", cast=int, default=20)
 SECRET_KEY = config("SECRET_KEY")
 GITHUB_APP_ID = config("GITHUB_APP_ID")
 GITHUB_PRIVATE_KEY = config("GITHUB_PRIVATE_KEY", default=None)
@@ -55,11 +54,19 @@ USAGE_REPORTING_EVENTS = set(
         default=["pull_request", "pull_request_review", "pull_request_comment"],
     )
 )
-USAGE_REPORTING_POOL_SIZE = config("USAGE_REPORTING_POOL_SIZE", cast=int, default=50)
 USAGE_REPORTING_QUEUE_LENGTH = config(
     "USAGE_REPORTING_QUEUE_LENGTH", cast=int, default=10_000
 )
 INGEST_QUEUE_LENGTH = config("INGEST_QUEUE_LENGTH", cast=int, default=1_000)
+REDIS_BLOCKING_POP_TIMEOUT_SEC = config(
+    "REDIS_BLOCKING_POP_TIMEOUT_SEC", cast=int, default=10
+)
+# if we don't get a reply from Redis within a short period, we have an error because we always expect short response times from redis. We specify a timeout for blocking operations
+REDIS_SOCKET_TIMEOUT_SEC = config("REDIS_SOCKET_TIMEOUT_SEC", cast=int, default=90)
+# if we can't open a TCP connection quickly, we should raise a timeout.
+REDIS_SOCKET_CONNECT_TIMEOUT_SEC = config(
+    "REDIS_SOCKET_CONNECT_TIMEOUT_SEC", cast=int, default=30
+)
 
 SUBSCRIPTIONS_ENABLED = config("SUBSCRIPTIONS_ENABLED", cast=bool, default=False)
 

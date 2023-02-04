@@ -7,7 +7,6 @@ import hashlib
 import hmac
 from typing import Any
 
-import asyncio_redis
 import structlog
 import uvicorn
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -21,6 +20,7 @@ from kodiak import app_config as conf
 from kodiak.entrypoints.worker import PubsubIngestQueueSchema
 from kodiak.logging import configure_logging
 from kodiak.queue import INGEST_QUEUE_NAMES, QUEUE_PUBSUB_INGEST, get_ingest_queue
+from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
@@ -29,23 +29,6 @@ logger = structlog.get_logger()
 
 app = Starlette()
 app.add_middleware(SentryAsgiMiddleware)
-
-# TODO(sbdchd): should this be a pool?
-_redis: asyncio_redis.Pool | None = None
-
-
-async def get_redis() -> asyncio_redis.Pool:
-    global _redis  # pylint: disable=global-statement
-    if _redis is None:
-        _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password,
-            # XXX: which var?
-            poolsize=conf.USAGE_REPORTING_POOL_SIZE,
-            ssl=conf.REDIS_URL.scheme == "rediss",
-        )
-    return _redis
 
 
 @app.route("/", methods=["GET"])
@@ -98,15 +81,15 @@ async def github_webhook_event(request: Request) -> Response:
         return JSONResponse({"ok": True})
 
     ingest_queue = get_ingest_queue(installation_id)
-    redis = await get_redis()
-    await redis.rpush(
+
+    await redis_bot.rpush(
         ingest_queue,
-        [RawWebhookEvent(event_name=github_event, payload=event).json()],
+        RawWebhookEvent(event_name=github_event, payload=event).json(),
     )
 
-    await redis.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
-    await redis.sadd(INGEST_QUEUE_NAMES, [ingest_queue])
-    await redis.publish(
+    await redis_bot.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
+    await redis_bot.sadd(INGEST_QUEUE_NAMES, ingest_queue)
+    await redis_bot.publish(
         QUEUE_PUBSUB_INGEST,
         PubsubIngestQueueSchema(installation_id=installation_id).json(),
     )
