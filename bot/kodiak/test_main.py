@@ -62,9 +62,7 @@ def test_webhook_event(
 ) -> None:
     """Test all of the events we have"""
     fake_redis = FakeRedis()
-    mocker.patch(
-        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
     for index, fixture_path in enumerate(
         (Path(__file__).parent / "test" / "fixtures" / "events" / event_name).rglob(
             "*.json"
@@ -90,9 +88,7 @@ def test_webhook_event_missing_github_event(
     client: TestClient, mocker: MockFixture
 ) -> None:
     fake_redis = FakeRedis()
-    mocker.patch(
-        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
     data = {"hello": 123}
 
     body, sha = get_body_and_hash(data)
@@ -107,9 +103,7 @@ def test_webhook_event_invalid_signature(
     client: TestClient, mocker: MockFixture
 ) -> None:
     fake_redis = FakeRedis()
-    mocker.patch(
-        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
-    )
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
     data = {"hello": 123}
 
     # use a different dict for the signature so we get an signature mismatch
