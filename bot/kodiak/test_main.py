@@ -63,7 +63,7 @@ def test_webhook_event(
     """Test all of the events we have"""
     fake_redis = FakeRedis()
     mocker.patch(
-        "kodiak.entrypoints.ingest.get_redis", return_value=wrap_future(fake_redis)
+        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
     )
     for index, fixture_path in enumerate(
         (Path(__file__).parent / "test" / "fixtures" / "events" / event_name).rglob(
@@ -91,7 +91,7 @@ def test_webhook_event_missing_github_event(
 ) -> None:
     fake_redis = FakeRedis()
     mocker.patch(
-        "kodiak.entrypoints.ingest.get_redis", return_value=wrap_future(fake_redis)
+        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
     )
     data = {"hello": 123}
 
@@ -108,7 +108,7 @@ def test_webhook_event_invalid_signature(
 ) -> None:
     fake_redis = FakeRedis()
     mocker.patch(
-        "kodiak.entrypoints.ingest.get_redis", return_value=wrap_future(fake_redis)
+        "kodiak.entrypoints.ingest.redis_bot", return_value=wrap_future(fake_redis)
     )
     data = {"hello": 123}
 
