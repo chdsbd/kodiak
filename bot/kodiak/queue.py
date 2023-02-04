@@ -296,14 +296,9 @@ class WebhookEvent(BaseModel):
 
 
 async def bzpopmin_with_timeout(queue_name: str) -> Tuple[bytes, bytes, float] | None:
-    try:
-        webhook_event_json = await asyncio.wait_for(
-            main_redis.bzpopmin([queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC),
-            timeout=conf.BLOCKING_POP_TIMEOUT_SEC + 5,
-        )
-    except asyncio.TimeoutError:
-        return None
-    return webhook_event_json
+    return await main_redis.bzpopmin(
+        [queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC
+    )
 
 
 async def process_webhook_event(
@@ -319,34 +314,24 @@ async def process_webhook_event(
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
     is_active_merging = (
-        await asyncio.wait_for(
-            main_redis.get(webhook_event.get_merge_target_queue_name()),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
-        )
+        await main_redis.get(webhook_event.get_merge_target_queue_name())
         == webhook_event.json().encode()
     )
 
     async def dequeue() -> None:
-        await asyncio.wait_for(
-            main_redis.zrem(webhook_event.get_merge_queue_name(), webhook_event.json()),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        await main_redis.zrem(
+            webhook_event.get_merge_queue_name(), webhook_event.json()
         )
 
     async def requeue() -> None:
-        await asyncio.wait_for(
-            main_redis.zadd(
-                webhook_event.get_webhook_queue_name(),
-                {webhook_event.json(): time.time()},
-                nx=True,
-            ),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        await main_redis.zadd(
+            webhook_event.get_webhook_queue_name(),
+            {webhook_event.json(): time.time()},
+            nx=True,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
-        return await asyncio.wait_for(
-            webhook_queue.enqueue_for_repo(event=webhook_event, first=first),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
-        )
+        return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
     await evaluate_pr(
@@ -402,29 +387,19 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
     webhook_event = WebhookEvent.parse_raw(value)
     target_name = webhook_event.get_merge_target_queue_name()
     # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-    await asyncio.wait_for(
-        main_redis.set(target_name, webhook_event.json()),
-        conf.REDIS_REQUEST_TIMEOUT_SEC,
-    )
-    await asyncio.wait_for(
-        main_redis.set(target_name + ":time", str(score)),
-        conf.REDIS_REQUEST_TIMEOUT_SEC,
-    )
+    await main_redis.set(target_name, webhook_event.json())
+    await main_redis.set(target_name + ":time", str(score))
 
     async def dequeue() -> None:
-        await asyncio.wait_for(
-            main_redis.zrem(webhook_event.get_merge_queue_name(), webhook_event.json()),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        await main_redis.zrem(
+            webhook_event.get_merge_queue_name(), webhook_event.json()
         )
 
     async def requeue() -> None:
-        await asyncio.wait_for(
-            main_redis.zadd(
-                webhook_event.get_webhook_queue_name(),
-                {webhook_event.json(): time.time()},
-                nx=True,
-            ),
-            conf.REDIS_REQUEST_TIMEOUT_SEC,
+        await main_redis.zadd(
+            webhook_event.get_webhook_queue_name(),
+            {webhook_event.json(): time.time()},
+            nx=True,
         )
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
@@ -444,12 +419,8 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         log=log,
     )
     log.info("merge completed, remove target marker", target_name=target_name)
-    await asyncio.wait_for(
-        main_redis.delete(target_name), conf.REDIS_REQUEST_TIMEOUT_SEC
-    )
-    await asyncio.wait_for(
-        main_redis.delete(target_name + ":time"), conf.REDIS_REQUEST_TIMEOUT_SEC
-    )
+    await main_redis.delete(target_name)
+    await main_redis.delete(target_name + ":time")
 
 
 async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
