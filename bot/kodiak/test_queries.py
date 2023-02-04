@@ -6,11 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, cast
 
-import asyncio_redis
 import pytest
 from pytest_mock import MockFixture
 
 from kodiak import app_config as conf
+from kodiak.redis_client import main_redis
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
@@ -241,17 +241,12 @@ async def setup_redis(github_installation_id: str) -> None:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port
-    r = await asyncio_redis.Connection.create(
-        host=host,
-        port=port,
-        password=conf.REDIS_URL.password,
-    )
     key = f"kodiak:subscription:{github_installation_id}"
-    await r.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
-    await r.hset(key, "subscription_blocker", "")
+    await main_redis.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
+    await main_redis.hset(key, "subscription_blocker", "")
     yield
-    await r.delete([key])
-    r.close()
+    await main_redis.delete([key])
+    main_redis.close()
 
 
 def msg_to_dict(msg: str) -> Dict[str, str]:

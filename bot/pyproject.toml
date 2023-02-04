@@ -9,12 +9,10 @@ python = "^3.7"
 uvicorn = "^0.15.0"
 toml = "^0.10.0"
 PyJWT = "^1.7"
-cryptography = "^3.4.6"
 structlog = "^19.1"
 colorama = "^0.4.1"
 databases = "0.3.2"
 # bzpopmin and bzpopmax support. connection pool is built concurrently. TLS support.
-asyncio_redis = {git = "https://github.com/chdsbd/asyncio-redis.git", branch="master"}
 inflection = "0.5.1"
 markdown-html-finder = "^0.2.3"
 markupsafe = "^1.1"
@@ -27,6 +25,7 @@ httpx = "^0.18.1"
 httpcore = "0.13.2"
 pydantic = "^1.9.1"
 starlette = "^0.20.4"
+redis = "^4.4.2"
 
 [tool.poetry.scripts]
 kodiak = 'kodiak.cli:cli'
@@ -48,6 +47,7 @@ types-toml = "^0.10.7"
 flake8-tidy-imports = "^4.8.0"
 pytest-asyncio = "0.20.1"
 pytest = "^7.2.0"
+types-redis = "^4.4.0"
 
 [tool.poetry.plugins."pytest11"]
 "pytest_plugin" = "pytest_plugin.plugin"

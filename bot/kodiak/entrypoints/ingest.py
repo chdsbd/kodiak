@@ -7,7 +7,7 @@ import hashlib
 import hmac
 from typing import Any
 
-import asyncio_redis
+from kodiak.redis_client import main_redis
 import structlog
 import uvicorn
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -29,23 +29,6 @@ logger = structlog.get_logger()
 
 app = Starlette()
 app.add_middleware(SentryAsgiMiddleware)
-
-# TODO(sbdchd): should this be a pool?
-_redis: asyncio_redis.Pool | None = None
-
-
-async def get_redis() -> asyncio_redis.Pool:
-    global _redis  # pylint: disable=global-statement
-    if _redis is None:
-        _redis = await asyncio_redis.Pool.create(
-            host=conf.REDIS_URL.hostname or "localhost",
-            port=conf.REDIS_URL.port or 6379,
-            password=conf.REDIS_URL.password,
-            # XXX: which var?
-            poolsize=conf.USAGE_REPORTING_POOL_SIZE,
-            ssl=conf.REDIS_URL.scheme == "rediss",
-        )
-    return _redis
 
 
 @app.route("/", methods=["GET"])
@@ -98,15 +81,15 @@ async def github_webhook_event(request: Request) -> Response:
         return JSONResponse({"ok": True})
 
     ingest_queue = get_ingest_queue(installation_id)
-    redis = await get_redis()
-    await redis.rpush(
+
+    await main_redis.rpush(
         ingest_queue,
-        [RawWebhookEvent(event_name=github_event, payload=event).json()],
+        RawWebhookEvent(event_name=github_event, payload=event).json(),
     )
 
-    await redis.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
-    await redis.sadd(INGEST_QUEUE_NAMES, [ingest_queue])
-    await redis.publish(
+    await main_redis.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
+    await main_redis.sadd(INGEST_QUEUE_NAMES, ingest_queue)
+    await main_redis.publish(
         QUEUE_PUBSUB_INGEST,
         PubsubIngestQueueSchema(installation_id=installation_id).json(),
     )

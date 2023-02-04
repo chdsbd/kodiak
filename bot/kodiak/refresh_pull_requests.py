@@ -16,16 +16,13 @@ import sys
 import time
 from typing import cast
 
-import asyncio_redis
 import sentry_sdk
 import structlog
-from asyncio_redis.connection import Connection as RedisConnection
-from asyncio_redis.replies import BlockingPopReply
 from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
-from kodiak import redis_client
+from kodiak.redis_client import main_redis
 from kodiak.http import HttpClient
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
@@ -121,9 +118,7 @@ async def get_login_for_install(*, http: HttpClient, installation_id: str) -> st
     return cast(str, res.json()["account"]["login"])
 
 
-async def refresh_pull_requests_for_installation(
-    *, installation_id: str, redis: RedisConnection
-) -> None:
+async def refresh_pull_requests_for_installation(*, installation_id: str) -> None:
     async with HttpClient() as http:
         login = await get_login_for_install(http=http, installation_id=installation_id)
         token = await get_token_for_install(
@@ -162,10 +157,10 @@ async def refresh_pull_requests_for_installation(
                 )
             )
     for event in events:
-        await redis.zadd(
+        await main_redis.zadd(
             event.get_webhook_queue_name(),
             {event.json(): time.time()},
-            only_if_not_exists=True,
+            nx=True,
         )
     logger.info(
         "pull_requests_refreshed",
@@ -180,21 +175,18 @@ class RefreshPullRequestsMessage(BaseModel):
 
 
 async def main_async() -> None:
-    redis = await redis_client.create_connection()
     while True:
-        try:
-            res: BlockingPopReply = await redis.blpop(
-                ["kodiak:refresh_pull_requests_for_installation"], timeout=5
-            )
-        except asyncio_redis.exceptions.TimeoutError:
-            logger.info("pull_request_refresh", timeout_reached=True)
+        res = await main_redis.blpop(
+            ["kodiak:refresh_pull_requests_for_installation"], timeout=5
+        )
+        logger.info("pull_request_refresh", timeout_reached=True)
+
+        if res is None:
             continue
         pr_refresh_message = RefreshPullRequestsMessage.parse_raw(res.value)
         installation_id = pr_refresh_message.installation_id
         start = time.monotonic()
-        await refresh_pull_requests_for_installation(
-            installation_id=installation_id, redis=redis
-        )
+        await refresh_pull_requests_for_installation(installation_id=installation_id)
         logger.info(
             "pull_request_refresh",
             installation_id=installation_id,

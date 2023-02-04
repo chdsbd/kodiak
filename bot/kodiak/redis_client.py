@@ -1,19 +1,22 @@
-import asyncio_redis
-
 import kodiak.app_config as conf
+import redis.asyncio as redis
 
 
-async def create_connection() -> asyncio_redis.Connection:
+def create_connection() -> 'redis.Redis["bytes"]':
     redis_db = 0
     try:
         redis_db = int(conf.REDIS_URL.database)
     except ValueError:
         pass
 
-    return await asyncio_redis.Connection.create(
+    return redis.Redis(
         host=conf.REDIS_URL.hostname or "localhost",
         port=conf.REDIS_URL.port or 6379,
         password=conf.REDIS_URL.password,
         ssl=conf.REDIS_URL.scheme == "rediss",
         db=redis_db,
     )
+
+
+main_redis = create_connection()
+usage_redis = create_connection()
