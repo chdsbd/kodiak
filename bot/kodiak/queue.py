@@ -568,7 +568,10 @@ class RedisWebhookQueue:
         log.info("enqueue repo event")
         self.start_repo_worker(queue_name=queue_name)
 
-        kvs = sorted(((key, value) for key, value in results[-1]), key=lambda x: x[1])
+        zrange_results = results[-1]  # type: list[tuple[bytes, float]]
+        kvs = sorted(
+            ((key, value) for key, value in zrange_results), key=lambda x: x[1]
+        )
         return find_position((key for key, value in kvs), event.json().encode())
 
     def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:

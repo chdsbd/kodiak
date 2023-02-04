@@ -183,7 +183,8 @@ async def main_async() -> None:
 
         if res is None:
             continue
-        pr_refresh_message = RefreshPullRequestsMessage.parse_raw(res.value)
+        _key, value = res
+        pr_refresh_message = RefreshPullRequestsMessage.parse_raw(value)
         installation_id = pr_refresh_message.installation_id
         start = time.monotonic()
         await refresh_pull_requests_for_installation(installation_id=installation_id)
