@@ -581,7 +581,6 @@ class RedisWebhookQueue:
         returns position of event in queue
         """
         queue_name = get_merge_queue_name(event)
-        # breakpoint()
         async with main_redis.pipeline(transaction=True) as pipe:
             merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
             pipe.sadd(merge_queues_by_install, queue_name)
@@ -602,8 +601,6 @@ class RedisWebhookQueue:
             number=event.pull_request_number,
             install=event.installation_id,
         )
-
-        # breakpoint()
 
         log.info("enqueue repo event")
         self.start_repo_worker(queue_name=queue_name)
