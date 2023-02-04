@@ -35,9 +35,12 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
 
     log.info("start working ingest_queue")
     while True:
-        _, value = await main_redis.blpop(
+        res = await main_redis.blpop(
             [queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC
         )
+        if res is None:
+            continue
+        _, value = res
         parsed_event = RawWebhookEvent.parse_raw(value)
         await handle_webhook_event(
             queue=queue,
