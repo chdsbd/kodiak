@@ -10,7 +10,7 @@ import pytest
 from pytest_mock import MockFixture
 
 from kodiak import app_config as conf
-from kodiak.redis_client import main_redis
+from kodiak.redis_client import redis_bot
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
@@ -242,11 +242,11 @@ async def setup_redis(github_installation_id: str) -> None:
     port = conf.REDIS_URL.port
     assert host and port
     key = f"kodiak:subscription:{github_installation_id}"
-    await main_redis.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
-    await main_redis.hset(key, "subscription_blocker", "")
+    await redis_bot.hset(key, "account_id", "D1606A79-A1A1-4550-BA7B-C9ED0D792B1E")
+    await redis_bot.hset(key, "subscription_blocker", "")
     yield
-    await main_redis.delete([key])
-    main_redis.close()
+    await redis_bot.delete([key])
+    redis_bot.close()
 
 
 def msg_to_dict(msg: str) -> Dict[str, str]:

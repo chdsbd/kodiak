@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from kodiak import app_config as conf
-from kodiak.redis_client import main_redis
+from kodiak.redis_client import redis_bot
 from kodiak.http import HttpClient
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
@@ -157,7 +157,7 @@ async def refresh_pull_requests_for_installation(*, installation_id: str) -> Non
                 )
             )
     for event in events:
-        await main_redis.zadd(
+        await redis_bot.zadd(
             event.get_webhook_queue_name(),
             {event.json(): time.time()},
             nx=True,
@@ -176,7 +176,7 @@ class RefreshPullRequestsMessage(BaseModel):
 
 async def main_async() -> None:
     while True:
-        res = await main_redis.blpop(
+        res = await redis_bot.blpop(
             ["kodiak:refresh_pull_requests_for_installation"], timeout=5
         )
         logger.info("pull_request_refresh", timeout_reached=True)

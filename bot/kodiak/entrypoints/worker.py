@@ -11,7 +11,7 @@ import pydantic
 import sentry_sdk
 import structlog
 
-from kodiak.redis_client import main_redis
+from kodiak.redis_client import redis_bot
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
 from kodiak import app_config as conf
@@ -35,9 +35,7 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
 
     log.info("start working ingest_queue")
     while True:
-        res = await main_redis.blpop(
-            [queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC
-        )
+        res = await redis_bot.blpop([queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC)
         if res is None:
             continue
         _, value = res
@@ -60,7 +58,7 @@ async def ingest_queue_starter(
     """
     Listen on Redis Pubsub and start queue worker if we don't have one already.
     """
-    pubsub = main_redis.pubsub()
+    pubsub = redis_bot.pubsub()
     await pubsub.subscribe(QUEUE_PUBSUB_INGEST)
     log = logger.bind(task="ingest_queue_starter")
     log.info("start watch for ingest_queues")
@@ -85,7 +83,7 @@ async def main() -> NoReturn:
 
     ingest_workers = dict()
 
-    ingest_queue_names = await main_redis.smembers(INGEST_QUEUE_NAMES)
+    ingest_queue_names = await redis_bot.smembers(INGEST_QUEUE_NAMES)
     log = logger.bind(task="main_worker")
 
     for queue_name_bytes in ingest_queue_names:

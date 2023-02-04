@@ -7,7 +7,7 @@ import hashlib
 import hmac
 from typing import Any
 
-from kodiak.redis_client import main_redis
+from kodiak.redis_client import redis_bot
 import structlog
 import uvicorn
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -82,14 +82,14 @@ async def github_webhook_event(request: Request) -> Response:
 
     ingest_queue = get_ingest_queue(installation_id)
 
-    await main_redis.rpush(
+    await redis_bot.rpush(
         ingest_queue,
         RawWebhookEvent(event_name=github_event, payload=event).json(),
     )
 
-    await main_redis.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
-    await main_redis.sadd(INGEST_QUEUE_NAMES, ingest_queue)
-    await main_redis.publish(
+    await redis_bot.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
+    await redis_bot.sadd(INGEST_QUEUE_NAMES, ingest_queue)
+    await redis_bot.publish(
         QUEUE_PUBSUB_INGEST,
         PubsubIngestQueueSchema(installation_id=installation_id).json(),
     )

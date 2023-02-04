@@ -22,5 +22,5 @@ def create_connection() -> 'redis.Redis["bytes"]':
     )
 
 
-main_redis = create_connection()
-usage_redis = create_connection()
+redis_bot = create_connection()
+redis_web_api = create_connection()
