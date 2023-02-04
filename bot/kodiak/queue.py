@@ -307,7 +307,6 @@ async def process_webhook_event(
     log.info("block for new webhook event")
     webhook_event_json = await bzpopmin_with_timeout(queue_name)
     if webhook_event_json is None:
-        log.info("bzpopmin timeout")
         return
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
@@ -377,7 +376,6 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
     log.info("block for new repo event")
     result = await bzpopmin_with_timeout(queue_name)
     if result is None:
-        log.info("bzpopmin timeout")
         return
     _key, value, score = result
     webhook_event = WebhookEvent.parse_raw(value)
