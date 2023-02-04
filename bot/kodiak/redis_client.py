@@ -15,6 +15,10 @@ def create_connection() -> 'redis.Redis["bytes"]':
         password=conf.REDIS_URL.password,
         ssl=conf.REDIS_URL.scheme == "rediss",
         db=redis_db,
+        socket_keepalive=True,
+        socket_timeout=conf.REDIS_SOCKET_TIMEOUT_SEC,
+        socket_connect_timeout=conf.REDIS_SOCKET_CONNECT_TIMEOUT_SEC,
+        health_check_interval=True,
     )
 
 
