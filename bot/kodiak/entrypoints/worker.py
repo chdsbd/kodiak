@@ -11,10 +11,9 @@ import pydantic
 import sentry_sdk
 import structlog
 
-from kodiak.redis_client import redis_bot
+from kodiak import app_config as conf
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
-from kodiak import app_config as conf
 from kodiak.queue import (
     INGEST_QUEUE_NAMES,
     QUEUE_PUBSUB_INGEST,
@@ -23,6 +22,7 @@ from kodiak.queue import (
     get_ingest_queue,
     handle_webhook_event,
 )
+from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()

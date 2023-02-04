@@ -1,5 +1,6 @@
-import kodiak.app_config as conf
 import redis.asyncio as redis
+
+import kodiak.app_config as conf
 
 
 def create_connection() -> 'redis.Redis["bytes"]':

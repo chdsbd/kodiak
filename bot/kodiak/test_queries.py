@@ -10,7 +10,6 @@ import pytest
 from pytest_mock import MockFixture
 
 from kodiak import app_config as conf
-from kodiak.redis_client import redis_bot
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
@@ -43,6 +42,7 @@ from kodiak.queries import (
     get_commits,
 )
 from kodiak.queries.commits import CommitConnection, GitActor
+from kodiak.redis_client import redis_bot
 from kodiak.test_utils import wrap_future
 from kodiak.tests.fixtures import FakeThottler, create_commit, requires_redis
 

@@ -14,7 +14,6 @@ import sentry_sdk
 import structlog
 import zstandard as zstd
 from pydantic import BaseModel
-from kodiak.redis_client import redis_bot, redis_web_api
 from typing_extensions import Literal, Protocol
 
 from kodiak import app_config as conf
@@ -30,6 +29,7 @@ from kodiak.events import (
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
+from kodiak.redis_client import redis_bot, redis_web_api
 
 logger = structlog.get_logger()
 

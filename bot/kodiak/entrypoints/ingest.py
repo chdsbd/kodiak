@@ -7,7 +7,6 @@ import hashlib
 import hmac
 from typing import Any
 
-from kodiak.redis_client import redis_bot
 import structlog
 import uvicorn
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -21,6 +20,7 @@ from kodiak import app_config as conf
 from kodiak.entrypoints.worker import PubsubIngestQueueSchema
 from kodiak.logging import configure_logging
 from kodiak.queue import INGEST_QUEUE_NAMES, QUEUE_PUBSUB_INGEST, get_ingest_queue
+from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
