@@ -22,6 +22,7 @@ from kodiak.queries.commits import Commit, CommitConnection, GitActor
 from kodiak.queries.commits import User as PullRequestCommitUser
 from kodiak.queries.commits import get_commits
 from kodiak.throttle import get_thottler_for_installation
+from kodiak.redis_client import redis_web_api
 
 logger = structlog.get_logger()
 
@@ -1327,8 +1328,6 @@ query {
         """
         Get subscription information for installation.
         """
-        from kodiak.redis_client import redis_web_api
-
         res = await redis_web_api.hgetall(
             f"kodiak:subscription:{self.installation_id}".encode()
         )
