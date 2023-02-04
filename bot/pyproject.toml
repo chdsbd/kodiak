@@ -71,6 +71,15 @@ filterwarnings = [
   "ignore::DeprecationWarning:asyncio_redis"
 ]
 addopts = "--pdbcls IPython.terminal.debugger:TerminalPdb"
+env = [
+  "SECRET_KEY=some-random-key",
+  "DEBUG=1",
+  "REDIS_URL=redis://localhost:6379",
+  "GITHUB_APP_ID=534524",
+  "GITHUB_APP_NAME=kodiak-test-app",
+  "GITHUB_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\nmockPrivateKeyDataSDLFKJSDLFSDLFJSDLKJF\n-----END RSA PRIVATE KEY-----\n",
+  "SUBSCRIPTIONS_ENABLED=1",
+]
 
 [tool.mypy]
 mypy_path = "./typings"
