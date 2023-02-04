@@ -14,6 +14,7 @@ import structlog
 from kodiak.redis_client import main_redis
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
+from kodiak import app_config as conf
 from kodiak.queue import (
     INGEST_QUEUE_NAMES,
     QUEUE_PUBSUB_INGEST,
@@ -34,7 +35,9 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
 
     log.info("start working ingest_queue")
     while True:
-        _, value = await main_redis.blpop([queue_name])
+        _, value = await main_redis.blpop(
+            [queue_name], timeout=conf.BLOCKING_POP_TIMEOUT_SEC
+        )
         parsed_event = RawWebhookEvent.parse_raw(value)
         await handle_webhook_event(
             queue=queue,
