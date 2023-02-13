@@ -1,9 +1,0 @@
-from typing import Any
-
-class BaseEncoder: ...
-
-class BytesEncoder(BaseEncoder):
-    def encode_from_native(self, data: Any) -> bytes: ...
-    def decode_to_native(self, data: bytes) -> Any: ...
-
-__all__ = ["BaseEncoder", "BytesEncoder"]
