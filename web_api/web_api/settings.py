@@ -92,7 +92,12 @@ LOGGING = {
         },
     },
     # you can also shortcut 'loggers' and just configure logging for EVERYTHING at once
-    "root": {"handlers": ["console",], "level": "INFO"},
+    "root": {
+        "handlers": [
+            "console",
+        ],
+        "level": "INFO",
+    },
 }
 
 # we terminate SSL at the proxy server

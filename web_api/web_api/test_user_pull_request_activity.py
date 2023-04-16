@@ -23,7 +23,7 @@ def pull_request_kodiak_updated() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_kodiak_updated.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -33,7 +33,7 @@ def pull_request_total_opened() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_total_opened.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -45,7 +45,7 @@ def pull_request_kodiak_updated_different_institution() -> None:
             (FIXTURES / "pull_request_kodiak_updated_different_institution.json").open()
         ),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -57,7 +57,7 @@ def pull_request_total_opened_different_institution() -> None:
             (FIXTURES / "pull_request_total_opened_different_institution.json").open()
         ),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -122,7 +122,7 @@ def test_generate_min_progress(
     pull_request_total_opened_different_institution: object,
 ) -> None:
     UserPullRequestActivityProgress.objects.create(
-        min_date=make_aware(datetime.datetime(2050, 4, 23))
+        min_date=make_aware(datetime.datetime(2050, 4, 23))  # noqa: DTZ001
     )
     generate_user_activity()
     assert UserPullRequestActivityProgress.objects.count() == 2

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0015_remove_stripecustomerinformation_customer_delinquent"),
     ]
@@ -14,7 +13,7 @@ class Migration(migrations.Migration):
             model_name="stripecustomerinformation",
             name="payment_method_card_exp_month",
             field=models.CharField(
-                help_text="Two-digit number representing the card’s expiration month.",
+                help_text="Two-digit number representing the card`s expiration month.",
                 max_length=255,
                 null=True,
             ),
@@ -23,7 +22,7 @@ class Migration(migrations.Migration):
             model_name="stripecustomerinformation",
             name="payment_method_card_exp_year",
             field=models.CharField(
-                help_text="Four-digit number representing the card’s expiration year.",
+                help_text="Four-digit number representing the card`s expiration year.",
                 max_length=255,
                 null=True,
             ),

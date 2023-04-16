@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0022_remove_account_stripe_plan_id"),
     ]

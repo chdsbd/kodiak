@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union
+from typing import Callable
 
 import pydantic
 import redis
@@ -39,12 +39,12 @@ def sane_repr(*attrs: str) -> Callable[[object], str]:
     https://github.com/getsentry/sentry/blob/95767d455b8004ec4b4c5026d84b64b6348e6d37/src/sentry/db/models/base.py
     """
     if "id" not in attrs and "pk" not in attrs:
-        attrs = ("id",) + attrs
+        attrs = ("id", *attrs)
 
     def _repr(self: object) -> str:
         cls = type(self).__name__
 
-        pairs = ", ".join((f"{a}={repr(getattr(self, a, None))}" for a in attrs))
+        pairs = ", ".join(f"{a}={repr(getattr(self, a, None))}" for a in attrs)
 
         return f"<{cls} at 0x{id(self):x}: {pairs}>"  # flake8: noqa PIE782
 
@@ -118,10 +118,10 @@ class User(BaseModel):
         """
         user_installations_res = requests.get(
             "https://api.github.com/user/installations",
-            headers=dict(
-                authorization=f"Bearer {self.github_access_token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            ),
+            headers={
+                "authorization": f"Bearer {self.github_access_token}",
+                "Accept": "application/vnd.github.machine-man-preview+json",
+            },
             timeout=5,
         )
         try:
@@ -140,7 +140,7 @@ class User(BaseModel):
         installations_data = user_installations_res.json()
         installations = installations_data["installations"]
 
-        accounts: List[Account] = []
+        accounts: list[Account] = []
 
         for installation in installations:
             installation_id = installation["id"]
@@ -150,7 +150,7 @@ class User(BaseModel):
             if installation_account_type == "Organization":
                 account_membership_res = requests.get(
                     f"https://api.github.com/orgs/{installation_account_login}/memberships/{self.github_login}",
-                    headers=dict(authorization=f"Bearer {self.github_access_token}"),
+                    headers={"authorization": f"Bearer {self.github_access_token}"},
                     timeout=5,
                 )
                 try:
@@ -175,7 +175,7 @@ class User(BaseModel):
             else:
                 role = "member"
 
-            existing_account: Optional[Account] = Account.objects.filter(
+            existing_account: Account | None = Account.objects.filter(
                 github_account_id=installation_account_id
             ).first()
             if existing_account is None:
@@ -246,17 +246,17 @@ class SeatsExceeded(pydantic.BaseModel):
     # a list of github account user ids that occupy seats. These users will
     # be allowed to use Kodiak while any new users will be blocked by the
     # paywall.
-    allowed_user_ids: List[int]
+    allowed_user_ids: list[int]
 
 
 @dataclass
 class Address:
-    line1: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    line2: Optional[str] = None
-    postal_code: Optional[str] = None
-    state: Optional[str] = None
+    line1: str | None = None
+    city: str | None = None
+    country: str | None = None
+    line2: str | None = None
+    postal_code: str | None = None
+    state: str | None = None
 
 
 class Account(BaseModel):
@@ -330,7 +330,7 @@ class Account(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
-    def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
+    def stripe_customer_info(self) -> StripeCustomerInformation | None:
         return StripeCustomerInformation.objects.filter(
             customer_id=self.stripe_customer_id
         ).first()
@@ -381,7 +381,7 @@ class Account(BaseModel):
 
     def get_subscription_blocker(
         self,
-    ) -> Optional[Union[SubscriptionExpired, TrialExpired, SeatsExceeded]]:
+    ) -> SubscriptionExpired | TrialExpired | SeatsExceeded | None:
         """
         If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
 
@@ -429,25 +429,25 @@ class Account(BaseModel):
 
     def update_billing_info(
         self,
-        email: Optional[str] = None,
-        name: Optional[str] = None,
-        address: Optional[Address] = None,
+        email: str | None = None,
+        name: str | None = None,
+        address: Address | None = None,
     ) -> None:
         if not self.stripe_customer_id:
-            return None
+            return
         stripe.Customer.modify(
             self.stripe_customer_id,
             email=email,
             name=name,
             address=(
-                dict(
-                    line1=address.line1,
-                    city=address.city,
-                    country=address.country,
-                    line2=address.line2,
-                    postal_code=address.postal_code,
-                    state=address.state,
-                )
+                {
+                    "line1": address.line1,
+                    "city": address.city,
+                    "country": address.country,
+                    "line2": address.line2,
+                    "postal_code": address.postal_code,
+                    "state": address.state,
+                }
                 if address is not None
                 else None
             ),
@@ -467,7 +467,7 @@ class Account(BaseModel):
                 stripe_customer_info.customer_address_state = address.state
 
             stripe_customer_info.save()
-        return None
+        return
 
     def update_bot(self) -> None:
         """
@@ -528,7 +528,8 @@ class AccountMembership(BaseModel):
         db_table = "account_membership"
         constraints = [
             models.CheckConstraint(
-                check=models.Q(role__in=AccountRole.values), name="role_valid",
+                check=models.Q(role__in=AccountRole.values),
+                name="role_valid",
             )
         ]
 
@@ -586,24 +587,24 @@ class PullRequestActivity(BaseModel):
         Create PullRequestActivity objects from GitHubEvent information.
         """
         start_time = time.time()
-        pr_progress: Optional[
-            PullRequestActivityProgress
-        ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
+        pr_progress: PullRequestActivityProgress | None = (
+            PullRequestActivityProgress.objects.order_by("-min_date").first()
+        )
         if pr_progress:
-            min_date = timezone.make_aware(
-                datetime.datetime(
+            min_date: datetime.datetime | None = timezone.make_aware(
+                datetime.datetime(  # noqa: DTZ001
                     pr_progress.min_date.year,
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
                 )
-            )  # type: Optional[datetime.datetime]
+            )
             events_aggregated = GitHubEvent.objects.filter(
                 created_at__gte=min_date
             ).count()
         else:
             min_date = None
             events_aggregated = GitHubEvent.objects.count()
-        new_min_date = datetime.date.today()
+        new_min_date = datetime.date.today()  # noqa: DTZ011
         PullRequestActivity.generate_activity_data(min_date=min_date)
         PullRequestActivityProgress.objects.create(min_date=new_min_date)
         logger.info(
@@ -616,7 +617,7 @@ class PullRequestActivity(BaseModel):
 
     @staticmethod
     def generate_activity_data(
-        min_date: Optional[datetime.date] = None, account: Optional[Account] = None
+        min_date: datetime.date | None = None, account: Account | None = None
     ) -> None:
         """
         Generate/update PullRequestActivity using data from the GitHubEvent table.
@@ -628,10 +629,7 @@ class PullRequestActivity(BaseModel):
             where_clause.append(
                 f"(payload -> 'installation' ->> 'id')::integer = {account.github_installation_id}"
             )
-        if where_clause:
-            where = " WHERE " + " AND ".join(where_clause)
-        else:
-            where = ""
+        where = " WHERE " + " AND ".join(where_clause) if where_clause else ""
         with connection.cursor() as cursor:
             cursor.execute(
                 f"""
@@ -786,7 +784,7 @@ class UserPullRequestActivity(BaseModel):
         ]
 
     @staticmethod
-    def get_active_users_in_last_30_days(account: Account) -> List[ActiveUser]:
+    def get_active_users_in_last_30_days(account: Account) -> list[ActiveUser]:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -837,19 +835,16 @@ class UserPullRequestActivity(BaseModel):
         """
         Find all pull requests acted on by Kodiak.
         """
-        user_pull_request_activity_progress: Optional[
-            UserPullRequestActivityProgress
-        ] = UserPullRequestActivityProgress.objects.order_by("-min_date").first()
+        user_pull_request_activity_progress: UserPullRequestActivityProgress | None = (
+            UserPullRequestActivityProgress.objects.order_by("-min_date").first()
+        )
         where_clause = []
         if user_pull_request_activity_progress is not None:
             where_clause.append(
                 f"created_at > '{user_pull_request_activity_progress.min_date.isoformat()}'::timestamp"
             )
 
-        if where_clause:
-            where = " AND " + " AND ".join(where_clause)
-        else:
-            where = ""
+        where = " AND " + " AND ".join(where_clause) if where_clause else ""
         with connection.cursor() as cursor:
             cursor.execute(
                 f"""
@@ -1098,7 +1093,9 @@ class StripeCustomerInformation(models.Model):
 
     @property
     def next_billing_date(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
+        return datetime.datetime.fromtimestamp(  # noqa: DTZ006
+            self.subscription_current_period_end
+        )
 
     def cancel_subscription(self) -> None:
         """

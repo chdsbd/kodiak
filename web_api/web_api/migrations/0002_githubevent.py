@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0001_initial"),
     ]
@@ -30,6 +29,8 @@ class Migration(migrations.Migration):
                     django.contrib.postgres.fields.jsonb.JSONField(default=dict),
                 ),
             ],
-            options={"db_table": "github_event",},
+            options={
+                "db_table": "github_event",
+            },
         ),
     ]

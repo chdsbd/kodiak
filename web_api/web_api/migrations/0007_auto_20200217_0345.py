@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0006_remove_account_payload"),
     ]
@@ -34,7 +33,9 @@ class Migration(migrations.Migration):
                 ("kodiak_updated", models.IntegerField()),
                 ("github_installation_id", models.IntegerField(db_index=True)),
             ],
-            options={"db_table": "pull_request_activity",},
+            options={
+                "db_table": "pull_request_activity",
+            },
         ),
         migrations.AddConstraint(
             model_name="pullrequestactivity",

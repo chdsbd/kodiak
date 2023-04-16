@@ -4,12 +4,9 @@ import logging
 from collections import defaultdict
 from typing import (
     Iterator,
-    List,
     Mapping,
     NamedTuple,
-    Optional,
     Sequence,
-    Tuple,
     TypeVar,
 )
 
@@ -34,18 +31,18 @@ class KodiakQueueEntry(pydantic.BaseModel):
 class PullRequest(pydantic.BaseModel):
     number: str
     merging: bool = False
-    added_at_timestamp: Optional[float]
+    added_at_timestamp: float | None
 
 
 class Queue(pydantic.BaseModel):
     branch: str
-    pull_requests: List[PullRequest]
+    pull_requests: list[PullRequest]
 
 
 class Repository(pydantic.BaseModel):
     repo: str
     owner: str
-    queues: List[Queue]
+    queues: list[Queue]
 
 
 class RepositoryName(NamedTuple):
@@ -82,14 +79,14 @@ def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
 T = TypeVar("T")
 
 
-def chunk(it: Sequence[T], count: int) -> Iterator[Tuple[T, ...]]:
+def chunk(it: Sequence[T], count: int) -> Iterator[tuple[T, ...]]:
     """
     Convert list of items into a list of `count` length items.
     """
     return (tuple(it[i : count + i]) for i in range(0, len(it), count))
 
 
-def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
+def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, list[Queue]]:
     queue_names = r.smembers(f"merge_queue_by_install:{install_id}")
     pipe = r.pipeline(transaction=False)
     for queue in queue_names:
@@ -128,7 +125,10 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
             if merging_pr and pr.pull_request_number == merging_pr.pull_request_number:
                 continue
             pull_requests.append(
-                PullRequest(number=pr.pull_request_number, added_at_timestamp=score,)
+                PullRequest(
+                    number=pr.pull_request_number,
+                    added_at_timestamp=score,
+                )
             )
 
         pull_requests = sorted(pull_requests, key=lambda x: x.added_at_timestamp or 0)

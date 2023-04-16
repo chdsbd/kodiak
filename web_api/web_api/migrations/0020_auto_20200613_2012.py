@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0019_auto_20200610_0006"),
     ]
@@ -66,7 +65,7 @@ class Migration(migrations.Migration):
             model_name="stripecustomerinformation",
             name="customer_name",
             field=models.CharField(
-                help_text="The customer’s full name or business name.",
+                help_text="The customer`s full name or business name.",
                 max_length=255,
                 null=True,
             ),
