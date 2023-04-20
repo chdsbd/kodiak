@@ -592,7 +592,7 @@ class PullRequestActivity(BaseModel):
         ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
         if pr_progress:
             min_date = timezone.make_aware(
-                datetime.datetime(
+                datetime.datetime(  # noqa: DTZ001
                     pr_progress.min_date.year,
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
@@ -604,7 +604,7 @@ class PullRequestActivity(BaseModel):
         else:
             min_date = None
             events_aggregated = GitHubEvent.objects.count()
-        new_min_date = datetime.date.today()
+        new_min_date = datetime.date.today()  # noqa: DTZ011
         PullRequestActivity.generate_activity_data(min_date=min_date)
         PullRequestActivityProgress.objects.create(min_date=new_min_date)
         logger.info(
@@ -1093,7 +1093,9 @@ class StripeCustomerInformation(models.Model):
 
     @property
     def next_billing_date(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
+        return datetime.datetime.fromtimestamp(  # noqa: DTZ006
+            self.subscription_current_period_end
+        )
 
     def cancel_subscription(self) -> None:
         """
