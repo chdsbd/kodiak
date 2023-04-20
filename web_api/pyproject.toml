@@ -62,7 +62,6 @@ select = [
     "ERA",
     "RUF",
 ]
-# src = ["recipeyak"]
 ignore = [
     "E501",   # line length is handled by black
     "ARG001", # pytest fixtures mess with this
@@ -93,9 +92,6 @@ unfixable = [
 ] # we want to check ourselves before we delete commented out code.
 update-check = false
 
-# [tool.ruff.isort]
-# known-third-party = ["django"]
-# known-first-party = ["recipeyak"]
 [tool.ruff.pyupgrade]
 keep-runtime-typing = true
 
