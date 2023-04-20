@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0008_payload_installation_id_idx"),
     ]
@@ -30,6 +29,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"db_table": "pull_request_activity_progress",},
+            options={
+                "db_table": "pull_request_activity_progress",
+            },
         ),
     ]

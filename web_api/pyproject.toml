@@ -22,12 +22,8 @@ email-validator = "^1.1"
 pywatchman = "^1.4"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.4"
 pytest = "6.0.1"
 mypy = "^0.960"
-isort = "^4.3"
-black = "^19.10b0"
-flake8 = "3.8.4"
 ipython = "^7.12"
 mypy_extensions = "^0.4.3"
 typing_extensions = "^3.7"
@@ -36,7 +32,6 @@ pytest-mock = "3.3.1"
 ipdb = "^0.12.3"
 pytest-cov = "^2.10"
 django-types = "0.3.0"
-flake8-pie = "0.7.1"
 types-redis = "^0.1.10"
 types-dj-database-url = "^0.5.0"
 responses = "^0.21.0"
@@ -44,36 +39,86 @@ pytest-django = "^4.5.2"
 types-stripe = "^2.59.10"
 pydantic = "^1.9.1"
 types-requests = "^2.27.30"
+black = { version = "^23.3.0", allow-prereleases = true }
+ruff = "^0.0.261"
+
+[tool.ruff]
+target-version = "py37"
+select = [
+    "E",
+    "F",
+    "TID252",
+    "I001",
+    "T20",
+    "C4",
+    "UP",
+    "N",
+    "BLE",
+    "B",
+    "RET",
+    "SIM",
+    "ARG",
+    "DTZ",
+    "ERA",
+    "RUF",
+]
+ignore = [
+    "E501",   # line length is handled by black
+    "ARG001", # pytest fixtures mess with this
+    "ARG002", # sometimes parent classes require params
+    "N806",   # django migrations violate this a lot
+    "B008",   # type.Argument violates this
+    "N815",   # we mix and match casing in serializers
+    "ARG005", # monkey patching false positive with *args, and **kwargs
+    "N805",   # false positive with pydantic
+    "N802",   # DRF serializers mess with this
+    "RET505", # if, elif, else are fine with returns
+    "RET507", # if, elif, else with continue is also fine
+    "RET508", # if, elif, else with break is also fine
+
+    # okay because we're doing hacky things for our runtime tests
+    "T201", # we use print for testing
+    "B905", # allow zip without strict
+    "B018", # useless expressions useful for type checking
+    "B904", # allow bad except clauses
+    "N803", # some APIs have weird names
+    "N818", # some exceptions have bad names
+    "N801", # some class names have bad names
+
+    "RUF001", # false positives
+]
+unfixable = [
+    "ERA001",
+] # we want to check ourselves before we delete commented out code.
+update-check = false
+
+[tool.ruff.pyupgrade]
+keep-runtime-typing = true
+
+[tool.ruff.flake8-tidy-imports]
+# Disallow all relative imports.
+ban-relative-imports = "all"
+
 
 [tool.pytest.ini_options]
 addopts = "--pdbcls IPython.terminal.debugger:TerminalPdb"
 DJANGO_SETTINGS_MODULE = "web_api.settings"
 env = [
-  "KODIAK_API_GITHUB_CLIENT_ID=Iv1.111FAKECLIENTID111",
-  "KODIAK_API_GITHUB_CLIENT_SECRET=888INVALIDSECRET8888",
-  "KODIAK_WEB_APP_URL=https://app.kodiakhq.com/",
-  "STRIPE_PLAN_ID=plan_somePlanId",
-  "STRIPE_ANNUAL_PLAN_ID=price_annualPlanId",
-  "STRIPE_WEBHOOK_SECRET=whsec_someWebhookSecret",
-  "STRIPE_SECRET_KEY=sk_someStripeSecretKey",
-  "STRIPE_PUBLISHABLE_API_KEY=pk_test_someExampleStripeApiKey",
-  "REDIS_URL=redis://localhost:6379",
-  "DEBUG=1",
+    "KODIAK_API_GITHUB_CLIENT_ID=Iv1.111FAKECLIENTID111",
+    "KODIAK_API_GITHUB_CLIENT_SECRET=888INVALIDSECRET8888",
+    "KODIAK_WEB_APP_URL=https://app.kodiakhq.com/",
+    "STRIPE_PLAN_ID=plan_somePlanId",
+    "STRIPE_ANNUAL_PLAN_ID=price_annualPlanId",
+    "STRIPE_WEBHOOK_SECRET=whsec_someWebhookSecret",
+    "STRIPE_SECRET_KEY=sk_someStripeSecretKey",
+    "STRIPE_PUBLISHABLE_API_KEY=pk_test_someExampleStripeApiKey",
+    "REDIS_URL=redis://localhost:6379",
+    "DEBUG=1",
 ]
 filterwarnings = [
-  # all warnings that are not ignored should raise an error
-  "error"
+    # all warnings that are not ignored should raise an error
+    "error",
 ]
-
-
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 88
-known_third_party = ["redis"]
-
 
 [tool.mypy]
 mypy_path = "./typings"
@@ -81,38 +126,36 @@ mypy_path = "./typings"
 show_column_numbers = true
 show_error_codes = true
 
-disallow_any_unimported=false
-disallow_any_expr=false
-disallow_any_decorated=false
-disallow_any_explicit=false
-disallow_any_generics=true
-disallow_subclassing_any=true
+disallow_any_unimported = false
+disallow_any_expr = false
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_generics = true
+disallow_subclassing_any = true
 
-disallow_untyped_calls=true
-disallow_untyped_defs=true
-disallow_incomplete_defs=true
-check_untyped_defs=true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
 # @pytest.mark.django_db is untyped
-disallow_untyped_decorators=true
+disallow_untyped_decorators = true
 
-no_implicit_optional=true
-strict_optional=true
+no_implicit_optional = true
+strict_optional = true
 
-warn_redundant_casts=true
-warn_unused_ignores=true
-warn_no_return=true
-warn_return_any=true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_return_any = true
 # doesn't consider how methods can change the value of properties
-warn_unreachable=false
+warn_unreachable = false
 
-strict_equality=true
+strict_equality = true
 
-ignore_missing_imports=false
+ignore_missing_imports = false
 
 # enable pydantic mypy plugin.
-plugins = [
-  "pydantic.mypy"
-]
+plugins = ["pydantic.mypy"]
 
 # https://pydantic-docs.helpmanual.io/mypy_plugin/#plugin-settings
 [tool.pydantic-mypy]

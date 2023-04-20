@@ -16,7 +16,7 @@ def pull_request_kodiak_updated() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_kodiak_updated.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -26,7 +26,7 @@ def pull_request_kodiak_merged() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_kodiak_merged.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -39,7 +39,7 @@ def pull_request_kodiak_approved() -> None:
             (FIXTURES / "pull_request_review_kodiak_approved.json").open()
         ),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -49,7 +49,7 @@ def pull_request_total_opened() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_total_opened.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -59,7 +59,7 @@ def pull_request_total_merged() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_total_merged.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 
@@ -69,7 +69,7 @@ def pull_request_total_closed() -> None:
         event_name="pull_request",
         payload=json.load((FIXTURES / "pull_request_total_closed.json").open()),
     )
-    event.created_at = make_aware(datetime.datetime(2020, 2, 13))
+    event.created_at = make_aware(datetime.datetime(2020, 2, 13))  # noqa: DTZ001
     event.save()
 
 

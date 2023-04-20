@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies: List[Any] = []
@@ -28,6 +27,8 @@ class Migration(migrations.Migration):
                 ("github_login", models.CharField(max_length=255)),
                 ("github_access_token", models.CharField(max_length=255)),
             ],
-            options={"db_table": "user",},
+            options={
+                "db_table": "user",
+            },
         ),
     ]

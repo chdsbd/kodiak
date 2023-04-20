@@ -4,11 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0021_auto_20200617_1246"),
     ]
 
     operations = [
-        migrations.RemoveField(model_name="account", name="stripe_plan_id",),
+        migrations.RemoveField(
+            model_name="account",
+            name="stripe_plan_id",
+        ),
     ]

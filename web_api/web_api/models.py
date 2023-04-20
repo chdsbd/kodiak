@@ -39,12 +39,12 @@ def sane_repr(*attrs: str) -> Callable[[object], str]:
     https://github.com/getsentry/sentry/blob/95767d455b8004ec4b4c5026d84b64b6348e6d37/src/sentry/db/models/base.py
     """
     if "id" not in attrs and "pk" not in attrs:
-        attrs = ("id",) + attrs
+        attrs = ("id", *attrs)
 
     def _repr(self: object) -> str:
         cls = type(self).__name__
 
-        pairs = ", ".join((f"{a}={repr(getattr(self, a, None))}" for a in attrs))
+        pairs = ", ".join(f"{a}={repr(getattr(self, a, None))}" for a in attrs)
 
         return f"<{cls} at 0x{id(self):x}: {pairs}>"  # flake8: noqa PIE782
 
@@ -118,10 +118,10 @@ class User(BaseModel):
         """
         user_installations_res = requests.get(
             "https://api.github.com/user/installations",
-            headers=dict(
-                authorization=f"Bearer {self.github_access_token}",
-                Accept="application/vnd.github.machine-man-preview+json",
-            ),
+            headers={
+                "authorization": f"Bearer {self.github_access_token}",
+                "Accept": "application/vnd.github.machine-man-preview+json",
+            },
             timeout=5,
         )
         try:
@@ -150,7 +150,7 @@ class User(BaseModel):
             if installation_account_type == "Organization":
                 account_membership_res = requests.get(
                     f"https://api.github.com/orgs/{installation_account_login}/memberships/{self.github_login}",
-                    headers=dict(authorization=f"Bearer {self.github_access_token}"),
+                    headers={"authorization": f"Bearer {self.github_access_token}"},
                     timeout=5,
                 )
                 try:
@@ -434,20 +434,20 @@ class Account(BaseModel):
         address: Optional[Address] = None,
     ) -> None:
         if not self.stripe_customer_id:
-            return None
+            return
         stripe.Customer.modify(
             self.stripe_customer_id,
             email=email,
             name=name,
             address=(
-                dict(
-                    line1=address.line1,
-                    city=address.city,
-                    country=address.country,
-                    line2=address.line2,
-                    postal_code=address.postal_code,
-                    state=address.state,
-                )
+                {
+                    "line1": address.line1,
+                    "city": address.city,
+                    "country": address.country,
+                    "line2": address.line2,
+                    "postal_code": address.postal_code,
+                    "state": address.state,
+                }
                 if address is not None
                 else None
             ),
@@ -467,7 +467,7 @@ class Account(BaseModel):
                 stripe_customer_info.customer_address_state = address.state
 
             stripe_customer_info.save()
-        return None
+        return
 
     def update_bot(self) -> None:
         """
@@ -528,7 +528,8 @@ class AccountMembership(BaseModel):
         db_table = "account_membership"
         constraints = [
             models.CheckConstraint(
-                check=models.Q(role__in=AccountRole.values), name="role_valid",
+                check=models.Q(role__in=AccountRole.values),
+                name="role_valid",
             )
         ]
 
@@ -591,7 +592,7 @@ class PullRequestActivity(BaseModel):
         ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
         if pr_progress:
             min_date = timezone.make_aware(
-                datetime.datetime(
+                datetime.datetime(  # noqa: DTZ001
                     pr_progress.min_date.year,
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
@@ -603,7 +604,7 @@ class PullRequestActivity(BaseModel):
         else:
             min_date = None
             events_aggregated = GitHubEvent.objects.count()
-        new_min_date = datetime.date.today()
+        new_min_date = datetime.date.today()  # noqa: DTZ011
         PullRequestActivity.generate_activity_data(min_date=min_date)
         PullRequestActivityProgress.objects.create(min_date=new_min_date)
         logger.info(
@@ -628,10 +629,7 @@ class PullRequestActivity(BaseModel):
             where_clause.append(
                 f"(payload -> 'installation' ->> 'id')::integer = {account.github_installation_id}"
             )
-        if where_clause:
-            where = " WHERE " + " AND ".join(where_clause)
-        else:
-            where = ""
+        where = " WHERE " + " AND ".join(where_clause) if where_clause else ""
         with connection.cursor() as cursor:
             cursor.execute(
                 f"""
@@ -846,10 +844,7 @@ class UserPullRequestActivity(BaseModel):
                 f"created_at > '{user_pull_request_activity_progress.min_date.isoformat()}'::timestamp"
             )
 
-        if where_clause:
-            where = " AND " + " AND ".join(where_clause)
-        else:
-            where = ""
+        where = " AND " + " AND ".join(where_clause) if where_clause else ""
         with connection.cursor() as cursor:
             cursor.execute(
                 f"""
@@ -1098,7 +1093,9 @@ class StripeCustomerInformation(models.Model):
 
     @property
     def next_billing_date(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
+        return datetime.datetime.fromtimestamp(  # noqa: DTZ006
+            self.subscription_current_period_end
+        )
 
     def cancel_subscription(self) -> None:
         """

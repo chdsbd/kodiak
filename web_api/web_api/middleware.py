@@ -31,10 +31,10 @@ class ExceptionMiddleware(MiddlewareMixin):
         self, request: HttpRequest, exception: Exception
     ) -> Optional[HttpResponse]:
         if isinstance(exception, ApiException):
-            return JsonResponse(dict(message=exception.message), status=exception.code)
+            return JsonResponse({"message": exception.message}, status=exception.code)
         # return a 400 response if we encounter a pydantic validation error.
         if isinstance(exception, pydantic.ValidationError):
-            return JsonResponse(dict(message=exception.errors()), status=400)
+            return JsonResponse({"message": exception.errors()}, status=400)
         return None
 
 
@@ -82,7 +82,7 @@ class HealthCheckMiddleware:
                 row = cursor.fetchone()
                 if row is None:
                     return HttpResponseServerError(ReadinessError.PG_BAD_RESPONSE)
-        except Exception:  # noqa: PIE786
+        except Exception:
             logger.exception("could not connect to postgres")
             return HttpResponseServerError(ReadinessError.PG_CANNOT_CONNECT)
 

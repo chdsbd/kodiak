@@ -4,15 +4,11 @@ set -ex
 # format code
 if [[ $CI ]]; then
     ./.venv/bin/black --check .
-    ./.venv/bin/isort --check-only
+    ./.venv/bin/ruff .
 else
     ./.venv/bin/black .
-    ./.venv/bin/isort -y
+    ./.venv/bin/ruff . --fix
 fi
 
 # type check code
 ./.venv/bin/mypy .
-
-# lint
-./.venv/bin/flake8 web_api
-./.venv/bin/pylint --rcfile='.pylintrc' web_api

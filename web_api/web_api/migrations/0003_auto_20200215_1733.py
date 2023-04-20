@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0002_githubevent"),
     ]
@@ -40,10 +39,14 @@ class Migration(migrations.Migration):
                     django.contrib.postgres.fields.jsonb.JSONField(default=dict),
                 ),
             ],
-            options={"db_table": "account",},
+            options={
+                "db_table": "account",
+            },
         ),
         migrations.AlterField(
-            model_name="user", name="github_id", field=models.IntegerField(unique=True),
+            model_name="user",
+            name="github_id",
+            field=models.IntegerField(unique=True),
         ),
         migrations.AlterField(
             model_name="user",
@@ -78,6 +81,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"db_table": "account_membership",},
+            options={
+                "db_table": "account_membership",
+            },
         ),
     ]

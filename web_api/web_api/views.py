@@ -64,28 +64,28 @@ def usage_billing(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     subscription = None
     trial = None
     if account.trial_start and account.trial_expiration and account.trial_started_by:
-        trial = dict(
-            startDate=account.trial_start,
-            endDate=account.trial_expiration,
-            expired=account.trial_expired(),
-            startedBy=dict(
-                id=account.trial_started_by.id,
-                name=account.trial_started_by.github_login,
-                profileImgUrl=account.trial_started_by.profile_image(),
-            ),
-        )
+        trial = {
+            "startDate": account.trial_start,
+            "endDate": account.trial_expiration,
+            "expired": account.trial_expired(),
+            "startedBy": {
+                "id": account.trial_started_by.id,
+                "name": account.trial_started_by.github_login,
+                "profileImgUrl": account.trial_started_by.profile_image(),
+            },
+        }
     stripe_customer_info = account.stripe_customer_info()
     if stripe_customer_info:
         customer_address = None
         if stripe_customer_info.customer_address_line1 is not None:
-            customer_address = dict(
-                line1=stripe_customer_info.customer_address_line1,
-                city=stripe_customer_info.customer_address_city,
-                country=stripe_customer_info.customer_address_country,
-                line2=stripe_customer_info.customer_address_line2,
-                postalCode=stripe_customer_info.customer_address_postal_code,
-                state=stripe_customer_info.customer_address_state,
-            )
+            customer_address = {
+                "line1": stripe_customer_info.customer_address_line1,
+                "city": stripe_customer_info.customer_address_city,
+                "country": stripe_customer_info.customer_address_country,
+                "line2": stripe_customer_info.customer_address_line2,
+                "postalCode": stripe_customer_info.customer_address_postal_code,
+                "state": stripe_customer_info.customer_address_state,
+            }
         plan_interval = (
             "year" if stripe_customer_info.plan_interval == "year" else "month"
         )
@@ -94,26 +94,26 @@ def usage_billing(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
             if stripe_customer_info.payment_method_card_brand is not None
             else None
         )
-        subscription = dict(
-            seats=stripe_customer_info.subscription_quantity,
-            nextBillingDate=stripe_customer_info.next_billing_date,
-            expired=stripe_customer_info.expired,
-            cost=dict(
-                totalCents=stripe_customer_info.plan_amount
+        subscription = {
+            "seats": stripe_customer_info.subscription_quantity,
+            "nextBillingDate": stripe_customer_info.next_billing_date,
+            "expired": stripe_customer_info.expired,
+            "cost": {
+                "totalCents": stripe_customer_info.plan_amount
                 * stripe_customer_info.subscription_quantity,
-                perSeatCents=stripe_customer_info.plan_amount,
-                currency=stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
-                planInterval=plan_interval,
-            ),
-            billingEmail=stripe_customer_info.customer_email,
-            contactEmails=account.contact_emails,
-            customerName=stripe_customer_info.customer_name,
-            customerAddress=customer_address,
-            cardInfo=f"{brand_title} ({stripe_customer_info.payment_method_card_last4})",
-            viewerIsOrgOwner=request.user.is_admin(account),
-            viewerCanModify=request.user.can_edit_subscription(account),
-            limitBillingAccessToOwners=account.limit_billing_access_to_owners,
-        )
+                "perSeatCents": stripe_customer_info.plan_amount,
+                "currency": stripe_customer_info.customer_currency or DEFAULT_CURRENCY,
+                "planInterval": plan_interval,
+            },
+            "billingEmail": stripe_customer_info.customer_email,
+            "contactEmails": account.contact_emails,
+            "customerName": stripe_customer_info.customer_name,
+            "customerAddress": customer_address,
+            "cardInfo": f"{brand_title} ({stripe_customer_info.payment_method_card_last4})",
+            "viewerIsOrgOwner": request.user.is_admin(account),
+            "viewerCanModify": request.user.can_edit_subscription(account),
+            "limitBillingAccessToOwners": account.limit_billing_access_to_owners,
+        }
 
     subscription_quantity = (
         stripe_customer_info.subscription_quantity if stripe_customer_info else 0
@@ -126,30 +126,30 @@ def usage_billing(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
         ]
     }
     active_user_with_license_info = [
-        dict(
-            id=active_user.github_id,
-            name=active_user.github_login,
-            profileImgUrl=active_user.profile_image(),
-            interactions=active_user.days_active,
-            lastActiveDate=active_user.last_active_at.isoformat(),
-            firstActiveDate=active_user.first_active_at.isoformat(),
-            hasSeatLicense=(active_user.github_id in allowed_user_ids),
-        )
+        {
+            "id": active_user.github_id,
+            "name": active_user.github_login,
+            "profileImgUrl": active_user.profile_image(),
+            "interactions": active_user.days_active,
+            "lastActiveDate": active_user.last_active_at.isoformat(),
+            "firstActiveDate": active_user.first_active_at.isoformat(),
+            "hasSeatLicense": (active_user.github_id in allowed_user_ids),
+        }
         for active_user in active_users
     ]
     subscription_exemption = None
 
     if account.subscription_exempt:
-        subscription_exemption = dict(message=account.subscription_exempt_message)
+        subscription_exemption = {"message": account.subscription_exempt_message}
 
     return JsonResponse(
-        dict(
-            accountCanSubscribe=account.can_subscribe(),
-            subscription=subscription,
-            trial=trial,
-            activeUsers=active_user_with_license_info,
-            subscriptionExemption=subscription_exemption,
-        )
+        {
+            "accountCanSubscribe": account.can_subscribe(),
+            "subscription": subscription,
+            "trial": trial,
+            "activeUsers": active_user_with_license_info,
+            "subscriptionExemption": subscription_exemption,
+        }
     )
 
 
@@ -178,30 +178,32 @@ def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
         total_closed.append(day_activity.total_closed)
 
     active_merge_queues = [
-        dict(owner=repo.owner, repo=repo.repo, queues=queues)
+        {"owner": repo.owner, "repo": repo.repo, "queues": queues}
         for repo, queues in get_active_merge_queues(
             install_id=str(account.github_installation_id)
         ).items()
     ]
 
     return JsonResponse(
-        dict(
-            kodiakActivity=dict(
-                labels=kodiak_activity_labels,
-                datasets=dict(
-                    approved=kodiak_activity_approved,
-                    merged=kodiak_activity_merged,
-                    updated=kodiak_activity_updated,
-                ),
-            ),
-            pullRequestActivity=dict(
-                labels=total_labels,
-                datasets=dict(
-                    opened=total_opened, merged=total_merged, closed=total_closed
-                ),
-            ),
-            activeMergeQueues=active_merge_queues,
-        )
+        {
+            "kodiakActivity": {
+                "labels": kodiak_activity_labels,
+                "datasets": {
+                    "approved": kodiak_activity_approved,
+                    "merged": kodiak_activity_merged,
+                    "updated": kodiak_activity_updated,
+                },
+            },
+            "pullRequestActivity": {
+                "labels": total_labels,
+                "datasets": {
+                    "opened": total_opened,
+                    "merged": total_merged,
+                    "closed": total_closed,
+                },
+            },
+            "activeMergeQueues": active_merge_queues,
+        }
     )
 
 
@@ -209,26 +211,26 @@ def activity(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
 def current_account(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     account = get_account_or_404(team_id=team_id, user=request.user)
     return JsonResponse(
-        dict(
-            user=dict(
-                id=request.user.id,
-                name=request.user.github_login,
-                profileImgUrl=request.user.profile_image(),
-            ),
-            org=dict(
-                id=account.id,
-                name=account.github_account_login,
-                profileImgUrl=account.profile_image(),
-            ),
-            accounts=[
-                dict(
-                    id=x.id,
-                    name=x.github_account_login,
-                    profileImgUrl=x.profile_image(),
-                )
+        {
+            "user": {
+                "id": request.user.id,
+                "name": request.user.github_login,
+                "profileImgUrl": request.user.profile_image(),
+            },
+            "org": {
+                "id": account.id,
+                "name": account.github_account_login,
+                "profileImgUrl": account.profile_image(),
+            },
+            "accounts": [
+                {
+                    "id": x.id,
+                    "name": x.github_account_login,
+                    "profileImgUrl": x.profile_image(),
+                }
                 for x in Account.objects.filter(memberships__user=request.user)
             ],
-        )
+        }
     )
 
 
@@ -281,7 +283,8 @@ def update_subscription(request: AuthedHttpRequest, team_id: str) -> HttpRespons
         # we must specify the payment method because our Stripe customers don't have
         # a default payment method, so the default invoicing will fail.
         payment_methods = stripe.PaymentMethod.list(
-            customer=subscription.customer, type="card",
+            customer=subscription.customer,
+            type="card",
         )
 
         payment_method = payment_methods.data[0].id
@@ -400,10 +403,10 @@ def start_checkout(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?start_subscription=1",
     )
     return JsonResponse(
-        dict(
-            stripeCheckoutSessionId=session.id,
-            stripePublishableApiKey=settings.STRIPE_PUBLISHABLE_API_KEY,
-        )
+        {
+            "stripeCheckoutSessionId": session.id,
+            "stripePublishableApiKey": settings.STRIPE_PUBLISHABLE_API_KEY,
+        }
     )
 
 
@@ -442,10 +445,10 @@ def modify_payment_details(request: AuthedHttpRequest, team_id: str) -> HttpResp
         cancel_url=f"{settings.KODIAK_WEB_APP_URL}/t/{account.id}/usage?modify_subscription=1",
     )
     return JsonResponse(
-        dict(
-            stripeCheckoutSessionId=session.id,
-            stripePublishableApiKey=settings.STRIPE_PUBLISHABLE_API_KEY,
-        )
+        {
+            "stripeCheckoutSessionId": session.id,
+            "stripePublishableApiKey": settings.STRIPE_PUBLISHABLE_API_KEY,
+        }
     )
 
 
@@ -520,14 +523,14 @@ def fetch_proration(request: AuthedHttpRequest, team_id: str) -> HttpResponse:
     if customer_info is not None:
         proration_date = int(time.time())
         return JsonResponse(
-            dict(
-                proratedCost=customer_info.preview_proration(
+            {
+                "proratedCost": customer_info.preview_proration(
                     timestamp=proration_date,
                     subscription_quantity=payload.subscriptionQuantity,
                     plan_id=stripe_plan_id,
                 ),
-                prorationTime=proration_date,
-            )
+                "prorationTime": proration_date,
+            }
         )
     return HttpResponse(status=500)
 
@@ -595,7 +598,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         else:
             raise BadRequest
         # Then define and call a method to handle the successful payment intent.
-        # handle_payment_intent_succeeded(payment_intent)
+        # handle_payment_intent_succeeded(payment_intent)  # noqa: ERA001
     elif event.type == "invoice.payment_succeeded":
         # triggered whenever a subscription is paid. We need to update the
         # subscription to have the correct period information.
@@ -639,7 +642,8 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         new_payment_method = event.data.object
 
         payment_methods = stripe.PaymentMethod.list(
-            customer=new_payment_method.customer, type="card",
+            customer=new_payment_method.customer,
+            type="card",
         )
         for payment_method in payment_methods.data:
             if payment_method.id != new_payment_method.id:
@@ -647,7 +651,7 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 
         stripe.Customer.modify(
             new_payment_method.customer,
-            invoice_settings=dict(default_payment_method=new_payment_method.id),
+            invoice_settings={"default_payment_method": new_payment_method.id},
         )
         stripe_customer_info = StripeCustomerInformation.objects.filter(
             customer_id=new_payment_method.customer
@@ -670,7 +674,11 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
 def accounts(request: AuthedHttpRequest) -> HttpResponse:
     return JsonResponse(
         [
-            dict(id=x.id, name=x.github_account_login, profileImgUrl=x.profile_image())
+            {
+                "id": x.id,
+                "name": x.github_account_login,
+                "profileImgUrl": x.profile_image(),
+            }
             for x in Account.objects.filter(memberships__user=request.user).order_by(
                 "github_account_login"
             )
@@ -691,11 +699,11 @@ def oauth_login(request: HttpRequest) -> HttpResponse:
     if not state:
         return HttpResponseBadRequest("Missing required state parameter")
     oauth_url = URL("https://github.com/login/oauth/authorize").with_query(
-        dict(
-            client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-            redirect_uri=settings.KODIAK_WEB_AUTHED_LANDING_PATH,
-            state=state,
-        )
+        {
+            "client_id": settings.KODIAK_API_GITHUB_CLIENT_ID,
+            "redirect_uri": settings.KODIAK_WEB_AUTHED_LANDING_PATH,
+            "state": state,
+        }
     )
     return HttpResponseRedirect(str(oauth_url))
 
@@ -745,11 +753,11 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
             error_description="Payload should have a code parameter.",
         )
 
-    payload = dict(
-        client_id=settings.KODIAK_API_GITHUB_CLIENT_ID,
-        client_secret=settings.KODIAK_API_GITHUB_CLIENT_SECRET,
-        code=code,
-    )
+    payload = {
+        "client_id": settings.KODIAK_API_GITHUB_CLIENT_ID,
+        "client_secret": settings.KODIAK_API_GITHUB_CLIENT_SECRET,
+        "code": code,
+    }
     access_res = requests.post(
         "https://github.com/login/oauth/access_token", payload, timeout=5
     )
@@ -777,7 +785,7 @@ def process_login_request(request: HttpRequest) -> Union[Success, Error]:
     # fetch information about the user using their oauth access token.
     user_data_res = requests.get(
         "https://api.github.com/user",
-        headers=dict(authorization=f"Bearer {access_token}"),
+        headers={"authorization": f"Bearer {access_token}"},
         timeout=5,
     )
     try:
@@ -849,8 +857,8 @@ def sync_accounts(request: AuthedHttpRequest) -> HttpResponse:
     try:
         request.user.sync_accounts()
     except SyncAccountsError:
-        return JsonResponse(dict(ok=False))
-    return JsonResponse(dict(ok=True))
+        return JsonResponse({"ok": False})
+    return JsonResponse({"ok": True})
 
 
 def debug_sentry(request: HttpRequest) -> HttpResponse:

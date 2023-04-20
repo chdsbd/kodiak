@@ -144,7 +144,8 @@ def main() -> None:
     os.environ.setdefault("SQUAWK_GITHUB_REPO_OWNER", pr_info.owner)
 
     res = subprocess.run(
-        ["squawk", "upload-to-github", *output_files], capture_output=True,
+        ["squawk", "upload-to-github", *output_files],
+        capture_output=True,
     )
     log.info(res)
     res.check_returncode()

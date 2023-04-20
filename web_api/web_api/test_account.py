@@ -77,7 +77,7 @@ def test_get_subscription_blocker_subscription_expired() -> None:
 @pytest.mark.django_db
 def test_get_subscription_blocker_trial_expired() -> None:
     account = create_account(
-        trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),
+        trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),  # noqa: DTZ001
     )
     assert account.trial_expired() is True
     blocker = account.get_subscription_blocker()
@@ -220,7 +220,7 @@ def test_get_subscription_blocker_seats_exceeded_with_trial(
     access.
     """
     account = create_account(
-        trial_expiration=make_aware(datetime.datetime(2100, 2, 13)),
+        trial_expiration=make_aware(datetime.datetime(2100, 2, 13)),  # noqa: DTZ001
     )
     assert account.active_trial() is True
     assert (
@@ -232,7 +232,7 @@ def test_get_subscription_blocker_seats_exceeded_with_trial(
 
 def create_account(
     trial_expiration: Optional[datetime.datetime] = make_aware(
-        datetime.datetime(1900, 2, 13)
+        datetime.datetime(1900, 2, 13)  # noqa: DTZ001
     )
 ) -> Account:
     return Account.objects.create(
@@ -254,7 +254,7 @@ def test_get_subscription_blocker_expired_trial_subscription_ok(
     we should not raise the paywall.
     """
     account = create_account(
-        trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),
+        trial_expiration=make_aware(datetime.datetime(1900, 2, 13)),  # noqa: DTZ001
     )
     StripeCustomerInformation.objects.create(
         customer_id="cus_H2pvQ2kt7nk0JY",

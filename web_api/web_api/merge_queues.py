@@ -128,7 +128,10 @@ def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[
             if merging_pr and pr.pull_request_number == merging_pr.pull_request_number:
                 continue
             pull_requests.append(
-                PullRequest(number=pr.pull_request_number, added_at_timestamp=score,)
+                PullRequest(
+                    number=pr.pull_request_number,
+                    added_at_timestamp=score,
+                )
             )
 
         pull_requests = sorted(pull_requests, key=lambda x: x.added_at_timestamp or 0)

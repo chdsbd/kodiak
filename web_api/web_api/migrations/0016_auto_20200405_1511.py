@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0015_remove_stripecustomerinformation_customer_delinquent"),
     ]

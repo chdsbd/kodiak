@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0009_pullrequestactivityprogress"),
     ]
@@ -34,7 +33,9 @@ class Migration(migrations.Migration):
                 ("is_private_repository", models.BooleanField(db_index=True)),
                 ("activity_date", models.DateField(db_index=True)),
             ],
-            options={"db_table": "user_pull_request_activity",},
+            options={
+                "db_table": "user_pull_request_activity",
+            },
         ),
         migrations.CreateModel(
             name="UserPullRequestActivityProgress",
@@ -55,7 +56,9 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"db_table": "user_pull_request_activity_progress",},
+            options={
+                "db_table": "user_pull_request_activity_progress",
+            },
         ),
         migrations.AddConstraint(
             model_name="userpullrequestactivity",

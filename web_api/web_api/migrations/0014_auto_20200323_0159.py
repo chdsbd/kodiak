@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web_api", "0013_auto_20200310_0412"),
     ]
@@ -138,7 +137,9 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"db_table": "stripe_customer_information",},
+            options={
+                "db_table": "stripe_customer_information",
+            },
         ),
         migrations.AddField(
             model_name="account",

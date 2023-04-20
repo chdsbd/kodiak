@@ -55,7 +55,6 @@ def create_account(
     github_account_login: str = "acme-corp",
     github_account_type: Literal["User", "Organization"] = "User",
 ) -> Account:
-
     return Account.objects.create(
         github_installation_id=create_pk(),
         github_account_id=create_pk(),
@@ -112,11 +111,16 @@ def create_stripe_customer_info(
 
 def create_stripe_payment_method() -> stripe.PaymentMethod:
     return stripe.PaymentMethod.construct_from(
-        dict(
-            object="payment_method",
-            id="pm_55yfgbc6",
-            card=dict(brand="mastercard", exp_month="04", exp_year="22", last4="4040"),
-        ),
+        {
+            "object": "payment_method",
+            "id": "pm_55yfgbc6",
+            "card": {
+                "brand": "mastercard",
+                "exp_month": "04",
+                "exp_year": "22",
+                "last4": "4040",
+            },
+        },
         "fake-key",
     )
 
@@ -131,26 +135,26 @@ def create_stripe_customer(
     address: Optional[Union[Dict[str, Any], Type[Unset]]] = Unset,
 ) -> stripe.Customer:
     if address == Unset:
-        address = dict(
-            line1="123 Main St",
-            line2="Apt 2B",
-            city="Cambridge",
-            state="Massachusetts",
-            postal_code="02139",
-            country="United States",
-        )
+        address = {
+            "line1": "123 Main St",
+            "line2": "Apt 2B",
+            "city": "Cambridge",
+            "state": "Massachusetts",
+            "postal_code": "02139",
+            "country": "United States",
+        }
     return stripe.Customer.construct_from(
-        dict(
-            object="customer",
-            id=id,
-            address=address,
-            balance=0,
-            created=1592096376,
-            currency="usd",
-            email="accounting@acme.corp",
-            name="Acme Corp Inc",
-            subscriptions=dict(data=[dict(id="sub_Gu1xedsfo1")]),
-        ),
+        {
+            "object": "customer",
+            "id": id,
+            "address": address,
+            "balance": 0,
+            "created": 1592096376,
+            "currency": "usd",
+            "email": "accounting@acme.corp",
+            "name": "Acme Corp Inc",
+            "subscriptions": {"data": [{"id": "sub_Gu1xedsfo1"}]},
+        },
         "fake-key",
     )
 
@@ -174,7 +178,9 @@ def authed_client(client: Client, user: User) -> Client:
 
 @pytest.mark.django_db
 def test_usage_billing(authed_client: Client, user: User, other_user: User) -> None:
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     today = datetime.datetime.now(timezone.utc)
@@ -266,15 +272,15 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
     ), "user accounts should not see subscription options"
     today_str = today.strftime("%Y-%m-%d")
     assert res.json()["activeUsers"] == [
-        dict(
-            id=user.github_id,
-            name=user.github_login,
-            profileImgUrl=user.profile_image(),
-            interactions=1,
-            firstActiveDate=today_str,
-            lastActiveDate=today_str,
-            hasSeatLicense=False,
-        )
+        {
+            "id": user.github_id,
+            "name": user.github_login,
+            "profileImgUrl": user.profile_image(),
+            "interactions": 1,
+            "firstActiveDate": today_str,
+            "lastActiveDate": today_str,
+            "hasSeatLicense": False,
+        }
     ]
     assert (
         res.json()["subscriptionExemption"] is None
@@ -296,7 +302,9 @@ def test_usage_billing_trial_active(
     """
     When the Account has an active trial, we return trial information in the API response.
     """
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
     user_account.save()
@@ -308,9 +316,11 @@ def test_usage_billing_trial_active(
     assert isinstance(res.json()["trial"]["startDate"], str)
     assert isinstance(res.json()["trial"]["endDate"], str)
     assert res.json()["trial"]["expired"] is False
-    assert res.json()["trial"]["startedBy"] == dict(
-        id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
-    )
+    assert res.json()["trial"]["startedBy"] == {
+        "id": str(user.id),
+        "name": user.github_login,
+        "profileImgUrl": user.profile_image(),
+    }
 
 
 @pytest.mark.django_db
@@ -321,13 +331,19 @@ def test_usage_billing_trial_expired(
     When the Account has an expired trial, we return trial information in the
     API response and indicate that the trial is expired.
     """
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     user_account.start_trial(actor=user, billing_email="b.lowe@example.com")
-    user_account.trial_start = timezone.make_aware(datetime.datetime(2000, 4, 15))
-    user_account.trial_expiration = timezone.make_aware(datetime.datetime(2000, 5, 4))
+    user_account.trial_start = timezone.make_aware(
+        datetime.datetime(2000, 4, 15)  # noqa: DTZ001
+    )
+    user_account.trial_expiration = timezone.make_aware(
+        datetime.datetime(2000, 5, 4)  # noqa: DTZ001
+    )
     user_account.save()
-    assert datetime.datetime.now() > datetime.datetime(
+    assert datetime.datetime.now() > datetime.datetime(  # noqa: DTZ001, DTZ005
         2000, 5, 4
     ), "we expect the current time to be more recent"
 
@@ -335,19 +351,23 @@ def test_usage_billing_trial_expired(
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["trial"] is not None
-    assert res.json()["trial"] == dict(
-        startDate="2000-04-15T00:00:00Z",
-        endDate="2000-05-04T00:00:00Z",
-        expired=True,
-        startedBy=dict(
-            id=str(user.id), name=user.github_login, profileImgUrl=user.profile_image()
-        ),
-    )
+    assert res.json()["trial"] == {
+        "startDate": "2000-04-15T00:00:00Z",
+        "endDate": "2000-05-04T00:00:00Z",
+        "expired": True,
+        "startedBy": {
+            "id": str(user.id),
+            "name": user.github_login,
+            "profileImgUrl": user.profile_image(),
+        },
+    }
 
 
 @pytest.mark.django_db
 def test_usage_billing_authentication(authed_client: Client, other_user: User) -> None:
-    user_account = create_account(github_account_login=other_user.github_login,)
+    user_account = create_account(
+        github_account_login=other_user.github_login,
+    )
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -370,7 +390,8 @@ def test_usage_billing_subscription_started(
         "web_api.models.time.time", return_value=period_start + 5 * ONE_DAY_SEC
     )
     account = create_account(
-        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
+        github_account_login=user.github_login,
+        stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     stripe_customer_information = create_stripe_customer_info(
@@ -383,7 +404,7 @@ def test_usage_billing_subscription_started(
     assert res.json()["subscription"] is not None
     assert (
         res.json()["subscription"]["nextBillingDate"]
-        == datetime.datetime.fromtimestamp(period_end).isoformat()
+        == datetime.datetime.fromtimestamp(period_end).isoformat()  # noqa: DTZ006
     )
     assert res.json()["subscription"]["expired"] is False
     assert res.json()["subscription"]["seats"] == 3
@@ -418,14 +439,14 @@ def test_usage_billing_subscription_started(
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
     assert res.json()["subscription"]["customerName"] == "Acme-corp"
-    assert res.json()["subscription"]["customerAddress"] == dict(
-        line1=stripe_customer_information.customer_address_line1,
-        city=stripe_customer_information.customer_address_city,
-        country=stripe_customer_information.customer_address_country,
-        line2=stripe_customer_information.customer_address_line2,
-        postalCode=stripe_customer_information.customer_address_postal_code,
-        state=stripe_customer_information.customer_address_state,
-    )
+    assert res.json()["subscription"]["customerAddress"] == {
+        "line1": stripe_customer_information.customer_address_line1,
+        "city": stripe_customer_information.customer_address_city,
+        "country": stripe_customer_information.customer_address_country,
+        "line2": stripe_customer_information.customer_address_line2,
+        "postalCode": stripe_customer_information.customer_address_postal_code,
+        "state": stripe_customer_information.customer_address_state,
+    }
 
 
 @pytest.mark.django_db
@@ -477,7 +498,7 @@ def test_usage_billing_subscription_exemption(
     account.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
-    assert res.json()["subscriptionExemption"] == dict(message=None)
+    assert res.json()["subscriptionExemption"] == {"message": None}
     assert res.json()["accountCanSubscribe"] is False
 
     account.subscription_exempt = True
@@ -487,9 +508,9 @@ def test_usage_billing_subscription_exemption(
     account.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
-    assert res.json()["subscriptionExemption"] == dict(
-        message=account.subscription_exempt_message
-    )
+    assert res.json()["subscriptionExemption"] == {
+        "message": account.subscription_exempt_message
+    }
     assert res.json()["accountCanSubscribe"] is False
 
 
@@ -603,7 +624,8 @@ def test_update_subscription(
         "web_api.models.stripe.Subscription.modify", return_value=fake_subscription
     )
     fake_invoice = stripe.Invoice.construct_from(
-        dict(object="invoice", id="in_00000000000000"), "fake-key",
+        {"object": "invoice", "id": "in_00000000000000"},
+        "fake-key",
     )
     stripe_invoice_create = mocker.patch(
         "web_api.models.stripe.Invoice.create", return_value=fake_invoice
@@ -611,13 +633,14 @@ def test_update_subscription(
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
     stripe_invoice_pay = mocker.patch("web_api.models.stripe.Invoice.pay")
     assert user.github_login is not None
     account = create_account(
-        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
+        github_account_login=user.github_login,
+        stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
     create_stripe_customer_info(
@@ -631,7 +654,7 @@ def test_update_subscription(
     assert update_bot.call_count == 0
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=period_start + 4 * ONE_DAY_SEC, seats=24),
+        {"prorationTimestamp": period_start + 4 * ONE_DAY_SEC, "seats": 24},
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 1
@@ -647,11 +670,11 @@ def test_update_subscription(
     # with the correct plan id.
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(
-            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
-            seats=8,
-            planPeriod="month",
-        ),
+        {
+            "prorationTimestamp": period_start + 4 * ONE_DAY_SEC,
+            "seats": 8,
+            "planPeriod": "month",
+        },
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 2
@@ -666,11 +689,11 @@ def test_update_subscription(
     # with the correct plan id.
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(
-            prorationTimestamp=period_start + 4 * ONE_DAY_SEC,
-            seats=4,
-            planPeriod="year",
-        ),
+        {
+            "prorationTimestamp": period_start + 4 * ONE_DAY_SEC,
+            "seats": 4,
+            "planPeriod": "year",
+        },
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 3
@@ -686,24 +709,26 @@ def create_stripe_subscription(
     interval: Literal["month", "year"] = "month"
 ) -> stripe.Subscription:
     return stripe.Subscription.construct_from(
-        dict(
-            object="subscription",
-            id="sub_Gu1xedsfo1",
-            current_period_end=1690982549,
-            current_period_start=1688304149,
-            customer="cus_f8935e914afa",
-            items=dict(data=[dict(object="subscription_item", id="si_Gx234091sd2")]),
-            plan=dict(
-                id=settings.STRIPE_ANNUAL_PLAN_ID,
-                object="plan",
-                amount=499,
-                interval=interval,
-                interval_count=1,
-            ),
-            quantity=4,
-            start_date=1443556775,
-            default_payment_method="pm_22dldxf3",
-        ),
+        {
+            "object": "subscription",
+            "id": "sub_Gu1xedsfo1",
+            "current_period_end": 1690982549,
+            "current_period_start": 1688304149,
+            "customer": "cus_f8935e914afa",
+            "items": {
+                "data": [{"object": "subscription_item", "id": "si_Gx234091sd2"}]
+            },
+            "plan": {
+                "id": settings.STRIPE_ANNUAL_PLAN_ID,
+                "object": "plan",
+                "amount": 499,
+                "interval": interval,
+                "interval_count": 1,
+            },
+            "quantity": 4,
+            "start_date": 1443556775,
+            "default_payment_method": "pm_22dldxf3",
+        },
         "fake-key",
     )
 
@@ -729,7 +754,8 @@ def test_update_subscription_switch_plans(
         return_value=create_stripe_subscription(interval="year"),
     )
     fake_invoice = stripe.Invoice.construct_from(
-        dict(object="invoice", id="in_00000000000000"), "fake-key",
+        {"object": "invoice", "id": "in_00000000000000"},
+        "fake-key",
     )
     stripe_invoice_create = mocker.patch(
         "web_api.models.stripe.Invoice.create", return_value=fake_invoice
@@ -746,7 +772,7 @@ def test_update_subscription_switch_plans(
 
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=123456789, seats=4, planPeriod="year"),
+        {"prorationTimestamp": 123456789, "seats": 4, "planPeriod": "year"},
     )
     assert res.status_code == 204
     assert stripe_subscription_retrieve.call_count == 1
@@ -778,7 +804,8 @@ def test_update_subscription_missing_customer(
     )
     assert user.github_login is not None
     account = create_account(
-        github_account_login=user.github_login, stripe_customer_id="cus_Ged32s2xnx12",
+        github_account_login=user.github_login,
+        stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
     assert (
@@ -788,7 +815,7 @@ def test_update_subscription_missing_customer(
     assert stripe_subscription_modify.call_count == 0
     res = authed_client.post(
         f"/v1/t/{account.id}/update_subscription",
-        dict(prorationTimestamp=1650581784, seats=24),
+        {"prorationTimestamp": 1650581784, "seats": 24},
     )
     assert res.status_code == 422
     assert res.json()["message"] == "Subscription does not exist to modify."
@@ -806,20 +833,29 @@ def test_update_subscription_permissions(
     owners can modify a subscription.
     """
     account, membership = create_org_account(user=user, role="member")
-    payload = dict(prorationTimestamp=1650581784, seats=24)
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
+    payload = {"prorationTimestamp": 1650581784, "seats": 24}
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
     assert (
         res.status_code == 422
     ), "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
 
     account.limit_billing_access_to_owners = True
     account.save()
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
     assert res.status_code == 403, "we're a member so we shouldn't be allowed"
 
     membership.role = "admin"
     membership.save()
-    res = authed_client.post(f"/v1/t/{account.id}/update_subscription", payload,)
+    res = authed_client.post(
+        f"/v1/t/{account.id}/update_subscription",
+        payload,
+    )
     assert res.status_code == 422, "we're an admin so we should be okay"
 
 
@@ -913,9 +949,14 @@ def test_cancel_subscription_admin_limit_billing_access_to_owners(
 
 
 @pytest.mark.django_db
-def test_activity(authed_client: Client, user: User,) -> None:
+def test_activity(
+    authed_client: Client,
+    user: User,
+) -> None:
     assert user.github_login is not None
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     pull_request_activity = PullRequestActivity.objects.create(
         date=datetime.date(2020, 2, 3),
@@ -964,58 +1005,62 @@ def test_activity_with_merge_queues(
     We should return active merge queues from Redis if available.
     """
     assert user.github_login is not None
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     install_id = user_account.github_installation_id
     queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
     empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
     redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
     merging_pr = json.dumps(
-        dict(
-            repo_owner="sbdchd",
-            repo_name="squawk",
-            pull_request_number=55,
-            installation_id=install_id,
-            target_name="main",
-        )
+        {
+            "repo_owner": "sbdchd",
+            "repo_name": "squawk",
+            "pull_request_number": 55,
+            "installation_id": install_id,
+            "target_name": "main",
+        }
     )
     redis.set(queue + ":target", merging_pr)
     waiting_pr = json.dumps(
-        dict(
-            repo_owner="sbdchd",
-            repo_name="squawk",
-            pull_request_number=57,
-            installation_id=install_id,
-            target_name="main",
-        )
+        {
+            "repo_owner": "sbdchd",
+            "repo_name": "squawk",
+            "pull_request_number": 57,
+            "installation_id": install_id,
+            "target_name": "main",
+        }
     )
     score = 1614997354.8109288
     redis.zadd(
-        queue, {waiting_pr: score},
+        queue,
+        {waiting_pr: score},
     )
     redis.zadd(
-        queue, {merging_pr: score + 1000},
+        queue,
+        {merging_pr: score + 1000},
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 200
     assert res.json()["activeMergeQueues"] == [
-        dict(
-            owner="sbdchd",
-            repo="squawk",
-            queues=[
-                dict(
-                    branch="main",
-                    pull_requests=[
-                        dict(number="55", added_at_timestamp=None, merging=True),
-                        dict(
-                            number="57",
-                            added_at_timestamp=1614997354.8109288,
-                            merging=False,
-                        ),
+        {
+            "owner": "sbdchd",
+            "repo": "squawk",
+            "queues": [
+                {
+                    "branch": "main",
+                    "pull_requests": [
+                        {"number": "55", "added_at_timestamp": None, "merging": True},
+                        {
+                            "number": "57",
+                            "added_at_timestamp": 1614997354.8109288,
+                            "merging": False,
+                        },
                     ],
-                )
+                }
             ],
-        )
+        }
     ]
 
 
@@ -1027,17 +1072,23 @@ def test_activity_with_merge_queues_invalid_parsing(
     We should ignore pull requests we can't parse so the web UI is robust.
     """
     assert user.github_login is not None
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     install_id = user_account.github_installation_id
     queue = f"merge_queue:{install_id}.sbdchd/squawk/main"
     empty_queue = f"merge_queue:{install_id}.sbdchd/time-to-deploy/main"
     redis.sadd(f"merge_queue_by_install:{install_id}", queue, empty_queue)
     waiting_pr_with_invalid_stucture = json.dumps(
-        dict(repo_owner="sbdchd", installation_id=install_id,)
+        {
+            "repo_owner": "sbdchd",
+            "installation_id": install_id,
+        }
     )
     redis.zadd(
-        queue, {waiting_pr_with_invalid_stucture: 1614997354.8109288},
+        queue,
+        {waiting_pr_with_invalid_stucture: 1614997354.8109288},
     )
     res = authed_client.get(f"/v1/t/{user_account.id}/activity")
     assert res.status_code == 200
@@ -1045,9 +1096,14 @@ def test_activity_with_merge_queues_invalid_parsing(
 
 
 @pytest.mark.django_db
-def test_activity_authentication(authed_client: Client, other_user: User,) -> None:
+def test_activity_authentication(
+    authed_client: Client,
+    other_user: User,
+) -> None:
     assert other_user.github_login is not None
-    user_account = create_account(github_account_login=other_user.github_login,)
+    user_account = create_account(
+        github_account_login=other_user.github_login,
+    )
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -1061,7 +1117,9 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     Start a Stripe checkout session and return the required credentials to the frontend.
     """
     assert user.github_login is not None
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
 
     class FakeCheckoutSession:
@@ -1076,7 +1134,7 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
     # start checkout without a plan to check backwards compatibility. We should
     # default to using the monthly plan.
     res = authed_client.post(
-        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=3)
+        f"/v1/t/{user_account.id}/start_checkout", {"seatCount": 3}
     )
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
@@ -1087,7 +1145,8 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
 
     # start checkout with a monthly plan.
     res = authed_client.post(
-        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=5, planPeriod="month")
+        f"/v1/t/{user_account.id}/start_checkout",
+        {"seatCount": 5, "planPeriod": "month"},
     )
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
@@ -1098,7 +1157,8 @@ def test_start_checkout(authed_client: Client, user: User, mocker: Any) -> None:
 
     # start checkout with a yearly plan.
     res = authed_client.post(
-        f"/v1/t/{user_account.id}/start_checkout", dict(seatCount=2, planPeriod="year")
+        f"/v1/t/{user_account.id}/start_checkout",
+        {"seatCount": 2, "planPeriod": "year"},
     )
     assert res.status_code == 200
     assert res.json()["stripeCheckoutSessionId"] == FakeCheckoutSession.id
@@ -1116,7 +1176,10 @@ def test_modify_payment_details(authed_client: Client, user: User, mocker: Any) 
     """
     Start a new checkout session in "setup" mode to update the payment information.
     """
-    account, _membership = create_org_account(user=user, role="member",)
+    account, _membership = create_org_account(
+        user=user,
+        role="member",
+    )
 
     class FakeCheckoutSession:
         id = "cs_tgn3bJHRrXhqgdVSc4tsY"
@@ -1168,7 +1231,7 @@ def test_update_stripe_customer_info_permission(
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
 
     assert account.limit_billing_access_to_owners is False
-    payload = dict(limitBillingAccessToOwners=True)
+    payload = {"limitBillingAccessToOwners": True}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1205,7 +1268,7 @@ def test_update_stripe_customer_info_limit_billing_access_to_owners(
     account.limit_billing_access_to_owners = True
     account.save()
 
-    payload = dict(email="billing@kodiakhq.com")
+    payload = {"email": "billing@kodiakhq.com"}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1244,7 +1307,7 @@ def test_update_billing_email(
     stripe_customer_info.customer_email = "invoices@acme-inc.corp"
     stripe_customer_info.save()
 
-    payload = dict(email="billing@kodiakhq.com")
+    payload = {"email": "billing@kodiakhq.com"}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1271,7 +1334,7 @@ def test_update_billing_email_empty(
     stripe_customer_info.customer_email = original_email
     stripe_customer_info.save()
 
-    payload = dict(email="")
+    payload = {"email": ""}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1296,7 +1359,7 @@ def test_update_contact_emails(
     account.save()
 
     # by default a user should be able to set the contact emails fields.
-    payload = dict(contactEmails="a.hamilton@treasury.gov\ng.washington@whitehouse.gov")
+    payload = {"contactEmails": "a.hamilton@treasury.gov\ng.washington@whitehouse.gov"}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1345,7 +1408,7 @@ def test_update_company_name(
     stripe_customer_info.customer_name = "Acme Corp Inc."
     stripe_customer_info.save()
 
-    payload = dict(name="Kodiak Bait & Tackle")
+    payload = {"name": "Kodiak Bait & Tackle"}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1376,16 +1439,16 @@ def test_update_address(
     stripe_customer_info.customer_address_state = None
     stripe_customer_info.save()
 
-    payload = dict(
-        address=dict(
-            line1="123 Main St",
-            line2="Apt 3B",
-            city="Anytown",
-            postalCode="12345",
-            state="Massachusetts",
-            country="United States",
-        )
-    )
+    payload = {
+        "address": {
+            "line1": "123 Main St",
+            "line2": "Apt 3B",
+            "city": "Anytown",
+            "postalCode": "12345",
+            "state": "Massachusetts",
+            "country": "United States",
+        }
+    }
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1416,7 +1479,7 @@ def test_update_limit_billing_access_to_owners(
     account, membership = create_org_account(user, role="member")
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
 
-    payload = dict(limitBillingAccessToOwners=True)
+    payload = {"limitBillingAccessToOwners": True}
     res = authed_client.post(
         f"/v1/t/{account.id}/update_stripe_customer_info",
         payload,
@@ -1444,17 +1507,20 @@ def test_accounts_endpoint_ordering(authed_client: Client, user: User) -> None:
     We could also sort them on the frontend.
     """
     industries = create_account(
-        github_account_login="industries", github_account_type="Organization",
+        github_account_login="industries",
+        github_account_type="Organization",
     )
     AccountMembership.objects.create(account=industries, user=user, role="member")
 
     acme = create_account(
-        github_account_login="acme-corp", github_account_type="Organization",
+        github_account_login="acme-corp",
+        github_account_type="Organization",
     )
     AccountMembership.objects.create(account=acme, user=user, role="member")
 
     market = create_account(
-        github_account_login="market", github_account_type="Organization",
+        github_account_login="market",
+        github_account_type="Organization",
     )
     AccountMembership.objects.create(account=market, user=user, role="member")
 
@@ -1503,10 +1569,13 @@ def test_sync_accounts_failure(
 @pytest.mark.django_db
 def test_current_account(authed_client: Client, user: User) -> None:
     assert user.github_login is not None
-    user_account = create_account(github_account_login=user.github_login,)
+    user_account = create_account(
+        github_account_login=user.github_login,
+    )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = create_account(
-        github_account_login="recipeyak", github_account_type="Organization",
+        github_account_login="recipeyak",
+        github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1537,10 +1606,13 @@ def test_current_account(authed_client: Client, user: User) -> None:
 
 @pytest.mark.django_db
 def test_current_account_authentication(
-    authed_client: Client, other_user: User,
+    authed_client: Client,
+    other_user: User,
 ) -> None:
     assert other_user.github_login is not None
-    user_account = create_account(github_account_login=other_user.github_login,)
+    user_account = create_account(
+        github_account_login=other_user.github_login,
+    )
     AccountMembership.objects.create(
         account=user_account, user=other_user, role="member"
     )
@@ -1552,11 +1624,13 @@ def test_current_account_authentication(
 def test_accounts(authed_client: Client, user: User) -> None:
     assert user.github_login is not None
     user_account = create_account(
-        github_account_login=user.github_login, github_account_type="User",
+        github_account_login=user.github_login,
+        github_account_type="User",
     )
     AccountMembership.objects.create(account=user_account, user=user, role="member")
     org_account = create_account(
-        github_account_login="recipeyak", github_account_type="Organization",
+        github_account_login="recipeyak",
+        github_account_type="Organization",
     )
     AccountMembership.objects.create(account=org_account, user=user, role="member")
 
@@ -1589,7 +1663,8 @@ def test_start_trial(
     update_bot = mocker.patch("web_api.models.Account.update_bot")
     assert user.github_login is not None
     account = create_account(
-        github_account_login=user.github_login, github_account_type="User",
+        github_account_login=user.github_login,
+        github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     assert account.trial_start is None
@@ -1599,17 +1674,17 @@ def test_start_trial(
         account.trial_expired() is False
     ), "when a trial is inactive, it shouldn't have expired."
     res = authed_client.post(
-        f"/v1/t/{account.id}/start_trial", dict(billingEmail="b.lowe@example.com")
+        f"/v1/t/{account.id}/start_trial", {"billingEmail": "b.lowe@example.com"}
     )
     assert res.status_code == 204
     assert update_bot.call_count == 1
     account.refresh_from_db()
     assert account.trial_start is not None
     assert (
-        (account.trial_start - account.trial_expiration).total_seconds()
-        - datetime.timedelta(days=30).total_seconds()
-        < 60 * 60
-    ), "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
+        account.trial_start - account.trial_expiration
+    ).total_seconds() - datetime.timedelta(
+        days=30
+    ).total_seconds() < 60 * 60, "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
     assert account.trial_started_by == user
     assert account.trial_expired() is False
     assert account.trial_email == "b.lowe@example.com"
@@ -1636,7 +1711,8 @@ def test_start_trial_existing_trial(
     """
     assert user.github_login is not None
     account = create_account(
-        github_account_login=user.github_login, github_account_type="User",
+        github_account_login=user.github_login,
+        github_account_type="User",
     )
     AccountMembership.objects.create(account=account, user=user, role="member")
     account.start_trial(actor=user, billing_email="b.lowe@example.com", length_days=2)
@@ -1645,7 +1721,7 @@ def test_start_trial_existing_trial(
     original_trial_started_by = account.trial_started_by
 
     res = authed_client.post(
-        f"/v1/t/{account.id}/start_trial", dict(billingEmail="d.abernathy@example.com")
+        f"/v1/t/{account.id}/start_trial", {"billingEmail": "d.abernathy@example.com"}
     )
     assert res.status_code == 204
     account.refresh_from_db()
@@ -1682,10 +1758,7 @@ def post_webhook(event: Union[Dict[str, Any], str]) -> HttpResponse:
     """
     Send a signed payload to our stripe webhook endpoint
     """
-    if isinstance(event, str):
-        payload = event
-    else:
-        payload = json.dumps(event)
+    payload = event if isinstance(event, str) else json.dumps(event)
     sig_header = generate_header(payload)
     return Client().post(
         "/v1/stripe_webhook",
@@ -1708,16 +1781,18 @@ def test_stripe_webhook_handler_checkout_session_complete_setup(mocker: Any) -> 
     )
     fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=fake_subscription,
     )
     fake_payment_method = create_stripe_payment_method()
     payment_method_retrieve = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+        "web_api.views.stripe.PaymentMethod.retrieve",
+        return_value=fake_payment_method,
     )
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
 
@@ -1854,17 +1929,19 @@ def test_stripe_webhook_handler_checkout_session_complete_subscription(
     )
     fake_subscription = create_stripe_subscription()
     subscription_retrieve = mocker.patch(
-        "web_api.views.stripe.Subscription.retrieve", return_value=fake_subscription,
+        "web_api.views.stripe.Subscription.retrieve",
+        return_value=fake_subscription,
     )
     fake_payment_method = create_stripe_payment_method()
     payment_method_retrieve = mocker.patch(
-        "web_api.views.stripe.PaymentMethod.retrieve", return_value=fake_payment_method,
+        "web_api.views.stripe.PaymentMethod.retrieve",
+        return_value=fake_payment_method,
     )
 
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
 
@@ -2032,7 +2109,8 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
         customer_id=account.stripe_customer_id
     )
     retrieve_customer = mocker.patch(
-        "web_api.views.stripe.Customer.retrieve", return_value=create_stripe_customer(),
+        "web_api.views.stripe.Customer.retrieve",
+        return_value=create_stripe_customer(),
     )
     retrieve_subscription = mocker.patch(
         "web_api.views.stripe.Subscription.retrieve",
@@ -2045,7 +2123,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
     update_bot = mocker.patch("web_api.models.Account.update_bot")
@@ -2311,7 +2389,7 @@ def test_stripe_webhook_handler_customer_updated(mocker: Any) -> None:
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
     patched_update_bot = mocker.patch(
@@ -2359,7 +2437,9 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     account = create_account()
 
     create_stripe_customer_info(customer_id=account.stripe_customer_id)
-    fake_customer = create_stripe_customer(id=account.stripe_customer_id,)
+    fake_customer = create_stripe_customer(
+        id=account.stripe_customer_id,
+    )
     patched_retrieve_customer = mocker.patch(
         "web_api.views.stripe.Customer.retrieve", return_value=fake_customer
     )
@@ -2374,7 +2454,7 @@ def test_stripe_webhook_handler_customer_updated_with_address(mocker: Any) -> No
     stripe_payment_method_list = mocker.patch(
         "web_api.models.stripe.PaymentMethod.list",
         return_value=stripe.PaymentMethod.construct_from(
-            dict(data=[create_stripe_payment_method()]), key="fake-key"
+            {"data": [create_stripe_payment_method()]}, key="fake-key"
         ),
     )
     patched_update_bot = mocker.patch(
@@ -2478,7 +2558,7 @@ def test_healthcheck(client: Client) -> None:
 
 @pytest.mark.django_db
 def test_oauth_login(client: Client, state_token: str) -> None:
-    res = client.get("/v1/oauth_login", dict(state=state_token))
+    res = client.get("/v1/oauth_login", {"state": state_token})
     assert res.status_code == 302
     assert (
         res["Location"]
@@ -2625,11 +2705,11 @@ def test_oauth_complete_success_new_account(
     assert User.objects.count() == 0
     res = client.post(
         "/v1/oauth_complete",
-        dict(
-            serverState=state_token,
-            clientState=state_token,
-            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
-        ),
+        {
+            "serverState": state_token,
+            "clientState": state_token,
+            "code": "D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        },
     )
     assert res.status_code == 200
 
@@ -2655,11 +2735,11 @@ def test_oauth_complete_success_existing_account(
 
     res = client.post(
         "/v1/oauth_complete",
-        dict(
-            serverState=state_token,
-            clientState=state_token,
-            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
-        ),
+        {
+            "serverState": state_token,
+            "clientState": state_token,
+            "code": "D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        },
     )
     assert res.status_code == 200
 
@@ -2692,16 +2772,15 @@ def test_oauth_complete_sync_installation_failure(
     failing_sync_accounts_response: object,
     state_token: str,
 ) -> None:
-
     assert User.objects.count() == 0
     assert Account.objects.count() == 0
     res = client.post(
         "/v1/oauth_complete",
-        dict(
-            serverState=state_token,
-            clientState=state_token,
-            code="D86BE2B3F3C74ACB91D3DF7B649F40BB",
-        ),
+        {
+            "serverState": state_token,
+            "clientState": state_token,
+            "code": "D86BE2B3F3C74ACB91D3DF7B649F40BB",
+        },
     )
     assert res.status_code == 200
 
@@ -2721,27 +2800,27 @@ def test_oauth_complete_sync_installation_failure(
 
 @pytest.mark.skip
 def test_oauth_complete_cookie_session_mismatch(client: Client) -> None:
-    assert False
+    raise AssertionError()
 
 
 @pytest.mark.skip
 def test_oauth_complete_fail_to_fetch_access_token(client: Client) -> None:
-    assert False
+    raise AssertionError()
 
 
 @pytest.mark.skip
 def test_oauth_complete_fetch_access_token_qs_res_error(client: Client) -> None:
-    assert False
+    raise AssertionError()
 
 
 @pytest.mark.skip
 def test_oauth_complete_fetch_access_token_res_error(client: Client) -> None:
-    assert False
+    raise AssertionError()
 
 
 @pytest.mark.skip
 def test_oauth_complete_fail_fetch_github_account_info(client: Client) -> None:
-    assert False
+    raise AssertionError()
 
 
 @pytest.fixture
@@ -2752,7 +2831,11 @@ def state_token(client: Client) -> str:
 @pytest.mark.django_db
 def test_oauth_complete_missing_code(client: Client, state_token: str) -> None:
     res = client.post(
-        "/v1/oauth_complete", dict(serverState=state_token, clientState=state_token,),
+        "/v1/oauth_complete",
+        {
+            "serverState": state_token,
+            "clientState": state_token,
+        },
     )
     assert res.status_code == 200
 
