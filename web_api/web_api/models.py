@@ -5,7 +5,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, List, Optional, Union
 
 import pydantic
 import redis
@@ -140,7 +140,7 @@ class User(BaseModel):
         installations_data = user_installations_res.json()
         installations = installations_data["installations"]
 
-        accounts: list[Account] = []
+        accounts: List[Account] = []
 
         for installation in installations:
             installation_id = installation["id"]
@@ -175,7 +175,7 @@ class User(BaseModel):
             else:
                 role = "member"
 
-            existing_account: Account | None = Account.objects.filter(
+            existing_account: Optional[Account] = Account.objects.filter(
                 github_account_id=installation_account_id
             ).first()
             if existing_account is None:
@@ -246,17 +246,17 @@ class SeatsExceeded(pydantic.BaseModel):
     # a list of github account user ids that occupy seats. These users will
     # be allowed to use Kodiak while any new users will be blocked by the
     # paywall.
-    allowed_user_ids: list[int]
+    allowed_user_ids: List[int]
 
 
 @dataclass
 class Address:
-    line1: str | None = None
-    city: str | None = None
-    country: str | None = None
-    line2: str | None = None
-    postal_code: str | None = None
-    state: str | None = None
+    line1: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    line2: Optional[str] = None
+    postal_code: Optional[str] = None
+    state: Optional[str] = None
 
 
 class Account(BaseModel):
@@ -330,7 +330,7 @@ class Account(BaseModel):
     def profile_image(self) -> str:
         return f"https://avatars.githubusercontent.com/u/{self.github_account_id}"
 
-    def stripe_customer_info(self) -> StripeCustomerInformation | None:
+    def stripe_customer_info(self) -> Optional[StripeCustomerInformation]:
         return StripeCustomerInformation.objects.filter(
             customer_id=self.stripe_customer_id
         ).first()
@@ -381,7 +381,7 @@ class Account(BaseModel):
 
     def get_subscription_blocker(
         self,
-    ) -> SubscriptionExpired | TrialExpired | SeatsExceeded | None:
+    ) -> Optional[Union[SubscriptionExpired, TrialExpired, SeatsExceeded]]:
         """
         If there is a valid trial or subscription, we should return None. Otherwise we should return the reason for the block.
 
@@ -429,9 +429,9 @@ class Account(BaseModel):
 
     def update_billing_info(
         self,
-        email: str | None = None,
-        name: str | None = None,
-        address: Address | None = None,
+        email: Optional[str] = None,
+        name: Optional[str] = None,
+        address: Optional[Address] = None,
     ) -> None:
         if not self.stripe_customer_id:
             return
@@ -587,24 +587,24 @@ class PullRequestActivity(BaseModel):
         Create PullRequestActivity objects from GitHubEvent information.
         """
         start_time = time.time()
-        pr_progress: PullRequestActivityProgress | None = (
-            PullRequestActivityProgress.objects.order_by("-min_date").first()
-        )
+        pr_progress: Optional[
+            PullRequestActivityProgress
+        ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
         if pr_progress:
-            min_date: datetime.datetime | None = timezone.make_aware(
-                datetime.datetime(  # noqa: DTZ001
+            min_date = timezone.make_aware(
+                datetime.datetime(
                     pr_progress.min_date.year,
                     pr_progress.min_date.month,
                     pr_progress.min_date.day,
                 )
-            )
+            )  # type: Optional[datetime.datetime]
             events_aggregated = GitHubEvent.objects.filter(
                 created_at__gte=min_date
             ).count()
         else:
             min_date = None
             events_aggregated = GitHubEvent.objects.count()
-        new_min_date = datetime.date.today()  # noqa: DTZ011
+        new_min_date = datetime.date.today()
         PullRequestActivity.generate_activity_data(min_date=min_date)
         PullRequestActivityProgress.objects.create(min_date=new_min_date)
         logger.info(
@@ -617,7 +617,7 @@ class PullRequestActivity(BaseModel):
 
     @staticmethod
     def generate_activity_data(
-        min_date: datetime.date | None = None, account: Account | None = None
+        min_date: Optional[datetime.date] = None, account: Optional[Account] = None
     ) -> None:
         """
         Generate/update PullRequestActivity using data from the GitHubEvent table.
@@ -784,7 +784,7 @@ class UserPullRequestActivity(BaseModel):
         ]
 
     @staticmethod
-    def get_active_users_in_last_30_days(account: Account) -> list[ActiveUser]:
+    def get_active_users_in_last_30_days(account: Account) -> List[ActiveUser]:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -835,9 +835,9 @@ class UserPullRequestActivity(BaseModel):
         """
         Find all pull requests acted on by Kodiak.
         """
-        user_pull_request_activity_progress: UserPullRequestActivityProgress | None = (
-            UserPullRequestActivityProgress.objects.order_by("-min_date").first()
-        )
+        user_pull_request_activity_progress: Optional[
+            UserPullRequestActivityProgress
+        ] = UserPullRequestActivityProgress.objects.order_by("-min_date").first()
         where_clause = []
         if user_pull_request_activity_progress is not None:
             where_clause.append(
@@ -1093,9 +1093,7 @@ class StripeCustomerInformation(models.Model):
 
     @property
     def next_billing_date(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(  # noqa: DTZ006
-            self.subscription_current_period_end
-        )
+        return datetime.datetime.fromtimestamp(self.subscription_current_period_end)
 
     def cancel_subscription(self) -> None:
         """

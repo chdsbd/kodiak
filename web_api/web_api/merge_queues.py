@@ -4,9 +4,12 @@ import logging
 from collections import defaultdict
 from typing import (
     Iterator,
+    List,
     Mapping,
     NamedTuple,
+    Optional,
     Sequence,
+    Tuple,
     TypeVar,
 )
 
@@ -31,18 +34,18 @@ class KodiakQueueEntry(pydantic.BaseModel):
 class PullRequest(pydantic.BaseModel):
     number: str
     merging: bool = False
-    added_at_timestamp: float | None
+    added_at_timestamp: Optional[float]
 
 
 class Queue(pydantic.BaseModel):
     branch: str
-    pull_requests: list[PullRequest]
+    pull_requests: List[PullRequest]
 
 
 class Repository(pydantic.BaseModel):
     repo: str
     owner: str
-    queues: list[Queue]
+    queues: List[Queue]
 
 
 class RepositoryName(NamedTuple):
@@ -79,14 +82,14 @@ def parse_kodiak_queue_entry(data: bytes) -> KodiakQueueEntry | None:
 T = TypeVar("T")
 
 
-def chunk(it: Sequence[T], count: int) -> Iterator[tuple[T, ...]]:
+def chunk(it: Sequence[T], count: int) -> Iterator[Tuple[T, ...]]:
     """
     Convert list of items into a list of `count` length items.
     """
     return (tuple(it[i : count + i]) for i in range(0, len(it), count))
 
 
-def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, list[Queue]]:
+def get_active_merge_queues(*, install_id: str) -> Mapping[RepositoryName, List[Queue]]:
     queue_names = r.smembers(f"merge_queue_by_install:{install_id}")
     pipe = r.pipeline(transaction=False)
     for queue in queue_names:

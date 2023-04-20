@@ -85,6 +85,8 @@ ignore = [
     "N803", # some APIs have weird names
     "N818", # some exceptions have bad names
     "N801", # some class names have bad names
+
+    "RUF001", # false positives
 ]
 unfixable = [
     "ERA001",
@@ -94,6 +96,8 @@ update-check = false
 # [tool.ruff.isort]
 # known-third-party = ["django"]
 # known-first-party = ["recipeyak"]
+[tool.ruff.pyupgrade]
+keep-runtime-typing = true
 
 [tool.ruff.flake8-tidy-imports]
 # Disallow all relative imports.

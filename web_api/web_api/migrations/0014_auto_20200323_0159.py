@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 (
                     "customer_email",
                     models.CharField(
-                        help_text="The customer`s email address.", max_length=255
+                        help_text="The customer’s email address.", max_length=255
                     ),
                 ),
                 (
@@ -73,7 +73,7 @@ class Migration(migrations.Migration):
                 (
                     "customer_delinquent",
                     models.BooleanField(
-                        help_text="When the customer`s latest invoice is billed by charging automatically, delinquent is true if the invoice`s latest charge is failed. When the customer`s latest invoice is billed by sending an invoice, delinquent is true if the invoice is not paid by its due date."
+                        help_text="When the customer’s latest invoice is billed by charging automatically, delinquent is true if the invoice’s latest charge is failed. When the customer’s latest invoice is billed by sending an invoice, delinquent is true if the invoice is not paid by its due date."
                     ),
                 ),
                 (
@@ -87,14 +87,14 @@ class Migration(migrations.Migration):
                 (
                     "payment_method_card_exp_month",
                     models.IntegerField(
-                        help_text="Two-digit number representing the card`s expiration month.",
+                        help_text="Two-digit number representing the card’s expiration month.",
                         null=True,
                     ),
                 ),
                 (
                     "payment_method_card_exp_year",
                     models.IntegerField(
-                        help_text="Four-digit number representing the card`s expiration year.",
+                        help_text="Four-digit number representing the card’s expiration year.",
                         null=True,
                     ),
                 ),

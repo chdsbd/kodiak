@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
             model_name="stripecustomerinformation",
             name="customer_name",
             field=models.CharField(
-                help_text="The customer`s full name or business name.",
+                help_text="The customer’s full name or business name.",
                 max_length=255,
                 null=True,
             ),

@@ -2190,7 +2190,7 @@ def test_stripe_webhook_handler_invoice_payment_succeeded(mocker: Any) -> None:
             "object": "line_item",
             "amount": 4990,
             "currency": "usd",
-            "description": "10 seat x Kodiak Seat License (at $4.99 / month)",
+            "description": "10 seat × Kodiak Seat License (at $4.99 / month)",
             "discountable": true,
             "livemode": false,
             "metadata": {
