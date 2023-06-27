@@ -5,6 +5,7 @@ import json
 import time
 import typing
 import urllib
+import uuid
 from asyncio.tasks import Task
 from dataclasses import dataclass
 from datetime import timedelta
@@ -18,7 +19,6 @@ from typing import (
     Sequence,
     Tuple,
 )
-import uuid
 
 import sentry_sdk
 import structlog
