@@ -8,7 +8,17 @@ import urllib
 from asyncio.tasks import Task
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Iterator, MutableMapping, NoReturn, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    MutableMapping,
+    NoReturn,
+    Optional,
+    Sequence,
+    Tuple,
+)
+import uuid
 
 import sentry_sdk
 import structlog
@@ -367,7 +377,9 @@ async def webhook_event_consumer(
             scope.set_tag("queue", queue_name)
             scope.set_tag("installation", installation_id_from_queue(queue_name))
         log = logger.bind(
-            queue=queue_name, install=installation_id_from_queue(queue_name)
+            queue=queue_name,
+            install=installation_id_from_queue(queue_name),
+            task_id=uuid.uuid4().hex,
         )
         log.info("start webhook event consumer")
         while True:
@@ -479,18 +491,23 @@ class RedisWebhookQueue:
             await self.start_webhook_worker(queue_name=queue_name)
 
     async def start_webhook_worker(self, *, queue_name: str) -> None:
+        concurrency_str = await redis_bot.get("queue_concurrency:" + queue_name)
+        try:
+            concurrency = int(concurrency_str or 1)
+        except ValueError:
+            concurrency = 1
         self._start_worker(
             queue_name,
             "webhook",
-            webhook_event_consumer(webhook_queue=self, queue_name=queue_name),
-            concurrency=conf.WEBHOOK_WORKER_CONCURRENCY.get(queue_name) or 1,
+            lambda: webhook_event_consumer(webhook_queue=self, queue_name=queue_name),
+            concurrency=concurrency,
         )
 
     def start_repo_worker(self, *, queue_name: str) -> None:
         self._start_worker(
             queue_name,
             "repo",
-            repo_queue_consumer(
+            lambda: repo_queue_consumer(
                 queue_name=queue_name,
             ),
         )
@@ -499,7 +516,7 @@ class RedisWebhookQueue:
         self,
         key: str,
         kind: Literal["repo", "webhook"],
-        fut: typing.Coroutine[None, None, NoReturn],
+        fut: Callable[[], typing.Coroutine[None, None, NoReturn]],
         *,
         concurrency: int = 1,
     ) -> None:
@@ -527,11 +544,22 @@ class RedisWebhookQueue:
         tasks_to_create = concurrency - len(new_workers)
 
         tasks_created = 0
+        tasks_cancelled = 0
         # we need to create tasks
         if tasks_to_create > 0:
             for _ in range(tasks_to_create):
-                new_workers.append((asyncio.create_task(fut), kind))
+                new_workers.append((asyncio.create_task(fut()), kind))
                 tasks_created += 1
+        # we need to remove tasks
+        elif tasks_to_create < 0:
+            # split off tasks we need to cancel.
+            new_workers, workers_to_delete = (
+                new_workers[:concurrency],
+                new_workers[concurrency:],
+            )
+            for (task, kind) in workers_to_delete:
+                task.cancel()
+                tasks_cancelled += 1
 
         self.worker_tasks[key] = new_workers
         log.info(
@@ -539,6 +567,7 @@ class RedisWebhookQueue:
             previous_task_count=previous_task_count,
             failed_task_count=failed_task_count,
             tasks_created=tasks_created,
+            tasks_cancelled=tasks_cancelled,
         )
 
     async def enqueue(self, *, event: WebhookEvent) -> None:
