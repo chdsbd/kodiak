@@ -127,7 +127,7 @@ async def main() -> NoReturn:
             if task_meta.kind == "repo":
                 queue.start_repo_worker(queue_name=task_meta.queue_name)
             elif task_meta.kind == "webhook":
-                queue.start_webhook_worker(queue_name=task_meta.queue_name)
+                await queue.start_webhook_worker(queue_name=task_meta.queue_name)
             else:
                 assert_never(task_meta.kind)
         if ingest_queue_watcher.done():

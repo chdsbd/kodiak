@@ -8,7 +8,7 @@ import urllib
 from asyncio.tasks import Task
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator, MutableMapping, NoReturn, Optional, Sequence, Tuple
+from typing import Any, Iterator, MutableMapping, NoReturn, Optional, Sequence, Tuple
 
 import sentry_sdk
 import structlog
@@ -515,10 +515,11 @@ class RedisWebhookQueue:
             worker_task_results = self.worker_tasks[key]
         except KeyError:
             pass
-        new_workers: list[tuple[asyncio.Task, Literal["repo", "webhook"]]] = []
+        new_workers: list[tuple[asyncio.Task[Any], Literal["repo", "webhook"]]] = []
 
         previous_task_count = len(worker_task_results)
         failed_task_count = 0
+
         for (worker_task, _task_kind) in worker_task_results:
             if worker_task.done():
                 log.info("task failed")
@@ -545,7 +546,7 @@ class RedisWebhookQueue:
                 new_workers[:concurrency],
                 new_workers[concurrency:],
             )
-            for (task, kind) in workers_to_delete:
+            for (task, _kind) in workers_to_delete:
                 task.cancel()
                 tasks_cancelled += 1
 
@@ -620,8 +621,9 @@ class RedisWebhookQueue:
         return find_position((key for key, value in kvs), event.json().encode())
 
     def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
-        for queue_name, (task, task_kind) in self.worker_tasks.items():
-            yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
+        for queue_name, tasks in self.worker_tasks.items():
+            for (task, task_kind) in tasks:
+                yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
