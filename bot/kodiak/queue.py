@@ -557,7 +557,7 @@ class RedisWebhookQueue:
                 new_workers[:concurrency],
                 new_workers[concurrency:],
             )
-            for (task, kind) in workers_to_delete:
+            for (task, _kind) in workers_to_delete:
                 task.cancel()
                 tasks_cancelled += 1
 
