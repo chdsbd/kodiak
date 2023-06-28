@@ -55,7 +55,8 @@ def github_installation_id() -> str:
 @pytest.fixture
 def api_client(mocker: MockFixture, github_installation_id: str) -> Client:
     mocker.patch(
-        "kodiak.queries.get_thottler_for_installation", return_value=FakeThottler()
+        "kodiak.queries.get_thottler_for_installation",
+        return_value=wrap_future(FakeThottler()),
     )
     client = Client(installation_id=github_installation_id, owner="foo", repo="foo")
     mocker.patch.object(client, "send_query")
