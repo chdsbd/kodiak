@@ -1,11 +1,12 @@
 import asyncio
 import time
 from collections import deque
+from dataclasses import dataclass, field
 from typing import Any, MutableMapping
 
 from typing_extensions import Deque
+
 from kodiak.redis_client import redis_bot
-from dataclasses import dataclass, field
 
 
 class Throttler:
