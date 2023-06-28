@@ -1,9 +1,11 @@
 import asyncio
 import time
-from collections import defaultdict, deque
-from typing import Any, Mapping
+from collections import deque
+from typing import Any, MutableMapping
 
 from typing_extensions import Deque
+from kodiak.redis_client import redis_bot
+from dataclasses import dataclass, field
 
 
 class Throttler:
@@ -66,12 +68,47 @@ class Throttler:
         pass
 
 
-# installation_id => Throttler
-THROTTLER_CACHE: Mapping[str, Throttler] = defaultdict(
-    # TODO(chdsbd): Store rate limits in redis and update via http rate limit response headers
-    lambda: Throttler(rate_limit=5000 / 60 / 60)
-)
+DEFAULT_REQUESTS_PER_HOUR = 5000
+CACHE_TTL_SECS = 60
 
 
-def get_thottler_for_installation(*, installation_id: str) -> Throttler:
-    return THROTTLER_CACHE[installation_id]
+@dataclass(frozen=True)
+class ThrottleEntry:
+    throttler: Throttler
+    insertion_time: float = field(default_factory=time.monotonic)
+
+    def expired(self) -> bool:
+        return (time.monotonic() - self.insertion_time) > CACHE_TTL_SECS
+
+
+class ThrottleCache:
+
+    _cache: MutableMapping[str, ThrottleEntry]
+
+    def __init__(self) -> None:
+        self._cache = {}
+
+    async def get(self, *, installation_id: str) -> Throttler:
+        cache_entry = self._cache.get(installation_id)
+        if cache_entry and not cache_entry.expired():
+            return cache_entry.throttler
+        try:
+            requests_per_hour_str = await redis_bot.get(
+                "installation_rate_limit:" + installation_id
+            )
+            installation_rate_limit = int(
+                requests_per_hour_str or DEFAULT_REQUESTS_PER_HOUR
+            )
+        except ValueError:
+            installation_rate_limit = DEFAULT_REQUESTS_PER_HOUR
+        self._cache[installation_id] = ThrottleEntry(
+            throttler=Throttler(rate_limit=installation_rate_limit / 60 / 60)
+        )
+        return self._cache[installation_id].throttler
+
+
+throttle_cache = ThrottleCache()
+
+
+async def get_thottler_for_installation(*, installation_id: str) -> Throttler:
+    return await throttle_cache.get(installation_id=installation_id)
