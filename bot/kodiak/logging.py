@@ -117,9 +117,8 @@ def add_request_info_processor(
     """
     response = event_dict.get("res", None)
     if isinstance(response, Response):
-        event_dict["response_content"] = cast(Any, response)._content
+        event_dict["response_content"] = response._content
         event_dict["response_status_code"] = response.status_code
-        event_dict["request_body"] = response.request.body
         event_dict["request_url"] = response.request.url
         event_dict["request_method"] = response.request.method
     return event_dict
