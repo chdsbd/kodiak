@@ -2,6 +2,7 @@ import logging
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import inflection
 import sentry_sdk
 import structlog
 from sentry_sdk import capture_event
@@ -121,6 +122,19 @@ def add_request_info_processor(
         event_dict["response_status_code"] = response.status_code
         event_dict["request_url"] = response.request.url
         event_dict["request_method"] = response.request.method
+
+        for header in (
+            "retry-after",
+            "x-ratelimit-limit",
+            "x-ratelimit-remaining",
+            "x-ratelimit-reset",
+            "x-ratelimit-used",
+            "x-ratelimit-resource",
+        ):
+            event_dict[
+                f"response_header_{inflection.underscore(header)}"
+            ] = response.headers.get(header)
+
     return event_dict
 
 
