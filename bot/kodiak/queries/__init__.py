@@ -822,6 +822,10 @@ class ThrottlerProtocol(Protocol):
         ...
 
 
+class SecondaryRateLimit(Exception):
+    ...
+
+
 class Client:
     throttler: ThrottlerProtocol
 
@@ -883,6 +887,11 @@ class Client:
         try:
             res.raise_for_status()
         except http.HTTPError:
+            if (
+                res.status_code == 403
+                and b"You have exceeded a secondary rate limit" in res.content
+            ):
+                raise SecondaryRateLimit()
             log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
