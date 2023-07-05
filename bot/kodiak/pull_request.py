@@ -151,10 +151,10 @@ async def evaluate_pr(
                     log.info("problem contacting remote api. retrying")
                     continue
                 log.warning("api_call_retries_remaining", exc_info=True)
-            except SecondaryRateLimit:
-                log.info("secondary_rate_limit")
-                await requeue_callback()
             return
+        except SecondaryRateLimit:
+            log.info("secondary_rate_limit")
+            await requeue_callback()
         except asyncio.TimeoutError:
             # On timeout we add the PR to the back of the queue to try again.
             log.warning("mergeable_timeout", exc_info=True)
