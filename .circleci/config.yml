@@ -3,7 +3,7 @@ version: 2
 jobs:
   bot_test:
     docker:
-      - image: python:3.7
+      - image: python:3.7-slim
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS
@@ -12,6 +12,11 @@ jobs:
           username: $DOCKER_USER
           password: $DOCKER_PASS
     steps:
+      - run:
+          name: install git
+          command: |
+            apt update
+            apt install -y git
       - checkout
       - run:
           name: skip build if no changes
@@ -84,7 +89,7 @@ jobs:
   # https://circleci.com/docs/2.0/building-docker-images/
   bot_build_container:
     docker:
-      - image: docker:18.05.0-ce
+      - image: docker:20.10.23
         auth:
           username: $DOCKER_USER
           password: $DOCKER_PASS

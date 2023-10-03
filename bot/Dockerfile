@@ -1,32 +1,32 @@
-FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138ecbdb092
+FROM python:3.7-slim
 
-RUN set -ex && mkdir -p /var/app
-
-RUN apt-get update && apt-get install -y supervisor
-
-RUN mkdir -p /var/log/supervisor
-
-# use cryptography version for poetry that doesn't require Rust
-RUN python3 -m pip install cryptography===37.0.4
-RUN python3 -m pip install poetry===1.1.13
-
-RUN poetry config virtualenvs.in-project true
-
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+RUN apt update && \
+  apt-get install --no-install-recommends -y \
+    supervisor \
+    git && \
+  python -m pip install --upgrade pip && \
+  pip install \
+    --no-cache-dir \
+    --root-user-action=ignore \
+    cryptography===37.0.4 \
+    poetry===1.1.15 && \
+  poetry config virtualenvs.in-project true && \
+  groupadd kodiak && \
+  useradd --uid 1000 --gid kodiak kodiak && \
+  mkdir -p /var/app && \
+  chown -R kodiak:kodiak /var/app
 
 WORKDIR /var/app
 
-COPY pyproject.toml poetry.lock /var/app/
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY --chown=kodiak pyproject.toml poetry.lock /var/app
 
 # install deps
 RUN poetry install
 
-COPY . /var/app
+COPY --chown=kodiak . /var/app
 
-# workaround for: https://github.com/sdispater/poetry/issues/1123
-RUN rm -rf /var/app/pip-wheel-metadata/
-
-# install cli
-RUN poetry install
+USER kodiak
 
 CMD ["/usr/bin/supervisord"]
