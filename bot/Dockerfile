@@ -20,12 +20,12 @@ WORKDIR /var/app
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-COPY --chown=kodiak pyproject.toml poetry.lock /var/app
+COPY --chown=kodiak pyproject.toml poetry.lock ./
 
 # install deps
 RUN poetry install
 
-COPY --chown=kodiak . /var/app
+COPY --chown=kodiak . ./
 
 USER kodiak
 
