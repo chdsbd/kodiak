@@ -4,7 +4,7 @@ The Kodiak GitHub App receives webhook requests from GitHub and acts on GitHub p
 
 ## Dev
 
-The follow shows how to run commands for testing and development. For information on creating an GitHub App for testing, please see <https://kodiakhq.com/docs/contributing>.
+The following shows how to run commands for testing and development. For information on creating a GitHub App for testing, please see <https://kodiakhq.com/docs/contributing>.
 
 ```shell
 # bot/
@@ -24,10 +24,6 @@ s/test
 # settings
 cp example.env .env
 
-# in a seperate terminal, start ngrok and configure your GitHub app settings to
-# route to the ngrok url
-ngrok http 3000
-
 # start development webserver. The Redis server specified in `.env` must be
 # running
 s/dev-ingest --reload
@@ -35,7 +31,31 @@ s/dev-ingest --reload
 s/dev-workers
 ```
 
-If you have made any changes concerning the config, run the following command to update the schema:
+### Tunnelmole
+[Tunnelmole](https://github.com/robbie-cahill/tunnelmole-client) is an open source tunnelling tool that will create a Public URL that forwards traffic to your local machine through a secure tunnel. Here is how to set it up:
+
+First, you need to install Tunnelmole. For Linux, Mac and Windows Subsystem for Linux, copy and paste the following into a terminal:
+```
+curl -O https://tunnelmole.com/sh/install.sh && sudo bash install.sh
+```
+
+*For Windows without WSL, [Download tmole.exe](https://tunnelmole.com/downloads/tmole.exe) and put it somewhere in your [PATH](https://www.wikihow.com/Change-the-PATH-Environment-Variable-on-Windows).*
+
+Then run `tmole 3000` in a separate terminal and configure your GitHub app settings to route to the Tunnelmole URL.
+```shell
+tmole 3000
+http://bvdo5f-ip-49-183-170-144.tunnelmole.net is forwarding to localhost:3000
+https://bvdo5f-ip-49-183-170-144.tunnelmole.net is forwarding to localhost:3000
+```
+
+### ngrok
+[ngrok](https://ngrok.com) is a popular closed source tunnelling tool. You can also use it for this project. Start ngrok in a separate terminal and configure your GitHub app settings to route to the ngrok URL.
+```shell
+ngrok http 3000
+```
+
+If you made any changes concerning the config, run the following command to update the schema:
+
 ```shell
 poetry run kodiak gen-conf-json-schema > kodiak/test/fixtures/config/config-schema.json
 ```
