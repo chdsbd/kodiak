@@ -13,6 +13,7 @@ def create_connection() -> "redis.Redis[bytes]":
     return redis.Redis(
         host=conf.REDIS_URL.hostname or "localhost",
         port=conf.REDIS_URL.port or 6379,
+        username=conf.REDIS_URL.username or "default",
         password=conf.REDIS_URL.password,
         ssl=conf.REDIS_URL.scheme == "rediss",
         db=redis_db,
