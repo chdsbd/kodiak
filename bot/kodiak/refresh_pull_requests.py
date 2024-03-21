@@ -12,10 +12,10 @@ the mergeability.
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 import logging
 import sys
 import time
+from datetime import timedelta
 from typing import cast
 
 import sentry_sdk

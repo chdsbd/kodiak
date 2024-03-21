@@ -62,11 +62,11 @@ def installation_id_from_queue(queue_name: str) -> str:
 
 
 class WebhookQueueProtocol(Protocol):
-    async def enqueue(self, *, event: WebhookEvent) -> None: ...
+    async def enqueue(self, *, event: WebhookEvent) -> None:
+        ...
 
-    async def enqueue_for_repo(
-        self, *, event: WebhookEvent, first: bool
-    ) -> int | None: ...
+    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
+        ...
 
 
 async def pr_event(queue: WebhookQueueProtocol, pr: PullRequestEvent) -> None:
