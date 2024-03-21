@@ -8,9 +8,11 @@ the private PRs associated with that installation. We queue webhook events like
 a GitHub webhook would for each pull request to trigger the bot to reevaluate
 the mergeability.
 """
+
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 import logging
 import sys
 import time
@@ -59,6 +61,8 @@ structlog.configure(
 
 
 logger = structlog.get_logger()
+
+TWELVE_HOURS_IN_SECONDS = int(timedelta(hours=12).total_seconds())
 
 # we query for both organization repositories and user repositories because we
 # do not know of the installation is a user or an organization. We filter to
@@ -162,6 +166,7 @@ async def refresh_pull_requests_for_installation(*, installation_id: str) -> Non
             {event.json(): time.time()},
             nx=True,
         )
+        await redis_bot.expire(event.get_webhook_queue_name(), TWELVE_HOURS_IN_SECONDS)
     logger.info(
         "pull_requests_refreshed",
         installation_id=installation_id,

@@ -58,6 +58,8 @@ USAGE_REPORTING_QUEUE_LENGTH = config(
     "USAGE_REPORTING_QUEUE_LENGTH", cast=int, default=10_000
 )
 INGEST_QUEUE_LENGTH = config("INGEST_QUEUE_LENGTH", cast=int, default=1_000)
+WEBHOOK_QUEUE_LENGTH = config("WEBHOOK_QUEUE_LENGTH", cast=int, default=250)
+MERGE_QUEUE_LENGTH = config("MERGE_QUEUE_LENGTH", cast=int, default=100)
 REDIS_BLOCKING_POP_TIMEOUT_SEC = config(
     "REDIS_BLOCKING_POP_TIMEOUT_SEC", cast=int, default=10
 )

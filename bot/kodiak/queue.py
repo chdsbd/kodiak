@@ -45,6 +45,8 @@ def get_ingest_queue(installation_id: int) -> str:
 
 
 RETRY_RATE_SECONDS = 2
+ONE_DAY = int(timedelta(days=1).total_seconds())
+TWELVE_HOURS_IN_SECONDS = int(timedelta(hours=12).total_seconds())
 
 
 def installation_id_from_queue(queue_name: str) -> str:
@@ -60,11 +62,11 @@ def installation_id_from_queue(queue_name: str) -> str:
 
 
 class WebhookQueueProtocol(Protocol):
-    async def enqueue(self, *, event: WebhookEvent) -> None:
-        ...
+    async def enqueue(self, *, event: WebhookEvent) -> None: ...
 
-    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
-        ...
+    async def enqueue_for_repo(
+        self, *, event: WebhookEvent, first: bool
+    ) -> int | None: ...
 
 
 async def pr_event(queue: WebhookQueueProtocol, pr: PullRequestEvent) -> None:
@@ -321,11 +323,14 @@ async def process_webhook_event(
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
+        queue_name = webhook_event.get_webhook_queue_name()
         await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
+            queue_name,
             {webhook_event.json(): time.time()},
             nx=True,
         )
+        await redis_bot.zremrangebyrank(queue_name, conf.WEBHOOK_QUEUE_LENGTH, -1)
+        await redis_bot.expire(queue_name, TWELVE_HOURS_IN_SECONDS)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
@@ -390,11 +395,14 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
+        queue_name = webhook_event.get_webhook_queue_name()
         await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
+            queue_name,
             {webhook_event.json(): time.time()},
             nx=True,
         )
+        await redis_bot.zremrangebyrank(queue_name, conf.WEBHOOK_QUEUE_LENGTH, -1)
+        await redis_bot.expire(queue_name, TWELVE_HOURS_IN_SECONDS)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         raise NotImplementedError
@@ -447,9 +455,6 @@ def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
             return count
         count += 1
     return None
-
-
-ONE_DAY = int(timedelta(days=1).total_seconds())
 
 
 @dataclass(frozen=True)
@@ -523,6 +528,8 @@ class RedisWebhookQueue:
         async with redis_bot.pipeline(transaction=True) as pipe:
             pipe.sadd(WEBHOOK_QUEUE_NAMES, queue_name)
             pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
+            pipe.zremrangebyrank(queue_name, conf.WEBHOOK_QUEUE_LENGTH, -1)
+            pipe.expire(queue_name, TWELVE_HOURS_IN_SECONDS)
             await pipe.execute()
         log = logger.bind(
             owner=event.repo_owner,
@@ -558,6 +565,8 @@ class RedisWebhookQueue:
                 # use only_if_not_exists to prevent changing queue positions on new
                 # webhook events.
                 pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
+            pipe.zremrangebyrank(queue_name, conf.WEBHOOK_QUEUE_LENGTH, -1)
+            pipe.expire(queue_name, TWELVE_HOURS_IN_SECONDS)
             pipe.zrange(queue_name, 0, 1000, withscores=True)
             results = await pipe.execute()
         log = logger.bind(
