@@ -23,7 +23,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY --chown=kodiak pyproject.toml poetry.lock ./
 
 # install deps
-RUN poetry install
+RUN poetry install && ls .venv/bin
 
 COPY --chown=kodiak . ./
 
