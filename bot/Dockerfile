@@ -1,15 +1,15 @@
-FROM python:3.7-slim
+FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138ecbdb092
 
 RUN apt update && \
   apt-get install --no-install-recommends -y \
-    supervisor \
-    git && \
+  supervisor \
+  git && \
   python -m pip install --upgrade pip && \
   pip install \
-    --no-cache-dir \
-    --root-user-action=ignore \
-    cryptography===37.0.4 \
-    poetry===1.1.15 && \
+  --no-cache-dir \
+  --root-user-action=ignore \
+  cryptography===37.0.4 \
+  poetry===1.1.15 && \
   poetry config virtualenvs.in-project true && \
   groupadd kodiak && \
   useradd --uid 1000 --gid kodiak kodiak && \
