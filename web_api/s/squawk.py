@@ -36,7 +36,6 @@ def _get_migration_id(filepath: str) -> Optional[str]:
     return match.groups()[0]
 
 
-
 def main() -> None:
     # circle's built in git checkout code clobbers the `master` ref so we do the
     # following to make it not point to the current ref.
