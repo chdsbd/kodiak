@@ -3,8 +3,8 @@ name: infrastructure
 on:
   pull_request:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       commit_sha:
