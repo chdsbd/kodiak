@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import logging
 import os
 import re
 import subprocess
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Optional
 
 SQUAWK_VERSION = "0.5.0"
