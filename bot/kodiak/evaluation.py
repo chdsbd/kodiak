@@ -944,14 +944,16 @@ async def mergeable(
                     continue
                 if check_run.conclusion is None:
                     continue
-                if check_run.conclusion == CheckConclusionState.SUCCESS:
+                if check_run.conclusion in (
+                    CheckConclusionState.SKIPPED,
+                    CheckConclusionState.SUCCESS,
+                ):
                     passing_contexts.append(check_run.name)
                 if check_run.conclusion in (
                     CheckConclusionState.ACTION_REQUIRED,
                     CheckConclusionState.FAILURE,
                     CheckConclusionState.TIMED_OUT,
                     CheckConclusionState.CANCELLED,
-                    CheckConclusionState.SKIPPED,
                     CheckConclusionState.STALE,
                 ):
                     failing_contexts.append(check_run.name)
