@@ -126,6 +126,7 @@ jobs:
         working-directory: "./web_api"
         run: poetry install
       - name: Run squawk
+        working-directory: "./web_api"
         run: |
           python ./s/squawk.py
       - uses: sbdchd/squawk-action@v1
