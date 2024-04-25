@@ -62,6 +62,7 @@ def _get_migration_ids() -> list[str]:
         if migration_id is None:
             continue
         changed_migrations_ids.append((migration_id, p))
+    return changed_migrations_ids
 
 
 def main() -> None:
