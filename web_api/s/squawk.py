@@ -38,7 +38,7 @@ def _get_migration_id(filepath: str) -> str | None:
     return match.groups()[0]
 
 
-def _get_migration_ids() -> list[tuple[str, str | None]]:
+def _get_migration_ids() -> list[tuple[str, str]]:
     current_branch = subprocess.run(
         ["git", "branch", "--show-current"], capture_output=True, check=True
     )
