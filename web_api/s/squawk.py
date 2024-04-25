@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
+import sys
 from typing import Optional
 
 SQUAWK_VERSION = "0.5.0"
@@ -36,13 +37,7 @@ def _get_migration_id(filepath: str) -> Optional[str]:
     return match.groups()[0]
 
 
-def main() -> None:
-    # circle's built in git checkout code clobbers the `master` ref so we do the
-    # following to make it not point to the current ref.
-    # https://discuss.circleci.com/t/git-checkout-of-a-branch-destroys-local-reference-to-master/23781/7
-    if os.getenv("CIRCLECI") and os.getenv("CIRCLE_BRANCH") != "master":
-        subprocess.run(["git", "branch", "-f", "master", "origin/master"], check=True)
-
+def _get_migration_ids() -> list[str]:
     diff_cmd = [
         "git",
         "--no-pager",
@@ -63,8 +58,17 @@ def main() -> None:
             continue
         changed_migrations_ids.append((migration_id, p))
 
-    log.info("found migrations: %s", changed_migrations_ids)
 
+def main() -> None:
+    try:
+        changed_migrations_ids = _get_migration_ids()
+    except subprocess.CalledProcessError as e:
+        print(f"stderr: {e.stderr.decode()}")
+        print(f"stdout: {e.stdout.decode()}")
+        print(f"status code: {e.returncode}")
+        sys.exit(1)
+
+    log.info("found migrations: %s", changed_migrations_ids)
     # get sqlmigrate to behave
     os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "1")
     os.environ.setdefault("DEBUG", "1")
