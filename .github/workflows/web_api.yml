@@ -54,6 +54,8 @@ jobs:
       - name: Install dependencies
         working-directory: "./web_api"
         run: poetry install
+      - name: Set up environment variables
+        run: echo "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres" >> $GITHUB_ENV
       - name: Run tests
         working-directory: "web_api"
         run: ./s/test
