@@ -105,6 +105,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: "0"
       - name: Install poetry
         run: |
           pipx install poetry==1.7.1
@@ -117,12 +119,10 @@ jobs:
       - name: Install dependencies
         working-directory: "./web_api"
         run: poetry install
-      - name: Run tests
-        run: |
-          curl -sL https://deb.nodesource.com/setup_14.x | bash -
-          sudo apt-get install -y nodejs
-      - name: Set up environment variables
-        run: echo "DATABASE_URL=postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test" >> $GITHUB_ENV
-      - name: run squawk
-        working-directory: "./web_api"
+      - name: Run squawk
+        working-directory: "backend"
         run: ./s/squawk.py
+      - uses: sbdchd/squawk-action@v1
+        with:
+          pattern: "backend/recipeyak/migrations/*.sql"
+          version: "latest"
