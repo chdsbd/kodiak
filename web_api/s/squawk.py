@@ -39,7 +39,9 @@ def _get_migration_id(filepath: str) -> Optional[str]:
 
 
 def _get_migration_ids() -> list[str]:
-    current_branch = subprocess.run(["git", "branch", "--show-current"], capture_output=True, check=True)
+    current_branch = subprocess.run(
+        ["git", "branch", "--show-current"], capture_output=True, check=True
+    )
     diff_cmd = [
         "git",
         "--no-pager",
