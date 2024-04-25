@@ -113,7 +113,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v1
         with:
           fetch-depth: 0
       - name: Install poetry
