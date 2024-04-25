@@ -29,7 +29,7 @@ jobs:
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: web_api_test
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         # Set health checks to wait until postgres has started
@@ -54,8 +54,6 @@ jobs:
       - name: Install dependencies
         working-directory: "./web_api"
         run: poetry install
-      - name: Set up environment variables
-        run: echo "DATABASE_URL=postgres://postgres:my_test_postgres_password@127.0.0.1:5432/web_api_test" >> $GITHUB_ENV
       - name: Run tests
         working-directory: "web_api"
         run: ./s/test
