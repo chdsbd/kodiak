@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 SQUAWK_VERSION = "0.5.0"
 APP_LABEL = "web_api"
@@ -21,7 +20,7 @@ log = logging.getLogger(__file__)
 _MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
 
 
-def _get_migration_id(filepath: str) -> Optional[str]:
+def _get_migration_id(filepath: str) -> str | None:
     """
     valid migrations:
         0001_initial.py
@@ -39,7 +38,7 @@ def _get_migration_id(filepath: str) -> Optional[str]:
     return match.groups()[0]
 
 
-def _get_migration_ids() -> list[str]:
+def _get_migration_ids() -> list[tuple[str, str | None]]:
     current_branch = subprocess.run(
         ["git", "branch", "--show-current"], capture_output=True, check=True
     )
