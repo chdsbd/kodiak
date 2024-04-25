@@ -67,7 +67,7 @@ filterwarnings = [
   # an alternative at the moment.
   # https://github.com/pytest-dev/pytest/issues/3974
   "ignore::pytest.PytestDeprecationWarning",
-  "ignore:SyntaxWarnings",
+  'ignore:invalid escape sequence:DeprecationWarning',
 ]
 addopts = "--pdbcls IPython.terminal.debugger:TerminalPdb"
 env = [
