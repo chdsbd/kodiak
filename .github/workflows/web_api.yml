@@ -127,7 +127,7 @@ jobs:
         run: poetry install
       - name: Run squawk
         working-directory: "backend"
-        run: ./s/squawk.py
+        run: python ./s/squawk.py
       - uses: sbdchd/squawk-action@v1
         with:
           pattern: "backend/recipeyak/migrations/*.sql"
