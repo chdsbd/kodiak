@@ -1,0 +1,55 @@
+name: web_ui
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      paths_result: ${{ steps.skip_check.outputs.paths_result }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@c449d86cf33a2a6c7a4193264cc2578e2c3266d4 # pin@v4
+        with:
+          paths: '["web_ui/**", ".github/workflows/**"]'
+  test:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: "web_ui/package.json"
+          cache-dependency-path: "web_ui/yarn.lock"
+          cache: "yarn"
+      - name: Install dependencies
+        working-directory: "web_ui"
+        run: yarn install --frozen-lockfile
+      - name: Run tests
+        working-directory: "web_ui"
+        run: ./s/test
+
+  list:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: "web_ui/package.json"
+          cache-dependency-path: "web_ui/yarn.lock"
+          cache: "yarn"
+      - name: Install dependencies
+        working-directory: "web_ui"
+        run: yarn install --frozen-lockfile
+      - name: Run tests
+        working-directory: "web_ui"
+        run: ./s/list
