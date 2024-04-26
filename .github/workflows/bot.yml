@@ -1,0 +1,78 @@
+name: bot
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      paths_result: ${{ steps.skip_check.outputs.paths_result }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@c449d86cf33a2a6c7a4193264cc2578e2c3266d4 # pin@v4
+        with:
+          paths: '["bot/**", ".github/workflows/**"]'
+
+  test:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:5
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: |
+          pipx install poetry==1.1.13
+          poetry config virtualenvs.in-project true
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "./bot/.python-version"
+          cache: poetry
+          cache-dependency-path: "./bot/poetry.lock"
+      - name: Install dependencies
+        working-directory: "./bot"
+        run: poetry install
+      - name: Run tests
+        working-directory: "bot"
+        run: ./s/test
+      - name: upload code coverage
+        working-directory: bot
+        run: ./s/upload-code-cov
+  lint:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: |
+          pipx install poetry==1.1.13
+          poetry config virtualenvs.in-project true
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "./bot/.python-version"
+          cache: poetry
+          cache-dependency-path: "./bot/poetry.lock"
+      - name: Install dependencies
+        working-directory: "./bot"
+        run: poetry install
+      - name: Run lints
+        working-directory: "bot"
+        run: ./s/lint

@@ -1,6 +1,6 @@
 <p align=center><img src="https://github.com/chdsbd/kodiak/raw/master/assets/logo.png" alt="" width="200" height="200"></p>
 
-# kodiak [![CircleCI](https://circleci.com/gh/chdsbd/kodiak.svg?style=svg&circle-token=4879604a0cca6fa815c4d22936350f5bdf455905)](https://circleci.com/gh/chdsbd/kodiak)
+# kodiak
 
 > A GitHub bot to automatically update and merge GitHub PRs
 
@@ -24,8 +24,8 @@ _If you'd rather run Kodiak yourself, check out the [self hosting page](https://
 
 View activity via the dashboard at <https://app.kodiakhq.com>.
 
-
 ## Example
+
 [![kodiak pull request flow](https://3c7446e0-cd7f-4e98-a123-1875fcbf3182.s3.amazonaws.com/marketplace+listing+image.svg)](https://github.com/marketplace/kodiakhq)
 
 Kodiak automatically updates branches, merges PRs and more!
