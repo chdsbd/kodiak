@@ -112,7 +112,7 @@ env = [
     "STRIPE_WEBHOOK_SECRET=whsec_someWebhookSecret",
     "STRIPE_SECRET_KEY=sk_someStripeSecretKey",
     "STRIPE_PUBLISHABLE_API_KEY=pk_test_someExampleStripeApiKey",
-    "REDIS_URL=redis://localhost:6379",
+    "REDIS_URL=redis://127.0.0.1:6379",
     "DEBUG=1",
 ]
 filterwarnings = [

@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
+from __future__ import annotations
 
 import logging
 import os
 import re
 import subprocess
-from dataclasses import dataclass
+import sys
 from pathlib import Path
-from shutil import which
-from typing import Mapping, Optional
 
 SQUAWK_VERSION = "0.5.0"
 APP_LABEL = "web_api"
@@ -19,14 +17,10 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
 
 
-def is_installed(name: str) -> bool:
-    return which(name) is not None
+_MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
 
 
-MIGRATION_REGEX = re.compile(r"^(\d{4,}_\w+)\.py$")
-
-
-def get_migration_id(filepath: str) -> Optional[str]:
+def _get_migration_id(filepath: str) -> str | None:
     """
     valid migrations:
         0001_initial.py
@@ -38,41 +32,22 @@ def get_migration_id(filepath: str) -> Optional[str]:
     For a valid migration 0001_initial.py, return 0001_initial.
     """
     filename = Path(filepath).name
-    match = MIGRATION_REGEX.match(filename)
+    match = _MIGRATION_REGEX.match(filename)
     if match is None:
         return None
     return match.groups()[0]
 
 
-@dataclass(frozen=True)
-class PRInfo:
-    owner: str
-    repo: str
-    pr_number: str
-
-
-def get_pr_info(env: Mapping[str, str]) -> Optional[PRInfo]:
-    circle_pr = env.get("CIRCLE_PULL_REQUEST")
-    if circle_pr is None:
-        return None
-    _, _, _, owner, repo, _, pr_number = circle_pr.split("/")
-
-    return PRInfo(owner=owner, repo=repo, pr_number=pr_number)
-
-
-def main() -> None:
-    # circle's built in git checkout code clobbers the `master` ref so we do the
-    # following to make it not point to the current ref.
-    # https://discuss.circleci.com/t/git-checkout-of-a-branch-destroys-local-reference-to-master/23781/7
-    if os.getenv("CIRCLECI") and os.getenv("CIRCLE_BRANCH") != "master":
-        subprocess.run(["git", "branch", "-f", "master", "origin/master"], check=True)
-
+def _get_migration_ids() -> list[tuple[str, str]]:
+    current_branch = subprocess.run(
+        ["git", "branch", "--show-current"], capture_output=True, check=True
+    )
     diff_cmd = [
         "git",
         "--no-pager",
         "diff",
         "--name-only",
-        "master...",
+        f"master...{current_branch}",
         MIGRATIONS_DIRECTORY,
     ]
 
@@ -82,13 +57,23 @@ def main() -> None:
         .stdout.decode()
         .split()
     ):
-        migration_id = get_migration_id(p)
+        migration_id = _get_migration_id(p)
         if migration_id is None:
             continue
         changed_migrations_ids.append((migration_id, p))
+    return changed_migrations_ids
+
+
+def main() -> None:
+    try:
+        changed_migrations_ids = _get_migration_ids()
+    except subprocess.CalledProcessError as e:
+        print(f"stderr: {e.stderr.decode()}")
+        print(f"stdout: {e.stdout.decode()}")
+        print(f"status code: {e.returncode}")
+        sys.exit(1)
 
     log.info("found migrations: %s", changed_migrations_ids)
-
     # get sqlmigrate to behave
     os.environ.setdefault("STRIPE_ANNUAL_PLAN_ID", "1")
     os.environ.setdefault("DEBUG", "1")
@@ -124,31 +109,6 @@ def main() -> None:
         output_files.append(output_sql_file.name)
 
     log.info("sql files found: %s", output_files)
-
-    if not output_files:
-        return
-
-    if not is_installed("squawk"):
-        subprocess.run(["npm", "config", "set", "unsafe-perm", "true"], check=True)
-        log.info("squawk not found, installing")
-        subprocess.run(
-            ["npm", "install", "-g", f"squawk-cli@{SQUAWK_VERSION}"], check=True
-        )
-
-    pr_info = get_pr_info(os.environ)
-    assert pr_info is not None
-    log.info(pr_info)
-
-    os.environ.setdefault("SQUAWK_GITHUB_PR_NUMBER", pr_info.pr_number)
-    os.environ.setdefault("SQUAWK_GITHUB_REPO_NAME", pr_info.repo)
-    os.environ.setdefault("SQUAWK_GITHUB_REPO_OWNER", pr_info.owner)
-
-    res = subprocess.run(
-        ["squawk", "upload-to-github", *output_files],
-        capture_output=True,
-    )
-    log.info(res)
-    res.check_returncode()
 
 
 if __name__ == "__main__":

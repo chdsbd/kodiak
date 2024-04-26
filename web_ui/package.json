@@ -114,6 +114,10 @@
   "devDependencies": {
     "prettier": "^1.19.1"
   },
+  "volta": {
+    "node": "12.4.0",
+    "yarn": "1.22.17"
+  },
   "jest": {
     "roots": [
       "<rootDir>/src"
