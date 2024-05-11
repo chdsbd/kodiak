@@ -1,16 +1,17 @@
 import logging
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import inflection
 import sentry_sdk
 import structlog
-from requests import Response
 from sentry_sdk import capture_event
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.utils import event_from_exception
 from typing_extensions import Literal
 
 from kodiak import app_config as conf
+from kodiak.http import Response
 
 ################################################################################
 # based on https://github.com/kiwicom/structlog-sentry/blob/18adbfdac85930ca5578e7ef95c1f2dc169c2f2f/structlog_sentry/__init__.py#L10-L86
@@ -117,11 +118,23 @@ def add_request_info_processor(
     """
     response = event_dict.get("res", None)
     if isinstance(response, Response):
-        event_dict["response_content"] = cast(Any, response)._content
+        event_dict["response_content"] = response._content
         event_dict["response_status_code"] = response.status_code
-        event_dict["request_body"] = response.request.body
         event_dict["request_url"] = response.request.url
         event_dict["request_method"] = response.request.method
+
+        for header in (
+            "retry-after",
+            "x-ratelimit-limit",
+            "x-ratelimit-remaining",
+            "x-ratelimit-reset",
+            "x-ratelimit-used",
+            "x-ratelimit-resource",
+        ):
+            event_dict[
+                f"response_header_{inflection.underscore(header)}"
+            ] = response.headers.get(header)
+
     return event_dict
 
 

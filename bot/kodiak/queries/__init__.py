@@ -822,6 +822,10 @@ class ThrottlerProtocol(Protocol):
         ...
 
 
+class SecondaryRateLimit(Exception):
+    ...
+
+
 class Client:
     throttler: ThrottlerProtocol
 
@@ -852,7 +856,7 @@ class Client:
         )
 
     async def __aenter__(self) -> Client:
-        self.throttler = get_thottler_for_installation(
+        self.throttler = await get_thottler_for_installation(
             installation_id=self.installation_id
         )
         return self
@@ -883,6 +887,11 @@ class Client:
         try:
             res.raise_for_status()
         except http.HTTPError:
+            if (
+                res.status_code == 403
+                and b"You have exceeded a secondary rate limit" in res.content
+            ):
+                raise SecondaryRateLimit()
             log.warning("github api request error", res=res, exc_info=True)
             return None
         return cast(GraphQLResponse, res.json())
@@ -1383,7 +1392,7 @@ async def get_token_for_install(
     app_token = generate_jwt(
         private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
     )
-    throttler = get_thottler_for_installation(
+    throttler = await get_thottler_for_installation(
         # this isn't a real installation ID, but it provides rate limiting
         # for our GithubApp instead of the installations we typically act as
         installation_id=APPLICATION_ID
