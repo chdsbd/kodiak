@@ -630,7 +630,9 @@ def get_branch_protection(
     *, config_response: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     try:
-        branchProtectionRule = config_response["repository"]["ref"]["branchProtectionRule"]
+        branchProtectionRule = config_response["repository"]["ref"][
+            "branchProtectionRule"
+        ]
         try:
             return BranchProtectionRule.parse_obj(branchProtectionRule)
         except ValueError:
