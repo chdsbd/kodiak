@@ -630,13 +630,13 @@ def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-
-
 def get_branch_protection(
     *, config_response: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     try:
-        branchProtectionRule = config_response['repository']['refs']['edges'][0]['node']['branchProtectionRule']
+        branchProtectionRule = config_response["repository"]["refs"]["edges"][0][
+            "node"
+        ]["branchProtectionRule"]
         try:
             return BranchProtectionRule.parse_obj(branchProtectionRule)
         except ValueError:
@@ -1007,9 +1007,8 @@ query {
         if data is None:
             self.log.error("could not fetch default branch name", res=res)
             return None
-        
 
-        branch_protection = get_branch_protection(config_response=data,ref_name=ref)
+        branch_protection = get_branch_protection(config_response=data, ref_name=ref)
 
         parsed_config = parse_config(data)
         if parsed_config is None:

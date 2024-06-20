@@ -88,22 +88,76 @@ async def test_get_config_for_ref_dot_github(
         api_client,
         "send_query",
         return_value=wrap_future(
-            dict(
-                data=dict(
-                    repository=dict(
-                        rootConfigFile=None,
-                        githubConfigFile=dict(
-                            text="# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
-                        ),
-                    )
-                )
-            )
+            {
+                "data": {
+                    "repository": {
+                        "rootConfigFile": None,
+                        "githubConfigFile": {
+                            "text": "# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
+                        },
+                        "refs": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "branchProtectionRule": {
+                                            "matchingRefs": {
+                                                "nodes": [{"name": "master"}]
+                                            },
+                                            "requiresApprovingReviews": True,
+                                            "requiredApprovingReviewCount": 2,
+                                            "requiresStatusChecks": True,
+                                            "requiredStatusCheckContexts": [
+                                                "ci/circleci: backend_lint",
+                                                "ci/circleci: backend_test",
+                                                "ci/circleci: frontend_lint",
+                                                "ci/circleci: frontend_test",
+                                                "WIP (beta)",
+                                            ],
+                                            "requiresStrictStatusChecks": True,
+                                            "requiresCodeOwnerReviews": False,
+                                            "requiresCommitSignatures": False,
+                                            "requiresConversationResolution": False,
+                                            "restrictsPushes": True,
+                                            "pushAllowances": {
+                                                "nodes": [
+                                                    {"actor": {}},
+                                                    {"actor": {"databaseId": 53453}},
+                                                ]
+                                            },
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                    }
+                }
+            }
         ),
     )
 
     res = await api_client.get_config_for_ref(ref="main", org_repo_default_branch=None)
     assert res is not None
     assert isinstance(res.parsed, V1) and res.parsed.merge.method == MergeMethod.rebase
+    assert res.branch_protection == BranchProtectionRule(
+        requiresStatusChecks=True,
+        requiredStatusCheckContexts=[
+            "ci/circleci: backend_lint",
+            "ci/circleci: backend_test",
+            "ci/circleci: frontend_lint",
+            "ci/circleci: frontend_test",
+            "WIP (beta)",
+        ],
+        requiresStrictStatusChecks=True,
+        requiresCommitSignatures=False,
+        requiresConversationResolution=False,
+        restrictsPushes=True,
+        pushAllowances=NodeListPushAllowance(
+            nodes=[
+                PushAllowance(actor=PushAllowanceActor(databaseId=None)),
+                PushAllowance(actor=PushAllowanceActor(databaseId=53453)),
+            ]
+        ),
+    )
 
 
 @pytest.fixture
@@ -157,26 +211,6 @@ def block_event() -> EventInfoResponse:
         delete_branch_on_merge=True,
         is_private=True,
     )
-    branch_protection = BranchProtectionRule(
-        requiresStatusChecks=True,
-        requiredStatusCheckContexts=[
-            "ci/circleci: backend_lint",
-            "ci/circleci: backend_test",
-            "ci/circleci: frontend_lint",
-            "ci/circleci: frontend_test",
-            "WIP (beta)",
-        ],
-        requiresStrictStatusChecks=True,
-        requiresCommitSignatures=False,
-        requiresConversationResolution=False,
-        restrictsPushes=True,
-        pushAllowances=NodeListPushAllowance(
-            nodes=[
-                PushAllowance(actor=PushAllowanceActor(databaseId=None)),
-                PushAllowance(actor=PushAllowanceActor(databaseId=53453)),
-            ]
-        ),
-    )
 
     return EventInfoResponse(
         config=config,
@@ -192,7 +226,7 @@ method = "squash"
         subscription=Subscription(
             account_id="D1606A79-A1A1-4550-BA7B-C9ED0D792B1E", subscription_blocker=None
         ),
-        branch_protection=branch_protection,
+        branch_protection=None,
         review_requests=[
             PRReviewRequest(name="ghost"),
             PRReviewRequest(name="ghost-team"),
