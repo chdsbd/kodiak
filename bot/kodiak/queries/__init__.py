@@ -52,54 +52,50 @@ GET_CONFIG_QUERY = """
 query (
     $owner: String!,
     $repo: String!,
-    $baseRef: String!,
+    $qualifiedBaseRef: String!,
     $rootConfigFileExpression: String!,
     $githubConfigFileExpression: String!,
     $orgRootConfigFileExpression: String,
     $orgGithubConfigFileExpression: String
   ) {
   repository(owner: $owner, name: $repo) {
-    refs(refPrefix: "refs/heads/", query: $baseRef, first: 1) {
-        edges {
-            node {
-                name
-                branchProtectionRule {
-                    requiresStatusChecks
-                    requiredStatusCheckContexts
-                    requiresCodeOwnerReviews
-                    requiresStrictStatusChecks
+    ref(qualifiedName: $qualifiedBaseRef) {
+        name
+        branchProtectionRule {
+            requiresStatusChecks
+            requiredStatusCheckContexts
+            requiresCodeOwnerReviews
+            requiresStrictStatusChecks
 
-                    requiresLinearHistory
+            requiresLinearHistory
 
-                    requiresConversationResolution
-                    requiresCommitSignatures
-                    restrictsPushes
-                    requiredApprovingReviewCount
-                    requireLastPushApproval
+            requiresConversationResolution
+            requiresCommitSignatures
+            restrictsPushes
+            requiredApprovingReviewCount
+            requireLastPushApproval
 
-                    requiredStatusChecks {
-                        app {
-                            slug
+            requiredStatusChecks {
+                app {
+                    slug
+                }
+                context
+            }
+
+            pushAllowances(first: 100) {
+                nodes {
+                    actor {
+                        ... on Team {
+                            name
                         }
-                        context
-                    }
-
-                    pushAllowances(first: 100) {
-                        nodes {
-                            actor {
-                                ... on Team {
-                                    name
-                                }
-                                ... on Actor {
-                                    login
-                                }
-                                ... on User {
-                                    login
-                                }
-                                ... on App {
-                                    databaseId
-                                }
-                            }
+                        ... on Actor {
+                            login
+                        }
+                        ... on User {
+                            login
+                        }
+                        ... on App {
+                            databaseId
                         }
                     }
                 }
@@ -634,9 +630,7 @@ def get_branch_protection(
     *, config_response: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
     try:
-        branchProtectionRule = config_response["repository"]["refs"]["edges"][0][
-            "node"
-        ]["branchProtectionRule"]
+        branchProtectionRule = config_response["repository"]["ref"]["branchProtectionRule"]
         try:
             return BranchProtectionRule.parse_obj(branchProtectionRule)
         except ValueError:
@@ -993,7 +987,7 @@ query {
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
-                baseRef=ref,
+                qualifiedBaseRef=f"refs/heads/{ref}",
                 rootConfigFileExpression=repo_root_config_expression,
                 githubConfigFileExpression=repo_github_config_expression,
                 orgRootConfigFileExpression=org_root_config_expression,

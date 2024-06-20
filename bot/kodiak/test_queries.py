@@ -95,39 +95,31 @@ async def test_get_config_for_ref_dot_github(
                         "githubConfigFile": {
                             "text": "# .github/.kodiak.toml\nversion = 1\nmerge.method = 'rebase'"
                         },
-                        "refs": {
-                            "edges": [
-                                {
-                                    "node": {
-                                        "branchProtectionRule": {
-                                            "matchingRefs": {
-                                                "nodes": [{"name": "master"}]
-                                            },
-                                            "requiresApprovingReviews": True,
-                                            "requiredApprovingReviewCount": 2,
-                                            "requiresStatusChecks": True,
-                                            "requiredStatusCheckContexts": [
-                                                "ci/circleci: backend_lint",
-                                                "ci/circleci: backend_test",
-                                                "ci/circleci: frontend_lint",
-                                                "ci/circleci: frontend_test",
-                                                "WIP (beta)",
-                                            ],
-                                            "requiresStrictStatusChecks": True,
-                                            "requiresCodeOwnerReviews": False,
-                                            "requiresCommitSignatures": False,
-                                            "requiresConversationResolution": False,
-                                            "restrictsPushes": True,
-                                            "pushAllowances": {
-                                                "nodes": [
-                                                    {"actor": {}},
-                                                    {"actor": {"databaseId": 53453}},
-                                                ]
-                                            },
-                                        }
-                                    }
-                                }
-                            ]
+                        "ref": {
+                            "branchProtectionRule": {
+                                "matchingRefs": {"nodes": [{"name": "master"}]},
+                                "requiresApprovingReviews": True,
+                                "requiredApprovingReviewCount": 2,
+                                "requiresStatusChecks": True,
+                                "requiredStatusCheckContexts": [
+                                    "ci/circleci: backend_lint",
+                                    "ci/circleci: backend_test",
+                                    "ci/circleci: frontend_lint",
+                                    "ci/circleci: frontend_test",
+                                    "WIP (beta)",
+                                ],
+                                "requiresStrictStatusChecks": True,
+                                "requiresCodeOwnerReviews": False,
+                                "requiresCommitSignatures": False,
+                                "requiresConversationResolution": False,
+                                "restrictsPushes": True,
+                                "pushAllowances": {
+                                    "nodes": [
+                                        {"actor": {}},
+                                        {"actor": {"databaseId": 53453}},
+                                    ]
+                                },
+                            }
                         },
                     }
                 }
