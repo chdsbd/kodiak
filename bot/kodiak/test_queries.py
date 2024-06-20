@@ -97,7 +97,6 @@ async def test_get_config_for_ref_dot_github(
                         },
                         "ref": {
                             "branchProtectionRule": {
-                                "matchingRefs": {"nodes": [{"name": "master"}]},
                                 "requiresApprovingReviews": True,
                                 "requiredApprovingReviewCount": 2,
                                 "requiresStatusChecks": True,
