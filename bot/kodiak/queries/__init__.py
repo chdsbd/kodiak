@@ -52,12 +52,60 @@ GET_CONFIG_QUERY = """
 query (
     $owner: String!,
     $repo: String!,
+    $baseRef: String!,
     $rootConfigFileExpression: String!,
     $githubConfigFileExpression: String!,
     $orgRootConfigFileExpression: String,
     $orgGithubConfigFileExpression: String
   ) {
   repository(owner: $owner, name: $repo) {
+    refs(refPrefix: "refs/heads/", query: $baseRef, first: 1) {
+        edges {
+            node {
+                name
+                branchProtectionRule {
+                    requiresStatusChecks
+                    requiredStatusCheckContexts
+                    requiresCodeOwnerReviews
+                    requiresStrictStatusChecks
+
+                    requiresLinearHistory
+
+                    requiresConversationResolution
+                    requiresCommitSignatures
+                    restrictsPushes
+                    requiredApprovingReviewCount
+                    requireLastPushApproval
+
+                    requiredStatusChecks {
+                        app {
+                            slug
+                        }
+                        context
+                    }
+
+                    pushAllowances(first: 100) {
+                        nodes {
+                            actor {
+                                ... on Team {
+                                    name
+                                }
+                                ... on Actor {
+                                    login
+                                }
+                                ... on User {
+                                    login
+                                }
+                                ... on App {
+                                    databaseId
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     rootConfigFile: object(expression: $rootConfigFileExpression) {
       ... on Blob {
         text
@@ -156,30 +204,6 @@ def get_event_info_query(
     return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
-    branchProtectionRules(first: 100) {
-      nodes {
-        matchingRefs(first: 100) {
-          nodes {
-            name
-          }
-        }
-        requiresStatusChecks
-        requiredStatusCheckContexts
-        requiresStrictStatusChecks
-        requiresCommitSignatures
-        %(requiresConversationResolution)s
-        restrictsPushes
-        pushAllowances(first: 100) {
-          nodes {
-            actor {
-              ... on App {
-                databaseId
-              }
-            }
-          }
-        }
-      }
-    }
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
@@ -606,29 +630,20 @@ def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
-    try:
-        return cast(List[Dict[str, Any]], repo["branchProtectionRules"]["nodes"])
-    except (KeyError, TypeError):
-        return []
 
 
 def get_branch_protection(
-    *, repo: Dict[str, Any], ref_name: str
+    *, config_response: Dict[str, Any], ref_name: str
 ) -> Optional[BranchProtectionRule]:
-    for rule in get_branch_protection_dicts(repo=repo):
+    try:
+        branchProtectionRule = config_response['repository']['refs']['edges'][0]['node']['branchProtectionRule']
         try:
-            nodes = rule["matchingRefs"]["nodes"]
-        except (KeyError, TypeError):
-            nodes = []
-        for node in nodes:
-            if node["name"] == ref_name:
-                try:
-                    return BranchProtectionRule.parse_obj(rule)
-                except ValueError:
-                    logger.warning("Could not parse branch protection", exc_info=True)
-                    return None
-    return None
+            return BranchProtectionRule.parse_obj(branchProtectionRule)
+        except ValueError:
+            logger.warning("Could not parse branch protection", exc_info=True)
+            return None
+    except (KeyError, TypeError):
+        return None
 
 
 def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -793,6 +808,7 @@ class CfgInfo:
     parsed: V1 | pydantic.ValidationError | toml.TomlDecodeError
     text: str
     file_expression: str
+    branch_protection: Optional[BranchProtectionRule] = None
 
 
 @dataclass
@@ -977,6 +993,7 @@ query {
             variables=dict(
                 owner=self.owner,
                 repo=self.repo,
+                baseRef=ref,
                 rootConfigFileExpression=repo_root_config_expression,
                 githubConfigFileExpression=repo_github_config_expression,
                 orgRootConfigFileExpression=org_root_config_expression,
@@ -990,6 +1007,9 @@ query {
         if data is None:
             self.log.error("could not fetch default branch name", res=res)
             return None
+        
+
+        branch_protection = get_branch_protection(config_response=data,ref_name=ref)
 
         parsed_config = parse_config(data)
         if parsed_config is None:
@@ -1013,6 +1033,7 @@ query {
             parsed=V1.parse_toml(parsed_config.text),
             text=parsed_config.text,
             file_expression=get_file_expression(),
+            branch_protection=branch_protection,
         )
 
     async def get_event_info(self, pr_number: int) -> Optional[EventInfoResponse]:
@@ -1109,9 +1130,6 @@ query {
         if cfg is None:
             log.info("no config found")
             return None
-        branch_protection = get_branch_protection(
-            repo=repository, ref_name=pr.baseRefName
-        )
 
         all_reviews = get_reviews(pr=pull_request)
         bot_reviews = self.get_bot_reviews(reviews=all_reviews)
@@ -1128,7 +1146,7 @@ query {
                 is_private=repository.get("isPrivate") is True,
             ),
             subscription=subscription,
-            branch_protection=branch_protection,
+            branch_protection=cfg.branch_protection,
             review_requests=get_requested_reviews(pr=pull_request),
             bot_reviews=bot_reviews,
             status_contexts=get_status_contexts(pr=pull_request),
