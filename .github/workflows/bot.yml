@@ -37,18 +37,17 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v3
-      - name: Install poetry
-        run: |
-          pipx install poetry==1.1.13
-          poetry config virtualenvs.in-project true
-      - uses: actions/setup-python@v4
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
         with:
           python-version-file: "./bot/.python-version"
-          cache: poetry
-          cache-dependency-path: "./bot/poetry.lock"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.11"
       - name: Install dependencies
         working-directory: "./bot"
-        run: poetry install
+        run: uv sync --locked --all-extras --dev
       - name: Run tests
         working-directory: "bot"
         run: ./s/test
@@ -61,18 +60,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install poetry
-        run: |
-          pipx install poetry==1.1.13
-          poetry config virtualenvs.in-project true
-      - uses: actions/setup-python@v4
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
         with:
           python-version-file: "./bot/.python-version"
-          cache: poetry
-          cache-dependency-path: "./bot/poetry.lock"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.11"
       - name: Install dependencies
         working-directory: "./bot"
-        run: poetry install
+        run: uv sync --locked --all-extras --dev
       - name: Run lints
         working-directory: "bot"
         run: ./s/lint
