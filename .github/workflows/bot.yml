@@ -47,9 +47,6 @@ jobs:
       - name: Run tests
         working-directory: "bot"
         run: ./s/test
-      - name: upload code coverage
-        working-directory: bot
-        run: ./s/upload-code-cov
   lint:
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
