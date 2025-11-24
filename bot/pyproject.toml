@@ -3,7 +3,7 @@ name = "kodiak"
 version = "0.1.0"
 description = ""
 authors = [{ name = "Christopher Dignam", email = "chris@dignam.xyz" }]
-requires-python = ">=3.7,<4"
+requires-python = ">=3.8,<4"
 dependencies = [
     "uvicorn>=0.15.0,<0.16",
     "toml>=0.10.0,<0.11",
