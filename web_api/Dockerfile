@@ -3,7 +3,7 @@ FROM python:3.8.20
 RUN set -ex && mkdir -p /var/app
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.9.11 /uv /uvx /bin/
 
 WORKDIR /var/app
 
