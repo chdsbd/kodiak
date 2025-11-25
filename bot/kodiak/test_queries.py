@@ -1,11 +1,10 @@
 import asyncio
-from collections.abc import AsyncGenerator
 import json
 import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, cast
+from typing import Any, AsyncGenerator, Dict, Iterable, Iterator, cast
 
 import pytest
 from pytest_mock import MockFixture
