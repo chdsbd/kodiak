@@ -5,8 +5,6 @@ RUN set -ex && mkdir -p /var/app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
 WORKDIR /var/app
 
 # Copy dependency files
