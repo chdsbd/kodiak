@@ -16,12 +16,9 @@ WORKDIR /var/app
 # Copy dependency files
 COPY pyproject.toml uv.lock /var/app/
 
-# Install dependencies
-RUN uv sync --frozen --no-dev
-
 COPY . /var/app
 
-# Install the application
+# Install the application and dependencies
 RUN uv sync --frozen --no-dev
 
 CMD ["/usr/bin/supervisord"]
