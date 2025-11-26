@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, cast
+from typing import Any, AsyncIterator, Dict, Iterable, Iterator, List, Optional, cast
 
 import pytest
 from pytest_mock import MockFixture
@@ -13,7 +13,6 @@ from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
-    BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Client,
@@ -35,11 +34,14 @@ from kodiak.queries import (
     RepoInfo,
     ReviewThread,
     ReviewThreadConnection,
+    Ruleset,
     SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
+    UnifiedBranchProtection,
     get_commits,
+    get_unified_branch_protection,
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.redis_client import redis_bot
@@ -106,6 +108,136 @@ async def test_get_config_for_ref_dot_github(
     assert isinstance(res.parsed, V1) and res.parsed.merge.method == MergeMethod.rebase
 
 
+def _make_ruleset_node(
+    *,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    rules: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    conditions: Optional[Dict[str, Dict[str, Optional[List[str]]]]] = None
+    if include is not None or exclude is not None:
+        conditions = {"refName": {"include": include, "exclude": exclude}}
+    return dict(
+        id="ruleset-id",
+        name="test-ruleset",
+        target="branch",
+        enforcement="active",
+        conditions=conditions,
+        rules=dict(nodes=rules or []),
+    )
+
+
+def _make_repo(
+    branch_rules: Optional[List[Dict[str, Any]]] = None,
+    rulesets: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    return dict(
+        branchProtectionRules=dict(nodes=branch_rules or []),
+        rulesets=dict(nodes=rulesets or []),
+    )
+
+
+def test_get_unified_branch_protection_merges_branch_rule_and_ruleset() -> None:
+    branch_rule = dict(
+        matchingRefs=dict(nodes=[dict(name="main")]),
+        requiresStatusChecks=True,
+        requiredStatusCheckContexts=["ci/legacy"],
+        requiresStrictStatusChecks=False,
+        requiresCommitSignatures=False,
+        requiresConversationResolution=False,
+        restrictsPushes=False,
+        pushAllowances=dict(nodes=[]),
+    )
+    repo = _make_repo(
+        branch_rules=[branch_rule],
+        rulesets=[
+            _make_ruleset_node(
+                rules=[
+                    dict(
+                        type="required_status_checks",
+                        parameters=dict(
+                            strictRequiredStatusChecks=True,
+                            requiredStatusChecks=[dict(context="ci/ruleset")],
+                        ),
+                    )
+                ]
+            )
+        ],
+    )
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="main")
+    assert protection is not None
+    assert set(protection.requiredStatusCheckContexts) == {"ci/legacy", "ci/ruleset"}
+    assert protection.requiresStrictStatusChecks is True
+
+
+def test_get_unified_branch_protection_ruleset_without_conditions() -> None:
+    repo = _make_repo(
+        rulesets=[
+            _make_ruleset_node(
+                rules=[
+                    dict(
+                        type="required_status_checks",
+                        parameters=dict(
+                            strictRequiredStatusChecks=True,
+                            requiredStatusChecks=[dict(context="ci/ruleset")],
+                        ),
+                    )
+                ]
+            )
+        ]
+    )
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="main")
+    assert protection is not None
+    assert protection.requiresStrictStatusChecks is True
+    assert protection.requiredStatusCheckContexts == ["ci/ruleset"]
+
+
+def test_get_unified_branch_protection_ruleset_respects_excludes() -> None:
+    ruleset = _make_ruleset_node(
+        include=["refs/heads/release/*"],
+        exclude=["refs/heads/release/private"],
+        rules=[
+            dict(
+                type="required_status_checks",
+                parameters=dict(
+                    strictRequiredStatusChecks=False,
+                    requiredStatusChecks=[dict(context="ci/ruleset")],
+                ),
+            )
+        ],
+    )
+    repo = _make_repo(rulesets=[ruleset])
+
+    assert get_unified_branch_protection(repo=repo, ref_name="release/private") is None
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="release/v1.0")
+    assert protection is not None
+    assert protection.requiredStatusCheckContexts == ["ci/ruleset"]
+
+
+def test_unified_branch_protection_ruleset_sets_signatures_and_conversation() -> None:
+    ruleset = Ruleset.parse_obj(
+        _make_ruleset_node(
+            rules=[
+                dict(
+                    type="required_signatures",
+                    parameters={"require_signed_commits": True},
+                ),
+                dict(
+                    type="required_review_thread_resolution",
+                    parameters={"required_review_thread_resolution": True},
+                ),
+            ]
+        )
+    )
+    protection = UnifiedBranchProtection.from_ruleset(ruleset)
+
+    assert protection.requiresCommitSignatures is True
+    assert protection.requiresConversationResolution is True
+
+
 @pytest.fixture
 def blocked_response() -> Dict[str, Any]:
     return cast(
@@ -157,7 +289,7 @@ def block_event() -> EventInfoResponse:
         delete_branch_on_merge=True,
         is_private=True,
     )
-    branch_protection = BranchProtectionRule(
+    branch_protection = UnifiedBranchProtection(
         requiresStatusChecks=True,
         requiredStatusCheckContexts=[
             "ci/circleci: backend_lint",
@@ -236,8 +368,8 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     loop.close()
 
 
-@pytest.fixture  # type: ignore
-async def setup_redis(github_installation_id: str) -> None:
+@pytest.fixture
+async def setup_redis(github_installation_id: str) -> AsyncIterator[None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port

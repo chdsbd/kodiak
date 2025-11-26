@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import fnmatch
+import json
 import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import (
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Union,
+    cast,
+    Iterable,
+)
 
 import jwt
 import pydantic
 import structlog
 import toml
 from mypy_extensions import TypedDict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -174,6 +186,32 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
             actor {
               ... on App {
                 databaseId
+              }
+            }
+          }
+        }
+      }
+    }
+    rulesets(first: 100, includeParents: true) {
+      nodes {
+        id
+        name
+        target
+        enforcement
+        conditions {
+          refName {
+            include
+            exclude
+          }
+        }
+        rules(first: 100) {
+          nodes {
+            type
+            parameters {
+              ... on RequiredStatusChecksParameters {
+                requiredStatusChecks {
+                  context
+                }
               }
             }
           }
@@ -428,7 +466,7 @@ class EventInfoResponse:
     pull_request: PullRequest
     repository: RepoInfo
     subscription: Optional[Subscription]
-    branch_protection: Optional[BranchProtectionRule]
+    branch_protection: Optional[UnifiedBranchProtection]
     review_requests: List[PRReviewRequest]
     head_exists: bool
     bot_reviews: List[PRReview] = field(default_factory=list)
@@ -481,6 +519,228 @@ class BranchProtectionRule(BaseModel):
     requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
+
+
+class RefNameConditions(BaseModel):
+    include: Optional[List[str]] = None
+    exclude: Optional[List[str]] = None
+
+
+class RulesetConditions(BaseModel):
+    refName: Optional[RefNameConditions] = None
+
+
+class StatusCheckConfiguration(BaseModel):
+    """Status check configuration item."""
+
+    context: str
+
+
+class RulesetRuleParameters(BaseModel):
+    """Rule parameters from GraphQL ruleset rules."""
+
+    requiredStatusChecks: Optional[List[StatusCheckConfiguration]] = None
+    strictRequiredStatusChecks: Optional[bool] = None
+    requireSignedCommits: Optional[bool] = Field(None, alias="require_signed_commits")
+    requiredReviewThreadResolution: Optional[bool] = Field(
+        None, alias="required_review_thread_resolution"
+    )
+
+    class Config:
+        extra = "allow"
+        allow_population_by_field_name = True
+
+    def get_required_status_checks(self) -> Optional[List[str]]:
+        """Extract required status check contexts from parameters."""
+        checks = self.requiredStatusChecks or []
+        contexts = [check.context for check in checks if check.context]
+        return contexts or None
+
+    def get_strict_required_status_checks(self) -> Optional[bool]:
+        """Get strict required status checks setting."""
+        return self.strictRequiredStatusChecks
+
+
+class RulesetRule(BaseModel):
+    type: str
+    parameters: Optional[RulesetRuleParameters] = None
+
+    @classmethod
+    def parse_obj(cls, obj: Any) -> "RulesetRule":
+        """Parse RulesetRule, handling parameters as JSON string if needed."""
+        if isinstance(obj, dict):
+            params = obj.get("parameters")
+            if isinstance(params, str):
+                try:
+                    obj = obj.copy()
+                    obj["parameters"] = json.loads(params)
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(
+                        "Failed to parse ruleset rule parameters as JSON",
+                        rule_type=obj.get("type"),
+                    )
+        return super().parse_obj(obj)
+
+
+class RulesetRuleConnection(BaseModel):
+    nodes: Optional[List[RulesetRule]] = None
+
+
+class Ruleset(BaseModel):
+    """GitHub ruleset from GraphQL API."""
+
+    id: str
+    name: str
+    target: str
+    enforcement: str
+    conditions: Optional[RulesetConditions] = None
+    rules: Optional[RulesetRuleConnection] = None
+
+
+@dataclass
+class UnifiedBranchProtection:
+    """Unified interface supporting both BranchProtectionRule and Rulesets."""
+
+    requiresStatusChecks: bool = False
+    requiredStatusCheckContexts: List[str] = field(default_factory=list)
+    requiresStrictStatusChecks: bool = False
+    requiresCommitSignatures: bool = False
+    requiresConversationResolution: Optional[bool] = None
+    restrictsPushes: bool = False
+    pushAllowances: NodeListPushAllowance = field(
+        default_factory=lambda: NodeListPushAllowance(nodes=[])
+    )
+
+    @classmethod
+    def from_branch_protection_rule(
+        cls, rule: BranchProtectionRule
+    ) -> UnifiedBranchProtection:
+        """Convert BranchProtectionRule to UnifiedBranchProtection."""
+        return cls(
+            requiresStatusChecks=rule.requiresStatusChecks,
+            requiredStatusCheckContexts=rule.requiredStatusCheckContexts,
+            requiresStrictStatusChecks=rule.requiresStrictStatusChecks,
+            requiresCommitSignatures=rule.requiresCommitSignatures,
+            requiresConversationResolution=rule.requiresConversationResolution,
+            restrictsPushes=rule.restrictsPushes,
+            pushAllowances=rule.pushAllowances,
+        )
+
+    _STATUS_CHECK_RULES = frozenset({"required_status_checks", "pull_request"})
+
+    @classmethod
+    def from_ruleset(cls, ruleset: Ruleset) -> UnifiedBranchProtection:
+        """Convert Ruleset to UnifiedBranchProtection."""
+        protection = cls()
+        for fragment in cls._rule_fragments(ruleset):
+            protection = protection.merge(fragment)
+        return protection
+
+    @classmethod
+    def _rule_fragments(cls, ruleset: Ruleset) -> Iterable["UnifiedBranchProtection"]:
+        if not ruleset.rules or not ruleset.rules.nodes:
+            return []
+        fragments: List["UnifiedBranchProtection"] = []
+        for rule in ruleset.rules.nodes or []:
+            fragment = cls._fragment_for_rule(rule)
+            if fragment is not None:
+                fragments.append(fragment)
+        return fragments
+
+    @classmethod
+    def _fragment_for_rule(
+        cls, rule: Optional[RulesetRule]
+    ) -> Optional["UnifiedBranchProtection"]:
+        if rule is None:
+            return None
+
+        params = rule.parameters
+        rule_type = (rule.type or "").lower()
+
+        if rule_type in cls._STATUS_CHECK_RULES:
+            return cls._status_checks_fragment(params)
+        if rule_type == "required_signatures":
+            return cls._signatures_fragment(params)
+        if rule_type == "required_review_thread_resolution":
+            return cls._conversation_fragment(params)
+        return None
+
+    @classmethod
+    def _status_checks_fragment(
+        cls, params: Optional[RulesetRuleParameters]
+    ) -> "UnifiedBranchProtection":
+        fragment = cls(requiresStatusChecks=True)
+        required_checks = params.get_required_status_checks() if params else None
+        if required_checks:
+            fragment.requiredStatusCheckContexts = list(dict.fromkeys(required_checks))
+        strict_checks = (
+            params.get_strict_required_status_checks() if params else None
+        )
+        if strict_checks is not None:
+            fragment.requiresStrictStatusChecks = strict_checks
+        return fragment
+
+    @classmethod
+    def _signatures_fragment(
+        cls, params: Optional[RulesetRuleParameters]
+    ) -> Optional["UnifiedBranchProtection"]:
+        require_signed = (
+            params.requireSignedCommits
+            if params and params.requireSignedCommits is not None
+            else True
+        )
+        if not require_signed:
+            return None
+        return cls(requiresCommitSignatures=True)
+
+    @classmethod
+    def _conversation_fragment(
+        cls, params: Optional[RulesetRuleParameters]
+    ) -> Optional["UnifiedBranchProtection"]:
+        require_resolution = (
+            params.requiredReviewThreadResolution
+            if params and params.requiredReviewThreadResolution is not None
+            else True
+        )
+        if not require_resolution:
+            return None
+        return cls(requiresConversationResolution=True)
+
+    def merge(self, other: UnifiedBranchProtection) -> UnifiedBranchProtection:
+        """Merge another UnifiedBranchProtection into this one (most restrictive wins)."""
+        all_contexts = list(
+            set(self.requiredStatusCheckContexts + other.requiredStatusCheckContexts)
+        )
+        conv_res = (
+            self.requiresConversationResolution
+            if self.requiresConversationResolution is not None
+            else other.requiresConversationResolution
+        )
+        if (
+            self.requiresConversationResolution is True
+            or other.requiresConversationResolution is True
+        ):
+            conv_res = True
+
+        merged = UnifiedBranchProtection(
+            requiresStatusChecks=self.requiresStatusChecks
+            or other.requiresStatusChecks
+            or bool(all_contexts),
+            requiredStatusCheckContexts=all_contexts,
+            requiresStrictStatusChecks=self.requiresStrictStatusChecks
+            or other.requiresStrictStatusChecks,
+            requiresCommitSignatures=self.requiresCommitSignatures
+            or other.requiresCommitSignatures,
+            requiresConversationResolution=conv_res,
+            restrictsPushes=self.restrictsPushes or other.restrictsPushes,
+            pushAllowances=NodeListPushAllowance(
+                nodes=self.pushAllowances.nodes + other.pushAllowances.nodes
+            ),
+        )
+        # Ensure that if we have any status check contexts, we require status checks
+        if merged.requiredStatusCheckContexts:
+            merged.requiresStatusChecks = True
+        return merged
 
 
 class PRReviewState(Enum):
@@ -629,6 +889,65 @@ def get_branch_protection(
                     logger.warning("Could not parse branch protection", exc_info=True)
                     return None
     return None
+
+
+def _normalize_ref(ref: str) -> str:
+    """Normalize ref name to include refs/heads/ prefix if needed."""
+    return ref if ref.startswith("refs/") else f"refs/heads/{ref}"
+
+
+def _ruleset_matches_ref(ruleset: Ruleset, ref_name: str) -> bool:
+    """Check if ruleset applies to ref name."""
+    if ruleset.target != "branch" or ruleset.enforcement != "active":
+        return False
+
+    ref_name_norm = _normalize_ref(ref_name)
+    if not ruleset.conditions or not ruleset.conditions.refName:
+        return True
+
+    ref_cond = ruleset.conditions.refName
+    excludes = ref_cond.exclude or []
+    includes = ref_cond.include or []
+
+    for pattern in excludes:
+        if fnmatch.fnmatch(ref_name_norm, _normalize_ref(pattern)):
+            return False
+    if not includes:
+        return True
+    return any(
+        fnmatch.fnmatch(ref_name_norm, _normalize_ref(pattern)) for pattern in includes
+    )
+
+
+def get_unified_branch_protection(
+    *, repo: Dict[str, Any], ref_name: str
+) -> Optional[UnifiedBranchProtection]:
+    """Get unified branch protection from rules and rulesets."""
+    protection: Optional[UnifiedBranchProtection] = None
+
+    bp_rule = get_branch_protection(repo=repo, ref_name=ref_name)
+    if bp_rule:
+        protection = UnifiedBranchProtection.from_branch_protection_rule(bp_rule)
+
+    try:
+        rulesets_data = repo.get("rulesets", {}).get("nodes", [])
+    except (KeyError, TypeError):
+        rulesets_data = []
+
+    for ruleset_dict in rulesets_data:
+        try:
+            ruleset = Ruleset.parse_obj(ruleset_dict)
+            if _ruleset_matches_ref(ruleset, ref_name):
+                ruleset_prot = UnifiedBranchProtection.from_ruleset(ruleset)
+                protection = (
+                    ruleset_prot
+                    if protection is None
+                    else protection.merge(ruleset_prot)
+                )
+        except (ValueError, pydantic.ValidationError):
+            logger.warning("Could not parse ruleset", exc_info=True)
+
+    return protection
 
 
 def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1109,7 +1428,7 @@ query {
         if cfg is None:
             log.info("no config found")
             return None
-        branch_protection = get_branch_protection(
+        branch_protection = get_unified_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
 

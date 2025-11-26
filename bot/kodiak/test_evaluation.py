@@ -14,7 +14,6 @@ from kodiak.evaluation import mergeable as mergeable_func
 from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
-    BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Commit,
@@ -36,6 +35,7 @@ from kodiak.queries import (
     Subscription,
     SubscriptionExpired,
     TrialExpired,
+    UnifiedBranchProtection,
 )
 
 log = logging.getLogger(__name__)
@@ -253,8 +253,8 @@ def create_pull_request() -> PullRequest:
     )
 
 
-def create_branch_protection() -> BranchProtectionRule:
-    return BranchProtectionRule(
+def create_branch_protection() -> UnifiedBranchProtection:
+    return UnifiedBranchProtection(
         requiresStatusChecks=True,
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
@@ -323,7 +323,7 @@ class MergeableType(Protocol):
         config_str: str = ...,
         config_path: str = ...,
         pull_request: PullRequest = ...,
-        branch_protection: Optional[BranchProtectionRule] = ...,
+        branch_protection: Optional[UnifiedBranchProtection] = ...,
         review_requests: List[PRReviewRequest] = ...,
         bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
@@ -351,7 +351,9 @@ def create_mergeable() -> MergeableType:
         config_str: str = create_config_str(),
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
-        branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
+        branch_protection: Optional[
+            UnifiedBranchProtection
+        ] = create_branch_protection(),
         review_requests: List[PRReviewRequest] = [],
         bot_reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
