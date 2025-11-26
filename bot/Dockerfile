@@ -1,4 +1,4 @@
-FROM python:3.7@sha256:6eaf19442c358afc24834a6b17a3728a45c129de7703d8583392a138ecbdb092
+FROM python:3.8.20
 
 RUN set -ex && mkdir -p /var/app
 
@@ -6,27 +6,19 @@ RUN apt-get update && apt-get install -y supervisor
 
 RUN mkdir -p /var/log/supervisor
 
-# use cryptography version for poetry that doesn't require Rust
-RUN python3 -m pip install cryptography===37.0.4
-RUN python3 -m pip install poetry===1.1.13
-
-RUN poetry config virtualenvs.in-project true
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.9.11 /uv /uvx /bin/
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 WORKDIR /var/app
 
-COPY pyproject.toml poetry.lock /var/app/
-
-# install deps
-RUN poetry install
+# Copy dependency files
+COPY pyproject.toml uv.lock /var/app/
 
 COPY . /var/app
 
-# workaround for: https://github.com/sdispater/poetry/issues/1123
-RUN rm -rf /var/app/pip-wheel-metadata/
-
-# install cli
-RUN poetry install
+# Install the application and dependencies
+RUN uv sync --frozen
 
 CMD ["/usr/bin/supervisord"]

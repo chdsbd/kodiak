@@ -53,6 +53,8 @@ jobs:
           tags: cdignam/kodiak:${{ github.event.pull_request.head.sha || github.sha }}
           cache-from: type=gha,scope=kodiak
           cache-to: type=gha,scope=kodiak,mode=max
+          provenance: false
+          sbom: false
 
   build_api_container:
     runs-on: ubuntu-latest
@@ -77,6 +79,8 @@ jobs:
           tags: cdignam/kodiak-web-api:${{ github.event.pull_request.head.sha || github.sha }}
           cache-from: type=gha,scope=kodiak-web-api
           cache-to: type=gha,scope=kodiak-web-api,mode=max
+          provenance: false
+          sbom: false
           build-args: |
             GIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -103,5 +107,7 @@ jobs:
           tags: cdignam/kodiak-web-ui:${{ github.event.pull_request.head.sha || github.sha }}
           cache-from: type=gha,scope=kodiak-web-ui
           cache-to: type=gha,scope=kodiak-web-ui,mode=max
+          provenance: false
+          sbom: false
           build-args: |
             GIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
