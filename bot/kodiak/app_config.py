@@ -1,6 +1,6 @@
 import base64
 from pathlib import Path
-from typing import Any, Optional, Type, TypeVar, overload
+from typing import Any, Mapping, Optional, Sequence, Type, TypeVar, overload
 
 import databases
 from starlette.config import Config, undefined
@@ -52,6 +52,24 @@ USAGE_REPORTING_EVENTS = set(
         "USAGE_REPORTING_EVENTS",
         cast=CommaSeparatedStrings,
         default=["pull_request", "pull_request_review", "pull_request_comment"],
+    )
+)
+
+
+def parse_worker_concurrency(items: Sequence[str]) -> Mapping[str, int]:
+    maps = {}
+    for item in items:
+        (install, concurrency) = item.split("=", maxsplit=2)
+        maps[install] = int(concurrency)
+    return maps
+
+
+# 12312309=4,1290301293=1
+WEBHOOK_WORKER_CONCURRENCY = parse_worker_concurrency(
+    config(
+        "WEBHOOK_WORKER_CONCURRENCY",
+        cast=CommaSeparatedStrings,
+        default=[],
     )
 )
 USAGE_REPORTING_QUEUE_LENGTH = config(

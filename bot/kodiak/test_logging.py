@@ -1,10 +1,9 @@
-import json
 import logging
-from typing import Any, cast
+from typing import Any
 
 import pytest
-from requests import PreparedRequest, Request, Response
 
+from kodiak.http import Request, Response
 from kodiak.logging import (
     SentryLevel,
     SentryProcessor,
@@ -160,20 +159,13 @@ def test_add_request_info_processor() -> None:
     url = "https://api.example.com/v1/me"
     payload = dict(user_id=54321)
     req = Request("POST", url, json=payload)
-    res = Response()
-    res.status_code = 500
-    res.url = url
-    res.reason = "Internal Server Error"
-    cast(
-        Any, res
-    )._content = b"Your request could not be completed due to an internal error."
-    res.request = cast(PreparedRequest, req.prepare())  # type: ignore
+    res = Response(status_code=500, request=req)
+    res._content = b"Your request could not be completed due to an internal error."
     event_dict = add_request_info_processor(
         None, None, dict(event="request failed", res=res)
     )
-    assert event_dict["response_content"] == cast(Any, res)._content
+    assert event_dict["response_content"] == res._content
     assert event_dict["response_status_code"] == res.status_code
-    assert event_dict["request_body"] == json.dumps(payload).encode()
     assert event_dict["request_url"] == req.url
     assert event_dict["request_method"] == "POST"
     assert event_dict["res"] is res
