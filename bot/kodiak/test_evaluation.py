@@ -18,6 +18,9 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Commit,
+    Issue,
+    IssueLabel,
+    IssueLabelConnection,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -335,6 +338,7 @@ class MergeableType(Protocol):
         skippable_check_timeout: int = ...,
         api_call_retries_remaining: int = ...,
         api_call_errors: Sequence[APICallRetry] = ...,
+        blocking_issues: Optional[List[Issue]] = ...,
         repository: RepoInfo = ...,
         subscription: Optional[Subscription] = ...,
         app_id: Optional[str] = ...,
@@ -367,6 +371,7 @@ def create_mergeable() -> MergeableType:
         skippable_check_timeout: int = 5,
         api_call_retries_remaining: int = 5,
         api_call_errors: Sequence[APICallRetry] = [],
+        blocking_issues: Optional[List[Issue]] = None,
         repository: RepoInfo = create_repo_info(),
         subscription: Optional[Subscription] = None,
         app_id: Optional[str] = None,
@@ -394,6 +399,7 @@ def create_mergeable() -> MergeableType:
             skippable_check_timeout=skippable_check_timeout,
             api_call_retries_remaining=api_call_retries_remaining,
             api_call_errors=api_call_errors,
+            blocking_issues=blocking_issues,
             subscription=subscription,
             app_id=app_id,
         )
@@ -2272,6 +2278,36 @@ async def test_mergeable_merge_failure_label() -> None:
     assert api.create_comment.call_count == 0
     assert api.queue_for_merge.call_count == 0
     assert api.update_branch.call_count == 0
+
+
+async def test_mergeable_blocked_by_issue() -> None:
+    """
+    Kodiak should take no action when a repository has an open issue
+    labelled with disable_bot_label.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+
+    blocking_issue = Issue(
+        number=5,
+        labels=IssueLabelConnection(nodes=[IssueLabel(name=config.disable_bot_label)]),
+    )
+
+    await mergeable(
+        api=api,
+        config=config,
+        blocking_issues=[blocking_issue],
+        merging=True,
+    )
+
+    assert api.dequeue.call_count == 1
+    assert api.merge.call_count == 0
+    assert api.queue_for_merge.call_count == 0
+    assert api.set_status.call_count == 1
+    assert (
+        "issue(s): #5" in api.set_status.calls[0]["msg"]
+    ), "status should mention the blocking issue number"
 
 
 async def test_mergeable_priority_merge_label() -> None:
