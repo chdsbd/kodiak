@@ -13,6 +13,6 @@ COPY pyproject.toml uv.lock /var/app/
 COPY . /var/app
 
 # Install the application and dependencies
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen
 
 CMD ["/var/app/.venv/bin/gunicorn", "--bind", "0.0.0.0:5000", "--access-logfile", "-",  "--error-logfile",  "-", "--capture-output",  "--enable-stdio-inheritance", "--access-logformat",  "'request=\"%(r)s\" request_time=%(L)s remote_addr=\"%(h)s\" request_id=%({X-Request-Id}i)s response_id=%({X-Response-Id}i)s method=%(m)s protocol=%(H)s status_code=%(s)s response_length=%(b)s referer=\"%(f)s\" process_id=%(p)s user_agent=\"%(a)s\"'", "web_api.wsgi"]

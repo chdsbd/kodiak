@@ -19,6 +19,6 @@ COPY pyproject.toml uv.lock /var/app/
 COPY . /var/app
 
 # Install the application and dependencies
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen
 
 CMD ["/usr/bin/supervisord"]
