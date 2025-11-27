@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Iterable, Iterator, List, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Iterable, Iterator, List, Optional, cast
 
 import pytest
 from pytest_mock import MockFixture
@@ -369,7 +369,7 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
-async def setup_redis(github_installation_id: str) -> AsyncIterator[None]:
+async def setup_redis(github_installation_id: str) -> AsyncGenerator[None, None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port
