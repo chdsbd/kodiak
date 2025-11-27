@@ -9,13 +9,13 @@ from enum import Enum
 from typing import (
     Any,
     Dict,
+    Iterable,
     List,
     Mapping,
     MutableMapping,
     Optional,
     Union,
     cast,
-    Iterable,
 )
 
 import jwt
@@ -673,9 +673,7 @@ class UnifiedBranchProtection:
         required_checks = params.get_required_status_checks() if params else None
         if required_checks:
             fragment.requiredStatusCheckContexts = list(dict.fromkeys(required_checks))
-        strict_checks = (
-            params.get_strict_required_status_checks() if params else None
-        )
+        strict_checks = params.get_strict_required_status_checks() if params else None
         if strict_checks is not None:
             fragment.requiresStrictStatusChecks = strict_checks
         return fragment

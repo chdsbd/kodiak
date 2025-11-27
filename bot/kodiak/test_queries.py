@@ -369,7 +369,7 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
-async def setup_redis(github_installation_id: str) -> AsyncGenerator[None, None]:
+async def setup_redis(github_installation_id: str) -> AsyncIterator[None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port
