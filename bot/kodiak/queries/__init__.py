@@ -6,24 +6,14 @@ import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Union,
-    cast,
-)
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
 
 import jwt
 import pydantic
 import structlog
 import toml
 from mypy_extensions import TypedDict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -204,6 +194,16 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
             exclude
           }
         }
+        bypassActors(first: 100) {
+          nodes {
+            actor {
+              __typename
+              ... on App {
+                databaseId
+              }
+            }
+          }
+        }
         rules(first: 100) {
           nodes {
             type
@@ -212,11 +212,18 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
                 requiredStatusChecks {
                   context
                 }
+                strictRequiredStatusChecksPolicy
+              }
+              ... on PullRequestParameters {
+                requiredReviewThreadResolution
               }
             }
           }
         }
       }
+    }
+    defaultBranchRef {
+      name
     }
     mergeCommitAllowed
     rebaseMergeAllowed
@@ -530,6 +537,18 @@ class RulesetConditions(BaseModel):
     refName: Optional[RefNameConditions] = None
 
 
+class RulesetBypassActorActor(BaseModel):
+    databaseId: Optional[int] = None
+
+
+class RulesetBypassActor(BaseModel):
+    actor: RulesetBypassActorActor
+
+
+class RulesetBypassActorConnection(BaseModel):
+    nodes: Optional[List[RulesetBypassActor]] = None
+
+
 class StatusCheckConfiguration(BaseModel):
     """Status check configuration item."""
 
@@ -537,28 +556,14 @@ class StatusCheckConfiguration(BaseModel):
 
 
 class RulesetRuleParameters(BaseModel):
-    """Rule parameters from GraphQL ruleset rules."""
+    """Rule parameters from GitHub's RuleParameters union types."""
 
     requiredStatusChecks: Optional[List[StatusCheckConfiguration]] = None
-    strictRequiredStatusChecks: Optional[bool] = None
-    requireSignedCommits: Optional[bool] = Field(None, alias="require_signed_commits")
-    requiredReviewThreadResolution: Optional[bool] = Field(
-        None, alias="required_review_thread_resolution"
-    )
+    strictRequiredStatusChecksPolicy: Optional[bool] = None
+    requiredReviewThreadResolution: Optional[bool] = None
 
     class Config:
         extra = "allow"
-        allow_population_by_field_name = True
-
-    def get_required_status_checks(self) -> Optional[List[str]]:
-        """Extract required status check contexts from parameters."""
-        checks = self.requiredStatusChecks or []
-        contexts = [check.context for check in checks if check.context]
-        return contexts or None
-
-    def get_strict_required_status_checks(self) -> Optional[bool]:
-        """Get strict required status checks setting."""
-        return self.strictRequiredStatusChecks
 
 
 class RulesetRule(BaseModel):
@@ -594,6 +599,7 @@ class Ruleset(BaseModel):
     target: str
     enforcement: str
     conditions: Optional[RulesetConditions] = None
+    bypassActors: Optional[RulesetBypassActorConnection] = None
     rules: Optional[RulesetRuleConnection] = None
 
 
@@ -626,83 +632,82 @@ class UnifiedBranchProtection:
             pushAllowances=rule.pushAllowances,
         )
 
-    _STATUS_CHECK_RULES = frozenset({"required_status_checks", "pull_request"})
-
     @classmethod
     def from_ruleset(cls, ruleset: Ruleset) -> UnifiedBranchProtection:
         """Convert Ruleset to UnifiedBranchProtection."""
         protection = cls()
-        for fragment in cls._rule_fragments(ruleset):
-            protection = protection.merge(fragment)
+
+        if not ruleset.rules or not ruleset.rules.nodes:
+            return protection
+
+        for rule in ruleset.rules.nodes:
+            if not rule or not rule.type:
+                continue
+
+            rule_type = rule.type.lower()
+            params = rule.parameters
+
+            if rule_type == "required_status_checks":
+                cls._apply_status_checks(protection, params)
+            elif rule_type == "pull_request":
+                cls._apply_pull_request_rules(protection, params)
+            elif rule_type in (
+                "required_signatures",
+                "required_review_thread_resolution",
+            ):
+                cls._apply_simple_rule(protection, rule_type)
+
+        cls._apply_bypass_actors(protection, ruleset.bypassActors)
         return protection
 
-    @classmethod
-    def _rule_fragments(cls, ruleset: Ruleset) -> Iterable["UnifiedBranchProtection"]:
-        if not ruleset.rules or not ruleset.rules.nodes:
-            return []
-        fragments: List["UnifiedBranchProtection"] = []
-        for rule in ruleset.rules.nodes or []:
-            fragment = cls._fragment_for_rule(rule)
-            if fragment is not None:
-                fragments.append(fragment)
-        return fragments
+    @staticmethod
+    def _apply_status_checks(
+        protection: UnifiedBranchProtection, params: Optional[RulesetRuleParameters]
+    ) -> None:
+        if params and params.requiredStatusChecks:
+            for check in params.requiredStatusChecks:
+                if (
+                    check.context
+                    and check.context not in protection.requiredStatusCheckContexts
+                ):
+                    protection.requiredStatusCheckContexts.append(check.context)
 
-    @classmethod
-    def _fragment_for_rule(
-        cls, rule: Optional[RulesetRule]
-    ) -> Optional["UnifiedBranchProtection"]:
-        if rule is None:
-            return None
+        if params and params.strictRequiredStatusChecksPolicy is not None:
+            protection.requiresStrictStatusChecks = (
+                params.strictRequiredStatusChecksPolicy
+            )
 
-        params = rule.parameters
-        rule_type = (rule.type or "").lower()
+        protection.requiresStatusChecks = True
 
-        if rule_type in cls._STATUS_CHECK_RULES:
-            return cls._status_checks_fragment(params)
+    @staticmethod
+    def _apply_pull_request_rules(
+        protection: UnifiedBranchProtection, params: Optional[RulesetRuleParameters]
+    ) -> None:
+        if params and params.requiredReviewThreadResolution:
+            protection.requiresConversationResolution = True
+
+    @staticmethod
+    def _apply_simple_rule(protection: UnifiedBranchProtection, rule_type: str) -> None:
         if rule_type == "required_signatures":
-            return cls._signatures_fragment(params)
-        if rule_type == "required_review_thread_resolution":
-            return cls._conversation_fragment(params)
-        return None
+            protection.requiresCommitSignatures = True
+        elif rule_type == "required_review_thread_resolution":
+            protection.requiresConversationResolution = True
 
-    @classmethod
-    def _status_checks_fragment(
-        cls, params: Optional[RulesetRuleParameters]
-    ) -> "UnifiedBranchProtection":
-        fragment = cls(requiresStatusChecks=True)
-        required_checks = params.get_required_status_checks() if params else None
-        if required_checks:
-            fragment.requiredStatusCheckContexts = list(dict.fromkeys(required_checks))
-        strict_checks = params.get_strict_required_status_checks() if params else None
-        if strict_checks is not None:
-            fragment.requiresStrictStatusChecks = strict_checks
-        return fragment
+    @staticmethod
+    def _apply_bypass_actors(
+        protection: UnifiedBranchProtection,
+        bypass_actors: Optional[RulesetBypassActorConnection],
+    ) -> None:
+        if not bypass_actors or not bypass_actors.nodes:
+            return
 
-    @classmethod
-    def _signatures_fragment(
-        cls, params: Optional[RulesetRuleParameters]
-    ) -> Optional["UnifiedBranchProtection"]:
-        require_signed = (
-            params.requireSignedCommits
-            if params and params.requireSignedCommits is not None
-            else True
-        )
-        if not require_signed:
-            return None
-        return cls(requiresCommitSignatures=True)
-
-    @classmethod
-    def _conversation_fragment(
-        cls, params: Optional[RulesetRuleParameters]
-    ) -> Optional["UnifiedBranchProtection"]:
-        require_resolution = (
-            params.requiredReviewThreadResolution
-            if params and params.requiredReviewThreadResolution is not None
-            else True
-        )
-        if not require_resolution:
-            return None
-        return cls(requiresConversationResolution=True)
+        protection.restrictsPushes = True
+        allowances = [
+            PushAllowance(actor=PushAllowanceActor(databaseId=actor.actor.databaseId))
+            for actor in bypass_actors.nodes
+            if actor and actor.actor
+        ]
+        protection.pushAllowances = NodeListPushAllowance(nodes=allowances)
 
     def merge(self, other: UnifiedBranchProtection) -> UnifiedBranchProtection:
         """Merge another UnifiedBranchProtection into this one (most restrictive wins)."""
@@ -894,12 +899,33 @@ def _normalize_ref(ref: str) -> str:
     return ref if ref.startswith("refs/") else f"refs/heads/{ref}"
 
 
-def _ruleset_matches_ref(ruleset: Ruleset, ref_name: str) -> bool:
-    """Check if ruleset applies to ref name."""
-    if ruleset.target != "branch" or ruleset.enforcement != "active":
-        return False
+def _matches_ref_pattern(
+    ref_name: str, pattern: str, default_branch: Optional[str] = None
+) -> bool:
+    """Check if a ref name matches a GitHub ruleset pattern."""
+    if pattern == "~DEFAULT_BRANCH":
+        return (
+            ref_name == default_branch
+            if default_branch
+            else ref_name in ("main", "master")
+        )
+    if pattern == "~ALL":
+        return True
 
     ref_name_norm = _normalize_ref(ref_name)
+    pattern_norm = _normalize_ref(pattern)
+    return fnmatch.fnmatch(ref_name_norm, pattern_norm)
+
+
+def _ruleset_matches_ref(
+    ruleset: Ruleset, ref_name: str, default_branch: Optional[str] = None
+) -> bool:
+    """Check if ruleset applies to ref name."""
+    target = (ruleset.target or "").lower()
+    enforcement = (ruleset.enforcement or "").lower()
+    if target != "branch" or enforcement != "active":
+        return False
+
     if not ruleset.conditions or not ruleset.conditions.refName:
         return True
 
@@ -908,12 +934,14 @@ def _ruleset_matches_ref(ruleset: Ruleset, ref_name: str) -> bool:
     includes = ref_cond.include or []
 
     for pattern in excludes:
-        if fnmatch.fnmatch(ref_name_norm, _normalize_ref(pattern)):
+        if _matches_ref_pattern(ref_name, pattern, default_branch):
             return False
+
     if not includes:
         return True
+
     return any(
-        fnmatch.fnmatch(ref_name_norm, _normalize_ref(pattern)) for pattern in includes
+        _matches_ref_pattern(ref_name, pattern, default_branch) for pattern in includes
     )
 
 
@@ -928,6 +956,12 @@ def get_unified_branch_protection(
         protection = UnifiedBranchProtection.from_branch_protection_rule(bp_rule)
 
     try:
+        default_branch = repo.get("defaultBranchRef", {}).get("name")
+        print("")
+    except (KeyError, TypeError, AttributeError):
+        default_branch = None
+
+    try:
         rulesets_data = repo.get("rulesets", {}).get("nodes", [])
     except (KeyError, TypeError):
         rulesets_data = []
@@ -935,7 +969,7 @@ def get_unified_branch_protection(
     for ruleset_dict in rulesets_data:
         try:
             ruleset = Ruleset.parse_obj(ruleset_dict)
-            if _ruleset_matches_ref(ruleset, ref_name):
+            if _ruleset_matches_ref(ruleset, ref_name, default_branch):
                 ruleset_prot = UnifiedBranchProtection.from_ruleset(ruleset)
                 protection = (
                     ruleset_prot

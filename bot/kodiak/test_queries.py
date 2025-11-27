@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Iterable, Iterator, List, Optional, cast
+from typing import Any, AsyncIterator, Dict, Iterable, Iterator, List, Optional, cast
 
 import pytest
 from pytest_mock import MockFixture
@@ -113,6 +113,8 @@ def _make_ruleset_node(
     include: Optional[List[str]] = None,
     exclude: Optional[List[str]] = None,
     rules: Optional[List[Dict[str, Any]]] = None,
+    target: str = "BRANCH",
+    enforcement: str = "ACTIVE",
 ) -> Dict[str, Any]:
     conditions: Optional[Dict[str, Dict[str, Optional[List[str]]]]] = None
     if include is not None or exclude is not None:
@@ -120,8 +122,8 @@ def _make_ruleset_node(
     return dict(
         id="ruleset-id",
         name="test-ruleset",
-        target="branch",
-        enforcement="active",
+        target=target,
+        enforcement=enforcement,
         conditions=conditions,
         rules=dict(nodes=rules or []),
     )
@@ -156,8 +158,8 @@ def test_get_unified_branch_protection_merges_branch_rule_and_ruleset() -> None:
                     dict(
                         type="required_status_checks",
                         parameters=dict(
-                            strictRequiredStatusChecks=True,
                             requiredStatusChecks=[dict(context="ci/ruleset")],
+                            strictRequiredStatusChecksPolicy=True,
                         ),
                     )
                 ]
@@ -179,8 +181,8 @@ def test_get_unified_branch_protection_ruleset_without_conditions() -> None:
                     dict(
                         type="required_status_checks",
                         parameters=dict(
-                            strictRequiredStatusChecks=True,
                             requiredStatusChecks=[dict(context="ci/ruleset")],
+                            strictRequiredStatusChecksPolicy=True,
                         ),
                     )
                 ]
@@ -190,6 +192,7 @@ def test_get_unified_branch_protection_ruleset_without_conditions() -> None:
 
     protection = get_unified_branch_protection(repo=repo, ref_name="main")
     assert protection is not None
+    assert protection.requiresStatusChecks is True
     assert protection.requiresStrictStatusChecks is True
     assert protection.requiredStatusCheckContexts == ["ci/ruleset"]
 
@@ -202,8 +205,8 @@ def test_get_unified_branch_protection_ruleset_respects_excludes() -> None:
             dict(
                 type="required_status_checks",
                 parameters=dict(
-                    strictRequiredStatusChecks=False,
                     requiredStatusChecks=[dict(context="ci/ruleset")],
+                    strictRequiredStatusChecksPolicy=False,
                 ),
             )
         ],
@@ -236,6 +239,126 @@ def test_unified_branch_protection_ruleset_sets_signatures_and_conversation() ->
 
     assert protection.requiresCommitSignatures is True
     assert protection.requiresConversationResolution is True
+
+
+def test_unified_branch_protection_pull_request_rule_type() -> None:
+    """Test that pull_request rule type with requiredReviewThreadResolution works."""
+    ruleset = Ruleset.parse_obj(
+        _make_ruleset_node(
+            rules=[
+                dict(
+                    type="pull_request",
+                    parameters={"requiredReviewThreadResolution": True},
+                ),
+            ]
+        )
+    )
+    protection = UnifiedBranchProtection.from_ruleset(ruleset)
+
+    assert protection.requiresConversationResolution is True
+
+
+def test_unified_branch_protection_realistic_ruleset() -> None:
+    """Test a realistic ruleset configuration with multiple rule types."""
+    repo = _make_repo(
+        rulesets=[
+            _make_ruleset_node(
+                include=["refs/heads/main"],
+                rules=[
+                    dict(
+                        type="pull_request",
+                        parameters={"requiredReviewThreadResolution": True},
+                    ),
+                    dict(
+                        type="required_status_checks",
+                        parameters={
+                            "strictRequiredStatusChecksPolicy": True,
+                            "requiredStatusChecks": [
+                                dict(context="ci/test"),
+                                dict(context="ci/lint"),
+                            ],
+                        },
+                    ),
+                ],
+            )
+        ]
+    )
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="main")
+    assert protection is not None
+    assert protection.requiresStatusChecks is True
+    assert set(protection.requiredStatusCheckContexts) == {"ci/test", "ci/lint"}
+    assert protection.requiresStrictStatusChecks is True
+    assert protection.requiresConversationResolution is True
+
+
+def test_unified_branch_protection_bypass_actors() -> None:
+    """Test that bypass actors are correctly mapped to push allowances."""
+    ruleset_with_bypass = dict(
+        id="ruleset-id",
+        name="test-ruleset",
+        target="BRANCH",
+        enforcement="ACTIVE",
+        conditions=None,
+        bypassActors=dict(
+            nodes=[
+                dict(actor=dict(databaseId=12345)),
+                dict(actor=dict(databaseId=67890)),
+            ]
+        ),
+        rules=dict(
+            nodes=[
+                dict(
+                    type="required_status_checks",
+                    parameters=dict(
+                        requiredStatusChecks=[dict(context="ci/test")],
+                        strictRequiredStatusChecksPolicy=False,
+                    ),
+                )
+            ]
+        ),
+    )
+
+    ruleset = Ruleset.parse_obj(ruleset_with_bypass)
+    protection = UnifiedBranchProtection.from_ruleset(ruleset)
+
+    assert protection.restrictsPushes is True
+    assert protection.pushAllowances is not None
+    assert len(protection.pushAllowances.nodes) == 2
+    assert protection.pushAllowances.nodes[0].actor.databaseId == 12345
+    assert protection.pushAllowances.nodes[1].actor.databaseId == 67890
+
+
+def test_unified_branch_protection_default_branch_pattern() -> None:
+    """Test that ~DEFAULT_BRANCH pattern matches the actual default branch."""
+    repo = _make_repo(
+        rulesets=[
+            _make_ruleset_node(
+                include=["~DEFAULT_BRANCH"],
+                rules=[
+                    dict(
+                        type="required_status_checks",
+                        parameters=dict(
+                            requiredStatusChecks=[dict(context="ci/default")],
+                            strictRequiredStatusChecksPolicy=False,
+                            doNotEnforceOnCreate=False,
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+    repo["defaultBranchRef"] = {"name": "develop"}
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="develop")
+    assert protection is not None
+    assert protection.requiredStatusCheckContexts == ["ci/default"]
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="main")
+    assert protection is None
+
+    protection = get_unified_branch_protection(repo=repo, ref_name="master")
+    assert protection is None
 
 
 @pytest.fixture
@@ -369,7 +492,7 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
-async def setup_redis(github_installation_id: str) -> AsyncGenerator[None, None]:
+async def setup_redis(github_installation_id: str) -> AsyncIterator[None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port
