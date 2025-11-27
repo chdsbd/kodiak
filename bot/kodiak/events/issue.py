@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import pydantic
 
@@ -21,7 +21,7 @@ class Label(pydantic.BaseModel):
 class Issue(pydantic.BaseModel):
     number: int
     state: str
-    labels: list[Label]
+    labels: List[Label]
 
 
 class IssueEvent(GithubEvent):
