@@ -49,22 +49,26 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = [
-    "E",
-    "F",
-    "TID252",
-    "I001",
-    "T20",
-    "C4",
-    "UP",
-    "N",
-    "BLE",
-    "B",
-    "RET",
-    "SIM",
-    "ARG",
-    "DTZ",
-    "ERA",
-    "RUF",
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "PIE",    # flake8-pie
+    "TID",    # flake8-tidy-imports
+    "PYI",    # flake8-pyi
+    "TID252", # banned imports
+    "I001",   # unsorted imports
+    "T20",    # flake8-print
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "N",      # pep8-naming
+    "BLE",    # flake8-blind-except
+    "B",      # flake8-bugbear
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "DTZ",    # flake8-datetimez
+    "ERA",    # eradicate
+    "RUF",    # Ruff-specific rules
 ]
 ignore = [
     "E501",   # line length is handled by black
@@ -90,10 +94,16 @@ ignore = [
     "N801", # some class names have bad names
 
     "RUF001", # false positives
+    "UP031", # allow percent format
 ]
 unfixable = [
     "ERA001",
 ] # we want to check ourselves before we delete commented out code.
+
+[tool.ruff.lint.per-file-ignores]
+"web_api/migrations/*.py" = ["RUF012"]
+"web_api/**/test_*.py" = ["RUF059"]
+"web_api/models.py" = ["RUF012"]
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true

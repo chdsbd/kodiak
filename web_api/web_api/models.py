@@ -44,9 +44,9 @@ def sane_repr(*attrs: str) -> Callable[[object], str]:
     def _repr(self: object) -> str:
         cls = type(self).__name__
 
-        pairs = ", ".join(f"{a}={repr(getattr(self, a, None))}" for a in attrs)
+        pairs = ", ".join(f"{a}={getattr(self, a, None)!r}" for a in attrs)
 
-        return f"<{cls} at 0x{id(self):x}: {pairs}>"  # flake8: noqa PIE782
+        return f"<{cls} at 0x{id(self):x}: {pairs}>"
 
     return _repr
 
@@ -587,9 +587,9 @@ class PullRequestActivity(BaseModel):
         Create PullRequestActivity objects from GitHubEvent information.
         """
         start_time = time.time()
-        pr_progress: Optional[
-            PullRequestActivityProgress
-        ] = PullRequestActivityProgress.objects.order_by("-min_date").first()
+        pr_progress: Optional[PullRequestActivityProgress] = (
+            PullRequestActivityProgress.objects.order_by("-min_date").first()
+        )
         if pr_progress:
             min_date = timezone.make_aware(
                 datetime.datetime(  # noqa: DTZ001
