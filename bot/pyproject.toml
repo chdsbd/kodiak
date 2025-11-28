@@ -132,21 +132,20 @@ select = [
     "PIE",    # flake8-pie
     "TID",    # flake8-tidy-imports
     "PYI",    # flake8-pyi
-
-    "TID252",
-    "I001",
-    "T20",
-    "C4",
-    "UP",
-    "N",
-    "BLE",
-    "B",
-    "RET",
-    "SIM",
-    "ARG",
-    "DTZ",
-    "ERA",
-    "RUF",
+    "TID252", # banned imports
+    "I001",   # unsorted imports
+    "T20",    # flake8-print
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "N",      # pep8-naming
+    "BLE",    # flake8-blind-except
+    "B",      # flake8-bugbear
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "DTZ",    # flake8-datetimez
+    "ERA",    # eradicate
+    "RUF",    # Ruff-specific rules
 ]
 ignore = [
     "E501",   # line length is handled by black
@@ -155,27 +154,14 @@ ignore = [
     "N806",   # django migrations violate this a lot
     "B008",   # type.Argument violates this
     "N815",   # we mix and match casing in serializers
-    "ARG005", # monkey patching false positive with *args, and **kwargs
-    "N805",   # false positive with pydantic
-    "N802",   # DRF serializers mess with this
-    "RET505", # if, elif, else are fine with returns
-    "RET507", # if, elif, else with continue is also fine
-    "RET508", # if, elif, else with break is also fine
 
-    # okay because we're doing hacky things for our runtime tests
-    "T201", # we use print for testing
-    "B905", # allow zip without strict
-    "B018", # useless expressions useful for type checking
-    "N803", # some APIs have weird names
     "N818", # some exceptions have bad names
-    "N801", # some class names have bad names
 
-    "RUF001", # false positives
     "UP045", # may lead to runtime errors using libraries that rely on runtime type annotations, like Pydantic, on Python versions prior to Python 3.10
     # style
-    "C408",
-    "UP006",
-    "UP007"
+    "C408", # todo. fix this by rewriting dict() calls as literals.
+    "UP006", # todo. fix this by rewriting List[] as list[] literals.
+    "UP007" # todo. fix this by rewriting Union[] as X | Y.
 ]
 unfixable = [
     "ERA001",
