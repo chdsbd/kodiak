@@ -166,7 +166,6 @@ ignore = [
     "T201", # we use print for testing
     "B905", # allow zip without strict
     "B018", # useless expressions useful for type checking
-    "B904", # allow bad except clauses
     "N803", # some APIs have weird names
     "N818", # some exceptions have bad names
     "N801", # some class names have bad names

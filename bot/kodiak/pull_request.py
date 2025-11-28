@@ -73,7 +73,7 @@ async def evaluate_pr(
 ) -> None:
     skippable_check_timeout = 4
     api_call_retries_remaining = 5
-    api_call_errors = []  # type: List[APICallError]
+    api_call_errors = []  # type: list[APICallError]
     log = log.bind(owner=owner, repo=repo, number=number, merging=merging)
     while True:
         log.info("get_pr")
@@ -263,14 +263,14 @@ class PRV2:
             res = await api_client.update_branch(pull_number=self.number)
             try:
                 res.raise_for_status()
-            except HTTPError:
+            except HTTPError as e:
                 self.log.warning("failed to update branch", res=res, exc_info=True)
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/update_branch",
                     http_status_code=res.status_code,
                     response=res.content,
-                )
+                ) from e
 
     async def approve_pull_request(self) -> None:
         self.log.info("approve_pull_request")
@@ -328,13 +328,13 @@ class PRV2:
                         "failed to merge pull request", res=res, exc_info=True
                     )
                 if e.response is not None and e.response.status_code == 500:
-                    raise GitHubApiInternalServerError
+                    raise GitHubApiInternalServerError from e
                 # we raise an exception to retry this request.
                 raise ApiCallException(
                     method="pull_request/merge",
                     http_status_code=res.status_code,
                     response=res.content,
-                )
+                ) from e
 
     async def update_ref(self, ref: str, sha: str) -> None:
         self.log.info("update_ref", ref=ref, sha=sha)
@@ -354,7 +354,7 @@ class PRV2:
                     method="pull_request/update_ref",
                     http_status_code=res.status_code,
                     response=res.content,
-                )
+                ) from e
 
     async def queue_for_merge(self, *, first: bool) -> Optional[int]:
         self.log.info("queue_for_merge")
@@ -371,7 +371,7 @@ class PRV2:
             res = await api_client.add_label(label, pull_number=self.number)
             try:
                 res.raise_for_status()
-            except HTTPError:
+            except HTTPError as exc:
                 self.log.warning(
                     "failed to add label", label=label, res=res, exc_info=True
                 )
@@ -379,7 +379,7 @@ class PRV2:
                     method="pull_request/add_label",
                     http_status_code=res.status_code,
                     response=res.content,
-                )
+                ) from exc
 
     async def remove_label(self, label: str) -> None:
         """
@@ -392,7 +392,7 @@ class PRV2:
             res = await api_client.delete_label(label, pull_number=self.number)
             try:
                 res.raise_for_status()
-            except HTTPError:
+            except HTTPError as exc:
                 self.log.warning(
                     "failed to delete label", label=label, res=res, exc_info=True
                 )
@@ -401,7 +401,7 @@ class PRV2:
                     method="pull_request/delete_label",
                     http_status_code=res.status_code,
                     response=res.content,
-                )
+                ) from exc
 
     async def create_comment(self, body: str) -> None:
         """
