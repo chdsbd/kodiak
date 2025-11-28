@@ -488,7 +488,7 @@ async def mergeable(
     skippable_check_timeout: int,
     api_call_retries_remaining: int,
     api_call_errors: Sequence[APICallRetry],
-    blocking_issues: Optional[List[Issue]] = None,
+    blocking_issues: List[Issue],
     subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
 ) -> None:
