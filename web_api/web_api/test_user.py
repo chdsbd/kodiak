@@ -585,9 +585,9 @@ def test_sync_accounts_new_and_existing_accounts(
     assert Account.objects.filter(
         github_account_login__in=["recipeyak", "chdsbd", "ghost", "acme-corp"]
     )
-    assert (
-        Account.objects.count() == 4
-    ), "we should have a new account for recipeyak and chdsbd."
+    assert Account.objects.count() == 4, (
+        "we should have a new account for recipeyak and chdsbd."
+    )
     assert (
         AccountMembership.objects.filter(user=user)
         .exclude(account__github_account_login__in=["recipeyak", "chdsbd", "ghost"])
@@ -610,7 +610,9 @@ def test_sync_accounts_new_and_existing_accounts(
     assert (
         AccountMembership.objects.filter(user=user, account=acme_corp_account).exists()
         is False
-    ), "the user should no longer be a member of the organization if is no longer returned from `/user/installations` endpoint."
-    assert (
-        Account.objects.filter(id=acme_corp_account.id).exists() is True
-    ), "account that we are no longer a member of should not be deleted."
+    ), (
+        "the user should no longer be a member of the organization if is no longer returned from `/user/installations` endpoint."
+    )
+    assert Account.objects.filter(id=acme_corp_account.id).exists() is True, (
+        "account that we are no longer a member of should not be deleted."
+    )

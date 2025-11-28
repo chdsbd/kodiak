@@ -91,18 +91,18 @@ def test_generate_activity_data(
     def check_response() -> None:
         assert pull_request_activity.date == datetime.date(2020, 2, 13)
         assert pull_request_activity.total_opened == 1
-        assert (
-            pull_request_activity.total_merged == 2
-        ), "one user merge and one from kodiak"
+        assert pull_request_activity.total_merged == 2, (
+            "one user merge and one from kodiak"
+        )
         assert pull_request_activity.total_closed == 1
         assert pull_request_activity.kodiak_approved == 1
         assert pull_request_activity.kodiak_merged == 2
         assert pull_request_activity.kodiak_updated == 1
         # NOTE(chdsbd): I don't like how this field is called "account_id" when the
         # foreign key is on github_installation_id of an account.
-        assert (
-            pull_request_activity.github_installation_id == 848733
-        ), "the ID of the installation from the json files"
+        assert pull_request_activity.github_installation_id == 848733, (
+            "the ID of the installation from the json files"
+        )
 
     check_response()
 
@@ -145,16 +145,16 @@ def test_generate_activity_data_with_args(pull_request_total_closed: object) -> 
 
     # try with account for different organization
     PullRequestActivity.generate_activity_data(account=other_account)
-    assert (
-        PullRequestActivity.objects.count() == 0
-    ), "we shouldn't have any events because this is a different account"
+    assert PullRequestActivity.objects.count() == 0, (
+        "we shouldn't have any events because this is a different account"
+    )
 
     PullRequestActivity.generate_activity_data(
         min_date=datetime.date(2000, 4, 13), account=account
     )
-    assert (
-        PullRequestActivity.objects.count() == 1
-    ), "we should have an event because our pull_request_total_closed is after the min date and is on the same account"
+    assert PullRequestActivity.objects.count() == 1, (
+        "we should have an event because our pull_request_total_closed is after the min date and is on the same account"
+    )
     pull_request_activity = PullRequestActivity.objects.get()
 
     assert pull_request_activity.date == datetime.date(2020, 2, 13)

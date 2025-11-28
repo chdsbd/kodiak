@@ -26,7 +26,6 @@ dev = [
     "pytest==6.0.1",
     "mypy>=0.960,<0.961",
     "ipython>=7.12,<8",
-    "mypy_extensions>=0.4.3,<0.5",
     "typing_extensions>=3.7,<4",
     "pytest-env>=0.6.2,<0.7",
     "pytest-mock==3.3.1",
@@ -40,7 +39,6 @@ dev = [
     "types-stripe>=2.59.10,<3",
     "pydantic>=1.9.1,<2",
     "types-requests>=2.27.30,<3",
-    "black>=23.3.0,<24",
     "ruff>=0.14.6",
 ]
 

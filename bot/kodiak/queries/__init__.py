@@ -913,7 +913,7 @@ class Client:
         first client to make an API request, we use their credentials to view
         schema metadata and cache the results.
         """
-        global _api_features_cache  # pylint: disable=global-statement
+        global _api_features_cache
         if _api_features_cache is not None:
             return _api_features_cache
         res = await self.send_query(

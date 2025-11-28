@@ -1,6 +1,6 @@
 {
   "python.defaultInterpreterPath": ".venv/bin/python",
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "ruff",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": true
@@ -8,7 +8,5 @@
   "python.linting.mypyEnabled": true,
   "python.testing.pytestArgs": ["kodiak"],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true,
-  "python.linting.flake8Enabled": true,
-  "python.linting.pylintEnabled": true
+  "python.testing.pytestEnabled": true
 }

@@ -398,7 +398,6 @@ def create_mergeable() -> MergeableType:
             app_id=app_id,
         )
 
-    # pylint: enable=dangerous-default-value
     return mergeable
 
 
