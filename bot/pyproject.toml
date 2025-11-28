@@ -172,7 +172,7 @@ ignore = [
     "N801", # some class names have bad names
 
     "RUF001", # false positives
-    "UP045",
+    "UP045", # may lead to runtime errors using libraries that rely on runtime type annotations, like Pydantic, on Python versions prior to Python 3.10
     # style
     "C408",
     "UP006",
