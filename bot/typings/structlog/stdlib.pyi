@@ -2,8 +2,9 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from structlog._base import BoundLoggerBase
+from typing_extensions import TypeAlias
 
-_EventDict = Dict[str, Any]
+_EventDict: TypeAlias = Dict[str, Any]
 
 class BoundLogger(BoundLoggerBase):
     def debug(self, event: Optional[Any] = ..., *args: Any, **kw: Any) -> None: ...

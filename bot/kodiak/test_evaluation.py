@@ -9,8 +9,10 @@ from typing_extensions import Protocol
 
 from kodiak.config import V1, MergeMethod
 from kodiak.errors import GitHubApiInternalServerError, PollForever
-from kodiak.evaluation import PRAPI
-from kodiak.evaluation import mergeable as mergeable_func
+from kodiak.evaluation import (
+    PRAPI,
+    mergeable as mergeable_func,
+)
 from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
@@ -268,7 +270,7 @@ def create_branch_protection() -> BranchProtectionRule:
 def create_review() -> PRReview:
     return PRReview(
         state=PRReviewState.APPROVED,
-        createdAt=datetime(2015, 5, 25),
+        createdAt=datetime(2015, 5, 25),  # noqa: DTZ001
         author=PRReviewAuthor(login="ghost"),
     )
 
@@ -338,12 +340,10 @@ class MergeableType(Protocol):
         repository: RepoInfo = ...,
         subscription: Optional[Subscription] = ...,
         app_id: Optional[str] = ...,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 def create_mergeable() -> MergeableType:
-    # pylint: disable=dangerous-default-value
     async def mergeable(
         *,
         api: PRAPI = create_api(),
@@ -352,12 +352,12 @@ def create_mergeable() -> MergeableType:
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
         branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
-        review_requests: List[PRReviewRequest] = [],
-        bot_reviews: List[PRReview] = [create_review()],
-        contexts: List[StatusContext] = [create_context()],
-        check_runs: List[CheckRun] = [create_check_run()],
-        commits: List[Commit] = [],
-        valid_merge_methods: List[MergeMethod] = [
+        review_requests: List[PRReviewRequest] = [],  # noqa: B006
+        bot_reviews: List[PRReview] = [create_review()],  # noqa: B006
+        contexts: List[StatusContext] = [create_context()],  # noqa: B006
+        check_runs: List[CheckRun] = [create_check_run()],  # noqa: B006
+        commits: List[Commit] = [],  # noqa: B006
+        valid_merge_methods: List[MergeMethod] = [  # noqa: B006
             MergeMethod.merge,
             MergeMethod.squash,
             MergeMethod.rebase,
@@ -413,9 +413,9 @@ async def test_mergeable_abort_is_active_merge() -> None:
     await mergeable(api=api, is_active_merge=True)
     assert api.queue_for_merge.called is True
 
-    assert (
-        api.set_status.call_count == 0
-    ), "we don't want to set a status message from the frontend when the PR is being merged"
+    assert api.set_status.call_count == 0, (
+        "we don't want to set a status message from the frontend when the PR is being merged"
+    )
     # verify we haven't tried to update/merge the PR
     assert api.update_branch.called is False
     assert api.merge.called is False
@@ -831,9 +831,9 @@ async def test_mergeable_default_merge_method() -> None:
     mergeable = create_mergeable()
     config = create_config()
 
-    assert (
-        config.merge.method is None
-    ), "we shouldn't have specified a value for the merge method. We want to allow the default."
+    assert config.merge.method is None, (
+        "we shouldn't have specified a value for the merge method. We want to allow the default."
+    )
 
     await mergeable(api=api, config=config, merging=True)
     assert api.merge.call_count == 1
@@ -1037,7 +1037,9 @@ async def test_mergeable_pull_request_merged_delete_branch() -> None:
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependencies() -> None:
+async def test_mergeable_pull_request_merged_delete_branch_with_branch_dependencies() -> (
+    None
+):
     """
     if a PR is already merged we shouldn't take anymore action on it besides
     deleting the branch if configured.
@@ -1093,7 +1095,9 @@ async def test_mergeable_pull_request_merged_delete_branch_cross_repo_pr() -> No
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled() -> None:
+async def test_mergeable_pull_request_merged_delete_branch_repo_delete_enabled() -> (
+    None
+):
     """
     If the repository has delete_branch_on_merge enabled we shouldn't bother
     trying to delete the branch.
@@ -1198,7 +1202,9 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict() -> Non
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex() -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklist_title_regex() -> (
+    None
+):
     """
     if a PR has a merge conflict we can't merge. If the title matches the
     blacklist_title_regex we should still leave a comment and remove the
@@ -1230,7 +1236,9 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_blacklis
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_label() -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_label() -> (
+    None
+):
     """
     if a PR has a merge conflict we can't merge. If configured, we should leave
     a comment and remove the automerge label. If the automerge label is missing we shouldn't create a comment.
@@ -1255,7 +1263,9 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_missing_
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerge_labels() -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerge_labels() -> (
+    None
+):
     """
     We should only notify on conflict when we have an automerge label.
 
@@ -1288,7 +1298,9 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_automerg
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label() -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_require_automerge_label() -> (
+    None
+):
     """
     if a PR has a merge conflict we can't merge. If require_automerge_label is set then we shouldn't notify even if notify_on_conflict is configured. This allows prevents infinite commenting.
     """
@@ -1316,7 +1328,9 @@ async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_no_requi
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_pull_request_merged() -> None:
+async def test_mergeable_pull_request_merge_conflict_notify_on_conflict_pull_request_merged() -> (
+    None
+):
     """
     If the pull request is merged we shouldn't error on merge conflict.
 
@@ -1432,7 +1446,9 @@ async def test_mergeable_pull_request_need_test_commit_need_update() -> None:
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open() -> None:
+async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open() -> (
+    None
+):
     """
     If a pull request mergeable status is UNKNOWN _and_ it is OPEN we should
     trigger a test commit and queue it for evaluation.
@@ -1689,7 +1705,9 @@ async def test_mergeable_do_not_merge_behind_no_update_immediately() -> None:
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update() -> None:
+async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update() -> (
+    None
+):
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
     Test when PR doesn't need update.
@@ -1710,7 +1728,9 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_no_update()
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update() -> None:
+async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update() -> (
+    None
+):
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
     Test when PR needs update.
@@ -1921,9 +1941,9 @@ async def test_mergeable_auto_approve_ignore_closed_merged_prs() -> None:
         assert api.approve_pull_request.call_count == 0
         assert api.set_status.call_count == 0
         assert api.queue_for_merge.call_count == 0
-        assert (
-            api.dequeue.call_count == 1
-        ), "dequeue because the PR is closed. This isn't related to this test."
+        assert api.dequeue.call_count == 1, (
+            "dequeue because the PR is closed. This isn't related to this test."
+        )
         assert api.merge.call_count == 0
         assert api.update_branch.call_count == 0
 
@@ -2290,9 +2310,9 @@ async def test_mergeable_priority_merge_label() -> None:
     assert api.set_status.call_count == 1
     assert "enqueued" in api.set_status.calls[0]["msg"]
     assert api.queue_for_merge.call_count == 1
-    assert (
-        api.queue_for_merge.calls[0]["first"] is False
-    ), "by default we should place PR at end of queue (first=False)"
+    assert api.queue_for_merge.calls[0]["first"] is False, (
+        "by default we should place PR at end of queue (first=False)"
+    )
 
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
@@ -2308,9 +2328,9 @@ async def test_mergeable_priority_merge_label() -> None:
     assert "enqueued" in api.set_status.calls[0]["msg"]
 
     assert api.queue_for_merge.call_count == 1
-    assert (
-        api.queue_for_merge.calls[0]["first"] is True
-    ), "when merge.priority_merge_label is configured we should place PR at front of queue"
+    assert api.queue_for_merge.calls[0]["first"] is True, (
+        "when merge.priority_merge_label is configured we should place PR at front of queue"
+    )
 
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0

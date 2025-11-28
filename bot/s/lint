@@ -3,16 +3,13 @@ set -ex
 
 # format code
 if [[ $CI ]]; then
-    ./.venv/bin/black --check .
-    ./.venv/bin/isort --check-only
+    ./.venv/bin/ruff format --check
 else
-    ./.venv/bin/black .
-    ./.venv/bin/isort -y
+    ./.venv/bin/ruff format
 fi
 
 # type check code
 ./.venv/bin/mypy .
 
 # lint
-./.venv/bin/flake8 kodiak
-./.venv/bin/pylint --rcfile='.pylintrc' kodiak
+./.venv/bin/ruff

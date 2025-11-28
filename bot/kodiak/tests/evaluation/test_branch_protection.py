@@ -522,7 +522,9 @@ async def test_mergeable_wait_for_checks() -> None:
     assert api.queue_for_merge.called is False
 
 
-async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for_checks() -> None:
+async def test_mergeable_do_not_merge_with_update_branch_immediately_waiting_for_checks() -> (
+    None
+):
     """
     merge.do_not_merge is only useful with merge.update_branch_immediately,
     Test when PR doesn't need update but is waiting for checks to finish.

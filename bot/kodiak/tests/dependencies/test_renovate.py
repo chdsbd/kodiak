@@ -4,6 +4,7 @@ Tests for renovate-specific dependency behavior.
 See test_dependencies and the renovate_pull_requests/ folder for more tests
 using full PR examples.
 """
+
 from __future__ import annotations
 
 from kodiak.dependencies import dep_versions_from_renovate_pr_body

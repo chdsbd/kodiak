@@ -4,13 +4,23 @@ import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union, cast
+from typing import (
+    Any,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Self,
+    TypedDict,
+    Union,
+    cast,
+)
 
 import jwt
 import pydantic
 import structlog
 import toml
-from mypy_extensions import TypedDict
 from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
@@ -18,9 +28,13 @@ import kodiak.app_config as conf
 from kodiak import http
 from kodiak.config import V1, MergeMethod
 from kodiak.http import HttpClient
-from kodiak.queries.commits import Commit, CommitConnection, GitActor
-from kodiak.queries.commits import User as PullRequestCommitUser
-from kodiak.queries.commits import get_commits
+from kodiak.queries.commits import (
+    Commit,
+    CommitConnection,
+    GitActor,
+    User as PullRequestCommitUser,
+    get_commits,
+)
 from kodiak.redis_client import redis_web_api
 from kodiak.throttle import get_thottler_for_installation
 
@@ -307,7 +321,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   }
 }
 
-""" % dict(
+""" % dict(  # noqa: UP031
         requiresConversationResolution="requiresConversationResolution"
         if requires_conversation_resolution
         else "",
@@ -815,18 +829,17 @@ _api_features_cache: ApiFeatures | None = None
 
 
 class ThrottlerProtocol(Protocol):
-    async def __aenter__(self) -> None:
-        ...
+    async def __aenter__(self) -> None: ...
 
-    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        ...
+    async def __aexit__(
+        self, exc_type: object, exc_value: object, traceback: object
+    ) -> None: ...
 
 
 class Client:
     throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
-
         self.owner = owner
         self.repo = repo
         self.installation_id = installation_id
@@ -837,27 +850,29 @@ class Client:
             # client. As a backup we have an asyncio timeout of 30 seconds.
             timeout=None
         )
-        self.session.headers[
-            "Accept"
-        ] = "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+        self.session.headers["Accept"] = (
+            "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
+        )
         if (
             conf.GITHUB_API_HEADER_NAME is not None
             and conf.GITHUB_API_HEADER_VALUE is not None
         ):
-            self.session.headers[
-                conf.GITHUB_API_HEADER_NAME
-            ] = conf.GITHUB_API_HEADER_VALUE
+            self.session.headers[conf.GITHUB_API_HEADER_NAME] = (
+                conf.GITHUB_API_HEADER_VALUE
+            )
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
 
-    async def __aenter__(self) -> Client:
+    async def __aenter__(self) -> Self:
         self.throttler = get_thottler_for_installation(
             installation_id=self.installation_id
         )
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+    async def __aexit__(
+        self, exc_type: object, exc_value: object, traceback: object
+    ) -> None:
         await self.session.aclose()
 
     async def send_query(
@@ -1365,8 +1380,8 @@ def generate_jwt(*, private_key: str, app_identifier: str) -> str:
 
     This is different from authenticating as an installation
     """
-    issued_at = int(datetime.now().timestamp())
-    expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())
+    issued_at = int(datetime.now().timestamp())  # noqa: DTZ005
+    expiration = int((datetime.now() + timedelta(minutes=9, seconds=30)).timestamp())  # noqa: DTZ005
     payload = dict(iat=issued_at, exp=expiration, iss=app_identifier)
     return jwt.encode(payload=payload, key=private_key, algorithm="RS256").decode()
 
@@ -1415,4 +1430,4 @@ async def get_headers(
     )
 
 
-__all__ = ["Commit", "GitActor", "CommitConnection", "PullRequestCommitUser"]
+__all__ = ["Commit", "CommitConnection", "GitActor", "PullRequestCommitUser"]

@@ -30,24 +30,18 @@ kodiak = "kodiak.cli:cli"
 
 [dependency-groups]
 dev = [
-    "black>=21.9b0,<22",
     "mypy>=0.960,<0.961",
     "ipdb>=0.13.9,<0.14",
     "pytest-mock==3.3.1",
     "typing_extensions>=3.7,<4",
-    "pylint>=2.3,<3",
-    "flake8==3.8.4",
-    "flake8-pie==0.7.1",
-    "isort>=4.3,<5",
     "pytest-cov>=2.10,<3",
-    "flake8-pyi>=20.10,<21",
     "types-requests>=2.28.0,<3",
     "types-toml>=0.10.7,<0.11",
-    "flake8-tidy-imports>=4.8.0,<5",
     "pytest-asyncio==0.20.1",
     "pytest>=7.2.0,<8",
     "types-redis>=4.4.0,<5",
     "pytest-env>=0.8.1,<0.9",
+    "ruff>=0.14.6",
 ]
 
 
@@ -126,6 +120,72 @@ init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "PIE",    # flake8-pie
+    "TID",    # flake8-tidy-imports
+    "PYI",    # flake8-pyi
+
+    "TID252",
+    "I001",
+    "T20",
+    "C4",
+    "UP",
+    "N",
+    "BLE",
+    "B",
+    "RET",
+    "SIM",
+    "ARG",
+    "DTZ",
+    "ERA",
+    "RUF",
+]
+ignore = [
+    "E501",   # line length is handled by black
+    "ARG001", # pytest fixtures mess with this
+    "ARG002", # sometimes parent classes require params
+    "N806",   # django migrations violate this a lot
+    "B008",   # type.Argument violates this
+    "N815",   # we mix and match casing in serializers
+    "ARG005", # monkey patching false positive with *args, and **kwargs
+    "N805",   # false positive with pydantic
+    "N802",   # DRF serializers mess with this
+    "RET505", # if, elif, else are fine with returns
+    "RET507", # if, elif, else with continue is also fine
+    "RET508", # if, elif, else with break is also fine
+
+    # okay because we're doing hacky things for our runtime tests
+    "T201", # we use print for testing
+    "B905", # allow zip without strict
+    "B018", # useless expressions useful for type checking
+    "B904", # allow bad except clauses
+    "N803", # some APIs have weird names
+    "N818", # some exceptions have bad names
+    "N801", # some class names have bad names
+
+    "RUF001", # false positives
+    "UP045",
+    # style
+    "C408",
+    "UP006",
+    "UP007"
+]
+unfixable = [
+    "ERA001",
+] # we want to check ourselves before we delete commented out code.
+
+
+[tool.ruff.lint.isort]
+force-wrap-aliases = true
+combine-as-imports = true
 
 [build-system]
 requires = ["hatchling"]

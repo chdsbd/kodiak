@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Awaitable, Callable, List, Optional, Type
+from typing import Awaitable, Callable, Optional, Type
 
 import structlog
 from typing_extensions import Protocol
@@ -159,8 +159,7 @@ async def evaluate_pr(
 
 
 class QueueForMergeCallback(Protocol):
-    async def __call__(self, *, first: bool) -> Optional[int]:
-        ...
+    async def __call__(self, *, first: bool) -> Optional[int]: ...
 
 
 class PRV2:

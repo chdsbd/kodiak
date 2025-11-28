@@ -1,6 +1,8 @@
 from typing import Any, Callable, Dict, Optional, Sequence
 
-_EventDict = Dict[str, Any]
+from typing_extensions import TypeAlias
+
+_EventDict: TypeAlias = Dict[str, Any]
 
 class KeyValueRenderer:
     def __init__(

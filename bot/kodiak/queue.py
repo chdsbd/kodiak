@@ -16,8 +16,10 @@ import zstandard as zstd
 from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
-from kodiak import app_config as conf
-from kodiak import queries
+from kodiak import (
+    app_config as conf,
+    queries,
+)
 from kodiak.events import (
     CheckRunEvent,
     PullRequestEvent,
@@ -60,11 +62,11 @@ def installation_id_from_queue(queue_name: str) -> str:
 
 
 class WebhookQueueProtocol(Protocol):
-    async def enqueue(self, *, event: WebhookEvent) -> None:
-        ...
+    async def enqueue(self, *, event: WebhookEvent) -> None: ...
 
-    async def enqueue_for_repo(self, *, event: WebhookEvent, first: bool) -> int | None:
-        ...
+    async def enqueue_for_repo(
+        self, *, event: WebhookEvent, first: bool
+    ) -> int | None: ...
 
 
 async def pr_event(queue: WebhookQueueProtocol, pr: PullRequestEvent) -> None:
@@ -214,7 +216,7 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
         prs = await api_client.get_open_pull_requests(base=branch_name)
         if prs is None:
             log.info("api call to find pull requests failed")
-            return None
+            return
         for pr in prs:
             await queue.enqueue(
                 event=WebhookEvent(
@@ -441,11 +443,9 @@ T = typing.TypeVar("T")
 
 
 def find_position(x: typing.Iterable[T], v: T) -> typing.Optional[int]:
-    count = 0
-    for item in x:
+    for index, item in enumerate(x):
         if item == v:
-            return count
-        count += 1
+            return index
     return None
 
 

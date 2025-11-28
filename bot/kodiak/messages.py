@@ -77,16 +77,13 @@ See the Kodiak troubleshooting docs for more information: https://kodiakhq.com/d
 
 class APICallRetry(Protocol):
     @property
-    def api_name(self) -> str:
-        ...
+    def api_name(self) -> str: ...
 
     @property
-    def http_status(self) -> str:
-        ...
+    def http_status(self) -> str: ...
 
     @property
-    def response_body(self) -> str:
-        ...
+    def response_body(self) -> str: ...
 
 
 def get_markdown_for_api_call_errors(*, errors: Sequence[APICallRetry]) -> str:

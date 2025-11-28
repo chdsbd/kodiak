@@ -41,11 +41,13 @@ dev = [
     "pydantic>=1.9.1,<2",
     "types-requests>=2.27.30,<3",
     "black>=23.3.0,<24",
-    "ruff>=0.0.261,<0.0.262",
+    "ruff>=0.14.6",
 ]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py38"
+
+[tool.ruff.lint]
 select = [
     "E",
     "F",
@@ -92,12 +94,11 @@ ignore = [
 unfixable = [
     "ERA001",
 ] # we want to check ourselves before we delete commented out code.
-update-check = false
 
-[tool.ruff.pyupgrade]
+[tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 # Disallow all relative imports.
 ban-relative-imports = "all"
 
