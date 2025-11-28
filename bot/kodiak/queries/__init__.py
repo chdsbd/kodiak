@@ -155,11 +155,11 @@ def get_event_info_query(
     fetch_body_html: bool,
     disable_bot_label: Optional[str] = None,
 ) -> str:
-    issues_filter = ""
+    issue_labels = []
     if disable_bot_label:
-        issues_filter = f', labels: ["{disable_bot_label}"]'
+        issue_labels = [disable_bot_label]
     return """
-query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
+query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!, $issueLabels: [String!]!) {
   repository(owner: $owner, name: $repo) {
     branchProtectionRules(first: 100) {
       nodes {
@@ -190,7 +190,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
     squashMergeAllowed
     deleteBranchOnMerge
     isPrivate
-    issues(first: 100, states: [OPEN]%(issuesFilter)s, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    issues(first: 100, states: [OPEN], filterBy: {labels: $issueLabels}, orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         number
         labels(first: 100) {
@@ -327,7 +327,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         if requires_conversation_resolution
         else "",
         bodyHTMLQuery="bodyHTML" if fetch_body_html else "bodyHTML: body",
-        issuesFilter=issues_filter,
+        issueLabels=issue_labels,
     )
 
 
