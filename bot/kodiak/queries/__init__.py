@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fnmatch
 import json
 import urllib
 from dataclasses import dataclass, field
@@ -182,46 +181,6 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         }
       }
     }
-    rulesets(first: 100, includeParents: true) {
-      nodes {
-        id
-        name
-        target
-        enforcement
-        conditions {
-          refName {
-            include
-            exclude
-          }
-        }
-        bypassActors(first: 100) {
-          nodes {
-            actor {
-              __typename
-              ... on App {
-                databaseId
-              }
-            }
-          }
-        }
-        rules(first: 100) {
-          nodes {
-            type
-            parameters {
-              ... on RequiredStatusChecksParameters {
-                requiredStatusChecks {
-                  context
-                }
-                strictRequiredStatusChecksPolicy
-              }
-              ... on PullRequestParameters {
-                requiredReviewThreadResolution
-              }
-            }
-          }
-        }
-      }
-    }
     defaultBranchRef {
       name
     }
@@ -292,6 +251,37 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       headRefName
       headRef {
         id
+      }
+      baseRef {
+        name
+        rules(first: 100) {
+          nodes {
+            type
+            parameters {
+              ... on RequiredStatusChecksParameters {
+                requiredStatusChecks {
+                  context
+                }
+                strictRequiredStatusChecksPolicy
+              }
+              ... on PullRequestParameters {
+                requiredReviewThreadResolution
+              }
+            }
+            repositoryRuleset {
+              bypassActors(first: 100) {
+                nodes {
+                  actor {
+                    __typename
+                    ... on App {
+                      databaseId
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
       commitHistory: commits(last: 100) {
         nodes {
@@ -566,9 +556,14 @@ class RulesetRuleParameters(BaseModel):
         extra = "allow"
 
 
+class RepositoryRuleset(BaseModel):
+    bypassActors: Optional[RulesetBypassActorConnection] = None
+
+
 class RulesetRule(BaseModel):
     type: str
     parameters: Optional[RulesetRuleParameters] = None
+    repositoryRuleset: Optional[RepositoryRuleset] = None
 
     @classmethod
     def parse_obj(cls, obj: Any) -> "RulesetRule":
@@ -894,61 +889,10 @@ def get_branch_protection(
     return None
 
 
-def _normalize_ref(ref: str) -> str:
-    """Normalize ref name to include refs/heads/ prefix if needed."""
-    return ref if ref.startswith("refs/") else f"refs/heads/{ref}"
-
-
-def _matches_ref_pattern(
-    ref_name: str, pattern: str, default_branch: Optional[str] = None
-) -> bool:
-    """Check if a ref name matches a GitHub ruleset pattern."""
-    if pattern == "~DEFAULT_BRANCH":
-        return (
-            ref_name == default_branch
-            if default_branch
-            else ref_name in ("main", "master")
-        )
-    if pattern == "~ALL":
-        return True
-
-    ref_name_norm = _normalize_ref(ref_name)
-    pattern_norm = _normalize_ref(pattern)
-    return fnmatch.fnmatch(ref_name_norm, pattern_norm)
-
-
-def _ruleset_matches_ref(
-    ruleset: Ruleset, ref_name: str, default_branch: Optional[str] = None
-) -> bool:
-    """Check if ruleset applies to ref name."""
-    target = (ruleset.target or "").lower()
-    enforcement = (ruleset.enforcement or "").lower()
-    if target != "branch" or enforcement != "active":
-        return False
-
-    if not ruleset.conditions or not ruleset.conditions.refName:
-        return True
-
-    ref_cond = ruleset.conditions.refName
-    excludes = ref_cond.exclude or []
-    includes = ref_cond.include or []
-
-    for pattern in excludes:
-        if _matches_ref_pattern(ref_name, pattern, default_branch):
-            return False
-
-    if not includes:
-        return True
-
-    return any(
-        _matches_ref_pattern(ref_name, pattern, default_branch) for pattern in includes
-    )
-
-
 def get_unified_branch_protection(
     *, repo: Dict[str, Any], ref_name: str
 ) -> Optional[UnifiedBranchProtection]:
-    """Get unified branch protection from rules and rulesets."""
+    """Get unified branch protection from rules and ref rules."""
     protection: Optional[UnifiedBranchProtection] = None
 
     bp_rule = get_branch_protection(repo=repo, ref_name=ref_name)
@@ -956,28 +900,62 @@ def get_unified_branch_protection(
         protection = UnifiedBranchProtection.from_branch_protection_rule(bp_rule)
 
     try:
-        default_branch = repo.get("defaultBranchRef", {}).get("name")
-        print("")
-    except (KeyError, TypeError, AttributeError):
-        default_branch = None
-
-    try:
-        rulesets_data = repo.get("rulesets", {}).get("nodes", [])
+        pr = repo.get("pullRequest", {})
+        ref_rules_data = pr.get("baseRef", {}).get("rules", {}).get("nodes", [])
     except (KeyError, TypeError):
-        rulesets_data = []
+        ref_rules_data = []
 
-    for ruleset_dict in rulesets_data:
+    # Parse ref rules directly
+    ref_rules: List[RulesetRule] = []
+    for rule_dict in ref_rules_data:
         try:
-            ruleset = Ruleset.parse_obj(ruleset_dict)
-            if _ruleset_matches_ref(ruleset, ref_name, default_branch):
-                ruleset_prot = UnifiedBranchProtection.from_ruleset(ruleset)
-                protection = (
-                    ruleset_prot
-                    if protection is None
-                    else protection.merge(ruleset_prot)
-                )
+            rule = RulesetRule.parse_obj(rule_dict)
+            ref_rules.append(rule)
         except (ValueError, pydantic.ValidationError):
-            logger.warning("Could not parse ruleset", exc_info=True)
+            logger.warning("Could not parse ref rule", exc_info=True)
+
+    # Create unified protection from ref rules
+    if ref_rules:
+        ref_prot = UnifiedBranchProtection()
+
+        # Collect bypass actors from all referenced repository rulesets
+        all_bypass_actors = []
+        for rule in ref_rules:
+            if (
+                rule
+                and rule.repositoryRuleset
+                and rule.repositoryRuleset.bypassActors
+                and rule.repositoryRuleset.bypassActors.nodes
+            ):
+                all_bypass_actors.extend(rule.repositoryRuleset.bypassActors.nodes)
+
+        # Apply bypass actors if any were found
+        if all_bypass_actors:
+            aggregated_bypass_actors = RulesetBypassActorConnection(
+                nodes=all_bypass_actors
+            )
+            UnifiedBranchProtection._apply_bypass_actors(
+                ref_prot, aggregated_bypass_actors
+            )
+
+        for rule in ref_rules:
+            if not rule or not rule.type:
+                continue
+
+            rule_type = rule.type.lower()
+            params = rule.parameters
+
+            if rule_type == "required_status_checks":
+                UnifiedBranchProtection._apply_status_checks(ref_prot, params)
+            elif rule_type == "pull_request":
+                UnifiedBranchProtection._apply_pull_request_rules(ref_prot, params)
+            elif rule_type == "required_signatures":
+                # REQUIRED_SIGNATURES rule type means commit signatures are required
+                ref_prot.requiresCommitSignatures = True
+            elif rule_type == "required_review_thread_resolution":
+                UnifiedBranchProtection._apply_simple_rule(ref_prot, rule_type)
+
+        protection = ref_prot if protection is None else protection.merge(ref_prot)
 
     return protection
 
