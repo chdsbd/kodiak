@@ -120,3 +120,6 @@ STRIPE_PLAN_ID = os.environ["STRIPE_PLAN_ID"]
 STRIPE_ANNUAL_PLAN_ID = os.environ["STRIPE_ANNUAL_PLAN_ID"]
 STRIPE_WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
 STRIPE_PUBLISHABLE_API_KEY = os.environ["STRIPE_PUBLISHABLE_API_KEY"]
+
+# Bot username pattern for activity tracking (default: kodiak%[bot])
+KODIAK_BOT_USERNAME_PATTERN = os.environ.get("KODIAK_BOT_USERNAME_PATTERN", "kodiak%[bot]")
