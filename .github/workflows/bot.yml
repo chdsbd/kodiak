@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   pre_job:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
       paths_result: ${{ steps.skip_check.outputs.paths_result }}
@@ -22,7 +22,7 @@ jobs:
   test:
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       redis:
         image: redis:5
@@ -37,42 +37,29 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v3
-      - name: Install poetry
-        run: |
-          pipx install poetry==1.1.13
-          poetry config virtualenvs.in-project true
-      - uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version-file: "./bot/.python-version"
-          cache: poetry
-          cache-dependency-path: "./bot/poetry.lock"
+          version: "0.9.11"
       - name: Install dependencies
         working-directory: "./bot"
-        run: poetry install
+        run: uv sync --locked --all-extras --dev
       - name: Run tests
         working-directory: "bot"
         run: ./s/test
-      - name: upload code coverage
-        working-directory: bot
-        run: ./s/upload-code-cov
   lint:
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
-      - name: Install poetry
-        run: |
-          pipx install poetry==1.1.13
-          poetry config virtualenvs.in-project true
-      - uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version-file: "./bot/.python-version"
-          cache: poetry
-          cache-dependency-path: "./bot/poetry.lock"
+          version: "0.9.11"
       - name: Install dependencies
         working-directory: "./bot"
-        run: poetry install
+        run: uv sync --locked --all-extras --dev
       - name: Run lints
         working-directory: "bot"
         run: ./s/lint
