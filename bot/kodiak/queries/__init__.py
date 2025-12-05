@@ -181,9 +181,6 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         }
       }
     }
-    defaultBranchRef {
-      name
-    }
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
@@ -463,7 +460,7 @@ class EventInfoResponse:
     pull_request: PullRequest
     repository: RepoInfo
     subscription: Optional[Subscription]
-    branch_protection: Optional[UnifiedBranchProtection]
+    branch_protection: Optional[BranchProtectionRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
     bot_reviews: List[PRReview] = field(default_factory=list)
@@ -518,27 +515,6 @@ class BranchProtectionRule(BaseModel):
     pushAllowances: NodeListPushAllowance
 
 
-class RefNameConditions(BaseModel):
-    include: Optional[List[str]] = None
-    exclude: Optional[List[str]] = None
-
-
-class RulesetConditions(BaseModel):
-    refName: Optional[RefNameConditions] = None
-
-
-class RulesetBypassActorActor(BaseModel):
-    databaseId: Optional[int] = None
-
-
-class RulesetBypassActor(BaseModel):
-    actor: RulesetBypassActorActor
-
-
-class RulesetBypassActorConnection(BaseModel):
-    nodes: Optional[List[RulesetBypassActor]] = None
-
-
 class StatusCheckConfiguration(BaseModel):
     """Status check configuration item."""
 
@@ -552,193 +528,11 @@ class RulesetRuleParameters(BaseModel):
     strictRequiredStatusChecksPolicy: Optional[bool] = None
     requiredReviewThreadResolution: Optional[bool] = None
 
-    class Config:
-        extra = "allow"
-
-
-class RepositoryRuleset(BaseModel):
-    bypassActors: Optional[RulesetBypassActorConnection] = None
-
 
 class RulesetRule(BaseModel):
+    # RepositoryRuleType
     type: str
     parameters: Optional[RulesetRuleParameters] = None
-    repositoryRuleset: Optional[RepositoryRuleset] = None
-
-    @classmethod
-    def parse_obj(cls, obj: Any) -> "RulesetRule":
-        """Parse RulesetRule, handling parameters as JSON string if needed."""
-        if isinstance(obj, dict):
-            params = obj.get("parameters")
-            if isinstance(params, str):
-                try:
-                    obj = obj.copy()
-                    obj["parameters"] = json.loads(params)
-                except (json.JSONDecodeError, TypeError):
-                    logger.warning(
-                        "Failed to parse ruleset rule parameters as JSON",
-                        rule_type=obj.get("type"),
-                    )
-        return super().parse_obj(obj)
-
-
-class RulesetRuleConnection(BaseModel):
-    nodes: Optional[List[RulesetRule]] = None
-
-
-class Ruleset(BaseModel):
-    """GitHub ruleset from GraphQL API."""
-
-    id: str
-    name: str
-    target: str
-    enforcement: str
-    conditions: Optional[RulesetConditions] = None
-    bypassActors: Optional[RulesetBypassActorConnection] = None
-    rules: Optional[RulesetRuleConnection] = None
-
-
-@dataclass
-class UnifiedBranchProtection:
-    """Unified interface supporting both BranchProtectionRule and Rulesets."""
-
-    requiresStatusChecks: bool = False
-    requiredStatusCheckContexts: List[str] = field(default_factory=list)
-    requiresStrictStatusChecks: bool = False
-    requiresCommitSignatures: bool = False
-    requiresConversationResolution: Optional[bool] = None
-    restrictsPushes: bool = False
-    pushAllowances: NodeListPushAllowance = field(
-        default_factory=lambda: NodeListPushAllowance(nodes=[])
-    )
-
-    @classmethod
-    def from_branch_protection_rule(
-        cls, rule: BranchProtectionRule
-    ) -> UnifiedBranchProtection:
-        """Convert BranchProtectionRule to UnifiedBranchProtection."""
-        return cls(
-            requiresStatusChecks=rule.requiresStatusChecks,
-            requiredStatusCheckContexts=rule.requiredStatusCheckContexts,
-            requiresStrictStatusChecks=rule.requiresStrictStatusChecks,
-            requiresCommitSignatures=rule.requiresCommitSignatures,
-            requiresConversationResolution=rule.requiresConversationResolution,
-            restrictsPushes=rule.restrictsPushes,
-            pushAllowances=rule.pushAllowances,
-        )
-
-    @classmethod
-    def from_ruleset(cls, ruleset: Ruleset) -> UnifiedBranchProtection:
-        """Convert Ruleset to UnifiedBranchProtection."""
-        protection = cls()
-
-        if not ruleset.rules or not ruleset.rules.nodes:
-            return protection
-
-        for rule in ruleset.rules.nodes:
-            if not rule or not rule.type:
-                continue
-
-            rule_type = rule.type.lower()
-            params = rule.parameters
-
-            if rule_type == "required_status_checks":
-                cls._apply_status_checks(protection, params)
-            elif rule_type == "pull_request":
-                cls._apply_pull_request_rules(protection, params)
-            elif rule_type in (
-                "required_signatures",
-                "required_review_thread_resolution",
-            ):
-                cls._apply_simple_rule(protection, rule_type)
-
-        cls._apply_bypass_actors(protection, ruleset.bypassActors)
-        return protection
-
-    @staticmethod
-    def _apply_status_checks(
-        protection: UnifiedBranchProtection, params: Optional[RulesetRuleParameters]
-    ) -> None:
-        if params and params.requiredStatusChecks:
-            for check in params.requiredStatusChecks:
-                if (
-                    check.context
-                    and check.context not in protection.requiredStatusCheckContexts
-                ):
-                    protection.requiredStatusCheckContexts.append(check.context)
-
-        if params and params.strictRequiredStatusChecksPolicy is not None:
-            protection.requiresStrictStatusChecks = (
-                params.strictRequiredStatusChecksPolicy
-            )
-
-        protection.requiresStatusChecks = True
-
-    @staticmethod
-    def _apply_pull_request_rules(
-        protection: UnifiedBranchProtection, params: Optional[RulesetRuleParameters]
-    ) -> None:
-        if params and params.requiredReviewThreadResolution:
-            protection.requiresConversationResolution = True
-
-    @staticmethod
-    def _apply_simple_rule(protection: UnifiedBranchProtection, rule_type: str) -> None:
-        if rule_type == "required_signatures":
-            protection.requiresCommitSignatures = True
-        elif rule_type == "required_review_thread_resolution":
-            protection.requiresConversationResolution = True
-
-    @staticmethod
-    def _apply_bypass_actors(
-        protection: UnifiedBranchProtection,
-        bypass_actors: Optional[RulesetBypassActorConnection],
-    ) -> None:
-        if not bypass_actors or not bypass_actors.nodes:
-            return
-
-        protection.restrictsPushes = True
-        allowances = [
-            PushAllowance(actor=PushAllowanceActor(databaseId=actor.actor.databaseId))
-            for actor in bypass_actors.nodes
-            if actor and actor.actor
-        ]
-        protection.pushAllowances = NodeListPushAllowance(nodes=allowances)
-
-    def merge(self, other: UnifiedBranchProtection) -> UnifiedBranchProtection:
-        """Merge another UnifiedBranchProtection into this one (most restrictive wins)."""
-        all_contexts = list(
-            set(self.requiredStatusCheckContexts + other.requiredStatusCheckContexts)
-        )
-        conv_res = (
-            self.requiresConversationResolution
-            if self.requiresConversationResolution is not None
-            else other.requiresConversationResolution
-        )
-        if (
-            self.requiresConversationResolution is True
-            or other.requiresConversationResolution is True
-        ):
-            conv_res = True
-
-        merged = UnifiedBranchProtection(
-            requiresStatusChecks=self.requiresStatusChecks
-            or other.requiresStatusChecks
-            or bool(all_contexts),
-            requiredStatusCheckContexts=all_contexts,
-            requiresStrictStatusChecks=self.requiresStrictStatusChecks
-            or other.requiresStrictStatusChecks,
-            requiresCommitSignatures=self.requiresCommitSignatures
-            or other.requiresCommitSignatures,
-            requiresConversationResolution=conv_res,
-            restrictsPushes=self.restrictsPushes or other.restrictsPushes,
-            pushAllowances=NodeListPushAllowance(
-                nodes=self.pushAllowances.nodes + other.pushAllowances.nodes
-            ),
-        )
-        # Ensure that if we have any status check contexts, we require status checks
-        if merged.requiredStatusCheckContexts:
-            merged.requiresStatusChecks = True
-        return merged
 
 
 class PRReviewState(Enum):
@@ -887,77 +681,6 @@ def get_branch_protection(
                     logger.warning("Could not parse branch protection", exc_info=True)
                     return None
     return None
-
-
-def get_unified_branch_protection(
-    *, repo: Dict[str, Any], ref_name: str
-) -> Optional[UnifiedBranchProtection]:
-    """Get unified branch protection from rules and ref rules."""
-    protection: Optional[UnifiedBranchProtection] = None
-
-    bp_rule = get_branch_protection(repo=repo, ref_name=ref_name)
-    if bp_rule:
-        protection = UnifiedBranchProtection.from_branch_protection_rule(bp_rule)
-
-    try:
-        pr = repo.get("pullRequest", {})
-        ref_rules_data = pr.get("baseRef", {}).get("rules", {}).get("nodes", [])
-    except (KeyError, TypeError):
-        ref_rules_data = []
-
-    # Parse ref rules directly
-    ref_rules: List[RulesetRule] = []
-    for rule_dict in ref_rules_data:
-        try:
-            rule = RulesetRule.parse_obj(rule_dict)
-            ref_rules.append(rule)
-        except (ValueError, pydantic.ValidationError):
-            logger.warning("Could not parse ref rule", exc_info=True)
-
-    # Create unified protection from ref rules
-    if ref_rules:
-        ref_prot = UnifiedBranchProtection()
-
-        # Collect bypass actors from all referenced repository rulesets
-        all_bypass_actors = []
-        for rule in ref_rules:
-            if (
-                rule
-                and rule.repositoryRuleset
-                and rule.repositoryRuleset.bypassActors
-                and rule.repositoryRuleset.bypassActors.nodes
-            ):
-                all_bypass_actors.extend(rule.repositoryRuleset.bypassActors.nodes)
-
-        # Apply bypass actors if any were found
-        if all_bypass_actors:
-            aggregated_bypass_actors = RulesetBypassActorConnection(
-                nodes=all_bypass_actors
-            )
-            UnifiedBranchProtection._apply_bypass_actors(
-                ref_prot, aggregated_bypass_actors
-            )
-
-        for rule in ref_rules:
-            if not rule or not rule.type:
-                continue
-
-            rule_type = rule.type.lower()
-            params = rule.parameters
-
-            if rule_type == "required_status_checks":
-                UnifiedBranchProtection._apply_status_checks(ref_prot, params)
-            elif rule_type == "pull_request":
-                UnifiedBranchProtection._apply_pull_request_rules(ref_prot, params)
-            elif rule_type == "required_signatures":
-                # REQUIRED_SIGNATURES rule type means commit signatures are required
-                ref_prot.requiresCommitSignatures = True
-            elif rule_type == "required_review_thread_resolution":
-                UnifiedBranchProtection._apply_simple_rule(ref_prot, rule_type)
-
-        protection = ref_prot if protection is None else protection.merge(ref_prot)
-
-    return protection
 
 
 def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1438,7 +1161,7 @@ query {
         if cfg is None:
             log.info("no config found")
             return None
-        branch_protection = get_unified_branch_protection(
+        branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
 

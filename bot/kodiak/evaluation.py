@@ -39,6 +39,7 @@ from kodiak.messages import (
     get_markdown_for_push_allowance_error,
 )
 from kodiak.queries import (
+    BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Commit,
@@ -59,7 +60,6 @@ from kodiak.queries import (
     Subscription,
     SubscriptionExpired,
     TrialExpired,
-    UnifiedBranchProtection,
 )
 from kodiak.text import strip_html_comments_from_markdown
 
@@ -474,7 +474,7 @@ async def mergeable(
     config_str: str,
     config_path: str,
     pull_request: PullRequest,
-    branch_protection: Optional[UnifiedBranchProtection],
+    branch_protection: Optional[BranchProtectionRule],
     review_requests: List[PRReviewRequest],
     bot_reviews: List[PRReview],
     contexts: List[StatusContext],
