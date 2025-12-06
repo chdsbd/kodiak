@@ -73,7 +73,7 @@ def test_sentry_log_failure(mocker: Any, level: SentryLevel) -> None:
     sentry_event_data = event_data.copy()
     processor = SentryProcessor(level=getattr(logging, level.upper()))
     try:
-        1 / 0
+        1 / 0  # noqa: B018
     except ZeroDivisionError:
         processor(None, level, event_data)
 

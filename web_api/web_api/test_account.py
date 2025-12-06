@@ -233,7 +233,7 @@ def test_get_subscription_blocker_seats_exceeded_with_trial(
 def create_account(
     trial_expiration: Optional[datetime.datetime] = make_aware(
         datetime.datetime(1900, 2, 13)  # noqa: DTZ001
-    )
+    ),
 ) -> Account:
     return Account.objects.create(
         github_installation_id=1066615,
@@ -312,9 +312,9 @@ def test_account_can_subscribe() -> None:
 
     GitHub user accounts and accounts marked as exempt cannot subscribe.
     """
-    assert (
-        Account(github_account_type=AccountType.user).can_subscribe() is False
-    ), "user accounts cannot subscribe"
+    assert Account(github_account_type=AccountType.user).can_subscribe() is False, (
+        "user accounts cannot subscribe"
+    )
     assert (
         Account(github_account_type=AccountType.organization).can_subscribe() is True
     ), "organization accounts can subscribe"

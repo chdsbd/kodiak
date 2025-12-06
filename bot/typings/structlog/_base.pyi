@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from typing import Any, TypeVar
 
-_T = TypeVar("_T", bound="BoundLoggerBase")
+_T = TypeVar("_T", bound=BoundLoggerBase)
 
 class BoundLoggerBase:
     def __init__(self, logger: Any, processors: Any, context: Any) -> None: ...

@@ -15,13 +15,11 @@ class AuthedHttpRequest(HttpRequest):
 
 
 class RequestHandler1(Protocol):
-    def __call__(self, request: AuthedHttpRequest) -> HttpResponse:
-        ...
+    def __call__(self, request: AuthedHttpRequest) -> HttpResponse: ...
 
 
 class RequestHandler2(Protocol):
-    def __call__(self, request: AuthedHttpRequest, __arg1: Any) -> HttpResponse:
-        ...
+    def __call__(self, request: AuthedHttpRequest, __arg1: Any) -> HttpResponse: ...
 
 
 RequestHandler = Union[RequestHandler1, RequestHandler2]

@@ -3,11 +3,11 @@ set -ex
 
 # format code
 if [[ $CI ]]; then
-    ./.venv/bin/black --check .
-    ./.venv/bin/ruff .
+    ./.venv/bin/ruff format --check .
+    ./.venv/bin/ruff check .
 else
-    ./.venv/bin/black .
-    ./.venv/bin/ruff . --fix
+    ./.venv/bin/ruff format .
+    ./.venv/bin/ruff check --fix .
 fi
 
 # type check code

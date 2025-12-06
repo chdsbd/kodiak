@@ -1,6 +1,7 @@
 """
 Accept webhooks from GitHub and add them to the Redis queues.
 """
+
 from __future__ import annotations
 
 import hashlib

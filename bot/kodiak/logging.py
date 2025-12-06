@@ -115,7 +115,7 @@ def add_request_info_processor(
     Structlog processor for adding more information to log events that provide
     `res` with a requests Response object.
     """
-    response = event_dict.get("res", None)
+    response = event_dict.get("res")
     if isinstance(response, Response):
         event_dict["response_content"] = cast(Any, response)._content
         event_dict["response_status_code"] = response.status_code
@@ -126,7 +126,6 @@ def add_request_info_processor(
 
 
 def configure_logging() -> None:
-
     # for info on logging formats see: https://docs.python.org/3/library/logging.html#logrecord-attributes
     logging.basicConfig(
         stream=sys.stdout,

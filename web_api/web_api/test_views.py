@@ -267,9 +267,9 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
 
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
-    assert (
-        res.json()["accountCanSubscribe"] is False
-    ), "user accounts should not see subscription options"
+    assert res.json()["accountCanSubscribe"] is False, (
+        "user accounts should not see subscription options"
+    )
     today_str = today.strftime("%Y-%m-%d")
     assert res.json()["activeUsers"] == [
         {
@@ -282,17 +282,17 @@ def test_usage_billing(authed_client: Client, user: User, other_user: User) -> N
             "hasSeatLicense": False,
         }
     ]
-    assert (
-        res.json()["subscriptionExemption"] is None
-    ), "we should always return this field"
+    assert res.json()["subscriptionExemption"] is None, (
+        "we should always return this field"
+    )
 
     user_account.github_account_type = AccountType.organization
     user_account.save()
     res = authed_client.get(f"/v1/t/{user_account.id}/usage_billing")
     assert res.status_code == 200
-    assert (
-        res.json()["accountCanSubscribe"] is True
-    ), "organizations should see subscription options"
+    assert res.json()["accountCanSubscribe"] is True, (
+        "organizations should see subscription options"
+    )
 
 
 @pytest.mark.django_db
@@ -423,9 +423,9 @@ def test_usage_billing_subscription_started(
     stripe_customer_information.save()
     res = authed_client.get(f"/v1/t/{account.id}/usage_billing")
     assert res.status_code == 200
-    assert (
-        res.json()["subscription"]["cost"]["currency"] == "usd"
-    ), "should default to usd if we cannot find a currency"
+    assert res.json()["subscription"]["cost"]["currency"] == "usd", (
+        "should default to usd if we cannot find a currency"
+    )
     assert res.json()["subscription"]["cost"]["planInterval"] == "year"
 
     stripe_customer_information.customer_name = "Acme-corp"
@@ -706,7 +706,7 @@ def test_update_subscription(
 
 
 def create_stripe_subscription(
-    interval: Literal["month", "year"] = "month"
+    interval: Literal["month", "year"] = "month",
 ) -> stripe.Subscription:
     return stripe.Subscription.construct_from(
         {
@@ -808,9 +808,9 @@ def test_update_subscription_missing_customer(
         stripe_customer_id="cus_Ged32s2xnx12",
     )
     AccountMembership.objects.create(account=account, user=user, role="admin")
-    assert (
-        StripeCustomerInformation.objects.count() == 0
-    ), "we shouldn't have an associated subscription for this test."
+    assert StripeCustomerInformation.objects.count() == 0, (
+        "we shouldn't have an associated subscription for this test."
+    )
     assert stripe_subscription_retrieve.call_count == 0
     assert stripe_subscription_modify.call_count == 0
     res = authed_client.post(
@@ -838,9 +838,9 @@ def test_update_subscription_permissions(
         f"/v1/t/{account.id}/update_subscription",
         payload,
     )
-    assert (
-        res.status_code == 422
-    ), "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
+    assert res.status_code == 422, (
+        "we get a 422 because the account doesn't have a corresponding Stripe model. This is okay."
+    )
 
     account.limit_billing_access_to_owners = True
     account.save()
@@ -1670,9 +1670,9 @@ def test_start_trial(
     assert account.trial_start is None
     assert account.trial_expiration is None
     assert account.trial_started_by is None
-    assert (
-        account.trial_expired() is False
-    ), "when a trial is inactive, it shouldn't have expired."
+    assert account.trial_expired() is False, (
+        "when a trial is inactive, it shouldn't have expired."
+    )
     res = authed_client.post(
         f"/v1/t/{account.id}/start_trial", {"billingEmail": "b.lowe@example.com"}
     )
@@ -1682,9 +1682,9 @@ def test_start_trial(
     assert account.trial_start is not None
     assert (
         account.trial_start - account.trial_expiration
-    ).total_seconds() - datetime.timedelta(
-        days=30
-    ).total_seconds() < 60 * 60, "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
+    ).total_seconds() - datetime.timedelta(days=30).total_seconds() < 60 * 60, (
+        "times should be within an hour of each other. This should hopefully avoid flakiness around dates."
+    )
     assert account.trial_started_by == user
     assert account.trial_expired() is False
     assert account.trial_email == "b.lowe@example.com"

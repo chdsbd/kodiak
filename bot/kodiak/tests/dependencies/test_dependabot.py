@@ -1,6 +1,7 @@
 """
 Tests for dependabot PRs.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 import pytest
 
@@ -25,11 +25,11 @@ def create_commit(
 
 
 class FakeThottler:
-    async def __aenter__(self) -> None:
-        ...
+    async def __aenter__(self) -> None: ...
 
-    async def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        ...
+    async def __aexit__(
+        self, exc_type: object, exc_value: object, traceback: object
+    ) -> None: ...
 
 
 def redis_running() -> bool:
