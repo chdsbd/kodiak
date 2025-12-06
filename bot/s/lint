@@ -4,7 +4,7 @@ set -ex
 # format code
 if [[ $CI ]]; then
     ./.venv/bin/ruff format --check
-    ./.venv/bin/ruff .
+    ./.venv/bin/ruff check .
 else
     ./.venv/bin/ruff format
     ./.venv/bin/ruff check --fix .
