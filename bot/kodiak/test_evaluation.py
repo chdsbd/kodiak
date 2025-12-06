@@ -28,7 +28,9 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAllowedMergeMethods,
     PullRequestAuthor,
+    PullRequestParameters,
     PullRequestState,
     RepoInfo,
     ReviewThreadConnection,
@@ -327,6 +329,7 @@ class MergeableType(Protocol):
         config_path: str = ...,
         pull_request: PullRequest = ...,
         branch_protection: Optional[BranchProtectionRule] = ...,
+        ruleset_rules: List[RulesetRule] = ...,
         review_requests: List[PRReviewRequest] = ...,
         bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
@@ -479,6 +482,33 @@ async def test_mergeable_missing_branch_protection() -> None:
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_missing_branch_protection_with_rulesets() -> None:
+    """
+    We don't need branch protection settings if rulesets are in use.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        branch_protection=None,
+        ruleset_rules=[
+            RulesetRule(
+                type="PULL_REQUEST",
+                parameters=PullRequestParameters(
+                    allowedMergeMethods=[PullRequestAllowedMergeMethods.SQUASH],
+                    requireCodeOwnerReview=False,
+                    requiredReviewThreadResolution=False,
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is True
 
 
 async def test_mergeable_missing_automerge_label() -> None:

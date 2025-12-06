@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import urllib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -593,13 +592,12 @@ class RepositoryRuleset(BaseModel):
 
 class RulesetRule(BaseModel):
     type: str
-    parameters: Optional[
-        Union[
-            MergeQueueParameters,
-            PullRequestParameters,
-            RequiredStatusChecksParameters,
-            UpdateParameters,
-        ]
+    parameters: Union[
+        MergeQueueParameters,
+        PullRequestParameters,
+        RequiredStatusChecksParameters,
+        UpdateParameters,
+        None,
     ] = None
     repositoryRuleset: Optional[RepositoryRuleset] = None
 
