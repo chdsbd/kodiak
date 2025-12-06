@@ -3,7 +3,7 @@ name = "kodiak"
 version = "0.1.0"
 description = ""
 authors = [{ name = "Christopher Dignam", email = "chris@dignam.xyz" }]
-requires-python = ">=3.7,<4"
+requires-python = ">=3.8,<4"
 dependencies = [
     "uvicorn>=0.15.0,<0.16",
     "toml>=0.10.0,<0.11",
@@ -30,24 +30,18 @@ kodiak = "kodiak.cli:cli"
 
 [dependency-groups]
 dev = [
-    "black>=21.9b0,<22",
     "mypy>=0.960,<0.961",
     "ipdb>=0.13.9,<0.14",
     "pytest-mock==3.3.1",
     "typing_extensions>=3.7,<4",
-    "pylint>=2.3,<3",
-    "flake8==3.8.4",
-    "flake8-pie==0.7.1",
-    "isort>=4.3,<5",
     "pytest-cov>=2.10,<3",
-    "flake8-pyi>=20.10,<21",
     "types-requests>=2.28.0,<3",
     "types-toml>=0.10.7,<0.11",
-    "flake8-tidy-imports>=4.8.0,<5",
     "pytest-asyncio==0.20.1",
     "pytest>=7.2.0,<8",
     "types-redis>=4.4.0,<5",
     "pytest-env>=0.8.1,<0.9",
+    "ruff>=0.14.6",
 ]
 
 
@@ -126,6 +120,59 @@ init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "PIE",    # flake8-pie
+    "TID",    # flake8-tidy-imports
+    "PYI",    # flake8-pyi
+    "TID252", # banned imports
+    "I001",   # unsorted imports
+    "T20",    # flake8-print
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "N",      # pep8-naming
+    "BLE",    # flake8-blind-except
+    "B",      # flake8-bugbear
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "DTZ",    # flake8-datetimez
+    "ERA",    # eradicate
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line length is handled by black
+    "ARG001", # pytest fixtures mess with this
+    "ARG002", # sometimes parent classes require params
+    "N806",   # django migrations violate this a lot
+    "B008",   # type.Argument violates this
+    "N815",   # we mix and match casing in serializers
+
+    "N818", # some exceptions have bad names
+    "PYI034", # Our mypy version doesn't support typing.Self.
+    "PYI019", # Our mypy version doesn't support typing.Self.
+
+    "UP045", # may lead to runtime errors using libraries that rely on runtime type annotations, like Pydantic, on Python versions prior to Python 3.10
+    # style
+    "C408", # todo. fix this by rewriting dict() calls as literals.
+    "UP006", # todo. fix this by rewriting List[] as list[] literals.
+    "UP007" # todo. fix this by rewriting Union[] as X | Y.
+]
+unfixable = [
+    "ERA001",
+] # we want to check ourselves before we delete commented out code.
+
+
+[tool.ruff.lint.isort]
+force-wrap-aliases = true
+combine-as-imports = true
 
 [build-system]
 requires = ["hatchling"]

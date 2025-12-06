@@ -1,9 +1,7 @@
 import asyncio
 import time
 from collections import defaultdict, deque
-from typing import Any, Mapping
-
-from typing_extensions import Deque
+from typing import Deque, Mapping
 
 
 class Throttler:
@@ -62,7 +60,7 @@ class Throttler:
     async def __aenter__(self) -> None:
         await self.acquire()
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
         pass
 
 

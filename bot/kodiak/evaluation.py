@@ -70,7 +70,7 @@ KODIAK_LOGIN = app_config.GITHUB_APP_NAME
 logger = structlog.get_logger()
 
 
-def get_body_content(
+def get_body_content(  # noqa: RET503
     *,
     body_type: BodyText,
     strip_html_comments: bool,
@@ -207,20 +207,21 @@ def get_merge_body(
         MergeBodyStyle.pull_request_body,
         MergeBodyStyle.empty,
     ):
-
         # we share coauthor logic between include_pull_request_author and
         # include_coauthors.
         coauthors = []  # type: List[PullRequestCommitUser]
-        if config.merge.message.include_pull_request_author:
-            if pull_request.author is not None:
-                coauthors.append(
-                    PullRequestCommitUser(
-                        login=pull_request.author.login,
-                        databaseId=pull_request.author.databaseId,
-                        name=pull_request.author.name,
-                        type=pull_request.author.type,
-                    )
+        if (
+            config.merge.message.include_pull_request_author
+            and pull_request.author is not None
+        ):
+            coauthors.append(
+                PullRequestCommitUser(
+                    login=pull_request.author.login,
+                    databaseId=pull_request.author.databaseId,
+                    name=pull_request.author.name,
+                    type=pull_request.author.type,
                 )
+            )
         if config.merge.message.include_coauthors:
             for commit in commits:
                 if (
@@ -281,54 +282,40 @@ def deduplicate_check_runs(check_runs: Iterable[CheckRun]) -> Iterable[CheckRun]
 
 
 class PRAPI(Protocol):
-    async def dequeue(self) -> None:
-        ...
+    async def dequeue(self) -> None: ...
 
-    async def requeue(self) -> None:
-        ...
+    async def requeue(self) -> None: ...
 
     async def set_status(
         self, msg: str, *, markdown_content: Optional[str] = None
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    async def pull_requests_for_ref(self, ref: str) -> Optional[int]:
-        ...
+    async def pull_requests_for_ref(self, ref: str) -> Optional[int]: ...
 
-    async def delete_branch(self, branch_name: str) -> None:
-        ...
+    async def delete_branch(self, branch_name: str) -> None: ...
 
-    async def remove_label(self, label: str) -> None:
-        ...
+    async def remove_label(self, label: str) -> None: ...
 
-    async def add_label(self, label: str) -> None:
-        ...
+    async def add_label(self, label: str) -> None: ...
 
-    async def create_comment(self, body: str) -> None:
-        ...
+    async def create_comment(self, body: str) -> None: ...
 
-    async def trigger_test_commit(self) -> None:
-        ...
+    async def trigger_test_commit(self) -> None: ...
 
     async def merge(
         self,
         merge_method: str,
         commit_title: Optional[str],
         commit_message: Optional[str],
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    async def update_ref(self, *, ref: str, sha: str) -> None:
-        ...
+    async def update_ref(self, *, ref: str, sha: str) -> None: ...
 
-    async def queue_for_merge(self, *, first: bool) -> Optional[int]:
-        ...
+    async def queue_for_merge(self, *, first: bool) -> Optional[int]: ...
 
-    async def update_branch(self) -> None:
-        ...
+    async def update_branch(self) -> None: ...
 
-    async def approve_pull_request(self) -> None:
-        ...
+    async def approve_pull_request(self) -> None: ...
 
 
 async def cfg_err(
@@ -434,7 +421,6 @@ def get_merge_method(
     labels: List[str],
     log: structlog.BoundLogger,
 ) -> MergeMethod:
-
     # parse merge.method override label
     # example: `kodiak: merge.method = "rebase"`
     for label in labels:

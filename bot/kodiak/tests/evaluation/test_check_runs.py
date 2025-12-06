@@ -1,6 +1,7 @@
 """
 Tests for flows that depend on status checks or check_runs.
 """
+
 import pytest
 
 from kodiak.errors import PollForever, RetryForSkippableChecks
@@ -18,7 +19,9 @@ from kodiak.test_evaluation import (
 )
 
 
-async def test_mergeable_missing_requires_status_checks_failing_status_context() -> None:
+async def test_mergeable_missing_requires_status_checks_failing_status_context() -> (
+    None
+):
     """
     If branch protection is enabled with requiresStatusChecks but a required check is failing we should not merge.
     """
@@ -452,9 +455,9 @@ async def test_mergeable_update_autoupdate_label() -> None:
         branch_protection=branch_protection,
         check_runs=[check_run],
     )
-    assert (
-        api.update_branch.call_count == 0
-    ), "we shouldn't update when update.autoupdate_label isn't available on the PR"
+    assert api.update_branch.call_count == 0, (
+        "we shouldn't update when update.autoupdate_label isn't available on the PR"
+    )
 
     # PR should be updated when set on the PR
     pull_request.labels = [config.update.autoupdate_label]
@@ -516,7 +519,9 @@ async def test_mergeable_update_always_require_automerge_label_missing_label() -
     assert api.merge.call_count == 0
 
 
-async def test_mergeable_update_always_no_require_automerge_label_missing_label() -> None:
+async def test_mergeable_update_always_no_require_automerge_label_missing_label() -> (
+    None
+):
     """
     Kodiak should update branch if update.require_automerge_label is True and we're missing the automerge label.
     """

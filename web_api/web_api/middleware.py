@@ -74,7 +74,7 @@ class HealthCheckMiddleware:
         being present.
         """
         try:
-            from django.db import connections  # pylint: disable=import-outside-toplevel
+            from django.db import connections
 
             for name in connections:
                 cursor = connections[name].cursor()

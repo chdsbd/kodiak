@@ -606,11 +606,11 @@ def stripe_webhook_handler(request: HttpRequest) -> HttpResponse:
         if not invoice.paid:
             logger.warning("invoice not paid %s", event)
             return HttpResponse(status=200)
-        stripe_customer: Optional[
-            StripeCustomerInformation
-        ] = StripeCustomerInformation.objects.filter(
-            customer_id=invoice.customer
-        ).first()
+        stripe_customer: Optional[StripeCustomerInformation] = (
+            StripeCustomerInformation.objects.filter(
+                customer_id=invoice.customer
+            ).first()
+        )
         if stripe_customer is None:
             logger.warning(
                 "expected invoice to have corresponding StripeCustomerInformation"

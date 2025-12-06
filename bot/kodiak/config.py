@@ -162,7 +162,7 @@ class V1(BaseModel):
     disable_bot_label: str = "kodiak:disabled"
 
     @validator("version", pre=True, always=True)
-    def correct_version(cls, v: int) -> int:
+    def correct_version(cls, v: int) -> int:  # noqa: N805
         if v != 1:
             raise InvalidVersion("Version must be `1`")
         return v

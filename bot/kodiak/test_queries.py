@@ -268,6 +268,7 @@ EXPECTED_ERRORS = [
     ("kodiak.queries.commits", 40, "problem parsing commit authors"),
 ]
 
+
 # TODO: serialize EventInfoResponse to JSON to parametrize test
 @requires_redis
 async def test_get_event_info_blocked(
@@ -434,7 +435,7 @@ PERMISSION_OK_READ_USER_RESPONSE = json.dumps(
 def create_fake_redis_reply(res: Dict[bytes, bytes]) -> Any:
     class FakeRedis:
         @staticmethod
-        async def hgetall(key: bytes) -> Any:
+        async def hgetall(key: bytes) -> Any:  # noqa: ARG004
             return res
 
     return FakeRedis

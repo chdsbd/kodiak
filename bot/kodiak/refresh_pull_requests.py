@@ -8,6 +8,7 @@ the private PRs associated with that installation. We queue webhook events like
 a GitHub webhook would for each pull request to trigger the bot to reevaluate
 the mergeability.
 """
+
 from __future__ import annotations
 
 import asyncio
