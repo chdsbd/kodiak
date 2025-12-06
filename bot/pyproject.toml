@@ -3,7 +3,7 @@ name = "kodiak"
 version = "0.1.0"
 description = ""
 authors = [{ name = "Christopher Dignam", email = "chris@dignam.xyz" }]
-requires-python = ">=3.7,<4"
+requires-python = ">=3.8,<4"
 dependencies = [
     "uvicorn>=0.15.0,<0.16",
     "toml>=0.10.0,<0.11",
@@ -156,6 +156,8 @@ ignore = [
     "N815",   # we mix and match casing in serializers
 
     "N818", # some exceptions have bad names
+    "PYI034", # Our mypy version doesn't support typing.Self.
+    "PYI019", # Our mypy version doesn't support typing.Self.
 
     "UP045", # may lead to runtime errors using libraries that rely on runtime type annotations, like Pydantic, on Python versions prior to Python 3.10
     # style

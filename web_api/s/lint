@@ -7,7 +7,7 @@ if [[ $CI ]]; then
     ./.venv/bin/ruff .
 else
     ./.venv/bin/ruff format .
-    ./.venv/bin/ruff . --fix
+    ./.venv/bin/ruff check --fix .
 fi
 
 # type check code

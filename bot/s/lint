@@ -4,12 +4,11 @@ set -ex
 # format code
 if [[ $CI ]]; then
     ./.venv/bin/ruff format --check
+    ./.venv/bin/ruff .
 else
     ./.venv/bin/ruff format
+    ./.venv/bin/ruff check --fix .
 fi
 
 # type check code
 ./.venv/bin/mypy .
-
-# lint
-./.venv/bin/ruff

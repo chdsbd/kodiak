@@ -2,8 +2,11 @@
   "python.defaultInterpreterPath": ".venv/bin/python",
   "python.formatting.provider": "ruff",
   "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": true
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
   },
   "python.linting.mypyEnabled": true,
   "python.testing.pytestArgs": ["kodiak"],

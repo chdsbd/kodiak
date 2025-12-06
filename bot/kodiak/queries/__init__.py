@@ -11,7 +11,6 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
-    Self,
     TypedDict,
     Union,
     cast,
@@ -864,7 +863,7 @@ class Client:
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> Client:
         self.throttler = get_thottler_for_installation(
             installation_id=self.installation_id
         )

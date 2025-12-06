@@ -8,7 +8,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Self,
     Type,
     cast,
 )
@@ -186,7 +185,7 @@ class FakeClientProtocol(Protocol):
 
     def __init__(self, *args: object, **kwargs: object) -> None: ...
 
-    async def __aenter__(self) -> Self: ...
+    async def __aenter__(self) -> FakeClientProtocol: ...
 
     async def __aexit__(
         self, exc_type: object, exc_value: object, traceback: object
@@ -204,7 +203,7 @@ def create_client() -> Type[FakeClientProtocol]:
         def __init__(self, *args: object, **kwargs: object) -> None:
             pass
 
-        async def __aenter__(self) -> Self:
+        async def __aenter__(self) -> FakeClient:
             return self
 
         async def __aexit__(
