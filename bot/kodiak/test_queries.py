@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, Iterable, Iterator, List, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Iterable, Iterator, cast
 
 import pytest
 from pytest_mock import MockFixture
@@ -13,6 +13,7 @@ from kodiak import app_config as conf
 from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
+    BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Client,
@@ -34,14 +35,11 @@ from kodiak.queries import (
     RepoInfo,
     ReviewThread,
     ReviewThreadConnection,
-    Ruleset,
     SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
-    UnifiedBranchProtection,
     get_commits,
-    get_unified_branch_protection,
 )
 from kodiak.queries.commits import CommitConnection, GitActor
 from kodiak.redis_client import redis_bot
@@ -108,383 +106,6 @@ async def test_get_config_for_ref_dot_github(
     assert isinstance(res.parsed, V1) and res.parsed.merge.method == MergeMethod.rebase
 
 
-def _make_ruleset_node(
-    *,
-    include: Optional[List[str]] = None,
-    exclude: Optional[List[str]] = None,
-    rules: Optional[List[Dict[str, Any]]] = None,
-    target: str = "BRANCH",
-    enforcement: str = "ACTIVE",
-) -> Dict[str, Any]:
-    conditions: Optional[Dict[str, Dict[str, Optional[List[str]]]]] = None
-    if include is not None or exclude is not None:
-        conditions = {"refName": {"include": include, "exclude": exclude}}
-    return dict(
-        id="ruleset-id",
-        name="test-ruleset",
-        target=target,
-        enforcement=enforcement,
-        conditions=conditions,
-        rules=dict(nodes=rules or []),
-    )
-
-
-def _make_repo(
-    branch_rules: Optional[List[Dict[str, Any]]] = None,
-    ref_rules: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
-    return dict(
-        branchProtectionRules=dict(nodes=branch_rules or []),
-        pullRequest=dict(baseRef=dict(rules=dict(nodes=ref_rules or []))),
-    )
-
-
-def test_get_unified_branch_protection_merges_branch_rule_and_ruleset() -> None:
-    branch_rule = dict(
-        matchingRefs=dict(nodes=[dict(name="main")]),
-        requiresStatusChecks=True,
-        requiredStatusCheckContexts=["ci/legacy"],
-        requiresStrictStatusChecks=False,
-        requiresCommitSignatures=False,
-        requiresConversationResolution=False,
-        restrictsPushes=False,
-        pushAllowances=dict(nodes=[]),
-    )
-    repo = _make_repo(
-        branch_rules=[branch_rule],
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/ruleset")],
-                    strictRequiredStatusChecksPolicy=True,
-                ),
-            )
-        ],
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert set(protection.requiredStatusCheckContexts) == {"ci/legacy", "ci/ruleset"}
-    assert protection.requiresStrictStatusChecks is True
-
-
-def test_get_unified_branch_protection_ruleset_without_conditions() -> None:
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/ruleset")],
-                    strictRequiredStatusChecksPolicy=True,
-                ),
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiresStatusChecks is True
-    assert protection.requiresStrictStatusChecks is True
-    assert protection.requiredStatusCheckContexts == ["ci/ruleset"]
-
-
-def test_get_unified_branch_protection_ref_rules() -> None:
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/ref")],
-                    strictRequiredStatusChecksPolicy=False,
-                ),
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiredStatusCheckContexts == ["ci/ref"]
-
-
-def test_get_unified_branch_protection_ref_rules_commit_signatures() -> None:
-    """Test commit_signatures rule type with signatureRequirement parameter."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_signatures",
-                parameters=None,  # No parameters for signature rules
-                repositoryRuleset=dict(bypassActors=dict(nodes=[])),
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiresCommitSignatures is True
-
-
-def test_get_unified_branch_protection_ref_rules_multiple_bypass_actors() -> None:
-    """Test aggregation of bypass actors from multiple ref rules."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/test")],
-                    strictRequiredStatusChecksPolicy=False,
-                ),
-                repositoryRuleset=dict(
-                    bypassActors=dict(
-                        nodes=[dict(actor=dict(__typename="App", databaseId="123"))]
-                    )
-                ),
-            ),
-            dict(
-                type="pull_request",
-                parameters=dict(requiredReviewThreadResolution=False),
-                repositoryRuleset=dict(
-                    bypassActors=dict(
-                        nodes=[dict(actor=dict(__typename="App", databaseId="456"))]
-                    )
-                ),
-            ),
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.restrictsPushes is True
-    assert protection.pushAllowances is not None
-    assert len(protection.pushAllowances.nodes) == 2
-    actor_ids = {str(node.actor.databaseId) for node in protection.pushAllowances.nodes}
-    assert actor_ids == {"123", "456"}
-
-
-def test_get_unified_branch_protection_ref_rules_malformed() -> None:
-    """Test handling of malformed ref rules."""
-    # Create repo with both valid branch protection and malformed ref rules
-    repo = _make_repo(
-        branch_rules=[
-            dict(
-                matchingRefs=dict(nodes=[dict(name="main")]),
-                requiresStatusChecks=False,
-                requiredStatusCheckContexts=[],
-                requiresStrictStatusChecks=False,
-                requiresCommitSignatures=False,
-                requiresConversationResolution=False,
-                restrictsPushes=False,
-                pushAllowances=dict(nodes=[]),
-            )
-        ],
-        ref_rules=[dict(invalid_field="value")],  # Missing required fields
-    )
-
-    # Should not crash, should log warning and return branch protection
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    # Should return the valid branch protection
-    assert protection.requiresStatusChecks is False
-
-
-def test_get_unified_branch_protection_ref_rules_unknown_type() -> None:
-    """Test handling of unknown rule types."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="unknown_rule_type",
-                parameters=dict(some_param="value"),
-                repositoryRuleset=dict(bypassActors=dict(nodes=[])),
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    # Unknown rule should be ignored, no crash
-    assert protection is not None
-    assert protection.requiresStatusChecks is False
-    assert protection.requiresCommitSignatures is False
-
-
-def test_get_unified_branch_protection_ref_rules_no_repository_ruleset() -> None:
-    """Test ref rules without repositoryRuleset (should still work for basic rules)."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/test")],
-                    strictRequiredStatusChecksPolicy=False,
-                ),
-                # No repositoryRuleset - should still work
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiredStatusCheckContexts == ["ci/test"]
-    assert protection.restrictsPushes is False  # No bypass actors
-
-
-def test_get_unified_branch_protection_ref_rules_conflicting_requirements() -> None:
-    """Test how conflicting requirements from multiple ref rules are resolved."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/test")],
-                    strictRequiredStatusChecksPolicy=False,
-                ),
-                repositoryRuleset=dict(bypassActors=dict(nodes=[])),
-            ),
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/lint")],
-                    strictRequiredStatusChecksPolicy=True,  # Conflicts with False above
-                ),
-                repositoryRuleset=dict(bypassActors=dict(nodes=[])),
-            ),
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    # Should merge: union contexts, strict=True wins (OR logic)
-    assert set(protection.requiredStatusCheckContexts) == {"ci/test", "ci/lint"}
-    assert protection.requiresStrictStatusChecks is True
-
-
-def test_unified_branch_protection_ruleset_sets_signatures_and_conversation() -> None:
-    ruleset = Ruleset.parse_obj(
-        _make_ruleset_node(
-            rules=[
-                dict(
-                    type="required_signatures",
-                    parameters={"require_signed_commits": True},
-                ),
-                dict(
-                    type="required_review_thread_resolution",
-                    parameters={"required_review_thread_resolution": True},
-                ),
-            ]
-        )
-    )
-    protection = UnifiedBranchProtection.from_ruleset(ruleset)
-
-    assert protection.requiresCommitSignatures is True
-    assert protection.requiresConversationResolution is True
-
-
-def test_unified_branch_protection_pull_request_rule_type() -> None:
-    """Test that pull_request rule type with requiredReviewThreadResolution works."""
-    ruleset = Ruleset.parse_obj(
-        _make_ruleset_node(
-            rules=[
-                dict(
-                    type="pull_request",
-                    parameters={"requiredReviewThreadResolution": True},
-                ),
-            ]
-        )
-    )
-    protection = UnifiedBranchProtection.from_ruleset(ruleset)
-
-    assert protection.requiresConversationResolution is True
-
-
-def test_unified_branch_protection_realistic_ruleset() -> None:
-    """Test a realistic ruleset configuration with multiple rule types."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="pull_request",
-                parameters={"requiredReviewThreadResolution": True},
-            ),
-            dict(
-                type="required_status_checks",
-                parameters={
-                    "strictRequiredStatusChecksPolicy": True,
-                    "requiredStatusChecks": [
-                        dict(context="ci/test"),
-                        dict(context="ci/lint"),
-                    ],
-                },
-            ),
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiresStatusChecks is True
-    assert set(protection.requiredStatusCheckContexts) == {"ci/test", "ci/lint"}
-    assert protection.requiresStrictStatusChecks is True
-    assert protection.requiresConversationResolution is True
-
-
-def test_unified_branch_protection_bypass_actors() -> None:
-    """Test that bypass actors are correctly mapped to push allowances."""
-    ruleset_with_bypass = dict(
-        id="ruleset-id",
-        name="test-ruleset",
-        target="BRANCH",
-        enforcement="ACTIVE",
-        conditions=None,
-        bypassActors=dict(
-            nodes=[
-                dict(actor=dict(databaseId=12345)),
-                dict(actor=dict(databaseId=67890)),
-            ]
-        ),
-        rules=dict(
-            nodes=[
-                dict(
-                    type="required_status_checks",
-                    parameters=dict(
-                        requiredStatusChecks=[dict(context="ci/test")],
-                        strictRequiredStatusChecksPolicy=False,
-                    ),
-                )
-            ]
-        ),
-    )
-
-    ruleset = Ruleset.parse_obj(ruleset_with_bypass)
-    protection = UnifiedBranchProtection.from_ruleset(ruleset)
-
-    assert protection.restrictsPushes is True
-    assert protection.pushAllowances is not None
-    assert len(protection.pushAllowances.nodes) == 2
-    assert protection.pushAllowances.nodes[0].actor.databaseId == 12345
-    assert protection.pushAllowances.nodes[1].actor.databaseId == 67890
-
-
-def test_unified_branch_protection_default_branch_pattern() -> None:
-    """Test that ~DEFAULT_BRANCH pattern matches the actual default branch."""
-    repo = _make_repo(
-        ref_rules=[
-            dict(
-                type="required_status_checks",
-                parameters=dict(
-                    requiredStatusChecks=[dict(context="ci/ref")],
-                    strictRequiredStatusChecksPolicy=False,
-                ),
-            )
-        ]
-    )
-
-    protection = get_unified_branch_protection(repo=repo, ref_name="develop")
-    assert protection is not None
-    assert protection.requiredStatusCheckContexts == ["ci/ref"]
-
-    # Ref rules apply to any ref since they're attached to the baseRef
-    protection = get_unified_branch_protection(repo=repo, ref_name="main")
-    assert protection is not None
-    assert protection.requiredStatusCheckContexts == ["ci/ref"]
-
-
 @pytest.fixture
 def blocked_response() -> Dict[str, Any]:
     return cast(
@@ -536,7 +157,7 @@ def block_event() -> EventInfoResponse:
         delete_branch_on_merge=True,
         is_private=True,
     )
-    branch_protection = UnifiedBranchProtection(
+    branch_protection = BranchProtectionRule(
         requiresStatusChecks=True,
         requiredStatusCheckContexts=[
             "ci/circleci: backend_lint",
@@ -572,6 +193,7 @@ method = "squash"
             account_id="D1606A79-A1A1-4550-BA7B-C9ED0D792B1E", subscription_blocker=None
         ),
         branch_protection=branch_protection,
+        ruleset_rules=[],
         review_requests=[
             PRReviewRequest(name="ghost"),
             PRReviewRequest(name="ghost-team"),
@@ -616,7 +238,7 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
-async def setup_redis(github_installation_id: str) -> AsyncIterator[None]:
+async def setup_redis(github_installation_id: str) -> AsyncGenerator[None, None]:
     host = conf.REDIS_URL.hostname
     port = conf.REDIS_URL.port
     assert host and port

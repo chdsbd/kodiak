@@ -14,6 +14,7 @@ from kodiak.evaluation import mergeable as mergeable_func
 from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
+    BranchProtectionRule,
     CheckConclusionState,
     CheckRun,
     Commit,
@@ -29,13 +30,13 @@ from kodiak.queries import (
     PullRequestState,
     RepoInfo,
     ReviewThreadConnection,
+    RulesetRule,
     SeatsExceeded,
     StatusContext,
     StatusState,
     Subscription,
     SubscriptionExpired,
     TrialExpired,
-    UnifiedBranchProtection,
 )
 
 log = logging.getLogger(__name__)
@@ -253,8 +254,8 @@ def create_pull_request() -> PullRequest:
     )
 
 
-def create_branch_protection() -> UnifiedBranchProtection:
-    return UnifiedBranchProtection(
+def create_branch_protection() -> BranchProtectionRule:
+    return BranchProtectionRule(
         requiresStatusChecks=True,
         requiredStatusCheckContexts=["ci/api"],
         requiresStrictStatusChecks=True,
@@ -323,7 +324,7 @@ class MergeableType(Protocol):
         config_str: str = ...,
         config_path: str = ...,
         pull_request: PullRequest = ...,
-        branch_protection: Optional[UnifiedBranchProtection] = ...,
+        branch_protection: Optional[BranchProtectionRule] = ...,
         review_requests: List[PRReviewRequest] = ...,
         bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
@@ -351,9 +352,8 @@ def create_mergeable() -> MergeableType:
         config_str: str = create_config_str(),
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
-        branch_protection: Optional[
-            UnifiedBranchProtection
-        ] = create_branch_protection(),
+        branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
+        ruleset_rules: List[RulesetRule] = [],
         review_requests: List[PRReviewRequest] = [],
         bot_reviews: List[PRReview] = [create_review()],
         contexts: List[StatusContext] = [create_context()],
@@ -384,6 +384,7 @@ def create_mergeable() -> MergeableType:
             config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
+            ruleset_rules=ruleset_rules,
             review_requests=review_requests,
             bot_reviews=bot_reviews,
             contexts=contexts,

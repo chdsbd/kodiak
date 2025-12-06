@@ -11,6 +11,7 @@ from kodiak.errors import ApiCallException
 from kodiak.http import Request
 from kodiak.pull_request import PRV2, EventInfoResponse, QueueForMergeCallback
 from kodiak.queries import (
+    BranchProtectionRule,
     Client,
     MergeableState,
     MergeStateStatus,
@@ -20,7 +21,6 @@ from kodiak.queries import (
     PullRequestState,
     RepoInfo,
     ReviewThreadConnection,
-    UnifiedBranchProtection,
 )
 
 
@@ -55,7 +55,7 @@ def create_event() -> EventInfoResponse:
         is_private=True,
         delete_branch_on_merge=False,
     )
-    branch_protection = UnifiedBranchProtection(
+    branch_protection = BranchProtectionRule(
         requiresStatusChecks=True,
         requiredStatusCheckContexts=[
             "ci/circleci: frontend_lint",
@@ -80,6 +80,7 @@ method = "squash"
         pull_request=pr,
         repository=rep_info,
         branch_protection=branch_protection,
+        ruleset_rules=[],
         review_requests=[],
         bot_reviews=[],
         status_contexts=[],
