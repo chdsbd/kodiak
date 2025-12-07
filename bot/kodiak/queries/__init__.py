@@ -595,7 +595,7 @@ class RulesetRule(BaseModel):
     repositoryRuleset: Optional[RepositoryRuleset] = None
 
     @root_validator(pre=True)
-    def empty_dict_to_none(cls, values):
+    def empty_dict_to_none(cls, values):  # noqa: N805
         if values.get("parameters") == {}:
             values["parameters"] = None
         return values
