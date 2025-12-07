@@ -499,7 +499,6 @@ async def test_mergeable_missing_branch_protection_with_rulesets() -> None:
                 type="PULL_REQUEST",
                 parameters=PullRequestParameters(
                     allowedMergeMethods=[PullRequestAllowedMergeMethods.SQUASH],
-                    requireCodeOwnerReview=False,
                     requiredReviewThreadResolution=False,
                 ),
             )
