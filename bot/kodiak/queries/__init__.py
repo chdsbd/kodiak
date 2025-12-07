@@ -20,7 +20,7 @@ import jwt
 import pydantic
 import structlog
 import toml
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -530,27 +530,32 @@ class PullRequestAllowedMergeMethods(Enum):
 
 
 class PullRequestParameters(BaseModel):
-    __typename: Literal["PullRequestParameters"] = "PullRequestParameters"
+    # __typename: Literal["PullRequestParameters"] = "PullRequestParameters"
     allowedMergeMethods: Optional[List[PullRequestAllowedMergeMethods]] = None
-    requireCodeOwnerReview: bool
     requiredReviewThreadResolution: bool
 
 
 class MergeQueueParameters(BaseModel):
-    __typename: Literal["MergeQueueParameters"] = "MergeQueueParameters"
+    # __typename: Literal["MergeQueueParameters"] = "MergeQueueParameters"
     mergeMethod: MergeQueueMergeMethod
 
 
+class StatusCheckConfiguration(BaseModel):
+    """Status check configuration item."""
+
+    context: str
+
+
 class RequiredStatusChecksParameters(BaseModel):
-    __typename: Literal["RequiredStatusChecksParameters"] = (
-        "RequiredStatusChecksParameters"
-    )
+    # __typename: Literal["RequiredStatusChecksParameters"] = (
+    #     "RequiredStatusChecksParameters"
+    # )
     strictRequiredStatusChecksPolicy: bool
     requiredStatusChecks: List[StatusCheckConfiguration]
 
 
 class UpdateParameters(BaseModel):
-    __typename: Literal["UpdateParameters"] = "UpdateParameters"
+    # __typename: Literal["UpdateParameters"] = "UpdateParameters"
     updateAllowsFetchAndMerge: bool
 
 
@@ -566,12 +571,6 @@ class BranchProtectionRule(BaseModel):
     requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
-
-
-class StatusCheckConfiguration(BaseModel):
-    """Status check configuration item."""
-
-    context: str
 
 
 class BypassActor(BaseModel):
@@ -601,8 +600,12 @@ class RulesetRule(BaseModel):
     ] = None
     repositoryRuleset: Optional[RepositoryRuleset] = None
 
-    class Config:
-        smart_union = True
+    @root_validator(pre=True)
+    def empty_dict_to_none(cls, values):
+        if values.get("parameters") == {}:
+            # breakpoint()
+            values["parameters"] = None
+        return values
 
 
 class PRReviewState(Enum):
