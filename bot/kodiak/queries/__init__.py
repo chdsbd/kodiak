@@ -530,13 +530,11 @@ class PullRequestAllowedMergeMethods(Enum):
 
 
 class PullRequestParameters(BaseModel):
-    # __typename: Literal["PullRequestParameters"] = "PullRequestParameters"
     allowedMergeMethods: Optional[List[PullRequestAllowedMergeMethods]] = None
     requiredReviewThreadResolution: bool
 
 
 class MergeQueueParameters(BaseModel):
-    # __typename: Literal["MergeQueueParameters"] = "MergeQueueParameters"
     mergeMethod: MergeQueueMergeMethod
 
 
@@ -547,15 +545,11 @@ class StatusCheckConfiguration(BaseModel):
 
 
 class RequiredStatusChecksParameters(BaseModel):
-    # __typename: Literal["RequiredStatusChecksParameters"] = (
-    #     "RequiredStatusChecksParameters"
-    # )
     strictRequiredStatusChecksPolicy: bool
     requiredStatusChecks: List[StatusCheckConfiguration]
 
 
 class UpdateParameters(BaseModel):
-    # __typename: Literal["UpdateParameters"] = "UpdateParameters"
     updateAllowsFetchAndMerge: bool
 
 
