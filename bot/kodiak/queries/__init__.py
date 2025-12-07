@@ -597,7 +597,6 @@ class RulesetRule(BaseModel):
     @root_validator(pre=True)
     def empty_dict_to_none(cls, values):
         if values.get("parameters") == {}:
-            # breakpoint()
             values["parameters"] = None
         return values
 
