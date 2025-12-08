@@ -22,6 +22,7 @@ from kodiak import (
 )
 from kodiak.events import (
     CheckRunEvent,
+    IssueEvent,
     PullRequestEvent,
     PullRequestReviewEvent,
     PullRequestReviewThreadEvent,
@@ -229,6 +230,56 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
             )
 
 
+async def issue_event(queue: WebhookQueueProtocol, issue_event: IssueEvent) -> None:
+    """
+    Trigger evaluation of all open PRs when a blocking issue is closed or unlabelled.
+    """
+    owner = issue_event.repository.owner.login
+    repo = issue_event.repository.name
+    installation_id = str(issue_event.installation.id)
+    log = logger.bind(
+        owner=owner,
+        repo=repo,
+        install=installation_id,
+        issue_number=issue_event.issue.number,
+        action=issue_event.action,
+    )
+
+    log.info("processing issue event")
+
+    if issue_event.action not in ("closed", "unlabeled"):
+        log.info(
+            "issue event action not relevant for merge queue resumption",
+            action=issue_event.action,
+        )
+        return
+
+    if issue_event.action == "unlabeled" and issue_event.label:
+        log.info("label removed from issue", label_name=issue_event.label.name)
+
+    async with Client(
+        owner=owner, repo=repo, installation_id=installation_id
+    ) as api_client:
+        prs = await api_client.get_open_pull_requests()
+        if prs is None:
+            log.info("api call to find pull requests failed")
+            return
+
+        log.info(
+            "triggering re-evaluation of open PRs due to issue event", pr_count=len(prs)
+        )
+        for pr in prs:
+            await queue.enqueue(
+                event=WebhookEvent(
+                    repo_owner=owner,
+                    repo_name=repo,
+                    pull_request_number=pr.number,
+                    target_name=pr.base.ref,
+                    installation_id=installation_id,
+                )
+            )
+
+
 def compress_payload(data: dict[str, object]) -> bytes:
     cctx = zstd.ZstdCompressor()
     return cctx.compress(json.dumps(data).encode())
@@ -266,6 +317,8 @@ async def handle_webhook_event(
         await push(queue, PushEvent.parse_obj(payload))
     elif event_name == "status":
         await status_event(queue, StatusEvent.parse_obj(payload))
+    elif event_name == "issues":
+        await issue_event(queue, IssueEvent.parse_obj(payload))
     else:
         log = log.bind(event_parsed=False)
 

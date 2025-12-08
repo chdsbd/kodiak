@@ -164,7 +164,8 @@ def parse_config(data: dict[Any, Any]) -> ParsedConfig | None:
 
 
 def get_event_info_query(
-    requires_conversation_resolution: bool, fetch_body_html: bool
+    requires_conversation_resolution: bool,
+    fetch_body_html: bool,
 ) -> str:
     return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
@@ -198,6 +199,16 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
     squashMergeAllowed
     deleteBranchOnMerge
     isPrivate
+    issues(first: 100, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        number
+        labels(first: 100) {
+          nodes {
+            name
+          }
+        }
+      }
+    }
     pullRequest(number: $PRNumber) {
       id
       author {
@@ -399,6 +410,23 @@ class ReviewThreadConnection(BaseModel):
     nodes: Optional[List[ReviewThread]]
 
 
+class IssueLabel(BaseModel):
+    name: str
+
+
+class IssueLabelConnection(BaseModel):
+    nodes: Optional[List[IssueLabel]]
+
+
+class Issue(BaseModel):
+    number: int
+    labels: IssueLabelConnection
+
+
+class IssueConnection(BaseModel):
+    nodes: Optional[List[Issue]]
+
+
 class PullRequest(BaseModel):
     id: str
     number: int
@@ -449,6 +477,7 @@ class EventInfoResponse:
     check_runs: List[CheckRun] = field(default_factory=list)
     valid_merge_methods: List[MergeMethod] = field(default_factory=list)
     commits: List[Commit] = field(default_factory=list)
+    blocking_issues: List[Issue] = field(default_factory=list)
 
 
 MERGE_PR_MUTATION = """
@@ -608,6 +637,23 @@ def get_labels(*, pr: Dict[str, Any]) -> List[str]:
         nodes = pr["labels"]["nodes"]
         get_names = (node.get("name") for node in nodes)
         return [label for label in get_names if label is not None]
+    except (KeyError, TypeError):
+        return []
+
+
+def get_blocking_issues(*, repo: Dict[str, Any]) -> List[Issue]:
+    """
+    Extract blocking issues (open issues with disable_bot_label) from repository.
+    """
+    try:
+        nodes = repo.get("issues", {}).get("nodes", [])
+        issues: List[Issue] = []
+        for issue_dict in nodes:
+            try:
+                issues.append(Issue.parse_obj(issue_dict))
+            except ValueError:
+                logger.warning("Could not parse blocking issue", exc_info=True)
+        return issues
     except (KeyError, TypeError):
         return []
 
@@ -1126,6 +1172,7 @@ query {
         branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
+        blocking_issues = get_blocking_issues(repo=repository)
 
         all_reviews = get_reviews(pr=pull_request)
         bot_reviews = self.get_bot_reviews(reviews=all_reviews)
@@ -1150,6 +1197,7 @@ query {
             check_runs=get_check_runs(pr=pull_request),
             head_exists=get_head_exists(pr=pull_request),
             valid_merge_methods=get_valid_merge_methods(repo=repository),
+            blocking_issues=blocking_issues,
         )
 
     async def get_open_pull_requests(

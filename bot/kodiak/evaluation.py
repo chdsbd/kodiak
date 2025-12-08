@@ -43,6 +43,7 @@ from kodiak.queries import (
     CheckConclusionState,
     CheckRun,
     Commit,
+    Issue,
     MergeableState,
     MergeStateStatus,
     PRReview,
@@ -473,7 +474,8 @@ async def mergeable(
     skippable_check_timeout: int,
     api_call_retries_remaining: int,
     api_call_errors: Sequence[APICallRetry],
-    subscription: Optional[Subscription],
+    blocking_issues: List[Issue],
+    subscription: Optional[Subscription] = None,
     app_id: Optional[str] = None,
 ) -> None:
     # TODO(chdsbd): Use structlog bind_contextvars to automatically set useful context (install id, repo, pr number).
@@ -585,6 +587,26 @@ async def mergeable(
         await api.dequeue()
         await api.set_status(
             f"🚨 kodiak disabled by disable_bot_label ({config.disable_bot_label}). Remove label to re-enable Kodiak."
+        )
+        return
+
+    matching_blocking_issues: List[Issue] = []
+    for issue in blocking_issues or []:
+        labels = issue.labels.nodes or []
+        for label in labels:
+            if label is None:
+                continue
+            if label.name == config.disable_bot_label:
+                matching_blocking_issues.append(issue)
+                break
+    if matching_blocking_issues:
+        issue_numbers = ", ".join(
+            f"#{issue.number}"
+            for issue in sorted(matching_blocking_issues, key=lambda x: x.number)
+        )
+        await api.dequeue()
+        await api.set_status(
+            f"🚨 kodiak disabled by issue(s): {issue_numbers}. Close issue or remove label to re-enable Kodiak."
         )
         return
 

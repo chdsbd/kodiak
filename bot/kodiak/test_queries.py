@@ -223,6 +223,7 @@ method = "squash"
             CheckRun(name="WIP (beta)", conclusion=CheckConclusionState.SUCCESS)
         ],
         valid_merge_methods=[MergeMethod.squash],
+        blocking_issues=[],
     )
 
 

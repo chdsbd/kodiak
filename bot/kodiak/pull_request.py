@@ -121,6 +121,7 @@ async def evaluate_pr(
                         is_active_merge=is_active_merging,
                         skippable_check_timeout=skippable_check_timeout,
                         api_call_errors=api_call_errors,
+                        blocking_issues=pr.event.blocking_issues,
                         api_call_retries_remaining=api_call_retries_remaining,
                     ),
                     timeout=60,
