@@ -343,29 +343,35 @@ def missing_branch_protection_push_allowance(
     return True
 
 
+def is_update_rule_missing_allowance(ruleset_rule: RulesetRule) -> bool:
+    if (
+        ruleset_rule.repositoryRuleset is None
+        or ruleset_rule.repositoryRuleset.bypassActors is None
+        or ruleset_rule.repositoryRuleset.bypassActors.nodes is None
+    ):
+        # if we have some error, assume we have an allowance.
+        return False
+    for push_allowance in ruleset_rule.repositoryRuleset.bypassActors.nodes:
+        if (
+            push_allowance is None
+            or push_allowance.actor is None
+            or push_allowance.actor.databaseId is None
+        ):
+            continue
+        if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
+            return False
+    return True
+
+
 def has_ruleset_rules_without_push_allowances(
     ruleset_rules: List[RulesetRule],
 ) -> bool:
     for ruleset_rule in ruleset_rules:
-        if ruleset_rule.type == "UPDATE":
-            if ruleset_rule.repositoryRuleset is None:
-                continue
-            if ruleset_rule.repositoryRuleset.bypassActors is None:
-                return True
-            # assume we have an allowance if we fail to fetch the ndoes.
-            if ruleset_rule.repositoryRuleset.bypassActors.nodes is None:
-                return False
-            for push_allowance in ruleset_rule.repositoryRuleset.bypassActors.nodes:
-                if (
-                    push_allowance is None
-                    or push_allowance.actor is None
-                    or push_allowance.actor.databaseId is None
-                ):
-                    continue
-                if str(push_allowance.actor.databaseId) == str(
-                    app_config.GITHUB_APP_ID
-                ):
-                    return False
+        if ruleset_rule.type == "UPDATE" and is_update_rule_missing_allowance(
+            ruleset_rule
+        ):
+            return True
+
     return False
 
 

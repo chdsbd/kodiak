@@ -17,6 +17,7 @@ from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
     BranchProtectionRule,
+    BypassActor,
     CheckConclusionState,
     CheckRun,
     Commit,
@@ -33,6 +34,9 @@ from kodiak.queries import (
     PullRequestParameters,
     PullRequestState,
     RepoInfo,
+    RepositoryRuleset,
+    RepositoryRulesetBypassActor,
+    RepositoryRulesetBypassActorConnection,
     ReviewThreadConnection,
     RulesetRule,
     SeatsExceeded,
@@ -500,6 +504,56 @@ async def test_mergeable_missing_branch_protection_with_rulesets() -> None:
                 parameters=PullRequestParameters(
                     allowedMergeMethods=[PullRequestAllowedMergeMethods.SQUASH],
                     requiredReviewThreadResolution=False,
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is True
+
+
+async def test_mergeable_missing_push_allowance_with_rulesets() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        ruleset_rules=[
+            RulesetRule(
+                type="UPDATE",
+                parameters=None,
+                repositoryRuleset=RepositoryRuleset(
+                    bypassActors=RepositoryRulesetBypassActorConnection(nodes=[])
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+    assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_with_push_allowance_with_rulesets() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        ruleset_rules=[
+            RulesetRule(
+                type="UPDATE",
+                parameters=None,
+                repositoryRuleset=RepositoryRuleset(
+                    bypassActors=RepositoryRulesetBypassActorConnection(
+                        nodes=[
+                            RepositoryRulesetBypassActor(
+                                actor=BypassActor(databaseId=534524)
+                            )
+                        ]
+                    )
                 ),
             )
         ],
