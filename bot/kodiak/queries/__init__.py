@@ -20,7 +20,7 @@ import jwt
 import pydantic
 import structlog
 import toml
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from typing_extensions import Literal, Protocol
 
 import kodiak.app_config as conf
@@ -261,6 +261,37 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       headRef {
         id
       }
+      baseRef {
+        name
+        rules(first: 100) {
+          nodes {
+            type
+            parameters {
+              ... on RequiredStatusChecksParameters {
+                requiredStatusChecks {
+                  context
+                }
+                strictRequiredStatusChecksPolicy
+              }
+              ... on PullRequestParameters {
+                requiredReviewThreadResolution
+              }
+            }
+            repositoryRuleset {
+              bypassActors(first: 100) {
+                nodes {
+                  actor {
+                    __typename
+                    ... on App {
+                      databaseId
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
       commitHistory: commits(last: 100) {
         nodes {
           commit {
@@ -442,6 +473,7 @@ class EventInfoResponse:
     repository: RepoInfo
     subscription: Optional[Subscription]
     branch_protection: Optional[BranchProtectionRule]
+    ruleset_rules: List[RulesetRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
     bot_reviews: List[PRReview] = field(default_factory=list)
@@ -482,6 +514,45 @@ class NodeListPushAllowance(BaseModel):
     nodes: List[PushAllowance]
 
 
+class MergeQueueMergeMethod(Enum):
+    MERGE = "MERGE"
+
+    SQUASH = "SQUASH"
+
+    REBASE = "REBASE"
+
+
+class PullRequestAllowedMergeMethods(Enum):
+    MERGE = "MERGE"
+    SQUASH = "SQUASH"
+
+    REBASE = "REBASE"
+
+
+class PullRequestParameters(BaseModel):
+    allowedMergeMethods: Optional[List[PullRequestAllowedMergeMethods]] = None
+    requiredReviewThreadResolution: bool
+
+
+class MergeQueueParameters(BaseModel):
+    mergeMethod: MergeQueueMergeMethod
+
+
+class StatusCheckConfiguration(BaseModel):
+    """Status check configuration item."""
+
+    context: str
+
+
+class RequiredStatusChecksParameters(BaseModel):
+    strictRequiredStatusChecksPolicy: bool
+    requiredStatusChecks: List[StatusCheckConfiguration]
+
+
+class UpdateParameters(BaseModel):
+    updateAllowsFetchAndMerge: bool
+
+
 class BranchProtectionRule(BaseModel):
     """
     https://developer.github.com/v4/object/branchprotectionrule/
@@ -494,6 +565,40 @@ class BranchProtectionRule(BaseModel):
     requiresConversationResolution: Optional[bool]
     restrictsPushes: bool
     pushAllowances: NodeListPushAllowance
+
+
+class BypassActor(BaseModel):
+    databaseId: Optional[int] = None
+
+
+class RepositoryRulesetBypassActor(BaseModel):
+    actor: Optional[BypassActor] = None
+
+
+class RepositoryRulesetBypassActorConnection(BaseModel):
+    nodes: Optional[List[Optional[RepositoryRulesetBypassActor]]] = None
+
+
+class RepositoryRuleset(BaseModel):
+    bypassActors: Optional[RepositoryRulesetBypassActorConnection] = None
+
+
+class RulesetRule(BaseModel):
+    type: str
+    parameters: Union[
+        MergeQueueParameters,
+        PullRequestParameters,
+        RequiredStatusChecksParameters,
+        UpdateParameters,
+        None,
+    ] = None
+    repositoryRuleset: Optional[RepositoryRuleset] = None
+
+    @root_validator(pre=True)
+    def empty_dict_to_none(cls, values: Dict[Any, Any]) -> Dict[Any, Any]:  # noqa: N805
+        if values.get("parameters") == {}:
+            values["parameters"] = None
+        return values
 
 
 class PRReviewState(Enum):
@@ -642,6 +747,23 @@ def get_branch_protection(
                     logger.warning("Could not parse branch protection", exc_info=True)
                     return None
     return None
+
+
+def get_rules_dicts(*, pull_request: Dict[str, Any]) -> List[Dict[str, Any]]:
+    try:
+        return cast(List[Dict[str, Any]], pull_request["baseRef"]["rules"]["nodes"])
+    except (KeyError, TypeError):
+        return []
+
+
+def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[RulesetRule]:
+    rules = []
+    for node in get_rules_dicts(pull_request=pull_request):
+        try:
+            rules.append(RulesetRule.parse_obj(node))
+        except ValueError:
+            logger.warning("Could not parse RulesetRule", exc_info=True)
+    return rules
 
 
 def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1126,6 +1248,7 @@ query {
         branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
         )
+        ruleset_rules = get_ruleset_rules(pull_request=pull_request)
 
         all_reviews = get_reviews(pr=pull_request)
         bot_reviews = self.get_bot_reviews(reviews=all_reviews)
@@ -1143,6 +1266,7 @@ query {
             ),
             subscription=subscription,
             branch_protection=branch_protection,
+            ruleset_rules=ruleset_rules,
             review_requests=get_requested_reviews(pr=pull_request),
             bot_reviews=bot_reviews,
             status_contexts=get_status_contexts(pr=pull_request),

@@ -17,6 +17,7 @@ from kodiak.messages import APICallRetry
 from kodiak.pull_request import APICallError
 from kodiak.queries import (
     BranchProtectionRule,
+    BypassActor,
     CheckConclusionState,
     CheckRun,
     Commit,
@@ -28,10 +29,16 @@ from kodiak.queries import (
     PRReviewRequest,
     PRReviewState,
     PullRequest,
+    PullRequestAllowedMergeMethods,
     PullRequestAuthor,
+    PullRequestParameters,
     PullRequestState,
     RepoInfo,
+    RepositoryRuleset,
+    RepositoryRulesetBypassActor,
+    RepositoryRulesetBypassActorConnection,
     ReviewThreadConnection,
+    RulesetRule,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -326,6 +333,7 @@ class MergeableType(Protocol):
         config_path: str = ...,
         pull_request: PullRequest = ...,
         branch_protection: Optional[BranchProtectionRule] = ...,
+        ruleset_rules: List[RulesetRule] = ...,
         review_requests: List[PRReviewRequest] = ...,
         bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
@@ -352,6 +360,7 @@ def create_mergeable() -> MergeableType:
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
         branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
+        ruleset_rules: List[RulesetRule] = [],  # noqa: B006
         review_requests: List[PRReviewRequest] = [],  # noqa: B006
         bot_reviews: List[PRReview] = [create_review()],  # noqa: B006
         contexts: List[StatusContext] = [create_context()],  # noqa: B006
@@ -382,6 +391,7 @@ def create_mergeable() -> MergeableType:
             config_path=config_path,
             pull_request=pull_request,
             branch_protection=branch_protection,
+            ruleset_rules=ruleset_rules,
             review_requests=review_requests,
             bot_reviews=bot_reviews,
             contexts=contexts,
@@ -476,6 +486,82 @@ async def test_mergeable_missing_branch_protection() -> None:
     assert api.update_branch.called is False
     assert api.merge.called is False
     assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_missing_branch_protection_with_rulesets() -> None:
+    """
+    We don't need branch protection settings if rulesets are in use.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        branch_protection=None,
+        ruleset_rules=[
+            RulesetRule(
+                type="PULL_REQUEST",
+                parameters=PullRequestParameters(
+                    allowedMergeMethods=[PullRequestAllowedMergeMethods.SQUASH],
+                    requiredReviewThreadResolution=False,
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is True
+
+
+async def test_mergeable_missing_push_allowance_with_rulesets() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        ruleset_rules=[
+            RulesetRule(
+                type="UPDATE",
+                parameters=None,
+                repositoryRuleset=RepositoryRuleset(
+                    bypassActors=RepositoryRulesetBypassActorConnection(nodes=[])
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+    assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_with_push_allowance_with_rulesets() -> None:
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        ruleset_rules=[
+            RulesetRule(
+                type="UPDATE",
+                parameters=None,
+                repositoryRuleset=RepositoryRuleset(
+                    bypassActors=RepositoryRulesetBypassActorConnection(
+                        nodes=[
+                            RepositoryRulesetBypassActor(
+                                actor=BypassActor(databaseId=534524)
+                            )
+                        ]
+                    )
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is True
 
 
 async def test_mergeable_missing_automerge_label() -> None:

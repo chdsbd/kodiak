@@ -50,10 +50,12 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestCommitUser,
+    PullRequestParameters,
     PullRequestReviewDecision,
     PullRequestState,
-    PushAllowance,
     RepoInfo,
+    RequiredStatusChecksParameters,
+    RulesetRule,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -329,14 +331,62 @@ async def block_merge(api: PRAPI, pull_request: PullRequest, msg: str) -> None:
     await api.set_status(f"🛑 cannot merge ({msg})")
 
 
-def missing_push_allowance(push_allowances: List[PushAllowance]) -> bool:
-    for push_allowance in push_allowances:
+def missing_branch_protection_push_allowance(
+    branch_protection: BranchProtectionRule,
+) -> bool:
+    for push_allowance in branch_protection.pushAllowances.nodes:
         # a null databaseId indicates this is not a GitHub App.
         if push_allowance.actor.databaseId is None:
             continue
         if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
             return False
     return True
+
+
+def is_update_rule_missing_allowance(ruleset_rule: RulesetRule) -> bool:
+    if (
+        ruleset_rule.repositoryRuleset is None
+        or ruleset_rule.repositoryRuleset.bypassActors is None
+        or ruleset_rule.repositoryRuleset.bypassActors.nodes is None
+    ):
+        # if we have some error, assume we have an allowance.
+        return False
+    for push_allowance in ruleset_rule.repositoryRuleset.bypassActors.nodes:
+        if (
+            push_allowance is None
+            or push_allowance.actor is None
+            or push_allowance.actor.databaseId is None
+        ):
+            continue
+        if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
+            return False
+    return True
+
+
+def has_ruleset_rules_without_push_allowances(
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    for ruleset_rule in ruleset_rules:
+        if ruleset_rule.type == "UPDATE" and is_update_rule_missing_allowance(
+            ruleset_rule
+        ):
+            return True
+
+    return False
+
+
+def missing_push_allowance(
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    if (
+        branch_protection is not None
+        and branch_protection.restrictsPushes
+        and missing_branch_protection_push_allowance(branch_protection)
+    ):
+        return True
+
+    return has_ruleset_rules_without_push_allowances(ruleset_rules)
 
 
 def get_paywall_status_for_blocker(
@@ -454,6 +504,101 @@ def get_merge_method(
     return MergeMethod.merge
 
 
+def has_equivalent_branch_protection_rulesets(
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    """
+    When we originally made Kodiak, we only enabled Kodiak if branch protection was configured.
+
+    This was to prevent merging pull requests that didn't require any status checks or code review.
+
+    The equivalent check is to see if a ruleset requires code review or status checks.
+    """
+    for rule in ruleset_rules:
+        if isinstance(
+            rule.parameters, (PullRequestParameters, RequiredStatusChecksParameters)
+        ):
+            return True
+    return False
+
+
+def requires_signed_commits(
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    return (
+        branch_protection is not None and branch_protection.requiresCommitSignatures
+    ) or any(
+        ruleset_rule.type == "REQUIRED_SIGNATURES" for ruleset_rule in ruleset_rules
+    )
+
+
+def has_ruleset_rules_requiring_strict_status_checks(
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    for ruleset_rule in ruleset_rules:
+        if (
+            isinstance(ruleset_rule.parameters, RequiredStatusChecksParameters)
+            and ruleset_rule.parameters.strictRequiredStatusChecksPolicy
+        ):
+            return True
+    return False
+
+
+def requires_strict_status_checks(
+    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+) -> bool:
+    return (
+        branch_protection is not None and branch_protection.requiresStrictStatusChecks
+    ) or has_ruleset_rules_requiring_strict_status_checks(ruleset_rules)
+
+
+def get_required_status_checks(
+    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+) -> Set[str]:
+    checks: Set[str] = set()
+    if branch_protection is not None:
+        checks.update(branch_protection.requiredStatusCheckContexts)
+    for ruleset_rule in ruleset_rules:
+        if isinstance(ruleset_rule.parameters, RequiredStatusChecksParameters):
+            for check in ruleset_rule.parameters.requiredStatusChecks:
+                checks.add(check.context)
+    return checks
+
+
+def has_ruleset_rules_requiring_conversation_resolution(
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    for ruleset_rule in ruleset_rules:
+        if (
+            isinstance(ruleset_rule.parameters, PullRequestParameters)
+            and ruleset_rule.parameters.requiredReviewThreadResolution
+        ):
+            return True
+    return False
+
+
+def requires_conversation_resolution(
+    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+) -> bool:
+    return (
+        branch_protection is not None
+        and branch_protection.requiresConversationResolution
+    ) or has_ruleset_rules_requiring_conversation_resolution(ruleset_rules)
+
+
+def requires_status_checks(
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[RulesetRule],
+) -> bool:
+    if branch_protection is not None and branch_protection.requiresStatusChecks:
+        return True
+    for ruleset_rule in ruleset_rules:
+        if isinstance(ruleset_rule.parameters, RequiredStatusChecksParameters):
+            return True
+    return False
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -461,6 +606,7 @@ async def mergeable(
     config_path: str,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[RulesetRule],
     review_requests: List[PRReviewRequest],
     bot_reviews: List[PRReview],
     contexts: List[StatusContext],
@@ -533,7 +679,9 @@ async def mergeable(
         await api.dequeue()
         return
 
-    if branch_protection is None:
+    if branch_protection is None and not has_equivalent_branch_protection_rulesets(
+        ruleset_rules
+    ):
         await cfg_err(
             api, f"missing branch protection for baseRef: {pull_request.baseRefName!r}"
         )
@@ -547,7 +695,7 @@ async def mergeable(
     )
 
     if (
-        branch_protection.requiresCommitSignatures
+        requires_signed_commits(branch_protection, ruleset_rules)
         and merge_method == MergeMethod.rebase
     ):
         await cfg_err(
@@ -564,10 +712,8 @@ async def mergeable(
         )
         return
 
-    if (
-        not config.merge.do_not_merge
-        and branch_protection.restrictsPushes
-        and missing_push_allowance(branch_protection.pushAllowances.nodes)
+    if not config.merge.do_not_merge and missing_push_allowance(
+        branch_protection, ruleset_rules
     ):
         await cfg_err(
             api,
@@ -686,7 +832,7 @@ async def mergeable(
             log.info("approval already exists, not adding another")
 
     need_branch_update = (
-        branch_protection.requiresStrictStatusChecks
+        requires_strict_status_checks(branch_protection, ruleset_rules)
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
     update_always = config.update.always and (
@@ -842,7 +988,9 @@ async def mergeable(
         # status checks. we may want to handle this via config
         pass
 
-    required_status_checks = set(branch_protection.requiredStatusCheckContexts)
+    required_status_checks = get_required_status_checks(
+        branch_protection, ruleset_rules
+    )
     if config.merge.block_on_neutral_required_check_runs:
         neutral_check_runs = {
             check_run.name
@@ -885,7 +1033,7 @@ async def mergeable(
             return
 
         if (
-            branch_protection.requiresConversationResolution
+            requires_conversation_resolution(branch_protection, ruleset_rules)
             and pull_request.reviewThreads.nodes is not None
             and any(pr.isCollapsed is False for pr in pull_request.reviewThreads.nodes)
         ):
@@ -894,7 +1042,7 @@ async def mergeable(
 
         passing: Set[str] = set()
 
-        if branch_protection.requiresStatusChecks:
+        if requires_status_checks(branch_protection, ruleset_rules):
             skippable_contexts: List[str] = []
             failing_contexts: List[str] = []
             pending_contexts: List[str] = []
@@ -1000,7 +1148,8 @@ async def mergeable(
 
         missing_required_status_checks = required_status_checks - passing
         wait_for_checks = bool(
-            branch_protection.requiresStatusChecks and missing_required_status_checks
+            requires_status_checks(branch_protection, ruleset_rules)
+            and missing_required_status_checks
         )
 
         if config.merge.update_branch_immediately and need_branch_update:

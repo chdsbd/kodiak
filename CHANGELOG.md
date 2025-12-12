@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.56.0 - 2025-12-12
+
+### Added
+
+- Added support for specifying Redis username. (#881) Thanks @androa!
+- Added support for GitHub rulesets, in addition to existing branch protection rule support. (#905) Thanks @qefir!
+
+### Changed
+
+- Migrated from poetry to uv and updated Python from 3.7 to 3.8. (#900)
+- Replaced flake8, black and pylint with ruff. (#903)
+- Switched from CircleCI to GitHub Actions. (#888)
+
 ## 0.55.0 - 2023-02-04
 
 ### Added

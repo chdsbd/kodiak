@@ -14,6 +14,7 @@ from kodiak.config import V1, Merge, MergeMethod
 from kodiak.http import Request, Response
 from kodiak.queries import (
     BranchProtectionRule,
+    BypassActor,
     CheckConclusionState,
     CheckRun,
     Client,
@@ -29,13 +30,20 @@ from kodiak.queries import (
     PRReviewState,
     PullRequest,
     PullRequestAuthor,
+    PullRequestParameters,
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    RepositoryRuleset,
+    RepositoryRulesetBypassActor,
+    RepositoryRulesetBypassActorConnection,
+    RequiredStatusChecksParameters,
     ReviewThread,
     ReviewThreadConnection,
+    RulesetRule,
     SeatsExceeded,
+    StatusCheckConfiguration,
     StatusContext,
     StatusState,
     Subscription,
@@ -123,8 +131,23 @@ def blocked_response() -> Dict[str, Any]:
     )
 
 
-@pytest.fixture
-def block_event() -> EventInfoResponse:
+def blocked_response_graphql() -> Dict[str, Any]:
+    return cast(
+        Dict[str, Any],
+        json.loads(
+            (
+                Path(__file__).parent
+                / "test"
+                / "fixtures"
+                / "api"
+                / "get_event"
+                / "behind_graphql.json"
+            ).read_text()
+        ),
+    )
+
+
+def get_block_event() -> EventInfoResponse:
     config = V1(
         version=1, merge=Merge(automerge_label="automerge", method=MergeMethod.squash)
     )
@@ -193,6 +216,7 @@ method = "squash"
             account_id="D1606A79-A1A1-4550-BA7B-C9ED0D792B1E", subscription_blocker=None
         ),
         branch_protection=branch_protection,
+        ruleset_rules=[],
         review_requests=[
             PRReviewRequest(name="ghost"),
             PRReviewRequest(name="ghost-team"),
@@ -273,12 +297,73 @@ EXPECTED_ERRORS = [
 async def test_get_event_info_blocked(
     api_client: Client,
     blocked_response: Dict[str, Any],
-    block_event: EventInfoResponse,
     mocker: MockFixture,
     setup_redis: object,
     caplog: Any,
 ) -> None:
+    block_event = get_block_event()
     caplog.set_level(logging.WARNING)
+
+    mocker.patch.object(
+        api_client,
+        "send_query",
+        return_value=wrap_future(
+            GraphQLResponse(
+                data=blocked_response.get("data"), errors=blocked_response.get("errors")
+            )
+        ),
+    )
+    res = await api_client.get_event_info(pr_number=100)
+    assert res is not None
+    assert res == block_event
+
+    assert [
+        (mod, level, msg_to_dict(msg)["event"])
+        for mod, level, msg in caplog.record_tuples
+    ] == EXPECTED_ERRORS
+
+
+@requires_redis
+async def test_get_event_info_blocked_graphql(
+    api_client: Client,
+    mocker: MockFixture,
+    setup_redis: object,
+    caplog: Any,
+) -> None:
+    block_event = get_block_event()
+    repositoryRuleset = RepositoryRuleset(
+        bypassActors=RepositoryRulesetBypassActorConnection(
+            nodes=[RepositoryRulesetBypassActor(actor=BypassActor(databaseId=29196))]
+        )
+    )
+    block_event.ruleset_rules = [
+        RulesetRule(type="UPDATE", repositoryRuleset=repositoryRuleset),
+        RulesetRule(
+            type="REQUIRED_STATUS_CHECKS",
+            parameters=RequiredStatusChecksParameters(
+                requiredStatusChecks=[StatusCheckConfiguration(context="test")],
+                strictRequiredStatusChecksPolicy=True,
+            ),
+            repositoryRuleset=repositoryRuleset,
+        ),
+        RulesetRule(
+            type="PULL_REQUEST",
+            parameters=PullRequestParameters(
+                requiredReviewThreadResolution=False,
+            ),
+            repositoryRuleset=repositoryRuleset,
+        ),
+        RulesetRule(
+            type="NON_FAST_FORWARD",
+            repositoryRuleset=repositoryRuleset,
+        ),
+        RulesetRule(
+            type="DELETION",
+            repositoryRuleset=repositoryRuleset,
+        ),
+    ]
+    caplog.set_level(logging.WARNING)
+    blocked_response = blocked_response_graphql()
 
     mocker.patch.object(
         api_client,
@@ -303,7 +388,6 @@ async def test_get_event_info_blocked(
 async def test_get_event_info_no_author(
     api_client: Client,
     mocker: MockFixture,
-    block_event: EventInfoResponse,
     setup_redis: object,
     caplog: Any,
 ) -> None:
@@ -311,6 +395,7 @@ async def test_get_event_info_no_author(
     When a PR account author is deleted, the PR's author becomes null, so we
     need to handle that.
     """
+    block_event = get_block_event()
     caplog.set_level(logging.WARNING)
     blocked_response = json.loads(
         (
@@ -344,13 +429,13 @@ async def test_get_event_info_no_author(
 async def test_get_event_info_no_latest_sha(
     api_client: Client,
     mocker: MockFixture,
-    block_event: EventInfoResponse,
     setup_redis: object,
     caplog: Any,
 ) -> None:
     """
     When a PR doesn't have a changeset aka a diff, the latest_sha will be None.
     """
+    block_event = get_block_event()
     caplog.set_level(logging.WARNING)
     blocked_response = json.loads(
         (

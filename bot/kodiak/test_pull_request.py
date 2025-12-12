@@ -90,6 +90,7 @@ method = "squash"
         pull_request=pr,
         repository=rep_info,
         branch_protection=branch_protection,
+        ruleset_rules=[],
         review_requests=[],
         bot_reviews=[],
         status_contexts=[],
