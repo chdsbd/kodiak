@@ -38,7 +38,7 @@ from kodiak.queries import (
     RepositoryRulesetBypassActor,
     RepositoryRulesetBypassActorConnection,
     ReviewThreadConnection,
-    RulesetRule,
+    ParsedRulesetRule,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -333,7 +333,7 @@ class MergeableType(Protocol):
         config_path: str = ...,
         pull_request: PullRequest = ...,
         branch_protection: Optional[BranchProtectionRule] = ...,
-        ruleset_rules: List[RulesetRule] = ...,
+        ruleset_rules: List[ParsedRulesetRule] = ...,
         review_requests: List[PRReviewRequest] = ...,
         bot_reviews: List[PRReview] = ...,
         contexts: List[StatusContext] = ...,
@@ -360,7 +360,7 @@ def create_mergeable() -> MergeableType:
         config_path: str = create_config_path(),
         pull_request: PullRequest = create_pull_request(),
         branch_protection: Optional[BranchProtectionRule] = create_branch_protection(),
-        ruleset_rules: List[RulesetRule] = [],  # noqa: B006
+        ruleset_rules: List[ParsedRulesetRule] = [],  # noqa: B006
         review_requests: List[PRReviewRequest] = [],  # noqa: B006
         bot_reviews: List[PRReview] = [create_review()],  # noqa: B006
         contexts: List[StatusContext] = [create_context()],  # noqa: B006
@@ -499,7 +499,7 @@ async def test_mergeable_missing_branch_protection_with_rulesets() -> None:
         api=api,
         branch_protection=None,
         ruleset_rules=[
-            RulesetRule(
+            ParsedRulesetRule(
                 type="PULL_REQUEST",
                 parameters=PullRequestParameters(
                     allowedMergeMethods=[PullRequestAllowedMergeMethods.SQUASH],
@@ -521,7 +521,7 @@ async def test_mergeable_missing_push_allowance_with_rulesets() -> None:
     await mergeable(
         api=api,
         ruleset_rules=[
-            RulesetRule(
+            ParsedRulesetRule(
                 type="UPDATE",
                 parameters=None,
                 repositoryRuleset=RepositoryRuleset(
@@ -543,7 +543,7 @@ async def test_mergeable_with_push_allowance_with_rulesets() -> None:
     await mergeable(
         api=api,
         ruleset_rules=[
-            RulesetRule(
+            ParsedRulesetRule(
                 type="UPDATE",
                 parameters=None,
                 repositoryRuleset=RepositoryRuleset(

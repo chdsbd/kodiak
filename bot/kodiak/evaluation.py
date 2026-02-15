@@ -55,7 +55,7 @@ from kodiak.queries import (
     PullRequestState,
     RepoInfo,
     RequiredStatusChecksParameters,
-    RulesetRule,
+    ParsedRulesetRule,
     SeatsExceeded,
     StatusContext,
     StatusState,
@@ -343,7 +343,7 @@ def missing_branch_protection_push_allowance(
     return True
 
 
-def is_update_rule_missing_allowance(ruleset_rule: RulesetRule) -> bool:
+def is_update_rule_missing_allowance(ruleset_rule: ParsedRulesetRule) -> bool:
     if (
         ruleset_rule.repositoryRuleset is None
         or ruleset_rule.repositoryRuleset.bypassActors is None
@@ -364,7 +364,7 @@ def is_update_rule_missing_allowance(ruleset_rule: RulesetRule) -> bool:
 
 
 def has_ruleset_rules_without_push_allowances(
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     for ruleset_rule in ruleset_rules:
         if ruleset_rule.type == "UPDATE" and is_update_rule_missing_allowance(
@@ -377,7 +377,7 @@ def has_ruleset_rules_without_push_allowances(
 
 def missing_push_allowance(
     branch_protection: Optional[BranchProtectionRule],
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     if (
         branch_protection is not None
@@ -505,7 +505,7 @@ def get_merge_method(
 
 
 def has_equivalent_branch_protection_rulesets(
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     """
     When we originally made Kodiak, we only enabled Kodiak if branch protection was configured.
@@ -524,7 +524,7 @@ def has_equivalent_branch_protection_rulesets(
 
 def requires_signed_commits(
     branch_protection: Optional[BranchProtectionRule],
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     return (
         branch_protection is not None and branch_protection.requiresCommitSignatures
@@ -534,7 +534,7 @@ def requires_signed_commits(
 
 
 def has_ruleset_rules_requiring_strict_status_checks(
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     for ruleset_rule in ruleset_rules:
         if (
@@ -546,7 +546,8 @@ def has_ruleset_rules_requiring_strict_status_checks(
 
 
 def requires_strict_status_checks(
-    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     return (
         branch_protection is not None and branch_protection.requiresStrictStatusChecks
@@ -554,7 +555,8 @@ def requires_strict_status_checks(
 
 
 def get_required_status_checks(
-    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> Set[str]:
     checks: Set[str] = set()
     if branch_protection is not None:
@@ -567,7 +569,7 @@ def get_required_status_checks(
 
 
 def has_ruleset_rules_requiring_conversation_resolution(
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     for ruleset_rule in ruleset_rules:
         if (
@@ -579,7 +581,8 @@ def has_ruleset_rules_requiring_conversation_resolution(
 
 
 def requires_conversation_resolution(
-    branch_protection: Optional[BranchProtectionRule], ruleset_rules: List[RulesetRule]
+    branch_protection: Optional[BranchProtectionRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     return (
         branch_protection is not None
@@ -589,7 +592,7 @@ def requires_conversation_resolution(
 
 def requires_status_checks(
     branch_protection: Optional[BranchProtectionRule],
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
 ) -> bool:
     if branch_protection is not None and branch_protection.requiresStatusChecks:
         return True
@@ -606,7 +609,7 @@ async def mergeable(
     config_path: str,
     pull_request: PullRequest,
     branch_protection: Optional[BranchProtectionRule],
-    ruleset_rules: List[RulesetRule],
+    ruleset_rules: List[ParsedRulesetRule],
     review_requests: List[PRReviewRequest],
     bot_reviews: List[PRReview],
     contexts: List[StatusContext],
