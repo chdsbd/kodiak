@@ -1443,19 +1443,6 @@ query {
         async with self.rest_throttler:
             return await self.session.get(url, headers=headers)
 
-    # async def get_rules_for_branch(self, branch: str) -> http.Response:
-    #     headers = await get_headers(
-    #         session=self.session, installation_id=self.installation_id
-    #     )
-    #     url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/rules/branches/{branch}")
-    #     async with self.rest_throttler:
-    #         res = await self.session.get(url, headers=headers)
-    #         try:
-    #             res.raise_for_status()
-    #             return res.json()
-    #         except HTTPError:
-    #             return []
-
     async def merge_pull_request(
         self,
         number: int,
