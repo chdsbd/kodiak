@@ -822,10 +822,7 @@ def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[ParsedRulesetRule
             logger.warning("Could not parse RulesetRule", exc_info=True)
             continue
         rule_type = find_rule_type(rule)
-        if not rule_type:
-            raise Exception("Could not find rule type")
-            logger.warning("Could not find rule type")
-        else:
+        if rule_type:
             rules.append(
                 ParsedRulesetRule(
                     parameters=rule.parameters,
@@ -1319,14 +1316,6 @@ query {
         if cfg is None:
             log.info("no config found")
             return None
-
-        # baseRefName = get_base_ref(pr=pull_request)
-
-        # if baseRefName:
-        #     ruleset_rules = await self.get_rules_for_branch(branch=baseRefName)
-        # else:
-        #     ruleset_rules = []
-        #     log.warning("failed to find rules for branch", baseRefName=baseRefName)
 
         branch_protection = get_branch_protection(
             repo=repository, ref_name=pr.baseRefName
