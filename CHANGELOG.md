@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added workaround for GitHub GraphQL bug. (#908)
 
+### Changed
+- Split GitHub API throttling into separate REST API and GraphQL API throttlers. (#908)
+
 ## 0.56.0 - 2025-12-12
 
 ### Added
