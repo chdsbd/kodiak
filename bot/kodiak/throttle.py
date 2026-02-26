@@ -1,7 +1,7 @@
 import asyncio
 import time
 from collections import defaultdict, deque
-from typing import Deque, Mapping
+from typing import Deque, Mapping, Tuple
 
 
 class Throttler:
@@ -65,11 +65,11 @@ class Throttler:
 
 
 # installation_id => Throttler
-THROTTLER_CACHE: Mapping[str, Throttler] = defaultdict(
+THROTTLER_CACHE: Mapping[Tuple[str, str], Throttler] = defaultdict(
     # TODO(chdsbd): Store rate limits in redis and update via http rate limit response headers
     lambda: Throttler(rate_limit=5000 / 60 / 60)
 )
 
 
-def get_thottler_for_installation(*, installation_id: str) -> Throttler:
-    return THROTTLER_CACHE[installation_id]
+def get_thottler_for_installation(*, installation_id: str, kind: str) -> Throttler:
+    return THROTTLER_CACHE[(installation_id, kind)]
