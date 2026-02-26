@@ -223,6 +223,9 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
           asCodeOwner
           requestedReviewer {
             __typename
+            ... on Bot {
+              login
+            }
             ... on User {
               login
             }
@@ -833,9 +836,9 @@ def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[ParsedRulesetRule
     return rules
 
 
-def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_review_requests_dicts(*, pr: Dict[str, Any]) -> List[Optional[Dict[str, Any]]]:
     try:
-        return cast(List[Dict[str, Any]], pr["reviewRequests"]["nodes"])
+        return cast(List[Optional[Dict[str, Any]]], pr["reviewRequests"]["nodes"])
     except (KeyError, TypeError):
         return []
 
@@ -846,6 +849,8 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
     """
     review_requests: List[PRReviewRequest] = []
     for request_dict in get_review_requests_dicts(pr=pr):
+        if request_dict is None:
+            continue
         try:
             asCodeOwner = request_dict["asCodeOwner"]
             request = request_dict["requestedReviewer"]
