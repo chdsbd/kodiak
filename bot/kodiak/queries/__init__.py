@@ -7,13 +7,13 @@ from enum import Enum
 from typing import (
     Any,
     Dict,
+    Iterator,
     List,
     Mapping,
     MutableMapping,
     Optional,
     TypedDict,
     Union,
-    Iterator,
     cast,
 )
 
