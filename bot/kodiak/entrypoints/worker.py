@@ -43,11 +43,17 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
             continue
         _, value = res
         parsed_event = RawWebhookEvent.parse_raw(value)
-        await handle_webhook_event(
-            queue=queue,
-            event_name=parsed_event.event_name,
-            payload=parsed_event.payload,
-        )
+        try:
+            await asyncio.wait_for(
+                handle_webhook_event(
+                    queue=queue,
+                    event_name=parsed_event.event_name,
+                    payload=parsed_event.payload,
+                ),
+                timeout=60,
+            )
+        except asyncio.TimeoutError:
+            log.warning("handle_webhook_event timed out")
         log.info("ingest_event_handled")
 
 
