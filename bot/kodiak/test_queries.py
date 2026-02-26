@@ -24,6 +24,7 @@ from kodiak.queries import (
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
+    ParsedRulesetRule,
     PRReview,
     PRReviewAuthor,
     PRReviewRequest,
@@ -35,13 +36,14 @@ from kodiak.queries import (
     PushAllowance,
     PushAllowanceActor,
     RepoInfo,
+    RepositoryRulePartial,
     RepositoryRuleset,
     RepositoryRulesetBypassActor,
     RepositoryRulesetBypassActorConnection,
+    RepositoryRulesetConnection,
     RequiredStatusChecksParameters,
     ReviewThread,
     ReviewThreadConnection,
-    RulesetRule,
     SeatsExceeded,
     StatusCheckConfiguration,
     StatusContext,
@@ -334,11 +336,35 @@ async def test_get_event_info_blocked_graphql(
     repositoryRuleset = RepositoryRuleset(
         bypassActors=RepositoryRulesetBypassActorConnection(
             nodes=[RepositoryRulesetBypassActor(actor=BypassActor(databaseId=29196))]
-        )
+        ),
+        rules=RepositoryRulesetConnection(
+            nodes=[
+                RepositoryRulePartial(id="RRU_kwDOAJ0RD84D2bFu", type="DELETION"),
+                RepositoryRulePartial(
+                    id="RRU_kwDOAJ0RD84D2bFv", type="NON_FAST_FORWARD"
+                ),
+                RepositoryRulePartial(id="RRU_kwDOAJ0RD84D2bFw", type="CREATION"),
+                RepositoryRulePartial(id="RRU_kwDOAJ0RD84D2bFx", type="UPDATE"),
+                RepositoryRulePartial(
+                    id="RRU_kwDOAJ0RD84D2bFy", type="REQUIRED_LINEAR_HISTORY"
+                ),
+                RepositoryRulePartial(
+                    id="RRU_kwDOAJ0RD84D2bFz", type="REQUIRED_STATUS_CHECKS"
+                ),
+                RepositoryRulePartial(id="RRU_kwDOAJ0RD84D2bF0", type="PULL_REQUEST"),
+                RepositoryRulePartial(id="RRU_kwDOAJ0RD84D2bF1", type="CODE_SCANNING"),
+                RepositoryRulePartial(
+                    id="RRU_kwDOAJ0RD84D2bF3", type="COPILOT_CODE_REVIEW"
+                ),
+                RepositoryRulePartial(
+                    id="RRU_kwDOAJ0RD84EBT1X", type="COPILOT_CODE_REVIEW"
+                ),
+            ]
+        ),
     )
     block_event.ruleset_rules = [
-        RulesetRule(type="UPDATE", repositoryRuleset=repositoryRuleset),
-        RulesetRule(
+        ParsedRulesetRule(type="UPDATE", repositoryRuleset=repositoryRuleset),
+        ParsedRulesetRule(
             type="REQUIRED_STATUS_CHECKS",
             parameters=RequiredStatusChecksParameters(
                 requiredStatusChecks=[StatusCheckConfiguration(context="test")],
@@ -346,18 +372,18 @@ async def test_get_event_info_blocked_graphql(
             ),
             repositoryRuleset=repositoryRuleset,
         ),
-        RulesetRule(
+        ParsedRulesetRule(
             type="PULL_REQUEST",
             parameters=PullRequestParameters(
                 requiredReviewThreadResolution=False,
             ),
             repositoryRuleset=repositoryRuleset,
         ),
-        RulesetRule(
+        ParsedRulesetRule(
             type="NON_FAST_FORWARD",
             repositoryRuleset=repositoryRuleset,
         ),
-        RulesetRule(
+        ParsedRulesetRule(
             type="DELETION",
             repositoryRuleset=repositoryRuleset,
         ),
