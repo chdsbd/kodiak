@@ -26,6 +26,9 @@ r = redis.Redis.from_url(settings.REDIS_URL)
 # to write a check constraint on the length of a text field.
 models.TextField.register_lookup(models.functions.Length)
 
+# Escape % for Python f-string formatting (so it becomes literal % in SQL LIKE wildcard)
+_BOT_USERNAME_PATTERN = settings.KODIAK_BOT_USERNAME_PATTERN.replace("%", "%%")
+
 
 def sane_repr(*attrs: str) -> Callable[[object], str]:
     """
@@ -653,7 +656,7 @@ SELECT
     (payload -> 'installation' ->> 'id')::integer github_installation_id,
 sum(
     CASE WHEN (event_name = 'pull_request'
-        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
+        AND payload -> 'sender' ->> 'login' LIKE '{_BOT_USERNAME_PATTERN}'
         AND payload ->> 'action' = 'synchronize') THEN
         1
     ELSE
@@ -661,7 +664,7 @@ sum(
     END) kodiak_updated,
 sum(
     CASE WHEN (event_name = 'pull_request'
-        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]'
+        AND payload -> 'sender' ->> 'login' LIKE '{_BOT_USERNAME_PATTERN}'
         AND payload ->> 'action' = 'closed'
         AND payload -> 'pull_request' -> 'merged' = to_jsonb (TRUE)) THEN
         1
@@ -670,7 +673,7 @@ sum(
     END) kodiak_merged,
 sum(
     CASE WHEN (event_name = 'pull_request_review'
-        AND payload -> 'sender' ->> 'login' LIKE 'kodiak%[bot]') THEN
+        AND payload -> 'sender' ->> 'login' LIKE '{_BOT_USERNAME_PATTERN}') THEN
         1
     ELSE
         0
@@ -787,7 +790,7 @@ class UserPullRequestActivity(BaseModel):
     def get_active_users_in_last_30_days(account: Account) -> List[ActiveUser]:
         with connection.cursor() as cursor:
             cursor.execute(
-                """
+                f"""
             SELECT
                 max(a.github_user_login) github_user_login,
                 a.github_user_id,
@@ -800,7 +803,7 @@ class UserPullRequestActivity(BaseModel):
                     AND a.github_repository_name = b.github_repository_name
                     AND a.github_pull_request_number = b.github_pull_request_number
             WHERE
-                b.github_user_login LIKE 'kodiak%%[bot]'
+                b.github_user_login LIKE '{_BOT_USERNAME_PATTERN}'
                 AND a.github_user_login NOT LIKE '%%[bot]'
                 -- We only consider users that open pull requests.
                 -- For table b we look at all pull request events for Kodiak to
