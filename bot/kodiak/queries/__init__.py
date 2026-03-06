@@ -235,7 +235,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       title
       body
       bodyText
-      bodyHTML
+      %(bodyHTMLQuery)s
       url
       reviews(first: 100) {
         nodes {
@@ -721,7 +721,9 @@ def get_branch_protection(
     *, pull_request: Dict[str, Any]
 ) -> Optional[BranchProtectionRule]:
     try:
-        return BranchProtectionRule.parse_obj(pull_request["branchProtectionRule"])
+        return BranchProtectionRule.parse_obj(
+            pull_request["baseRef"]["branchProtectionRule"]
+        )
     except (ValueError, KeyError, TypeError):
         logger.warning("Could not parse branch protection", exc_info=True)
         return None
