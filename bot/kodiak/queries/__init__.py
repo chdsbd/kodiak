@@ -7,7 +7,6 @@ from enum import Enum
 from typing import (
     Any,
     Dict,
-    Iterator,
     List,
     Mapping,
     MutableMapping,
@@ -266,7 +265,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         name
         rules(first: 100) {
           nodes {
-            id
+            type
             parameters {
               ... on RequiredStatusChecksParameters {
                 requiredStatusChecks {
@@ -289,13 +288,6 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
                   }
                 }
               }
-
-                rules(first: 100) {
-                    nodes {
-                        id
-                        type
-                    }
-                }
             }
           }
         }
@@ -481,7 +473,7 @@ class EventInfoResponse:
     repository: RepoInfo
     subscription: Optional[Subscription]
     branch_protection: Optional[BranchProtectionRule]
-    ruleset_rules: List[ParsedRulesetRule]
+    ruleset_rules: List[RulesetRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
     bot_reviews: List[PRReview] = field(default_factory=list)
@@ -587,22 +579,12 @@ class RepositoryRulesetBypassActorConnection(BaseModel):
     nodes: Optional[List[Optional[RepositoryRulesetBypassActor]]] = None
 
 
-class RepositoryRulePartial(BaseModel):
-    id: str
-    type: str
-
-
-class RepositoryRulesetConnection(BaseModel):
-    nodes: Optional[List[Optional[RepositoryRulePartial]]] = None
-
-
 class RepositoryRuleset(BaseModel):
     bypassActors: Optional[RepositoryRulesetBypassActorConnection] = None
-    rules: Optional[RepositoryRulesetConnection] = None
 
 
 class RulesetRule(BaseModel):
-    id: str
+    type: str
     parameters: Union[
         MergeQueueParameters,
         PullRequestParameters,
@@ -617,19 +599,6 @@ class RulesetRule(BaseModel):
         if values.get("parameters") == {}:
             values["parameters"] = None
         return values
-
-
-@dataclass
-class ParsedRulesetRule:
-    type: str
-    parameters: Union[
-        MergeQueueParameters,
-        PullRequestParameters,
-        RequiredStatusChecksParameters,
-        UpdateParameters,
-        None,
-    ] = None
-    repositoryRuleset: Optional[RepositoryRuleset] = None
 
 
 class PRReviewState(Enum):
@@ -787,49 +756,13 @@ def get_rules_dicts(*, pull_request: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
 
 
-def find_rule_type(rule: RulesetRule) -> str | None:
-    if (
-        rule.repositoryRuleset
-        and rule.repositoryRuleset.rules
-        and rule.repositoryRuleset.rules.nodes
-    ):
-        for node in rule.repositoryRuleset.rules.nodes:
-            if node and node.id == rule.id:
-                return node.type
-    return None
-
-
-def find_bypass_actor_ids(rule: RulesetRule) -> Iterator[int | None]:
-    if (
-        rule.repositoryRuleset
-        and rule.repositoryRuleset.bypassActors
-        and rule.repositoryRuleset.bypassActors.nodes
-    ):
-        for node in rule.repositoryRuleset.bypassActors.nodes:
-            if node and node.actor and node.actor.databaseId:
-                yield node.actor.databaseId
-            else:
-                yield None
-    return None
-
-
-def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[ParsedRulesetRule]:
+def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[RulesetRule]:
     rules = []
     for node in get_rules_dicts(pull_request=pull_request):
         try:
-            rule = RulesetRule.parse_obj(node)
+            rules.append(RulesetRule.parse_obj(node))
         except ValueError:
             logger.warning("Could not parse RulesetRule", exc_info=True)
-            continue
-        rule_type = find_rule_type(rule)
-        if rule_type:
-            rules.append(
-                ParsedRulesetRule(
-                    parameters=rule.parameters,
-                    type=rule_type,
-                    repositoryRuleset=rule.repositoryRuleset,
-                )
-            )
     return rules
 
 
