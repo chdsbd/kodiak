@@ -46,35 +46,6 @@
         "reviewThreads": {
           "nodes": [{ "isCollapsed": true }, { "isCollapsed": false }]
         },
-        "branchProtectionRule": {
-          "requiresApprovingReviews": true,
-          "requiredApprovingReviewCount": 2,
-          "requiresStatusChecks": true,
-          "requiredStatusCheckContexts": [
-            "ci/circleci: backend_lint",
-            "ci/circleci: backend_test",
-            "ci/circleci: frontend_lint",
-            "ci/circleci: frontend_test",
-            "WIP (beta)"
-          ],
-          "requiresStrictStatusChecks": true,
-          "requiresCodeOwnerReviews": false,
-          "requiresCommitSignatures": false,
-          "requiresConversationResolution": false,
-          "restrictsPushes": true,
-          "pushAllowances": {
-            "nodes": [
-              {
-                "actor": {}
-              },
-              {
-                "actor": {
-                  "databaseId": 53453
-                }
-              }
-            ]
-          }
-        },
         "title": "Update README.md",
         "body": "",
         "bodyText": "",
@@ -140,6 +111,35 @@
         },
         "baseRef": {
           "name": "main",
+          "branchProtectionRule": {
+            "requiresApprovingReviews": true,
+            "requiredApprovingReviewCount": 2,
+            "requiresStatusChecks": true,
+            "requiredStatusCheckContexts": [
+              "ci/circleci: backend_lint",
+              "ci/circleci: backend_test",
+              "ci/circleci: frontend_lint",
+              "ci/circleci: frontend_test",
+              "WIP (beta)"
+            ],
+            "requiresStrictStatusChecks": true,
+            "requiresCodeOwnerReviews": false,
+            "requiresCommitSignatures": false,
+            "requiresConversationResolution": false,
+            "restrictsPushes": true,
+            "pushAllowances": {
+              "nodes": [
+                {
+                  "actor": {}
+                },
+                {
+                  "actor": {
+                    "databaseId": 53453
+                  }
+                }
+              ]
+            }
+          },
           "rules": {
             "nodes": [
               {
