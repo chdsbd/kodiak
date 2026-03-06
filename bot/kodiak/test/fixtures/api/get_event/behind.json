@@ -1,46 +1,6 @@
 {
   "data": {
     "repository": {
-      "branchProtectionRules": {
-        "nodes": [
-          {
-            "matchingRefs": {
-              "nodes": [
-                {
-                  "name": "master"
-                }
-              ]
-            },
-            "requiresApprovingReviews": true,
-            "requiredApprovingReviewCount": 2,
-            "requiresStatusChecks": true,
-            "requiredStatusCheckContexts": [
-              "ci/circleci: backend_lint",
-              "ci/circleci: backend_test",
-              "ci/circleci: frontend_lint",
-              "ci/circleci: frontend_test",
-              "WIP (beta)"
-            ],
-            "requiresStrictStatusChecks": true,
-            "requiresCodeOwnerReviews": false,
-            "requiresCommitSignatures": false,
-            "requiresConversationResolution": false,
-            "restrictsPushes": true,
-            "pushAllowances": {
-              "nodes": [
-                {
-                  "actor": {}
-                },
-                {
-                  "actor": {
-                    "databaseId": 53453
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      },
       "mergeCommitAllowed": false,
       "rebaseMergeAllowed": false,
       "squashMergeAllowed": true,
@@ -54,7 +14,9 @@
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
         "author": {
-            "login": "arnold", "databaseId": 49118, "type": "Bot"
+          "login": "arnold",
+          "databaseId": 49118,
+          "type": "Bot"
         },
         "reviewRequests": {
           "nodes": [
@@ -82,10 +44,7 @@
           ]
         },
         "reviewThreads": {
-          "nodes": [
-            {"isCollapsed": true},
-            {"isCollapsed": false}
-          ]
+          "nodes": [{ "isCollapsed": true }, { "isCollapsed": false }]
         },
         "title": "Update README.md",
         "body": "",
@@ -149,6 +108,37 @@
         "headRefName": "df825f90-9825-424c-a97e-733522027e4c",
         "headRef": {
           "id": "092059105"
+        },
+        "baseRef": {
+          "branchProtectionRule": {
+            "requiresApprovingReviews": true,
+            "requiredApprovingReviewCount": 2,
+            "requiresStatusChecks": true,
+            "requiredStatusCheckContexts": [
+              "ci/circleci: backend_lint",
+              "ci/circleci: backend_test",
+              "ci/circleci: frontend_lint",
+              "ci/circleci: frontend_test",
+              "WIP (beta)"
+            ],
+            "requiresStrictStatusChecks": true,
+            "requiresCodeOwnerReviews": false,
+            "requiresCommitSignatures": false,
+            "requiresConversationResolution": false,
+            "restrictsPushes": true,
+            "pushAllowances": {
+              "nodes": [
+                {
+                  "actor": {}
+                },
+                {
+                  "actor": {
+                    "databaseId": 53453
+                  }
+                }
+              ]
+            }
+          }
         },
         "commits": {
           "nodes": [

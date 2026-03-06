@@ -7,7 +7,6 @@ from enum import Enum
 from typing import (
     Any,
     Dict,
-    Iterator,
     List,
     Mapping,
     MutableMapping,
@@ -170,30 +169,6 @@ def get_event_info_query(
     return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
-    branchProtectionRules(first: 100) {
-      nodes {
-        matchingRefs(first: 100) {
-          nodes {
-            name
-          }
-        }
-        requiresStatusChecks
-        requiredStatusCheckContexts
-        requiresStrictStatusChecks
-        requiresCommitSignatures
-        %(requiresConversationResolution)s
-        restrictsPushes
-        pushAllowances(first: 100) {
-          nodes {
-            actor {
-              ... on App {
-                databaseId
-              }
-            }
-          }
-        }
-      }
-    }
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
@@ -218,6 +193,23 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       state
       mergeable
       isCrossRepository
+      branchProtectionRule {
+        requiresStatusChecks
+        requiredStatusCheckContexts
+        requiresStrictStatusChecks
+        requiresCommitSignatures
+        %(requiresConversationResolution)s
+        restrictsPushes
+        pushAllowances(first: 100) {
+          nodes {
+            actor {
+              ... on App {
+                databaseId
+              }
+            }
+          }
+        }
+      }
       reviewRequests(first: 100) {
         nodes {
           asCodeOwner
@@ -266,7 +258,7 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         name
         rules(first: 100) {
           nodes {
-            id
+            type
             parameters {
               ... on RequiredStatusChecksParameters {
                 requiredStatusChecks {
@@ -289,13 +281,6 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
                   }
                 }
               }
-
-                rules(first: 100) {
-                    nodes {
-                        id
-                        type
-                    }
-                }
             }
           }
         }
@@ -481,7 +466,7 @@ class EventInfoResponse:
     repository: RepoInfo
     subscription: Optional[Subscription]
     branch_protection: Optional[BranchProtectionRule]
-    ruleset_rules: List[ParsedRulesetRule]
+    ruleset_rules: List[RulesetRule]
     review_requests: List[PRReviewRequest]
     head_exists: bool
     bot_reviews: List[PRReview] = field(default_factory=list)
@@ -587,22 +572,12 @@ class RepositoryRulesetBypassActorConnection(BaseModel):
     nodes: Optional[List[Optional[RepositoryRulesetBypassActor]]] = None
 
 
-class RepositoryRulePartial(BaseModel):
-    id: str
-    type: str
-
-
-class RepositoryRulesetConnection(BaseModel):
-    nodes: Optional[List[Optional[RepositoryRulePartial]]] = None
-
-
 class RepositoryRuleset(BaseModel):
     bypassActors: Optional[RepositoryRulesetBypassActorConnection] = None
-    rules: Optional[RepositoryRulesetConnection] = None
 
 
 class RulesetRule(BaseModel):
-    id: str
+    type: str
     parameters: Union[
         MergeQueueParameters,
         PullRequestParameters,
@@ -617,19 +592,6 @@ class RulesetRule(BaseModel):
         if values.get("parameters") == {}:
             values["parameters"] = None
         return values
-
-
-@dataclass
-class ParsedRulesetRule:
-    type: str
-    parameters: Union[
-        MergeQueueParameters,
-        PullRequestParameters,
-        RequiredStatusChecksParameters,
-        UpdateParameters,
-        None,
-    ] = None
-    repositoryRuleset: Optional[RepositoryRuleset] = None
 
 
 class PRReviewState(Enum):
@@ -755,29 +717,16 @@ def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
-    try:
-        return cast(List[Dict[str, Any]], repo["branchProtectionRules"]["nodes"])
-    except (KeyError, TypeError):
-        return []
-
-
 def get_branch_protection(
-    *, repo: Dict[str, Any], ref_name: str
+    *, pull_request: Dict[str, Any]
 ) -> Optional[BranchProtectionRule]:
-    for rule in get_branch_protection_dicts(repo=repo):
-        try:
-            nodes = rule["matchingRefs"]["nodes"]
-        except (KeyError, TypeError):
-            nodes = []
-        for node in nodes:
-            if node["name"] == ref_name:
-                try:
-                    return BranchProtectionRule.parse_obj(rule)
-                except ValueError:
-                    logger.warning("Could not parse branch protection", exc_info=True)
-                    return None
-    return None
+    try:
+        return BranchProtectionRule.parse_obj(
+            pull_request["baseRef"]["branchProtectionRule"]
+        )
+    except (ValueError, KeyError, TypeError):
+        logger.warning("Could not parse branch protection", exc_info=True)
+        return None
 
 
 def get_rules_dicts(*, pull_request: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -787,49 +736,13 @@ def get_rules_dicts(*, pull_request: Dict[str, Any]) -> List[Dict[str, Any]]:
         return []
 
 
-def find_rule_type(rule: RulesetRule) -> str | None:
-    if (
-        rule.repositoryRuleset
-        and rule.repositoryRuleset.rules
-        and rule.repositoryRuleset.rules.nodes
-    ):
-        for node in rule.repositoryRuleset.rules.nodes:
-            if node and node.id == rule.id:
-                return node.type
-    return None
-
-
-def find_bypass_actor_ids(rule: RulesetRule) -> Iterator[int | None]:
-    if (
-        rule.repositoryRuleset
-        and rule.repositoryRuleset.bypassActors
-        and rule.repositoryRuleset.bypassActors.nodes
-    ):
-        for node in rule.repositoryRuleset.bypassActors.nodes:
-            if node and node.actor and node.actor.databaseId:
-                yield node.actor.databaseId
-            else:
-                yield None
-    return None
-
-
-def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[ParsedRulesetRule]:
+def get_ruleset_rules(*, pull_request: Dict[str, Any]) -> List[RulesetRule]:
     rules = []
     for node in get_rules_dicts(pull_request=pull_request):
         try:
-            rule = RulesetRule.parse_obj(node)
+            rules.append(RulesetRule.parse_obj(node))
         except ValueError:
             logger.warning("Could not parse RulesetRule", exc_info=True)
-            continue
-        rule_type = find_rule_type(rule)
-        if rule_type:
-            rules.append(
-                ParsedRulesetRule(
-                    parameters=rule.parameters,
-                    type=rule_type,
-                    repositoryRuleset=rule.repositoryRuleset,
-                )
-            )
     return rules
 
 
@@ -1317,9 +1230,7 @@ query {
             log.info("no config found")
             return None
 
-        branch_protection = get_branch_protection(
-            repo=repository, ref_name=pr.baseRefName
-        )
+        branch_protection = get_branch_protection(pull_request=pull_request)
         ruleset_rules = get_ruleset_rules(pull_request=pull_request)
 
         all_reviews = get_reviews(pr=pull_request)
