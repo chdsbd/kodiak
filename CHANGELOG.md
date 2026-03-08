@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Reduced GitHub GraphQL API cost. (#911)
-- Removed workaround for GitHub GraphQL bug, because it increased GitHub GraphQL API cost. (#911)
+- Reduced GitHub GraphQL API cost from 4 units to 2 units. (#911)
+- Removed workaround for GitHub GraphQL bug, because it increased GitHub GraphQL API cost by 1 unit. (#911)
 
 ## 0.57.0 - 2026-02-26
 
