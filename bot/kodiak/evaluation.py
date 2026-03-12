@@ -278,7 +278,22 @@ def review_status(reviews: List[PRReview]) -> PRReviewState:
 
 
 def deduplicate_check_runs(check_runs: Iterable[CheckRun]) -> Iterable[CheckRun]:
-    check_run_map = {check_run.name: check_run for check_run in check_runs}
+    """
+    unique by name, workflow databaseId, app
+    """
+    check_run_map = {}
+    for check_run in check_runs:
+        app = (
+            check_run.checkSuite.app.databaseId
+            if check_run.checkSuite.app is not None
+            else None
+        )
+        workflow = (
+            check_run.checkSuite.workflowRun.workflow.databaseId
+            if check_run.checkSuite.workflowRun is not None
+            else None
+        )
+        check_run_map[(check_run.name, app, workflow)] = check_run
     return check_run_map.values()
 
 
