@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.59.1 - 2026-03-12
+
+### Fixed
+
+- Suppress warning about null branch protection rules. (#912)
+
 ## 0.59.0 - 2026-03-12
 
 ### Changed
