@@ -718,9 +718,10 @@ def get_branch_protection(
     *, pull_request: Dict[str, Any]
 ) -> Optional[BranchProtectionRule]:
     try:
-        return BranchProtectionRule.parse_obj(
-            pull_request["baseRef"]["branchProtectionRule"]
-        )
+        rule = pull_request["baseRef"]["branchProtectionRule"]
+        if rule is None:
+            return None
+        return BranchProtectionRule.parse_obj(rule)
     except (ValueError, KeyError, TypeError):
         logger.warning("Could not parse branch protection", exc_info=True)
         return None
