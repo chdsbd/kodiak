@@ -198,14 +198,11 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
           asCodeOwner
           requestedReviewer {
             __typename
-            ... on User {
+            ... on Actor {
               login
             }
             ... on Team {
               name
-            }
-            ... on Mannequin {
-              login
             }
           }
         }
@@ -764,11 +761,12 @@ def get_requested_reviews(*, pr: Dict[str, Any]) -> List[PRReviewRequest]:
             request = request_dict["requestedReviewer"]
             if request is None:
                 continue
-            typename = request["__typename"]
-            if typename in {"User", "Mannequin"}:
+            if "login" in request:
                 name = request["login"]
-            else:
+            elif "name" in request:
                 name = request["name"]
+            else:
+                continue
             review_requests.append(
                 PRReviewRequest(name=name, asCodeOwner=bool(asCodeOwner))
             )
