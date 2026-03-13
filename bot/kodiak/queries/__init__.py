@@ -237,21 +237,21 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       baseRef {
         name
         branchProtectionRule {
-            requiresStatusChecks
-            requiredStatusCheckContexts
-            requiresStrictStatusChecks
-            requiresCommitSignatures
-            %(requiresConversationResolution)s
-            restrictsPushes
-            pushAllowances(first: 100) {
+          requiresStatusChecks
+          requiredStatusCheckContexts
+          requiresStrictStatusChecks
+          requiresCommitSignatures
+          %(requiresConversationResolution)s
+          restrictsPushes
+          pushAllowances(first: 100) {
             nodes {
-                actor {
+              actor {
                 ... on App {
-                    databaseId
+                  databaseId
                 }
-                }
+              }
             }
-            }
+          }
         }
         rules(first: 100) {
           nodes {
