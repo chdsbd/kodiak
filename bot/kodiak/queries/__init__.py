@@ -169,30 +169,6 @@ def get_event_info_query(
     return """
 query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
   repository(owner: $owner, name: $repo) {
-    branchProtectionRules(first: 100) {
-      nodes {
-        matchingRefs(first: 100) {
-          nodes {
-            name
-          }
-        }
-        requiresStatusChecks
-        requiredStatusCheckContexts
-        requiresStrictStatusChecks
-        requiresCommitSignatures
-        %(requiresConversationResolution)s
-        restrictsPushes
-        pushAllowances(first: 100) {
-          nodes {
-            actor {
-              ... on App {
-                databaseId
-              }
-            }
-          }
-        }
-      }
-    }
     mergeCommitAllowed
     rebaseMergeAllowed
     squashMergeAllowed
@@ -260,6 +236,23 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
       }
       baseRef {
         name
+        branchProtectionRule {
+          requiresStatusChecks
+          requiredStatusCheckContexts
+          requiresStrictStatusChecks
+          requiresCommitSignatures
+          %(requiresConversationResolution)s
+          restrictsPushes
+          pushAllowances(first: 100) {
+            nodes {
+              actor {
+                ... on App {
+                  databaseId
+                }
+              }
+            }
+          }
+        }
         rules(first: 100) {
           nodes {
             type
@@ -721,29 +714,16 @@ def get_sha(*, pr: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-def get_branch_protection_dicts(*, repo: Dict[str, Any]) -> List[Dict[str, Any]]:
-    try:
-        return cast(List[Dict[str, Any]], repo["branchProtectionRules"]["nodes"])
-    except (KeyError, TypeError):
-        return []
-
-
 def get_branch_protection(
-    *, repo: Dict[str, Any], ref_name: str
+    *, pull_request: Dict[str, Any]
 ) -> Optional[BranchProtectionRule]:
-    for rule in get_branch_protection_dicts(repo=repo):
-        try:
-            nodes = rule["matchingRefs"]["nodes"]
-        except (KeyError, TypeError):
-            nodes = []
-        for node in nodes:
-            if node["name"] == ref_name:
-                try:
-                    return BranchProtectionRule.parse_obj(rule)
-                except ValueError:
-                    logger.warning("Could not parse branch protection", exc_info=True)
-                    return None
-    return None
+    try:
+        return BranchProtectionRule.parse_obj(
+            pull_request["baseRef"]["branchProtectionRule"]
+        )
+    except (ValueError, KeyError, TypeError):
+        logger.warning("Could not parse branch protection", exc_info=True)
+        return None
 
 
 def get_rules_dicts(*, pull_request: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1243,9 +1223,8 @@ query {
         if cfg is None:
             log.info("no config found")
             return None
-        branch_protection = get_branch_protection(
-            repo=repository, ref_name=pr.baseRefName
-        )
+
+        branch_protection = get_branch_protection(pull_request=pull_request)
         ruleset_rules = get_ruleset_rules(pull_request=pull_request)
 
         all_reviews = get_reviews(pr=pull_request)

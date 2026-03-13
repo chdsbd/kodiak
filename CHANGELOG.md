@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.59.0 - 2026-03-12
+
+### Changed
+
+- Reduced GitHub GraphQL API cost from 4 units to 2 units. (#911)
+
 ## 0.58.1 - 2026-03-12
 
 ### Fixed
