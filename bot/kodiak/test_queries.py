@@ -220,6 +220,7 @@ method = "squash"
         review_requests=[
             PRReviewRequest(name="ghost"),
             PRReviewRequest(name="ghost-team"),
+            PRReviewRequest(name="ghost-bot"),
             PRReviewRequest(name="ghost-mannequin"),
         ],
         bot_reviews=[

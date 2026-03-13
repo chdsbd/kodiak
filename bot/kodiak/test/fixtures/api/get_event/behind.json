@@ -54,7 +54,9 @@
         "mergeable": "MERGEABLE",
         "isCrossRepository": false,
         "author": {
-            "login": "arnold", "databaseId": 49118, "type": "Bot"
+          "login": "arnold",
+          "databaseId": 49118,
+          "type": "Bot"
         },
         "reviewRequests": {
           "nodes": [
@@ -75,6 +77,13 @@
             {
               "asCodeOwner": false,
               "requestedReviewer": {
+                "__typename": "Bot",
+                "login": "ghost-bot"
+              }
+            },
+            {
+              "asCodeOwner": false,
+              "requestedReviewer": {
                 "__typename": "Mannequin",
                 "login": "ghost-mannequin"
               }
@@ -82,10 +91,7 @@
           ]
         },
         "reviewThreads": {
-          "nodes": [
-            {"isCollapsed": true},
-            {"isCollapsed": false}
-          ]
+          "nodes": [{ "isCollapsed": true }, { "isCollapsed": false }]
         },
         "title": "Update README.md",
         "body": "",

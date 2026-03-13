@@ -73,6 +73,13 @@
             {
               "asCodeOwner": false,
               "requestedReviewer": {
+                "__typename": "Bot",
+                "login": "ghost-bot"
+              }
+            },
+            {
+              "asCodeOwner": false,
+              "requestedReviewer": {
                 "__typename": "Mannequin",
                 "login": "ghost-mannequin"
               }
