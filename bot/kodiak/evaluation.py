@@ -352,11 +352,13 @@ def is_update_rule_missing_allowance(ruleset_rule: RulesetRule) -> bool:
         # if we have some error, assume we have an allowance.
         return False
     for push_allowance in ruleset_rule.repositoryRuleset.bypassActors.nodes:
-        if (
-            push_allowance is None
-            or push_allowance.actor is None
-            or push_allowance.actor.databaseId is None
-        ):
+        # GitHub redacts the actor field when our App installation lacks the
+        # permission to read it — even when the bypass entry is for our own
+        # App. We can't distinguish "redacted self" from "redacted other
+        # App", so assume allowance to avoid blocking valid configurations.
+        if push_allowance is None or push_allowance.actor is None:
+            return False
+        if push_allowance.actor.databaseId is None:
             continue
         if str(push_allowance.actor.databaseId) == str(app_config.GITHUB_APP_ID):
             return False

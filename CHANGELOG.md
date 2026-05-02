@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.60.0 - 2026-05-02
+
+### Fixed
+
+- Don't warn about "missing push allowance" when a ruleset's bypass actor is redacted by the GitHub API.
+
 ## 0.59.1 - 2026-03-12
 
 ### Fixed

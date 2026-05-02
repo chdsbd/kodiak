@@ -564,6 +564,34 @@ async def test_mergeable_with_push_allowance_with_rulesets() -> None:
     assert api.queue_for_merge.called is True
 
 
+async def test_mergeable_with_push_allowance_with_rulesets_redacted_actor() -> None:
+    """
+    GitHub returns `bypassActors.nodes: [null]` (or with `actor: null`) when
+    the App installation lacks permission to read the bypass actor — including
+    when the bypass entry is for our own App. We can't tell whether the
+    redacted entry is us or some other App, so we should not block the merge.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+
+    await mergeable(
+        api=api,
+        ruleset_rules=[
+            RulesetRule(
+                type="UPDATE",
+                parameters=None,
+                repositoryRuleset=RepositoryRuleset(
+                    bypassActors=RepositoryRulesetBypassActorConnection(nodes=[None])
+                ),
+            )
+        ],
+    )
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 0
+    assert api.queue_for_merge.called is True
+
+
 async def test_mergeable_missing_automerge_label() -> None:
     """
     If we're missing an automerge label we should not merge the PR.
