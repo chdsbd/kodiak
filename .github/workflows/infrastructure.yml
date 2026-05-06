@@ -51,7 +51,9 @@ jobs:
           push: true
           file: "Dockerfile"
           platforms: linux/amd64,linux/arm64
-          tags: cdignam/kodiak:${{ github.event.pull_request.head.sha || github.sha }}
+          tags: |
+            cdignam/kodiak:${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && format('cdignam/kodiak:{0}', github.ref_name) || '' }}
           cache-from: type=gha,scope=kodiak
           cache-to: type=gha,scope=kodiak,mode=max
           provenance: false
@@ -78,7 +80,9 @@ jobs:
           push: true
           file: "Dockerfile"
           platforms: linux/amd64,linux/arm64
-          tags: cdignam/kodiak-web-api:${{ github.event.pull_request.head.sha || github.sha }}
+          tags: |
+            cdignam/kodiak-web-api:${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && format('cdignam/kodiak-web-api:{0}', github.ref_name) || '' }}
           cache-from: type=gha,scope=kodiak-web-api
           cache-to: type=gha,scope=kodiak-web-api,mode=max
           provenance: false
@@ -107,7 +111,9 @@ jobs:
           push: true
           file: "Dockerfile"
           platforms: linux/amd64,linux/arm64
-          tags: cdignam/kodiak-web-ui:${{ github.event.pull_request.head.sha || github.sha }}
+          tags: |
+            cdignam/kodiak-web-ui:${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && format('cdignam/kodiak-web-ui:{0}', github.ref_name) || '' }}
           cache-from: type=gha,scope=kodiak-web-ui
           cache-to: type=gha,scope=kodiak-web-ui,mode=max
           provenance: false
