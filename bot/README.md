@@ -24,7 +24,7 @@ s/test
 # settings
 cp example.env .env
 
-# in a seperate terminal, start ngrok and configure your GitHub app settings to
+# in a separate terminal, start ngrok and configure your GitHub app settings to
 # route to the ngrok url
 ngrok http 3000
 

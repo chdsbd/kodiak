@@ -1483,7 +1483,7 @@ async def test_mergeable_pull_request_need_test_commit() -> None:
     """
     When you view a PR on GitHub, GitHub makes a test commit to see if a PR can
     be merged cleanly, but calling through the api doesn't trigger this test
-    commit unless we explictly call the GET endpoint for a pull request.
+    commit unless we explicitly call the GET endpoint for a pull request.
     """
     api = create_api()
     mergeable = create_mergeable()
@@ -1866,7 +1866,7 @@ async def test_mergeable_do_not_merge_with_update_branch_immediately_need_update
 
 async def test_mergeable_api_call_retry_timeout() -> None:
     """
-    if we enounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
+    if we encounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
     """
     mergeable = create_mergeable()
     api = create_api()
@@ -1901,7 +1901,7 @@ async def test_mergeable_api_call_retry_timeout() -> None:
 
 async def test_mergeable_api_call_retry_timeout_missing_method() -> None:
     """
-    if we enounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
+    if we encounter too many errors calling GitHub api_call_retry_timeout will be zero. we should notify users via a status check.
 
     This shouldn't really be possible in reality, but this is a test where the method name is None but the timeout is zero.
     """
