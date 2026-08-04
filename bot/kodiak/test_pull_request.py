@@ -17,7 +17,7 @@ from typing_extensions import Protocol
 
 import kodiak.http as requests
 from kodiak.config import V1, Merge, MergeMethod
-from kodiak.errors import ApiCallException
+from kodiak.errors import ApiCallException, GitHubApiInternalServerError
 from kodiak.http import Request
 from kodiak.pull_request import PRV2, EventInfoResponse, QueueForMergeCallback
 from kodiak.queries import (
@@ -145,6 +145,18 @@ class MockMergePullRequest(BaseMockFunc):
         return self.response
 
 
+class MockGetMergePullRequestResult(BaseMockFunc):
+    # responses are returned in order. The last response is repeated for any
+    # further calls.
+    responses: List[requests.Response]
+
+    async def __call__(self, number: int, uuid: str) -> requests.Response:
+        self.log_call(dict(number=number, uuid=uuid))
+        if len(self.responses) > 1:
+            return self.responses.pop(0)
+        return self.responses[0]
+
+
 class MockDeleteLabel(BaseMockFunc):
     response: requests.Response
 
@@ -179,6 +191,7 @@ class MockUpdateRef(BaseMockFunc):
 
 class FakeClientProtocol(Protocol):
     merge_pull_request: MockMergePullRequest
+    get_merge_pull_request_result: MockGetMergePullRequestResult
     delete_label: MockDeleteLabel
     add_label: MockAddLabel
     update_branch: MockUpdateBranch
@@ -196,6 +209,7 @@ class FakeClientProtocol(Protocol):
 def create_client() -> Type[FakeClientProtocol]:
     class FakeClient:
         merge_pull_request = MockMergePullRequest()
+        get_merge_pull_request_result = MockGetMergePullRequestResult()
         delete_label = MockDeleteLabel()
         add_label = MockAddLabel()
         update_branch = MockUpdateBranch()
@@ -245,33 +259,142 @@ def create_prv2(
     )
 
 
-async def test_pr_v2_merge() -> None:
+PENDING_MERGE_RESPONSE = b"""{
+  "status": "pending",
+  "details": {
+    "message": "Merge request enqueued.",
+    "uuid": "630b9d5e-3f2a-4f7e-8b0c-2d5f9a8c1e42",
+    "merge_method": "squash",
+    "merge_action": "default",
+    "expected_head_sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+  }
+}"""
+
+MERGED_MERGE_RESPONSE = b"""{
+  "status": "merged",
+  "details": {
+    "message": "Pull request was merged.",
+    "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e"
+  }
+}"""
+
+
+@pytest.fixture
+def fast_merge_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("kodiak.pull_request.MERGE_POLL_RATE_SECONDS", 0)
+
+
+async def test_pr_v2_merge(fast_merge_poll: None) -> None:
     """
-    We should be able to merge successfully
+    We should be able to merge successfully. Merging runs in the background, so
+    we poll for the result.
     """
     client = create_client()
     client.merge_pull_request.response = create_response(
-        content=b"""{
-      "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e",
-      "merged": true,
-      "message": "Pull Request successfully merged"
-    }""",
-        status_code=200,
+        content=PENDING_MERGE_RESPONSE, status_code=202
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(content=PENDING_MERGE_RESPONSE, status_code=200),
+        create_response(content=MERGED_MERGE_RESPONSE, status_code=200),
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.merge("squash", commit_title="my title", commit_message="my message")
+    assert client.merge_pull_request.call_count == 1
+    assert client.get_merge_pull_request_result.call_count == 2
+    assert (
+        client.get_merge_pull_request_result.calls[0]["uuid"]
+        == "630b9d5e-3f2a-4f7e-8b0c-2d5f9a8c1e42"
+    )
+
+
+async def test_pr_v2_merge_already_merged() -> None:
+    """
+    When a pull request is already merged we get a result without a uuid to
+    poll.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=MERGED_MERGE_RESPONSE, status_code=200
     )
 
     pr_v2 = create_prv2(client=client)
     await pr_v2.merge("squash", commit_title="my title", commit_message="my message")
     assert client.merge_pull_request.call_count == 1
+    assert client.get_merge_pull_request_result.call_count == 0
 
 
-async def test_pr_v2_merge_rebase_error() -> None:
+async def test_pr_v2_merge_existing_merge_request(fast_merge_poll: None) -> None:
     """
-    We should raise ApiCallException when we get a bad API response.
+    When a merge is already in flight GitHub returns a conflict with the uuid of
+    the existing merge request, which we poll like our own.
     """
     client = create_client()
     client.merge_pull_request.response = create_response(
-        content=b"""{"message":"This branch can't be rebased","documentation_url":"https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button"}""",
-        status_code=405,
+        content=PENDING_MERGE_RESPONSE, status_code=409
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(content=MERGED_MERGE_RESPONSE, status_code=200)
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.merge("squash", commit_title="my title", commit_message="my message")
+    assert client.get_merge_pull_request_result.call_count == 1
+
+
+async def test_pr_v2_merge_enqueued(fast_merge_poll: None) -> None:
+    """
+    A pull request added to GitHub's merge queue is merged by the queue, so
+    we're done.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=PENDING_MERGE_RESPONSE, status_code=202
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(
+            content=b"""{"status":"enqueued","details":{"message":"Pull request was added to the merge queue."}}""",
+            status_code=200,
+        )
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.merge("squash", commit_title="my title", commit_message="my message")
+    assert client.get_merge_pull_request_result.call_count == 1
+
+
+async def test_pr_v2_merge_failed(fast_merge_poll: None) -> None:
+    """
+    We should raise ApiCallException when the merge fails.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=PENDING_MERGE_RESPONSE, status_code=202
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(
+            content=b"""{"status":"failed","details":{"message":"Merge conflict: the pull request could not be merged."}}""",
+            status_code=200,
+        )
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
+    assert e.value.method == "pull_request/merge"
+    assert b"Merge conflict" in e.value.response
+
+
+async def test_pr_v2_merge_not_mergeable() -> None:
+    """
+    A closed or draft pull request is rejected when we start the merge.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=b"""{"status":"failed","details":{"message":"Pull request is closed."}}""",
+        status_code=400,
     )
 
     pr_v2 = create_prv2(client=client)
@@ -279,10 +402,69 @@ async def test_pr_v2_merge_rebase_error() -> None:
         await pr_v2.merge(
             "squash", commit_title="my title", commit_message="my message"
         )
-    assert client.merge_pull_request.call_count == 1
+    assert client.get_merge_pull_request_result.call_count == 0
     assert e.value.method == "pull_request/merge"
-    assert e.value.status_code == 405
-    assert b"merge-a-pull-request-merge-button" in e.value.response
+    assert e.value.status_code == 400
+
+
+async def test_pr_v2_merge_poll_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    We give up polling before kodiak's evaluation timeout. Retrying the merge
+    resumes polling the in-flight merge request.
+    """
+    monkeypatch.setattr("kodiak.pull_request.MERGE_POLL_RATE_SECONDS", 0)
+    monkeypatch.setattr("kodiak.pull_request.MERGE_POLL_TIMEOUT_SECONDS", 0)
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=PENDING_MERGE_RESPONSE, status_code=202
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(content=PENDING_MERGE_RESPONSE, status_code=200)
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
+    assert e.value.method == "pull_request/merge"
+
+
+async def test_pr_v2_merge_expired_result(fast_merge_poll: None) -> None:
+    """
+    We should raise ApiCallException when the merge result is gone.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=PENDING_MERGE_RESPONSE, status_code=202
+    )
+    client.get_merge_pull_request_result.responses = [
+        create_response(content=b"""{"message":"Not Found"}""", status_code=404)
+    ]
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
+    assert e.value.method == "pull_request/merge_result"
+    assert e.value.status_code == 404
+
+
+async def test_pr_v2_merge_internal_server_error() -> None:
+    """
+    A 500 is not safe to retry.
+    """
+    client = create_client()
+    client.merge_pull_request.response = create_response(
+        content=b"""{"message":"Server Error"}""", status_code=500
+    )
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(GitHubApiInternalServerError):
+        await pr_v2.merge(
+            "squash", commit_title="my title", commit_message="my message"
+        )
 
 
 async def test_pr_v2_merge_service_unavailable() -> None:

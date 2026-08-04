@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use GitHub's asynchronous merge API to support stacked pull requests.
+
 ## 0.60.0 - 2026-05-02
 
 ### Fixed

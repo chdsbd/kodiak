@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Optional, Type
+from typing import Any, Awaitable, Callable, Mapping, Optional, Type
 
 import structlog
 from typing_extensions import Protocol
@@ -15,7 +16,10 @@ from kodiak.errors import (
     RetryForSkippableChecks,
 )
 from kodiak.evaluation import mergeable
-from kodiak.http import HTTPStatusError as HTTPError
+from kodiak.http import (
+    HTTPStatusError as HTTPError,
+    Response,
+)
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
@@ -23,6 +27,50 @@ logger = structlog.get_logger()
 
 RETRY_RATE_SECONDS = 2
 POLL_RATE_SECONDS = 3
+MERGE_POLL_RATE_SECONDS = 1
+# GitHub merges in the background, which can take a couple minutes for a stack
+# of pull requests. We stop polling before kodiak's own evaluation timeout so we
+# retry the evaluation instead of being killed mid merge.
+MERGE_POLL_TIMEOUT_SECONDS = 30
+
+# status codes of merge-async responses that carry a merge result.
+MERGE_STATUS_CODES = frozenset(
+    {
+        200,  # already merged, or a result for a merge we started
+        202,  # merge started
+        400,  # pull request cannot be merged
+        409,  # a merge is already in flight for this pull request
+    }
+)
+
+
+class MergeStatus:
+    """
+    https://github.github.com/gh-stack/reference/merge-api/
+    """
+
+    pending = "pending"
+    merged = "merged"
+    enqueued = "enqueued"
+    failed = "failed"
+
+
+@dataclass(frozen=True)
+class MergeResult:
+    status: str
+    details: Mapping[str, Any]
+
+
+def parse_merge_result(res: Response) -> Optional[MergeResult]:
+    try:
+        body = res.json()
+        status = body["status"]
+        details = body.get("details") or {}
+    except (ValueError, KeyError, TypeError):
+        return None
+    if not isinstance(status, str) or not isinstance(details, dict):
+        return None
+    return MergeResult(status=status, details=details)
 
 
 async def get_pr(
@@ -301,6 +349,34 @@ class PRV2:
                     exc_info=True,
                 )
 
+    def _parse_merge_response(self, res: Response, *, method: str) -> MergeResult:
+        """
+        Read the result of a merge-async response, raising for anything that
+        isn't a valid result.
+        """
+        if res.status_code in MERGE_STATUS_CODES:
+            result = parse_merge_result(res)
+            if result is not None:
+                return result
+        try:
+            res.raise_for_status()
+        except HTTPError as e:
+            self.log.warning("failed to merge pull request", res=res, exc_info=True)
+            if e.response is not None and e.response.status_code == 500:
+                raise GitHubApiInternalServerError from e
+            # we raise an exception to retry this request.
+            raise ApiCallException(
+                method=method,
+                http_status_code=res.status_code,
+                response=res.content,
+            ) from e
+        self.log.warning("could not parse merge result", res=res)
+        raise ApiCallException(
+            method=method,
+            http_status_code=res.status_code,
+            response=res.content,
+        )
+
     async def merge(
         self,
         merge_method: str,
@@ -317,25 +393,56 @@ class PRV2:
                 commit_title=commit_title,
                 commit_message=commit_message,
             )
-            try:
-                res.raise_for_status()
-            except HTTPError as e:
-                if e.response is not None and e.response.status_code == 405:
-                    self.log.info(
-                        "branch is not mergeable. PR likely already merged.", res=res
+            result = self._parse_merge_response(res, method="pull_request/merge")
+
+            # merging runs in the background so we poll until we have a result.
+            deadline = time.monotonic() + MERGE_POLL_TIMEOUT_SECONDS
+            while result.status == MergeStatus.pending:
+                uuid = result.details.get("uuid")
+                if not isinstance(uuid, str):
+                    self.log.warning("missing uuid for pending merge", res=res)
+                    raise ApiCallException(
+                        method="pull_request/merge",
+                        http_status_code=res.status_code,
+                        response=res.content,
                     )
-                else:
-                    self.log.warning(
-                        "failed to merge pull request", res=res, exc_info=True
+                if time.monotonic() > deadline:
+                    # we raise an exception to retry this request. Starting the
+                    # merge again returns the uuid of the in-flight merge, so we
+                    # resume polling instead of merging twice.
+                    self.log.info("timeout waiting for merge to finish", res=res)
+                    raise ApiCallException(
+                        method="pull_request/merge",
+                        http_status_code=res.status_code,
+                        response=res.content,
                     )
-                if e.response is not None and e.response.status_code == 500:
-                    raise GitHubApiInternalServerError from e
-                # we raise an exception to retry this request.
-                raise ApiCallException(
-                    method="pull_request/merge",
-                    http_status_code=res.status_code,
-                    response=res.content,
-                ) from e
+                await asyncio.sleep(MERGE_POLL_RATE_SECONDS)
+                res = await api_client.get_merge_pull_request_result(
+                    number=self.number, uuid=uuid
+                )
+                result = self._parse_merge_response(
+                    res, method="pull_request/merge_result"
+                )
+
+            if result.status == MergeStatus.merged:
+                return
+            if result.status == MergeStatus.enqueued:
+                self.log.info("pull request added to merge queue", res=res)
+                return
+            # a merge can fail for a merge conflict, an unmet branch protection
+            # rule, a closed pull request, etc. Nothing was merged.
+            self.log.warning(
+                "failed to merge pull request",
+                res=res,
+                merge_status=result.status,
+                message=result.details.get("message"),
+            )
+            # we raise an exception to retry this request.
+            raise ApiCallException(
+                method="pull_request/merge",
+                http_status_code=res.status_code,
+                response=res.content,
+            )
 
     async def update_ref(self, ref: str, sha: str) -> None:
         self.log.info("update_ref", ref=ref, sha=sha)
