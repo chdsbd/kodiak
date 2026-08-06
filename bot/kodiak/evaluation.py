@@ -1178,7 +1178,7 @@ async def mergeable(
                         f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
                     )
                     raise PollForever
-            # almost the same as the pervious case, but we prioritize status checks
+            # almost the same as the previous case, but we prioritize status checks
             # over branch updates.
             else:
                 if wait_for_checks:
@@ -1278,7 +1278,7 @@ branch protection requirements.
                     commit_message=merge_args.commit_message,
                 )
         # if we encounter an internal server error (status code 500), it is
-        # _not_ safe to retry. Instead we mark the pull request as unmergable
+        # _not_ safe to retry. Instead we mark the pull request as unmergeable
         # and require a user to re-enable Kodiak on the pull request.
         except GitHubApiInternalServerError:
             logger.warning(
