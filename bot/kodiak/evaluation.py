@@ -335,6 +335,8 @@ def missing_branch_protection_push_allowance(
     branch_protection: BranchProtectionRule,
 ) -> bool:
     for push_allowance in branch_protection.pushAllowances.nodes:
+        if push_allowance is None or push_allowance.actor is None:
+            return False
         # a null databaseId indicates this is not a GitHub App.
         if push_allowance.actor.databaseId is None:
             continue

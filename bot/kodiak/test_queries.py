@@ -47,6 +47,7 @@ from kodiak.queries import (
     StatusContext,
     StatusState,
     Subscription,
+    get_branch_protection,
     get_commits,
 )
 from kodiak.queries.commits import CommitConnection, GitActor
@@ -888,6 +889,41 @@ def test_get_commits_error_handling_missing_response() -> None:
     pull_request_data = {"commitHistory": None}
     res = get_commits(pr=pull_request_data)
     assert res == []
+
+
+def test_get_branch_protection_redacted_push_allowance_actor() -> None:
+    """
+    GitHub returns a null actor for a push allowance when our App installation
+    can't read it. We should still parse the branch protection rule.
+    """
+    pull_request_data = {
+        "baseRef": {
+            "branchProtectionRule": {
+                "requiresStatusChecks": True,
+                "requiredStatusCheckContexts": ["ci/circleci: backend_test"],
+                "requiresStrictStatusChecks": True,
+                "requiresCommitSignatures": False,
+                "requiresConversationResolution": False,
+                "restrictsPushes": True,
+                "pushAllowances": {
+                    "nodes": [
+                        {},
+                        {"actor": {"databaseId": 2740}},
+                        {"actor": None},
+                        None,
+                    ]
+                },
+            }
+        }
+    }
+    res = get_branch_protection(pull_request=pull_request_data)
+    assert res is not None
+    assert res.pushAllowances.nodes == [
+        PushAllowance(actor=None),
+        PushAllowance(actor=PushAllowanceActor(databaseId=2740)),
+        PushAllowance(actor=None),
+        None,
+    ]
 
 
 def generate_page_of_prs(numbers: Iterable[int]) -> Response:
