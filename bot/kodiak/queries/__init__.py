@@ -473,16 +473,6 @@ class EventInfoResponse:
     commits: List[Commit] = field(default_factory=list)
 
 
-MERGE_PR_MUTATION = """
-mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
-  mergePullRequest(input: {pullRequestId: $PRId, expectedHeadOid: $SHA, commitHeadline: $title, commitBody: $body}) {
-    clientMutationId
-  }
-}
-
-"""
-
-
 class PushAllowanceActor(BaseModel):
     """
     https://developer.github.com/v4/object/app/
@@ -1357,6 +1347,14 @@ query {
         commit_title: Optional[str],
         commit_message: Optional[str],
     ) -> http.Response:
+        """
+        Start an asynchronous merge. The result is fetched via
+        get_merge_pull_request_result.
+
+        The synchronous merge endpoint cannot merge stacked pull requests.
+
+        https://github.github.com/gh-stack/reference/merge-api/
+        """
         body = dict(merge_method=merge_method)
         # we must not pass the keys for commit_title or commit_message when they
         # are null because GitHub will error saying the title/message cannot be
@@ -1369,9 +1367,26 @@ query {
         headers = await get_headers(
             session=self.session, installation_id=self.installation_id
         )
-        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
+        url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge-async")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
+
+    async def get_merge_pull_request_result(
+        self, number: int, uuid: str
+    ) -> http.Response:
+        """
+        Fetch the result of a merge started by merge_pull_request.
+
+        https://github.github.com/gh-stack/reference/merge-api/
+        """
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
+        url = conf.v3_url(
+            f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge-async/{urllib.parse.quote(uuid)}"
+        )
+        async with self.throttler:
+            return await self.session.get(url, headers=headers)
 
     async def update_ref(self, *, ref: str, sha: str) -> http.Response:
         """

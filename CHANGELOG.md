@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.61.0 - 2026-08-06
+
 ### Fixed
 
 - Handle a redacted branch protection push allowance actor. (#926)
+
+### Changed
+
+- Use GitHub's asynchronous merge API to support stacked pull requests. (#924)
 
 ## 0.60.0 - 2026-05-02
 
 ### Fixed
 
-- Don't warn about "missing push allowance" when a ruleset's bypass actor is redacted by the GitHub API. (#917)
+- Don't warn about "missing push allowance" when a ruleset's bypass actor is redacted. (#917)
 
 ## 0.59.1 - 2026-03-12
 
