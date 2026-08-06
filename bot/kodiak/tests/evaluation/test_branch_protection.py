@@ -89,6 +89,34 @@ async def test_mergeable_missing_push_allowance_correct_null_database_id() -> No
     assert api.merge.called is False
 
 
+async def test_mergeable_missing_push_allowance_redacted_actor() -> None:
+    """
+    GitHub returns a null actor (or a null node) for a push allowance when our
+    App installation lacks the permission to read it — including when the
+    allowance is for our own App. We can't tell whether the redacted entry is
+    us, so we should not block the merge.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    branch_protection = create_branch_protection()
+    branch_protection.restrictsPushes = True
+    branch_protection.pushAllowances = NodeListPushAllowance(
+        nodes=[
+            PushAllowance(actor=PushAllowanceActor(databaseId=2740)),
+            PushAllowance(actor=None),
+            None,
+        ]
+    )
+    await mergeable(api=api, branch_protection=branch_protection)
+    assert api.set_status.call_count == 1
+    assert "config error" not in api.set_status.calls[0]["msg"]
+    assert api.queue_for_merge.called is True
+
+    assert api.dequeue.call_count == 0
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+
+
 async def test_mergeable_missing_push_allowance_merge_do_not_merge() -> None:
     """
     When merge.do_not_merge is enabled, we should ignore any issues with restrictPushes because Kodiak isn't pushing.
