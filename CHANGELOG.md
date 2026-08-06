@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Handle a redacted branch protection push allowance actor.
+- Handle a redacted branch protection push allowance actor. (#926)
 
 ## 0.60.0 - 2026-05-02
 
