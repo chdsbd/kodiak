@@ -487,11 +487,12 @@ class PushAllowance(BaseModel):
     https://developer.github.com/v4/object/pushallowance/
     """
 
-    actor: PushAllowanceActor
+    # actor will be None when GitHub redacts it from our App installation.
+    actor: Optional[PushAllowanceActor]
 
 
 class NodeListPushAllowance(BaseModel):
-    nodes: List[PushAllowance]
+    nodes: List[Optional[PushAllowance]]
 
 
 class MergeQueueMergeMethod(Enum):
