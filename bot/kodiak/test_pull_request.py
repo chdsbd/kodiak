@@ -169,6 +169,18 @@ class MockUpdateBranch(BaseMockFunc):
         return self.response
 
 
+class MockEnqueuePullRequest(BaseMockFunc):
+    response: Optional[Dict[str, Any]]
+
+    async def __call__(
+        self, *, pull_request_id: str, expected_head_oid: str
+    ) -> Optional[Dict[str, Any]]:
+        self.log_call(
+            dict(pull_request_id=pull_request_id, expected_head_oid=expected_head_oid)
+        )
+        return self.response
+
+
 class MockUpdateRef(BaseMockFunc):
     response: requests.Response
 
@@ -179,6 +191,7 @@ class MockUpdateRef(BaseMockFunc):
 
 class FakeClientProtocol(Protocol):
     merge_pull_request: MockMergePullRequest
+    enqueue_pull_request: MockEnqueuePullRequest
     delete_label: MockDeleteLabel
     add_label: MockAddLabel
     update_branch: MockUpdateBranch
@@ -196,6 +209,7 @@ class FakeClientProtocol(Protocol):
 def create_client() -> Type[FakeClientProtocol]:
     class FakeClient:
         merge_pull_request = MockMergePullRequest()
+        enqueue_pull_request = MockEnqueuePullRequest()
         delete_label = MockDeleteLabel()
         add_label = MockAddLabel()
         update_branch = MockUpdateBranch()
@@ -303,6 +317,56 @@ async def test_pr_v2_merge_service_unavailable() -> None:
     assert e.value.method == "pull_request/merge"
     assert e.value.status_code == 503
     assert b"Service Unavailable" in e.value.response
+
+
+async def test_pr_v2_add_to_merge_queue() -> None:
+    """
+    We should be able to add a pull request to GitHub's merge queue.
+    """
+    client = create_client()
+    client.enqueue_pull_request.response = {
+        "data": {"enqueuePullRequest": {"clientMutationId": None}}
+    }
+
+    pr_v2 = create_prv2(client=client)
+    await pr_v2.add_to_merge_queue()
+    assert client.enqueue_pull_request.call_count == 1
+    assert client.enqueue_pull_request.calls[0] == dict(
+        pull_request_id=pr_v2.event.pull_request.id,
+        expected_head_oid=pr_v2.event.pull_request.latest_sha,
+    )
+
+
+async def test_pr_v2_add_to_merge_queue_graphql_error() -> None:
+    """
+    We should raise ApiCallException when the GraphQL API returns errors.
+    """
+    client = create_client()
+    client.enqueue_pull_request.response = {
+        "data": None,
+        "errors": [{"message": "Pull request is in unmergeable state"}],
+    }
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.add_to_merge_queue()
+    assert client.enqueue_pull_request.call_count == 1
+    assert e.value.method == "pull_request/enqueue"
+    assert b"unmergeable state" in e.value.response
+
+
+async def test_pr_v2_add_to_merge_queue_request_error() -> None:
+    """
+    We should raise ApiCallException when we fail to reach the GitHub API.
+    """
+    client = create_client()
+    client.enqueue_pull_request.response = None
+
+    pr_v2 = create_prv2(client=client)
+    with pytest.raises(ApiCallException) as e:
+        await pr_v2.add_to_merge_queue()
+    assert client.enqueue_pull_request.call_count == 1
+    assert e.value.method == "pull_request/enqueue"
 
 
 async def test_pr_v2_update_branch_ok() -> None:

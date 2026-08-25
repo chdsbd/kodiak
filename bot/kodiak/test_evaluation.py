@@ -139,6 +139,11 @@ class MockMerge(BaseMockFunc):
             raise self.raises
 
 
+class MockAddToMergeQueue(BaseMockFunc):
+    async def __call__(self) -> None:
+        self.log_call(dict())
+
+
 class MockUpdateRef(BaseMockFunc):
     async def __call__(self, *, ref: str, sha: str) -> None:
         self.log_call(dict(ref=ref, sha=sha))
@@ -181,6 +186,7 @@ class MockPrApi:
         self.create_comment = MockCreateComment()
         self.trigger_test_commit = MockTriggerTestCommit()
         self.merge = MockMerge()
+        self.add_to_merge_queue = MockAddToMergeQueue()
         self.update_ref = MockUpdateRef()
         self.queue_for_merge = MockQueueForMerge()
         self.update_branch = MockUpdateBranch()
@@ -1707,6 +1713,71 @@ async def test_mergeable_merge() -> None:
     assert api.dequeue.call_count == 0
     assert api.update_branch.call_count == 0
     assert api.merge.call_count == 1
+    assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_merge_queue_enabled() -> None:
+    """
+    When a merge queue is required for the base branch we should add the pull
+    request to GitHub's merge queue instead of merging it ourselves.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.isMergeQueueEnabled = True
+
+    await mergeable(api=api, pull_request=pull_request, merging=True)
+
+    assert api.set_status.call_count == 2
+    assert (
+        "attempting to merge PR (adding to merge queue)"
+        in api.set_status.calls[0]["msg"]
+    )
+    assert api.set_status.calls[1]["msg"] == "🚂 added to GitHub merge queue"
+    assert api.add_to_merge_queue.call_count == 1
+    assert api.merge.called is False
+    assert api.update_ref.called is False
+
+
+async def test_mergeable_merge_queue_enabled_rebase_fast_forward() -> None:
+    """
+    merge.method = "rebase_fast_forward" merges via the Git Refs API, which
+    GitHub also rejects when a merge queue is required for the base branch.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    config = create_config()
+    config.merge.method = MergeMethod.rebase_fast_forward
+    pull_request = create_pull_request()
+    pull_request.isMergeQueueEnabled = True
+
+    await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
+
+    assert api.add_to_merge_queue.call_count == 1
+    assert api.update_ref.called is False
+    assert api.merge.called is False
+
+
+async def test_mergeable_in_merge_queue() -> None:
+    """
+    When a pull request is in GitHub's merge queue we should take no action.
+    Updating the branch or merging would remove it from the queue.
+    """
+    mergeable = create_mergeable()
+    api = create_api()
+    pull_request = create_pull_request()
+    pull_request.isMergeQueueEnabled = True
+    pull_request.isInMergeQueue = True
+    pull_request.mergeStateStatus = MergeStateStatus.BEHIND
+
+    await mergeable(api=api, pull_request=pull_request, merging=True)
+
+    assert api.set_status.call_count == 1
+    assert api.set_status.calls[0]["msg"] == "🚂 in GitHub merge queue"
+    assert api.dequeue.call_count == 1
+    assert api.add_to_merge_queue.called is False
+    assert api.update_branch.called is False
+    assert api.merge.called is False
     assert api.queue_for_merge.called is False
 
 

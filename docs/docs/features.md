@@ -49,6 +49,16 @@ Kodiak also supports the "Require signed commits" branch protection setting for 
 
 ![Branch Protection – require signed commits](/img/branch-protection-require-signed-commits.png)
 
+### GitHub Merge Queue
+
+Kodiak supports [GitHub's merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue). When a merge queue is required for the target branch, Kodiak adds the pull request to the merge queue instead of merging it, and GitHub merges the pull request when it reaches the front of the queue.
+
+Because GitHub owns the merge, the merge queue configuration determines the merge method and commit message. [`merge.method`](config-reference.md#mergemethod) and the [`merge.message`](config-reference.md#mergemessagebody) options don't apply to pull requests merged through a merge queue.
+
+While a pull request sits in the merge queue, Kodiak takes no action on it. Updating the branch or merging the pull request would remove it from the queue.
+
+Note: Kodiak still waits for the required status checks of the pull request before adding it to the merge queue. If your required status checks only run for the merge queue (the `merge_group` event) and never for the pull request itself, Kodiak will wait indefinitely.
+
 ### Merge Message
 
 The commit title and body of a comment can be customized with Kodiak via the `merge.message` configuration options.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Optional, Type
 
@@ -336,6 +337,29 @@ class PRV2:
                     http_status_code=res.status_code,
                     response=res.content,
                 ) from e
+
+    async def add_to_merge_queue(self) -> None:
+        self.log.info("add_to_merge_queue")
+        async with self.client(
+            installation_id=self.install, owner=self.owner, repo=self.repo
+        ) as api_client:
+            res = await api_client.enqueue_pull_request(
+                pull_request_id=self.event.pull_request.id,
+                expected_head_oid=self.event.pull_request.latest_sha,
+            )
+            errors = res.get("errors") if res is not None else None
+            if res is None or errors:
+                self.log.warning(
+                    "failed to add pull request to merge queue", res=res, errors=errors
+                )
+                # we raise an exception to retry this request.
+                raise ApiCallException(
+                    method="pull_request/enqueue",
+                    # the GraphQL API returns errors with an HTTP 200 status
+                    # code, so we don't have a meaningful status code to report.
+                    http_status_code=0,
+                    response=json.dumps(errors).encode() if errors else b"",
+                )
 
     async def update_ref(self, ref: str, sha: str) -> None:
         self.log.info("update_ref", ref=ref, sha=sha)
