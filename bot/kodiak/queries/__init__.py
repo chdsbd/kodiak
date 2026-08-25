@@ -188,6 +188,8 @@ query GetEventInfo($owner: String!, $repo: String!, $PRNumber: Int!) {
         }
       }
       isDraft
+      isInMergeQueue
+      isMergeQueueEnabled
       mergeStateStatus
       reviewDecision
       state
@@ -429,6 +431,13 @@ class PullRequest(BaseModel):
     bodyHTML: str
     author: Optional[PullRequestAuthor]
     isDraft: bool
+    # whether the pull request is queued in GitHub's merge queue.
+    #
+    # defaults to False so we degrade to our regular merge behavior when the
+    # field is unavailable.
+    isInMergeQueue: bool = False
+    # whether the base branch of the pull request has a merge queue enabled.
+    isMergeQueueEnabled: bool = False
     mergeStateStatus: MergeStateStatus
     # null if the pull request does not require a review (no branch protection
     # rule). Otherwise shows if the pull request meets the branch protection
@@ -476,6 +485,16 @@ class EventInfoResponse:
 MERGE_PR_MUTATION = """
 mutation merge($PRId: ID!, $SHA: GitObjectID!, $title: String, $body: String) {
   mergePullRequest(input: {pullRequestId: $PRId, expectedHeadOid: $SHA, commitHeadline: $title, commitBody: $body}) {
+    clientMutationId
+  }
+}
+
+"""
+
+
+ENQUEUE_PR_MUTATION = """
+mutation enqueue($PRId: ID!, $SHA: GitObjectID!) {
+  enqueuePullRequest(input: {pullRequestId: $PRId, expectedHeadOid: $SHA}) {
     clientMutationId
   }
 }
@@ -1372,6 +1391,20 @@ query {
         url = conf.v3_url(f"/repos/{self.owner}/{self.repo}/pulls/{number}/merge")
         async with self.throttler:
             return await self.session.put(url, headers=headers, json=body)
+
+    async def enqueue_pull_request(
+        self, *, pull_request_id: str, expected_head_oid: str
+    ) -> Optional[GraphQLResponse]:
+        """
+        Add a pull request to the merge queue of its base branch.
+
+        https://docs.github.com/en/graphql/reference/mutations#enqueuepullrequest
+        """
+        return await self.send_query(
+            query=ENQUEUE_PR_MUTATION,
+            variables=dict(PRId=pull_request_id, SHA=expected_head_oid),
+            installation_id=self.installation_id,
+        )
 
     async def update_ref(self, *, ref: str, sha: str) -> http.Response:
         """

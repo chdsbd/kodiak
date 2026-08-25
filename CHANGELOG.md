@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added support for GitHub's merge queue. When a merge queue is required for the base branch, Kodiak adds the pull request to the merge queue instead of merging it. (#871)
+
 ### Fixed
 
 - Handle a redacted branch protection push allowance actor. (#926)
