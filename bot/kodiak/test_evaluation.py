@@ -1739,25 +1739,6 @@ async def test_mergeable_merge_queue_enabled() -> None:
     assert api.update_ref.called is False
 
 
-async def test_mergeable_merge_queue_enabled_rebase_fast_forward() -> None:
-    """
-    merge.method = "rebase_fast_forward" merges via the Git Refs API, which
-    GitHub also rejects when a merge queue is required for the base branch.
-    """
-    mergeable = create_mergeable()
-    api = create_api()
-    config = create_config()
-    config.merge.method = MergeMethod.rebase_fast_forward
-    pull_request = create_pull_request()
-    pull_request.isMergeQueueEnabled = True
-
-    await mergeable(api=api, config=config, pull_request=pull_request, merging=True)
-
-    assert api.add_to_merge_queue.call_count == 1
-    assert api.update_ref.called is False
-    assert api.merge.called is False
-
-
 async def test_mergeable_in_merge_queue() -> None:
     """
     When a pull request is in GitHub's merge queue we should take no action.

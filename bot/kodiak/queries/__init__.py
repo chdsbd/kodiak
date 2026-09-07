@@ -432,9 +432,6 @@ class PullRequest(BaseModel):
     author: Optional[PullRequestAuthor]
     isDraft: bool
     # whether the pull request is queued in GitHub's merge queue.
-    #
-    # defaults to False so we degrade to our regular merge behavior when the
-    # field is unavailable.
     isInMergeQueue: bool = False
     # whether the base branch of the pull request has a merge queue enabled.
     isMergeQueueEnabled: bool = False

@@ -763,10 +763,6 @@ async def mergeable(
             return
 
     if pull_request.isInMergeQueue:
-        # GitHub's merge queue owns the pull request until GitHub merges it or
-        # removes it from the queue. Updating the branch or merging the pull
-        # request ourselves would remove it from the queue, so we take no
-        # action.
         log.info("pull request in merge queue")
         await api.dequeue()
         await set_status("🚂 in GitHub merge queue")
@@ -1269,12 +1265,6 @@ branch protection requirements.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
         if pull_request.isMergeQueueEnabled:
-            # GitHub rejects calls to the merge APIs when a merge queue is
-            # required for the base branch, so we add the pull request to the
-            # merge queue and let GitHub merge it.
-            #
-            # The merge method and commit message are configured through the
-            # merge queue, so `merge.method` and `merge.message` don't apply.
             await set_status("⛴ attempting to merge PR (adding to merge queue)")
             await api.add_to_merge_queue()
             await set_status("🚂 added to GitHub merge queue")
