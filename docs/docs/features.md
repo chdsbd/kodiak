@@ -30,7 +30,7 @@ When merging a pull request, Kodiak will update the PR if out of date with the t
 
 To have Kodiak immediately update any PR that is out-of-date, enable [`update.always`](config-reference.md#updatealways).
 
-If you use Kodiak with a dependancy update bot, you should disable auto updates for the bot via [`update.ignored_usernames`](config-reference.md#updateignored_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
+If you use Kodiak with a dependency update bot, you should disable auto updates for the bot via [`update.ignored_usernames`](config-reference.md#updateignored_usernames). See [Automated dependency updates with Dependabot](recipes.md#automated-dependency-updates-with-dependabot) for more information.
 
 ## Merging Pull Requests
 

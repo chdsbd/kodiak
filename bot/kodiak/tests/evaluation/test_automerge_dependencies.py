@@ -36,7 +36,7 @@ async def test_merge_okay() -> None:
 
 async def test_merge_mismatch_username() -> None:
     """
-    We should only merge the pull request if the userrname is specified within
+    We should only merge the pull request if the username is specified within
     "usernames" and the version type is in the "versions" field.
 
     """
