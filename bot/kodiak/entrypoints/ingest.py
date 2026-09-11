@@ -83,7 +83,11 @@ async def github_webhook_event(request: Request) -> Response:
 
     ingest_queue = get_ingest_queue(installation_id)
 
-    await redis_bot.rpush(
+    # We push to the head of the list and the worker pops from the tail, so the
+    # oldest event is processed first. Because the newest event is at the head,
+    # trimming keeps the newest events and discards the oldest when a queue
+    # exceeds the limit.
+    await redis_bot.lpush(
         ingest_queue,
         RawWebhookEvent(event_name=github_event, payload=event).json(),
     )

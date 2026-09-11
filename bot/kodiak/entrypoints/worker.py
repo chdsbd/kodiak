@@ -12,7 +12,6 @@ import pydantic
 import sentry_sdk
 import structlog
 
-from kodiak import app_config as conf
 from kodiak.assertions import assert_never
 from kodiak.logging import configure_logging
 from kodiak.queue import (
@@ -21,10 +20,10 @@ from kodiak.queue import (
     RedisWebhookQueue,
     WebhookQueueProtocol,
     get_ingest_queue,
-    handle_webhook_event,
+    process_ingest_event,
+    recover_ingest_queue,
 )
 from kodiak.redis_client import redis_bot
-from kodiak.schemas import RawWebhookEvent
 
 configure_logging()
 
@@ -36,25 +35,7 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
 
     log.info("start working ingest_queue")
     while True:
-        res = await redis_bot.blpop(
-            [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
-        )
-        if res is None:
-            continue
-        _, value = res
-        parsed_event = RawWebhookEvent.parse_raw(value)
-        try:
-            await asyncio.wait_for(
-                handle_webhook_event(
-                    queue=queue,
-                    event_name=parsed_event.event_name,
-                    payload=parsed_event.payload,
-                ),
-                timeout=60,
-            )
-        except asyncio.TimeoutError:
-            log.warning("handle_webhook_event timed out")
-        log.info("ingest_event_handled")
+        await process_ingest_event(queue, queue_name, log)
 
 
 class PubsubIngestQueueSchema(pydantic.BaseModel):
@@ -97,6 +78,8 @@ async def main() -> NoReturn:
 
     for queue_name_bytes in ingest_queue_names:
         queue_name = queue_name_bytes.decode()
+        # put back any events that were mid-processing when we last stopped.
+        await recover_ingest_queue(queue_name)
         if queue_name not in ingest_workers:
             log.info("start ingest_queue_worker", queue_name=queue_name)
             ingest_workers[queue_name] = asyncio.create_task(

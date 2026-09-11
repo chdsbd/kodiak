@@ -32,6 +32,7 @@ from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
+from kodiak.schemas import RawWebhookEvent
 
 logger = structlog.get_logger()
 
@@ -44,6 +45,17 @@ QUEUE_PUBSUB_INGEST = "kodiak:pubsub:ingest"
 
 def get_ingest_queue(installation_id: int) -> str:
     return f"kodiak:ingest:{installation_id}"
+
+
+def get_processing_queue_name(queue_name: str) -> str:
+    """
+    Name of the queue holding events that are currently being processed.
+
+    Events are moved here from their queue while they are worked on and
+    removed once processing completes. If the process dies mid-way, the
+    events are recovered from here on startup.
+    """
+    return f"{queue_name}:processing"
 
 
 RETRY_RATE_SECONDS = 2
@@ -248,8 +260,9 @@ async def handle_webhook_event(
             b"kodiak:webhook_event",
             compress_payload(dict(event_name=event_name, payload=payload)),
         )
+        # keep the newest events in the list, discarding the oldest.
         await redis_web_api.ltrim(
-            b"kodiak:webhook_event", 0, conf.USAGE_REPORTING_QUEUE_LENGTH
+            b"kodiak:webhook_event", -conf.USAGE_REPORTING_QUEUE_LENGTH, -1
         )
         log = log.bind(usage_reported=True)
 
@@ -270,6 +283,81 @@ async def handle_webhook_event(
         log = log.bind(event_parsed=False)
 
     log.info("webhook_event_handled")
+
+
+async def process_ingest_event(
+    queue: WebhookQueueProtocol, queue_name: str, log: structlog.BoundLogger
+) -> None:
+    """
+    Process a single raw webhook event from an installation's ingest queue.
+
+    The event is moved into a processing list while it is handled so that a
+    crash mid-way doesn't lose it. See `recover_ingest_queue`.
+    """
+    processing_queue_name = get_processing_queue_name(queue_name)
+    value = await redis_bot.brpoplpush(
+        queue_name, processing_queue_name, timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
+    )
+    if value is None:
+        return
+    try:
+        parsed_event = RawWebhookEvent.parse_raw(value)
+        try:
+            await asyncio.wait_for(
+                handle_webhook_event(
+                    queue=queue,
+                    event_name=parsed_event.event_name,
+                    payload=parsed_event.payload,
+                ),
+                timeout=60,
+            )
+        except asyncio.TimeoutError:
+            log.warning("handle_webhook_event timed out")
+    finally:
+        # Processing finished (or failed with an exception). Either way we are
+        # done with the event, so remove it from the processing list. A hard
+        # crash skips this and the event is recovered on startup instead.
+        await redis_bot.lrem(processing_queue_name, 1, value)
+    log.info("ingest_event_handled")
+
+
+async def recover_ingest_queue(queue_name: str) -> int:
+    """
+    Move any events left in the processing list back onto the ingest queue.
+
+    Events are pushed to the tail of the queue, which is where the worker pops
+    from, so recovered events are processed before any newer events.
+
+    Returns the number of recovered events.
+    """
+    processing_queue_name = get_processing_queue_name(queue_name)
+    values = await redis_bot.lrange(processing_queue_name, 0, -1)
+    if not values:
+        return 0
+    async with redis_bot.pipeline(transaction=True) as pipe:
+        # The processing list is newest first and RPUSH appends in argument
+        # order, so the oldest event ends up at the tail, where the worker
+        # pops from.
+        pipe.rpush(queue_name, *values)
+        pipe.delete(processing_queue_name)
+        await pipe.execute()
+    logger.info("recovered ingest events", queue_name=queue_name, count=len(values))
+    return len(values)
+
+
+async def recover_processing_zset(queue_name: str) -> None:
+    """
+    Merge events left in the processing sorted set back into their queue.
+
+    If an event is in both, the smaller score (earlier position) wins.
+    """
+    processing_queue_name = get_processing_queue_name(queue_name)
+    async with redis_bot.pipeline(transaction=True) as pipe:
+        pipe.zunionstore(
+            queue_name, {queue_name: 1, processing_queue_name: 1}, aggregate="MIN"
+        )
+        pipe.delete(processing_queue_name)
+        await pipe.execute()
 
 
 class WebhookEvent(BaseModel):
@@ -312,8 +400,15 @@ async def process_webhook_event(
     webhook_event_json = await bzpopmin_with_timeout(queue_name)
     if webhook_event_json is None:
         return
+    _key, raw_event, score = webhook_event_json
+    # Hold the event in a processing set until evaluation completes so it can
+    # be recovered if the process dies. We can't leave it in the main queue
+    # because a new event for the same pull request must be able to enqueue
+    # (via `nx`) while we evaluate.
+    processing_queue_name = get_processing_queue_name(queue_name)
+    await redis_bot.zadd(processing_queue_name, {raw_event: score})
     log.info("parsing webhook event")
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
+    webhook_event = WebhookEvent.parse_raw(raw_event)
     is_active_merging = (
         await redis_bot.get(webhook_event.get_merge_target_queue_name())
         == webhook_event.json().encode()
@@ -333,18 +428,21 @@ async def process_webhook_event(
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
-    await evaluate_pr(
-        install=webhook_event.installation_id,
-        owner=webhook_event.repo_owner,
-        repo=webhook_event.repo_name,
-        number=webhook_event.pull_request_number,
-        merging=False,
-        dequeue_callback=dequeue,
-        requeue_callback=requeue,
-        queue_for_merge_callback=queue_for_merge,
-        is_active_merging=is_active_merging,
-        log=log,
-    )
+    try:
+        await evaluate_pr(
+            install=webhook_event.installation_id,
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            merging=False,
+            dequeue_callback=dequeue,
+            requeue_callback=requeue,
+            queue_for_merge_callback=queue_for_merge,
+            is_active_merging=is_active_merging,
+            log=log,
+        )
+    finally:
+        await redis_bot.zrem(processing_queue_name, raw_event)
 
 
 async def webhook_event_consumer(
@@ -384,9 +482,16 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
     _key, value, score = result
     webhook_event = WebhookEvent.parse_raw(value)
     target_name = webhook_event.get_merge_target_queue_name()
-    # mark this PR as being merged currently. we check this elsewhere to set proper status codes
-    await redis_bot.set(target_name, webhook_event.json())
-    await redis_bot.set(target_name + ":time", str(score))
+    async with redis_bot.pipeline(transaction=True) as pipe:
+        # Put the pull request back at the head of the merge queue with its
+        # original score while we merge it. If the process dies mid-merge, the
+        # pull request keeps its position and merging resumes on restart. We
+        # remove it once we're finished with it.
+        pipe.zadd(queue_name, {value: score})
+        # mark this PR as being merged currently. we check this elsewhere to set proper status codes
+        pipe.set(target_name, webhook_event.json())
+        pipe.set(target_name + ":time", str(score))
+        await pipe.execute()
 
     async def dequeue() -> None:
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
@@ -402,21 +507,26 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         raise NotImplementedError
 
     log.info("evaluate PR for merging")
-    await evaluate_pr(
-        install=webhook_event.installation_id,
-        owner=webhook_event.repo_owner,
-        repo=webhook_event.repo_name,
-        number=webhook_event.pull_request_number,
-        dequeue_callback=dequeue,
-        requeue_callback=requeue,
-        merging=True,
-        is_active_merging=False,
-        queue_for_merge_callback=queue_for_merge,
-        log=log,
-    )
-    log.info("merge completed, remove target marker", target_name=target_name)
-    await redis_bot.delete(target_name)
-    await redis_bot.delete(target_name + ":time")
+    try:
+        await evaluate_pr(
+            install=webhook_event.installation_id,
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            dequeue_callback=dequeue,
+            requeue_callback=requeue,
+            merging=True,
+            is_active_merging=False,
+            queue_for_merge_callback=queue_for_merge,
+            log=log,
+        )
+    finally:
+        log.info("merge completed, remove target marker", target_name=target_name)
+        async with redis_bot.pipeline(transaction=True) as pipe:
+            pipe.zrem(queue_name, value)
+            pipe.delete(target_name)
+            pipe.delete(target_name + ":time")
+            await pipe.execute()
 
 
 async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
@@ -472,10 +582,18 @@ class RedisWebhookQueue:
         )
         for merge_result in merge_queues:
             queue_name = merge_result.decode()
+            # A worker is started whenever a pull request is enqueued for
+            # merge, so on startup we only need workers for queues that still
+            # have pull requests waiting. Forget the rest so the set of names
+            # doesn't grow forever.
+            if await redis_bot.zcard(queue_name) == 0:
+                await redis_bot.srem(MERGE_QUEUE_NAMES, queue_name)
+                continue
             self.start_repo_worker(queue_name=queue_name)
 
         for webhook_result in webhook_queues:
             queue_name = webhook_result.decode()
+            await recover_processing_zset(queue_name)
             self.start_webhook_worker(queue_name=queue_name)
 
     def start_webhook_worker(self, *, queue_name: str) -> None:
@@ -548,6 +666,7 @@ class RedisWebhookQueue:
         queue_name = get_merge_queue_name(event)
         async with redis_bot.pipeline(transaction=True) as pipe:
             merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
+            pipe.sadd(MERGE_QUEUE_NAMES, queue_name)
             pipe.sadd(merge_queues_by_install, queue_name)
             pipe.expire(merge_queues_by_install, time=ONE_DAY)
             if first:
