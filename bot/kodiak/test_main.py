@@ -37,13 +37,13 @@ def get_body_and_hash(data: Dict[str, Any]) -> Tuple[bytes, str]:
 
 class FakeRedis:
     def __init__(self) -> None:
-        self.called_rpush_cnt = 0
+        self.called_lpush_cnt = 0
         self.called_ltrim_cnt = 0
         self.called_sadd_cnt = 0
         self.called_publish_cnt = 0
 
-    async def rpush(self, key: str, events: list[object]) -> None:
-        self.called_rpush_cnt += 1
+    async def lpush(self, key: str, events: list[object]) -> None:
+        self.called_lpush_cnt += 1
 
     async def ltrim(self, key: str, start: int, end: int) -> None:
         self.called_ltrim_cnt += 1
@@ -71,16 +71,16 @@ def test_webhook_event(
 
         body, sha = get_body_and_hash(data)
 
-        assert fake_redis.called_rpush_cnt == index
+        assert fake_redis.called_lpush_cnt == index
         res = client.post(
             "/api/github/hook",
             data=body,
             headers={"X-Github-Event": event_name, "X-Hub-Signature": sha},
         )
         assert res.status_code == status.HTTP_200_OK
-        assert fake_redis.called_rpush_cnt == index + 1
+        assert fake_redis.called_lpush_cnt == index + 1
 
-    assert fake_redis.called_rpush_cnt == fake_redis.called_ltrim_cnt
+    assert fake_redis.called_lpush_cnt == fake_redis.called_ltrim_cnt
 
 
 def test_webhook_event_missing_github_event(
@@ -92,10 +92,10 @@ def test_webhook_event_missing_github_event(
 
     body, sha = get_body_and_hash(data)
 
-    assert fake_redis.called_rpush_cnt == 0
+    assert fake_redis.called_lpush_cnt == 0
     res = client.post("/api/github/hook", data=body, headers={"X-Hub-Signature": sha})
     assert res.status_code == status.HTTP_400_BAD_REQUEST
-    assert fake_redis.called_rpush_cnt == 0
+    assert fake_redis.called_lpush_cnt == 0
 
 
 def test_webhook_event_invalid_signature(
@@ -108,11 +108,11 @@ def test_webhook_event_invalid_signature(
     # use a different dict for the signature so we get an signature mismatch
     _, sha = get_body_and_hash({})
 
-    assert fake_redis.called_rpush_cnt == 0
+    assert fake_redis.called_lpush_cnt == 0
     res = client.post(
         "/api/github/hook",
         json=data,
         headers={"X-Github-Event": "content_reference", "X-Hub-Signature": sha},
     )
     assert res.status_code == status.HTTP_400_BAD_REQUEST
-    assert fake_redis.called_rpush_cnt == 0
+    assert fake_redis.called_lpush_cnt == 0
