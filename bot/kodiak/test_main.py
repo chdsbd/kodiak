@@ -41,9 +41,9 @@ class FakeRedis:
         self.called_ltrim_cnt = 0
         self.called_sadd_cnt = 0
         self.called_publish_cnt = 0
-        self.lists: dict[str, list[object]] = {}
+        self.lists: dict[str, list[str]] = {}
 
-    async def rpush(self, key: str, event: object) -> None:
+    async def rpush(self, key: str, event: str) -> None:
         self.called_rpush_cnt += 1
         self.lists.setdefault(key, []).append(event)
 
