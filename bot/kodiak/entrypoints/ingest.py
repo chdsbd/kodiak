@@ -88,7 +88,8 @@ async def github_webhook_event(request: Request) -> Response:
         RawWebhookEvent(event_name=github_event, payload=event).json(),
     )
 
-    await redis_bot.ltrim(ingest_queue, 0, conf.INGEST_QUEUE_LENGTH)
+    # workers pop from the head, so drop the oldest events when the queue is full.
+    await redis_bot.ltrim(ingest_queue, -conf.INGEST_QUEUE_LENGTH, -1)
     await redis_bot.sadd(INGEST_QUEUE_NAMES, ingest_queue)
     await redis_bot.publish(
         QUEUE_PUBSUB_INGEST,
