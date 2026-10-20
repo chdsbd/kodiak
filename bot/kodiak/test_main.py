@@ -41,12 +41,19 @@ class FakeRedis:
         self.called_ltrim_cnt = 0
         self.called_sadd_cnt = 0
         self.called_publish_cnt = 0
+        self.lists: dict[str, list[object]] = {}
 
-    async def rpush(self, key: str, events: list[object]) -> None:
+    async def rpush(self, key: str, event: object) -> None:
         self.called_rpush_cnt += 1
+        self.lists.setdefault(key, []).append(event)
 
     async def ltrim(self, key: str, start: int, end: int) -> None:
         self.called_ltrim_cnt += 1
+        lst = self.lists.get(key, [])
+        # Redis indices are inclusive and may be negative.
+        start = max(start + len(lst), 0) if start < 0 else start
+        end = end + len(lst) if end < 0 else end
+        self.lists[key] = lst[start : end + 1]
 
     async def sadd(self, key: str, values: list[str]) -> None:
         self.called_sadd_cnt += 1
@@ -81,6 +88,28 @@ def test_webhook_event(
         assert fake_redis.called_rpush_cnt == index + 1
 
     assert fake_redis.called_rpush_cnt == fake_redis.called_ltrim_cnt
+
+
+def test_webhook_event_full_queue_drops_oldest(
+    client: TestClient, mocker: MockFixture
+) -> None:
+    fake_redis = FakeRedis()
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
+    mocker.patch.object(conf, "INGEST_QUEUE_LENGTH", 2)
+
+    for pr_number in (1, 2, 3):
+        body, sha = get_body_and_hash(
+            {"installation": {"id": 123}, "number": pr_number}
+        )
+        res = client.post(
+            "/api/github/hook",
+            data=body,
+            headers={"X-Github-Event": "pull_request", "X-Hub-Signature": sha},
+        )
+        assert res.status_code == status.HTTP_200_OK
+
+    (queue,) = fake_redis.lists.values()
+    assert [json.loads(event)["payload"]["number"] for event in queue] == [2, 3]
 
 
 def test_webhook_event_missing_github_event(
