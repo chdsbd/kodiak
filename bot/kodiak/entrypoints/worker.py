@@ -67,9 +67,23 @@ async def ingest_queue_starter(
     """
     Listen on Redis Pubsub and start queue worker if we don't have one already.
     """
+    log = logger.bind(task="ingest_queue_starter")
+
+    def start_worker(queue_name: str) -> None:
+        if queue_name not in ingest_workers:
+            ingest_workers[queue_name] = asyncio.create_task(
+                work_ingest_queue(queue, queue_name=queue_name)
+            )
+            log.info("started new task", queue_name=queue_name)
+
     pubsub = redis_bot.pubsub()
     await pubsub.subscribe(QUEUE_PUBSUB_INGEST)
-    log = logger.bind(task="ingest_queue_starter")
+    # Scan for existing queues only after subscribing. Otherwise a queue
+    # created between the scan and the subscribe would be missed until its
+    # installation sent another webhook.
+    for queue_name_bytes in await redis_bot.smembers(INGEST_QUEUE_NAMES):
+        start_worker(queue_name_bytes.decode())
+
     log.info("start watch for ingest_queues")
     while True:
         reply = await pubsub.get_message(ignore_subscribe_messages=True, timeout=10)
@@ -78,31 +92,16 @@ async def ingest_queue_starter(
         installation_id = PubsubIngestQueueSchema.parse_raw(
             reply["data"]
         ).installation_id
-        queue_name = get_ingest_queue(installation_id)
-        if queue_name not in ingest_workers:
-            ingest_workers[queue_name] = asyncio.create_task(
-                work_ingest_queue(queue, queue_name=queue_name)
-            )
-            log.info("started new task")
+        start_worker(get_ingest_queue(installation_id))
 
 
 async def main() -> NoReturn:
     queue = RedisWebhookQueue()
     await queue.create()
 
-    ingest_workers = dict()
+    ingest_workers: dict[str, Task[NoReturn]] = {}  # type: ignore [assignment]
 
-    ingest_queue_names = await redis_bot.smembers(INGEST_QUEUE_NAMES)
     log = logger.bind(task="main_worker")
-
-    for queue_name_bytes in ingest_queue_names:
-        queue_name = queue_name_bytes.decode()
-        if queue_name not in ingest_workers:
-            log.info("start ingest_queue_worker", queue_name=queue_name)
-            ingest_workers[queue_name] = asyncio.create_task(
-                work_ingest_queue(queue, queue_name=queue_name)
-            )
-
     log.info("start ingest_queue_watcher")
     ingest_queue_watcher = asyncio.create_task(
         ingest_queue_starter(ingest_workers, queue)
