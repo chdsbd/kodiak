@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade PyJWT from 1.x to 2.x.
+
 ### Added
 
 - Added support for GitHub's merge queue. When a merge queue is required for the base branch, Kodiak adds the pull request to the merge queue instead of merging it. (#927)
