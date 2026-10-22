@@ -374,7 +374,8 @@ dependencies = [
     { name = "markdown-html-finder" },
     { name = "markupsafe" },
     { name = "pydantic" },
-    { name = "pyjwt" },
+    { name = "pyjwt", version = "2.9.0", source = { registry = "https://pypi.org/simple" }, extra = ["crypto"], marker = "python_full_version < '3.9'" },
+    { name = "pyjwt", version = "2.12.0", source = { registry = "https://pypi.org/simple" }, extra = ["crypto"], marker = "python_full_version >= '3.9'" },
     { name = "redis" },
     { name = "requests" },
     { name = "sentry-sdk" },
@@ -412,7 +413,7 @@ requires-dist = [
     { name = "markdown-html-finder", specifier = ">=0.2.3,<0.3" },
     { name = "markupsafe", specifier = ">=1.1,<2" },
     { name = "pydantic", specifier = ">=1.9.1,<2" },
-    { name = "pyjwt", specifier = ">=1.7,<2" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.4,<3" },
     { name = "redis", specifier = ">=4.4.2,<5" },
     { name = "requests", specifier = ">=2.22,<3" },
     { name = "sentry-sdk", specifier = ">=1.5.12,<2" },
@@ -681,11 +682,36 @@ wheels = [
 
 [[package]]
 name = "pyjwt"
-version = "1.7.1"
+version = "2.9.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2f/38/ff37a24c0243c5f45f5798bd120c0f873eeed073994133c084e1cf13b95c/PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96", size = 41979, upload-time = "2018-12-07T13:40:09.26Z" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/68/ce067f09fca4abeca8771fe667d89cc347d1e99da3e093112ac329c6020e/pyjwt-2.9.0.tar.gz", hash = "sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c", size = 78825, upload-time = "2024-08-01T15:01:08.445Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/8b/6a9f14b5f781697e51259d81657e6048fd31a113229cf346880bb7545565/PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e", size = 18928, upload-time = "2018-12-07T13:40:06.872Z" },
+    { url = "https://files.pythonhosted.org/packages/79/84/0fdf9b18ba31d69877bd39c9cd6052b47f3761e9910c15de788e519f079f/PyJWT-2.9.0-py3-none-any.whl", hash = "sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850", size = 22344, upload-time = "2024-08-01T15:01:06.481Z" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography", marker = "python_full_version < '3.9'" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.12.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a8/10/e8192be5f38f3e8e7e046716de4cae33d56fd5ae08927a823bb916be36c1/pyjwt-2.12.0.tar.gz", hash = "sha256:2f62390b667cd8257de560b850bb5a883102a388829274147f1d724453f8fb02", size = 102511, upload-time = "2026-03-12T17:15:30.831Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/70/70f895f404d363d291dcf62c12c85fdd47619ad9674ac0f53364d035925a/pyjwt-2.12.0-py3-none-any.whl", hash = "sha256:9bb459d1bdd0387967d287f5656bf7ec2b9a26645d1961628cda1764e087fd6e", size = 29700, upload-time = "2026-03-12T17:15:29.257Z" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography", marker = "python_full_version >= '3.9'" },
 ]
 
 [[package]]

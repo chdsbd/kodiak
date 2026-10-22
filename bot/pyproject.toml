@@ -7,7 +7,7 @@ requires-python = ">=3.8,<4"
 dependencies = [
     "uvicorn>=0.15.0,<0.16",
     "toml>=0.10.0,<0.11",
-    "PyJWT>=1.7,<2",
+    "PyJWT[crypto]>=2.4,<3",
     "structlog>=19.1,<20",
     "colorama>=0.4.1,<0.5",
     "databases==0.3.2",
