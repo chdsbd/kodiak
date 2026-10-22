@@ -1143,7 +1143,7 @@ async def mergeable(
                 if merging:
                     if skippable_check_timeout > 0:
                         await set_status(
-                            f"⛴ merging PR (waiting a bit for dont_wait_on_status_checks: {skippable_contexts!r})"
+                            f"⛴️merging PR (waiting a bit for dont_wait_on_status_checks: {skippable_contexts!r})"
                         )
                         raise RetryForSkippableChecks
                     log.warning(
@@ -1178,12 +1178,12 @@ async def mergeable(
             # prioritize branch updates over waiting for status checks to complete
             if config.merge.optimistic_updates:
                 if need_branch_update:
-                    await set_status("⛴ merging PR (updating branch)")
+                    await set_status("⛴️merging PR (updating branch)")
                     await api.update_branch()
                     raise PollForever
                 if wait_for_checks:
                     await set_status(
-                        f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
+                        f"⛴️merging PR (waiting for status checks: {missing_required_status_checks!r})"
                     )
                     raise PollForever
             # almost the same as the pervious case, but we prioritize status checks
@@ -1191,11 +1191,11 @@ async def mergeable(
             else:
                 if wait_for_checks:
                     await set_status(
-                        f"⛴ merging PR (waiting for status checks: {missing_required_status_checks!r})"
+                        f"⛴️merging PR (waiting for status checks: {missing_required_status_checks!r})"
                     )
                     raise PollForever
                 if need_branch_update:
-                    await set_status("⛴ merging PR (updating branch)")
+                    await set_status("⛴️merging PR (updating branch)")
                     await api.update_branch()
                     raise PollForever
 
@@ -1265,13 +1265,13 @@ branch protection requirements.
 
     if (config.merge.prioritize_ready_to_merge and ready_to_merge) or merging:
         if pull_request.isMergeQueueEnabled:
-            await set_status("⛴ attempting to merge PR (adding to merge queue)")
+            await set_status("⛴️attempting to merge PR (adding to merge queue)")
             await api.add_to_merge_queue()
             await set_status("🚂 added to GitHub merge queue")
             return
 
         merge_args = get_merge_body(config, merge_method, pull_request, commits=commits)
-        await set_status("⛴ attempting to merge PR (merging)")
+        await set_status("⛴️attempting to merge PR (merging)")
         try:
             # Use the Git Refs API to rebase merge.
             #
