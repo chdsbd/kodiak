@@ -1,14 +1,18 @@
+import asyncio
+import gc
 import json
 import logging
-from typing import Any, cast
+from typing import Any, Iterator, cast
 
 import pytest
+import sentry_sdk
 from requests import PreparedRequest, Request, Response
 
 from kodiak.logging import (
     SentryLevel,
     SentryProcessor,
     add_request_info_processor,
+    configure_logging,
     get_logging_level,
 )
 
@@ -177,3 +181,46 @@ def test_add_request_info_processor() -> None:
     assert event_dict["request_url"] == req.url
     assert event_dict["request_method"] == "POST"
     assert event_dict["res"] is res
+
+
+class TokenError(Exception):
+    pass
+
+
+@pytest.fixture
+def sentry_with_transport(mocker: Any) -> Iterator[None]:
+    """
+    Sentry only runs its event processors when it has a transport.
+    """
+    init = sentry_sdk.init
+    mocker.patch(
+        "sentry_sdk.init",
+        lambda **kwargs: init(transport=lambda _event: None, **kwargs),
+    )
+    yield
+    sentry_sdk.Hub.current.bind_client(None)
+
+
+async def test_restarted_tasks_do_not_retain_captured_exceptions(
+    sentry_with_transport: None,
+) -> None:
+    """
+    Workers capture a failed task's exception and restart the task. Each failed
+    task's exception should be freed instead of accumulating.
+    """
+    configure_logging()
+
+    async def get_token() -> None:
+        raise TokenError
+
+    async def consumer() -> None:
+        await asyncio.wait_for(get_token(), timeout=60)
+
+    for _ in range(50):
+        task = asyncio.create_task(consumer())
+        await asyncio.wait([task])
+        sentry_sdk.capture_exception(task.exception())
+    del task
+    gc.collect()
+
+    assert [o for o in gc.get_objects() if isinstance(o, TokenError)] == []
