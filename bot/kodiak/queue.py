@@ -20,7 +20,6 @@ from kodiak import (
     app_config as conf,
     queries,
 )
-from kodiak.errors import InstallationTokenError
 from kodiak.events import (
     CheckRunEvent,
     PullRequestEvent,
@@ -334,21 +333,18 @@ async def process_webhook_event(
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
 
     log.info("evaluate pr for webhook event")
-    try:
-        await evaluate_pr(
-            install=webhook_event.installation_id,
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
-            merging=False,
-            dequeue_callback=dequeue,
-            requeue_callback=requeue,
-            queue_for_merge_callback=queue_for_merge,
-            is_active_merging=is_active_merging,
-            log=log,
-        )
-    except InstallationTokenError as e:
-        log.warning("failed to get installation token, skipping event", error=str(e))
+    await evaluate_pr(
+        install=webhook_event.installation_id,
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        number=webhook_event.pull_request_number,
+        merging=False,
+        dequeue_callback=dequeue,
+        requeue_callback=requeue,
+        queue_for_merge_callback=queue_for_merge,
+        is_active_merging=is_active_merging,
+        log=log,
+    )
 
 
 async def webhook_event_consumer(
@@ -406,21 +402,18 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         raise NotImplementedError
 
     log.info("evaluate PR for merging")
-    try:
-        await evaluate_pr(
-            install=webhook_event.installation_id,
-            owner=webhook_event.repo_owner,
-            repo=webhook_event.repo_name,
-            number=webhook_event.pull_request_number,
-            dequeue_callback=dequeue,
-            requeue_callback=requeue,
-            merging=True,
-            is_active_merging=False,
-            queue_for_merge_callback=queue_for_merge,
-            log=log,
-        )
-    except InstallationTokenError as e:
-        log.warning("failed to get installation token, skipping event", error=str(e))
+    await evaluate_pr(
+        install=webhook_event.installation_id,
+        owner=webhook_event.repo_owner,
+        repo=webhook_event.repo_name,
+        number=webhook_event.pull_request_number,
+        dequeue_callback=dequeue,
+        requeue_callback=requeue,
+        merging=True,
+        is_active_merging=False,
+        queue_for_merge_callback=queue_for_merge,
+        log=log,
+    )
     log.info("merge completed, remove target marker", target_name=target_name)
     await redis_bot.delete(target_name)
     await redis_bot.delete(target_name + ":time")

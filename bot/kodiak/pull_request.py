@@ -12,6 +12,7 @@ import kodiak.app_config as conf
 from kodiak.errors import (
     ApiCallException,
     GitHubApiInternalServerError,
+    InstallationTokenError,
     PollForever,
     RetryForSkippableChecks,
 )
@@ -158,6 +159,11 @@ async def evaluate_pr(
             # On timeout we add the PR to the back of the queue to try again.
             log.warning("mergeable_timeout", exc_info=True)
             await requeue_callback()
+        except InstallationTokenError as e:
+            log.warning(
+                "failed to get installation token, skipping event", error=str(e)
+            )
+            return
 
 
 class QueueForMergeCallback(Protocol):
