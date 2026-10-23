@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# 0.61.0 - 2026-10-22
+
 ### Added
 
 - Added support for GitHub's merge queue. When a merge queue is required for the base branch, Kodiak adds the pull request to the merge queue instead of merging it. (#927)
@@ -14,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Handle a redacted branch protection push allowance actor. (#926)
+- Drop oldest events when queue overflows instead of newest. (#930)
+- Memory leak from Sentry's DedupeIntegration. (#935)
+- Ship emoji displays as ⛴️ instead of ⛴. (#933) Thanks @perlun!
 
 ## 0.60.0 - 2026-05-02
 
