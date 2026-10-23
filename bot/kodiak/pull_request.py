@@ -160,9 +160,7 @@ async def evaluate_pr(
             log.warning("mergeable_timeout", exc_info=True)
             await requeue_callback()
         except InstallationTokenError as e:
-            log.warning(
-                "failed to get installation token, skipping event", error=str(e)
-            )
+            log.info("failed to get installation token, skipping event", error=str(e))
             return
 
 
