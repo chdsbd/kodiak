@@ -6,7 +6,13 @@ import sentry_sdk
 import structlog
 from requests import Response
 from sentry_sdk import capture_event
+from sentry_sdk.integrations.argv import ArgvIntegration
+from sentry_sdk.integrations.atexit import AtexitIntegration
+from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.modules import ModulesIntegration
+from sentry_sdk.integrations.stdlib import StdlibIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
 from sentry_sdk.utils import event_from_exception
 from typing_extensions import Literal
 
@@ -135,9 +141,23 @@ def configure_logging() -> None:
 
     # disable sentry logging middleware as the structlog processor provides more
     # info via the extra data field
+    #
+    # DedupeIntegration is left out because it stores the last captured
+    # exception in a ContextVar. Tasks we restart after a failure inherit that
+    # context, so each failed task's traceback keeps the previous exception
+    # alive, leaking memory on every failure.
     sentry_sdk.init(
         attach_stacktrace=True,
-        integrations=[LoggingIntegration(level=None, event_level=None)],
+        default_integrations=False,
+        integrations=[
+            LoggingIntegration(level=None, event_level=None),
+            StdlibIntegration(),
+            ExcepthookIntegration(),
+            AtexitIntegration(),
+            ModulesIntegration(),
+            ArgvIntegration(),
+            ThreadingIntegration(),
+        ],
     )
 
     structlog.configure(
