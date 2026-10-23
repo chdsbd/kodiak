@@ -14,6 +14,7 @@ import structlog
 
 from kodiak import app_config as conf
 from kodiak.assertions import assert_never
+from kodiak.errors import InstallationTokenError
 from kodiak.logging import configure_logging
 from kodiak.queue import (
     INGEST_QUEUE_NAMES,
@@ -54,6 +55,8 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
             )
         except asyncio.TimeoutError:
             log.warning("handle_webhook_event timed out")
+        except InstallationTokenError as e:
+            log.info("failed to get installation token, skipping event", error=str(e))
         log.info("ingest_event_handled")
 
 

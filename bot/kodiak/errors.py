@@ -15,3 +15,10 @@ class ApiCallException(Exception):
 
 class GitHubApiInternalServerError(Exception):
     pass
+
+
+class InstallationTokenError(Exception):
+    """
+    GitHub refused to issue an access token for an installation, e.g. because
+    the organization has an IP allow list enabled.
+    """

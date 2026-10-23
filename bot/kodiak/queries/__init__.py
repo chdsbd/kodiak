@@ -26,6 +26,7 @@ from typing_extensions import Literal, Protocol
 import kodiak.app_config as conf
 from kodiak import http
 from kodiak.config import V1, MergeMethod
+from kodiak.errors import InstallationTokenError
 from kodiak.http import HttpClient
 from kodiak.queries.commits import (
     Commit,
@@ -1544,7 +1545,9 @@ async def get_token_for_install(
             ),
         )
     if res.status_code > 300:
-        raise Exception(f"Failed to get token, github response: {res.text}")
+        raise InstallationTokenError(
+            f"Failed to get token, github response: {res.text}"
+        )
     token_response = TokenResponse(**res.json())
     installation_cache[installation_id] = token_response
     return token_response.token
