@@ -973,7 +973,11 @@ def get_session() -> HttpClient:
         session = HttpClient(
             # infinite timeout to match behavior of old, requests_async http
             # client. As a backup we have an asyncio timeout of 30 seconds.
-            timeout=None
+            timeout=None,
+            # the client is shared by every API client on the loop, so don't
+            # cap connections and make concurrent webhooks wait on the pool.
+            # Limits() defaults to no connection or keep-alive limits.
+            limits=http.Limits(),
         )
         if (
             conf.GITHUB_API_HEADER_NAME is not None
