@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import urllib
+import weakref
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -954,6 +956,39 @@ class ThrottlerProtocol(Protocol):
     ) -> None: ...
 
 
+_sessions: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, HttpClient] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def get_session() -> HttpClient:
+    """
+    Return an HTTP client shared by all API clients on the running event loop.
+
+    Sharing a client keeps connections to GitHub open between requests, which
+    avoids a TLS handshake for every API call.
+    """
+    loop = asyncio.get_running_loop()
+    session = _sessions.get(loop)
+    if session is None or session.is_closed:
+        session = HttpClient(
+            # infinite timeout to match behavior of old, requests_async http
+            # client. As a backup we have an asyncio timeout of 30 seconds.
+            timeout=None,
+            # the client is shared by every API client on the loop, so don't
+            # cap connections and make concurrent webhooks wait on the pool.
+            # Limits() defaults to no connection or keep-alive limits.
+            limits=http.Limits(),
+        )
+        if (
+            conf.GITHUB_API_HEADER_NAME is not None
+            and conf.GITHUB_API_HEADER_VALUE is not None
+        ):
+            session.headers[conf.GITHUB_API_HEADER_NAME] = conf.GITHUB_API_HEADER_VALUE
+        _sessions[loop] = session
+    return session
+
+
 class Client:
     throttler: ThrottlerProtocol
 
@@ -961,23 +996,6 @@ class Client:
         self.owner = owner
         self.repo = repo
         self.installation_id = installation_id
-        # NOTE: We must call `await session.close()` when we are finished with our session.
-        # We implement an async context manager this handle this.
-        self.session = HttpClient(
-            # infinite timeout to match behavior of old, requests_async http
-            # client. As a backup we have an asyncio timeout of 30 seconds.
-            timeout=None
-        )
-        self.session.headers["Accept"] = (
-            "application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json"
-        )
-        if (
-            conf.GITHUB_API_HEADER_NAME is not None
-            and conf.GITHUB_API_HEADER_VALUE is not None
-        ):
-            self.session.headers[conf.GITHUB_API_HEADER_NAME] = (
-                conf.GITHUB_API_HEADER_VALUE
-            )
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
@@ -991,7 +1009,11 @@ class Client:
     async def __aexit__(
         self, exc_type: object, exc_value: object, traceback: object
     ) -> None:
-        await self.session.aclose()
+        pass
+
+    @property
+    def session(self) -> HttpClient:
+        return get_session()
 
     async def send_query(
         self,
@@ -1004,10 +1026,14 @@ class Client:
         token = await get_token_for_install(
             session=self.session, installation_id=installation_id
         )
-        self.session.headers["Authorization"] = f"Bearer {token}"
         async with self.throttler:
             res = await self.session.post(
-                conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
+                conf.GITHUB_V4_API_URL,
+                json=(dict(query=query, variables=variables)),
+                headers=dict(
+                    Accept="application/vnd.github.antiope-preview+json,application/vnd.github.merge-info-preview+json",
+                    Authorization=f"Bearer {token}",
+                ),
             )
         rate_limit_remaining = res.headers.get("x-ratelimit-remaining")
         rate_limit_max = res.headers.get("x-ratelimit-limit")
