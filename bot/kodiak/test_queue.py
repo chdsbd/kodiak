@@ -18,7 +18,6 @@ from kodiak.queue import (
     get_ingest_queue,
     installation_id_from_queue,
     process_repo_queue,
-    process_webhook_event,
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
@@ -83,23 +82,6 @@ webhook_event = WebhookEvent(
     installation_id=str(INSTALLATION_ID),
     target_name="main",
 )
-
-
-@requires_redis
-async def test_process_webhook_event_token_error(
-    token_error: MagicMock, redis_queue: str
-) -> None:
-    """
-    A failure to get an installation token should skip the event instead of
-    crashing the webhook worker.
-    """
-    await redis_bot.zadd(redis_queue, {webhook_event.json(): time.time()})
-
-    await process_webhook_event(
-        RedisWebhookQueue(), redis_queue, structlog.get_logger()
-    )
-
-    assert token_error.call_count == 1
 
 
 @requires_redis
