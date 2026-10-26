@@ -3,7 +3,7 @@ import contextlib
 import json
 import time
 from pathlib import Path
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,9 +13,11 @@ from pytest_mock import MockFixture
 from kodiak.entrypoints.worker import work_ingest_queue
 from kodiak.errors import InstallationTokenError
 from kodiak.queue import (
+    MERGE_QUEUE_NAMES,
     RedisWebhookQueue,
     WebhookEvent,
     get_ingest_queue,
+    get_merge_queue_name,
     installation_id_from_queue,
     process_repo_queue,
 )
@@ -134,3 +136,37 @@ async def test_work_ingest_queue_token_error(
     worker.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await worker
+
+
+@pytest.fixture
+async def merge_queues() -> AsyncIterator[Tuple[str, str]]:
+    queue_name = get_merge_queue_name(webhook_event)
+    empty_queue_name = queue_name + "-empty"
+    yield queue_name, empty_queue_name
+    await redis_bot.srem(MERGE_QUEUE_NAMES, queue_name, empty_queue_name)
+    await redis_bot.delete(
+        queue_name, empty_queue_name, f"merge_queue_by_install:{INSTALLATION_ID}"
+    )
+
+
+@requires_redis
+async def test_create_restarts_merge_queue_workers(
+    mocker: MockFixture, merge_queues: Tuple[str, str]
+) -> None:
+    """
+    On restart we should start a worker for each merge queue with events and
+    forget merge queues that are empty.
+    """
+    queue_name, empty_queue_name = merge_queues
+    before_restart = RedisWebhookQueue()
+    mocker.patch.object(before_restart, "start_repo_worker")
+    await before_restart.enqueue_for_repo(event=webhook_event, first=False)
+    await redis_bot.sadd(MERGE_QUEUE_NAMES, empty_queue_name)
+
+    after_restart = RedisWebhookQueue()
+    start_repo_worker = mocker.patch.object(after_restart, "start_repo_worker")
+    await after_restart.create()
+
+    start_repo_worker.assert_called_once_with(queue_name=queue_name)
+    assert await redis_bot.smembers(MERGE_QUEUE_NAMES) >= {queue_name.encode()}
+    assert not await redis_bot.sismember(MERGE_QUEUE_NAMES, empty_queue_name)
