@@ -40,6 +40,7 @@ INGEST_QUEUE_NAMES = "kodiak_ingest_queue_names"
 MERGE_QUEUE_NAMES = "kodiak_merge_queue_names:v2"
 WEBHOOK_QUEUE_NAMES = "kodiak_webhook_queue_names"
 QUEUE_PUBSUB_INGEST = "kodiak:pubsub:ingest"
+QUEUE_PUBSUB_WEBHOOK = "kodiak:pubsub:webhook"
 
 
 def get_ingest_queue(installation_id: int) -> str:
@@ -533,11 +534,7 @@ class RedisWebhookQueue:
         """
         add :event: to webhook queue
         """
-        queue_name = get_webhook_queue_name(event)
-        async with redis_bot.pipeline(transaction=True) as pipe:
-            pipe.sadd(WEBHOOK_QUEUE_NAMES, queue_name)
-            pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
-            await pipe.execute()
+        queue_name = await push_webhook_event(event)
         log = logger.bind(
             owner=event.repo_owner,
             repo=event.repo_name,
@@ -594,6 +591,21 @@ class RedisWebhookQueue:
     def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
         for queue_name, (task, task_kind) in self.worker_tasks.items():
             yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
+
+
+async def push_webhook_event(event: WebhookEvent) -> str:
+    """
+    Add :event: to its webhook queue and record the queue name so a worker can
+    be started for it.
+
+    Returns the webhook queue name.
+    """
+    queue_name = get_webhook_queue_name(event)
+    async with redis_bot.pipeline(transaction=True) as pipe:
+        pipe.sadd(WEBHOOK_QUEUE_NAMES, queue_name)
+        pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
+        await pipe.execute()
+    return queue_name
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
