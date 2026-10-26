@@ -6,13 +6,21 @@ from httpx import (
     AsyncClient,
     HTTPError,
     HTTPStatusError,
+    Limits,
     Request,
     Response,
 )
-from httpx._config import DEFAULT_TIMEOUT_CONFIG
+from httpx._config import DEFAULT_LIMITS, DEFAULT_TIMEOUT_CONFIG
 from httpx._types import TimeoutTypes
 
-__all__ = ["HTTPError", "HTTPStatusError", "HttpClient", "Request", "Response"]
+__all__ = [
+    "HTTPError",
+    "HTTPStatusError",
+    "HttpClient",
+    "Limits",
+    "Request",
+    "Response",
+]
 
 # NOTE: this has a cost to create so we may want to set this lazily on the first HttpClient creation
 context = ssl.create_default_context()
@@ -28,8 +36,10 @@ class HttpClient(AsyncClient):
         self,
         *,
         timeout: TimeoutTypes = DEFAULT_TIMEOUT_CONFIG,
+        limits: Limits = DEFAULT_LIMITS,
     ):
         super().__init__(
             verify=context,
             timeout=timeout,
+            limits=limits,
         )
