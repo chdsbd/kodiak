@@ -470,9 +470,23 @@ class RedisWebhookQueue:
             redis_bot.smembers(MERGE_QUEUE_NAMES),
             redis_bot.smembers(WEBHOOK_QUEUE_NAMES),
         )
-        for merge_result in merge_queues:
-            queue_name = merge_result.decode()
-            self.start_repo_worker(queue_name=queue_name)
+        merge_queue_names = [merge_result.decode() for merge_result in merge_queues]
+        async with redis_bot.pipeline(transaction=False) as pipe:
+            for queue_name in merge_queue_names:
+                pipe.zcard(queue_name)
+            queue_sizes = await pipe.execute()
+        # drop names for empty queues so the set doesn't grow with every repo
+        # that has ever used the merge queue.
+        empty_queues = [
+            queue_name
+            for queue_name, size in zip(merge_queue_names, queue_sizes)
+            if size == 0
+        ]
+        if empty_queues:
+            await redis_bot.srem(MERGE_QUEUE_NAMES, *empty_queues)
+        for queue_name, size in zip(merge_queue_names, queue_sizes):
+            if size > 0:
+                self.start_repo_worker(queue_name=queue_name)
 
         for webhook_result in webhook_queues:
             queue_name = webhook_result.decode()
@@ -547,6 +561,7 @@ class RedisWebhookQueue:
         """
         queue_name = get_merge_queue_name(event)
         async with redis_bot.pipeline(transaction=True) as pipe:
+            pipe.sadd(MERGE_QUEUE_NAMES, queue_name)
             merge_queues_by_install = f"merge_queue_by_install:{event.installation_id}"
             pipe.sadd(merge_queues_by_install, queue_name)
             pipe.expire(merge_queues_by_install, time=ONE_DAY)
