@@ -56,7 +56,7 @@ def installation_id_from_queue(queue_name: str) -> str:
 
     On restart we only have queue names, so we need to extract installation ids from the names.
 
-    webhook:848733 -> 848733
+    webhook:848733.chdsbd/kodiak -> 848733
     merge_queue:848733.chdsbd/kodiak/master -> 848733
     """
     return queue_name.partition(":")[2].partition(".")[0]
@@ -614,4 +614,4 @@ def get_merge_queue_name(event: WebhookEvent) -> str:
 
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
-    return f"webhook:{event.installation_id}"
+    return f"webhook:{event.installation_id}.{event.repo_owner}/{event.repo_name}"
