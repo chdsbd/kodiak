@@ -2,16 +2,19 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, Iterable, Iterator, cast
 
 import pytest
 from pytest_mock import MockFixture
 
-from kodiak import app_config as conf
+from kodiak import (
+    app_config as conf,
+    queries,
+)
 from kodiak.config import V1, Merge, MergeMethod
-from kodiak.http import Request, Response
+from kodiak.http import HttpClient, Request, Response
 from kodiak.queries import (
     BranchProtectionRule,
     BypassActor,
@@ -982,3 +985,37 @@ async def test_get_open_pull_requests_page_limit(
     assert res is not None
     assert len(res) == 2000
     assert patched_session_get.call_count == 20, "stop calling after 20 pages"
+
+
+async def test_get_token_for_install_concurrent_callers_share_request(
+    mocker: MockFixture,
+) -> None:
+    """
+    When the cached token is missing, concurrent callers for an installation
+    should wait on a single token request instead of each making their own.
+    """
+    installation_id = "concurrent-token-test"
+    mocker.patch("kodiak.queries.generate_jwt", return_value="app-jwt")
+    mocker.patch.dict(queries.installation_cache, clear=True)
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+
+    async def post(*args: object, **kwargs: object) -> Response:
+        await asyncio.sleep(0.01)
+        return Response(
+            200,
+            json=dict(token="installation-token", expires_at=expires_at),
+        )
+
+    async with HttpClient() as session:
+        token_request = mocker.patch.object(session, "post", side_effect=post)
+        tokens = await asyncio.gather(
+            *(
+                queries.get_token_for_install(
+                    session=session, installation_id=installation_id
+                )
+                for _ in range(5)
+            )
+        )
+
+    assert tokens == ["installation-token"] * 5
+    assert token_request.call_count == 1
