@@ -932,7 +932,10 @@ def generate_page_of_prs(numbers: Iterable[int]) -> Response:
 
     This is used by get_open_pull_requests.
     """
-    prs = [{"number": number, "base": {"ref": "main"}} for number in numbers]
+    prs = [
+        {"number": number, "base": {"ref": "main"}, "head": {"sha": f"sha-{number}"}}
+        for number in numbers
+    ]
     return Response(
         status_code=200,
         content=json.dumps(prs).encode(),
