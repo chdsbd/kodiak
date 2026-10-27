@@ -136,10 +136,11 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
     ) as api_client:
         if len(refs) == 0:
             # no branch has this commit at its head. This happens for fork pull
-            # requests, but more often for statuses that arrive after a pull
-            # request merged and its branch was deleted, or for commits a
-            # branch has moved past. Find the open pull request at this commit,
-            # if any. Statuses on any other commit can't affect mergeability.
+            # requests, but more often for statuses from builds still running
+            # when the pull request merged and its branch was deleted, or for
+            # commits a branch has moved past. Find the open pull request at
+            # this commit, if any. Statuses on any other commit can't affect
+            # mergeability.
             open_prs = await api_client.get_open_pull_requests()
             pr_results = [
                 [pr for pr in open_prs if pr.head.sha == status_event.sha]

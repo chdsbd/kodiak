@@ -89,9 +89,9 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
     mocker: MockFixture,
 ) -> None:
     """
-    CI often keeps reporting statuses after a pull request merges and its
-    branch is deleted. No open pull request has that commit, so there is nothing
-    to evaluate.
+    A build still running when its pull request merges keeps reporting statuses
+    after the branch is deleted. No open pull request has that commit, so there
+    is nothing to evaluate.
     """
     mocker.patch(
         "kodiak.queue.Client",
