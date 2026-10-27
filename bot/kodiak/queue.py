@@ -362,7 +362,7 @@ async def process_webhook_event(
     queue_name: str,
     log: structlog.BoundLogger,
 ) -> None:
-    log.info("block for new webhook event")
+    log.debug("block for new webhook event")
     webhook_event_json = await bzpopmin_with_timeout(queue_name)
     if webhook_event_json is None:
         return
@@ -440,7 +440,7 @@ async def webhook_event_consumer(
 
 
 async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> None:
-    log.info("block for new repo event")
+    log.debug("block for new repo event")
     result = await bzpopmin_with_timeout(queue_name)
     if result is None:
         return
@@ -599,7 +599,7 @@ class RedisWebhookQueue:
             number=event.pull_request_number,
             install=event.installation_id,
         )
-        log.info("enqueue webhook event")
+        log.debug("enqueue webhook event")
         self.start_webhook_worker(queue_name=queue_name)
 
     async def enqueue_for_repo(
