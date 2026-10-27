@@ -126,6 +126,30 @@ def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
     return [branch.name for branch in branches if branch.commit.sha == sha]
 
 
+# How long we reuse a repository's open pull requests when matching statuses to
+# them. CI often reports dozens of statuses at once for commits no branch is at,
+# and listing every open pull request for each one backs up the ingest queue.
+OPEN_PULL_REQUESTS_CACHE_SEC = 10
+
+# (installation_id, owner, repo) => (fetched_at, open pull requests)
+_open_pull_requests_cache: dict[
+    tuple[str, str, str], tuple[float, list[queries.GetOpenPullRequestsResponseSchema]]
+] = {}
+
+
+async def get_open_pull_requests_cached(
+    api_client: Client, *, installation_id: str, owner: str, repo: str
+) -> list[queries.GetOpenPullRequestsResponseSchema] | None:
+    key = (installation_id, owner, repo)
+    cached = _open_pull_requests_cache.get(key)
+    if cached is not None and time.time() - cached[0] < OPEN_PULL_REQUESTS_CACHE_SEC:
+        return cached[1]
+    open_prs = await api_client.get_open_pull_requests()
+    if open_prs is not None:
+        _open_pull_requests_cache[key] = (time.time(), open_prs)
+    return open_prs
+
+
 async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
@@ -149,7 +173,9 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             # commits a branch has moved past. Find the open pull request at
             # this commit, if any. Statuses on any other commit can't affect
             # mergeability.
-            open_prs = await api_client.get_open_pull_requests()
+            open_prs = await get_open_pull_requests_cached(
+                api_client, installation_id=installation_id, owner=owner, repo=repo
+            )
             pr_results = [
                 [pr for pr in open_prs if pr.head.sha == status_event.sha]
                 if open_prs is not None

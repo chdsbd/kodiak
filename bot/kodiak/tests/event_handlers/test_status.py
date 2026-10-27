@@ -2,12 +2,23 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+import pytest
 from pytest_mock import MockFixture
 
 from kodiak.events.base import Installation
 from kodiak.events.status import Owner, Repository, StatusEvent
 from kodiak.queries import GetOpenPullRequestsResponseSchema, HeadRef, Ref
-from kodiak.queue import WebhookEvent, status_event
+from kodiak.queue import (
+    OPEN_PULL_REQUESTS_CACHE_SEC,
+    WebhookEvent,
+    _open_pull_requests_cache,
+    status_event,
+)
+
+
+@pytest.fixture(autouse=True)
+def empty_open_pull_requests_cache() -> None:
+    _open_pull_requests_cache.clear()
 
 
 class FakeQueue:
@@ -26,6 +37,7 @@ class FakeQueue:
 class FakeClient:
     def __init__(self, open_pull_requests: List[GetOpenPullRequestsResponseSchema]):
         self.open_pull_requests = open_pull_requests
+        self.list_count = 0
 
     async def __aenter__(self) -> FakeClient:
         return self
@@ -37,6 +49,7 @@ class FakeClient:
         self, base: Optional[str] = None, head: Optional[str] = None
     ) -> List[GetOpenPullRequestsResponseSchema]:
         assert base is None and head is None
+        self.list_count += 1
         return self.open_pull_requests
 
 
@@ -114,3 +127,32 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
     await status_event(queue, event)
 
     assert queue.events == []
+
+
+async def test_status_events_without_branches_reuse_open_pull_requests(
+    mocker: MockFixture,
+) -> None:
+    """
+    CI reports many statuses at once. We list a repository's open pull requests
+    once for a burst of them, and list again once the cache expires.
+    """
+    client = FakeClient([open_pull_request(124, sha="f3b02e4")])
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    now = mocker.patch("kodiak.queue.time.time", return_value=1_700_000_000.0)
+    queue = FakeQueue()
+    event = StatusEvent(
+        installation=Installation(id=9234201),
+        id=4523,
+        sha="f3b02e4",
+        branches=[],
+        repository=Repository(name="api", owner=Owner(login="acme")),
+    )
+
+    for _ in range(3):
+        await status_event(queue, event)
+    assert client.list_count == 1
+    assert len(queue.events) == 3
+
+    now.return_value += OPEN_PULL_REQUESTS_CACHE_SEC
+    await status_event(queue, event)
+    assert client.list_count == 2
