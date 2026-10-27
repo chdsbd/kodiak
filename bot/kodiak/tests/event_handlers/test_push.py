@@ -90,6 +90,8 @@ def push_event(commits: Optional[List[Commit]] = None) -> PushEvent:
 
 @pytest.fixture
 async def repo_pull_requests(mocker: MockFixture) -> AsyncIterator[None]:
+    # drop connections opened on other test modules' event loops
+    await redis_bot.connection_pool.disconnect()
     mocker.patch(
         "kodiak.queue.Client",
         return_value=FakeClient(
