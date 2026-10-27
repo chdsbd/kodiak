@@ -7,17 +7,16 @@ repositories aren't ones Kodiak acts on (no automerge label), and evaluating
 them only reaches the "Ignored" status again.
 
 We don't have the repository's config when handling a push, so we cache the
-fields we need whenever we evaluate a pull request.
+config whenever we evaluate a pull request.
 """
 
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Iterable, List, Optional
-
-import pydantic
+from typing import Iterable, Optional
 
 from kodiak.config import V1
+from kodiak.evaluation import may_update_or_merge
 from kodiak.queries import CONFIG_FILE_NAME
 from kodiak.redis_client import redis_bot
 
@@ -26,50 +25,22 @@ CACHE_TTL = timedelta(hours=1)
 CONFIG_FILE_PATHS = {CONFIG_FILE_NAME, f".github/{CONFIG_FILE_NAME}"}
 
 
-class PushFilterConfig(pydantic.BaseModel):
-    automerge_labels: List[str]
-    require_automerge_label: bool
-    automerge_dependency_usernames: List[str]
-    update_always: bool
-    update_require_automerge_label: bool
-    autoupdate_label: Optional[str]
+def may_act_on(config: V1, *, labels: Iterable[str], author: Optional[str]) -> bool:
+    """
+    Whether Kodiak may update or merge a pull request in the push's base branch.
 
-    @classmethod
-    def from_config(cls, config: V1) -> PushFilterConfig:
-        automerge_label = config.merge.automerge_label
-        return cls(
-            automerge_labels=(
-                [automerge_label]
-                if isinstance(automerge_label, str)
-                else list(automerge_label)
-            ),
-            require_automerge_label=config.merge.require_automerge_label,
-            automerge_dependency_usernames=config.merge.automerge_dependencies.usernames,
-            update_always=config.update.always,
-            update_require_automerge_label=config.update.require_automerge_label,
-            autoupdate_label=config.update.autoupdate_label,
-        )
-
-    def may_act_on(self, *, labels: Iterable[str], author: Optional[str]) -> bool:
-        """
-        Whether Kodiak may update or merge a pull request with these labels.
-
-        This mirrors the checks in `mergeable` for which pull requests need a
-        mergeability check. For dependency automerge we only check the author,
-        which errs toward evaluating the pull request.
-        """
-        labels = set(labels)
-        has_automerge_label = not labels.isdisjoint(self.automerge_labels)
-        return (
-            has_automerge_label
-            or not self.require_automerge_label
-            or (author is not None and author in self.automerge_dependency_usernames)
-            or (
-                self.update_always
-                and (has_automerge_label or not self.update_require_automerge_label)
-            )
-            or (self.autoupdate_label is not None and self.autoupdate_label in labels)
-        )
+    The pull request list doesn't include the dependency version, so for
+    dependency automerge we only check the author, which errs toward
+    evaluating the pull request.
+    """
+    return may_update_or_merge(
+        config,
+        labels=labels,
+        dependency_automerge=(
+            author is not None
+            and author in config.merge.automerge_dependencies.usernames
+        ),
+    )
 
 
 def get_cache_key(*, installation_id: str, owner: str, repo: str) -> str:
@@ -81,14 +52,14 @@ async def save_push_filter_config(
 ) -> None:
     await redis_bot.set(
         get_cache_key(installation_id=installation_id, owner=owner, repo=repo),
-        PushFilterConfig.from_config(config).json(),
+        config.json(),
         ex=CACHE_TTL,
     )
 
 
 async def get_push_filter_config(
     *, installation_id: str, owner: str, repo: str
-) -> Optional[PushFilterConfig]:
+) -> Optional[V1]:
     """
     Returns None if we haven't evaluated a pull request in the repository
     recently, in which case every pull request should be evaluated.
@@ -98,7 +69,7 @@ async def get_push_filter_config(
     )
     if cached is None:
         return None
-    return PushFilterConfig.parse_raw(cached)
+    return V1.parse_raw(cached)
 
 
 async def forget_push_filter_config(

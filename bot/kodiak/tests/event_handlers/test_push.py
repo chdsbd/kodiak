@@ -198,4 +198,4 @@ async def test_get_pr_caches_push_filter_config(
         installation_id=INSTALLATION_ID, owner="acme", repo="api"
     )
     assert push_filter is not None
-    assert push_filter.automerge_labels == ["automerge"]
+    assert push_filter.merge.automerge_label == "automerge"

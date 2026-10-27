@@ -605,6 +605,34 @@ def requires_status_checks(
     return False
 
 
+def may_update_or_merge(
+    config: V1, *, labels: Iterable[str], dependency_automerge: bool
+) -> bool:
+    """
+    Whether Kodiak may update or merge a pull request with these labels.
+
+    Kodiak ignores other pull requests, so they don't need a mergeability check
+    or evaluating after a push to their base branch.
+    """
+    labels = set(labels)
+    automerge_labels = (
+        {config.merge.automerge_label}
+        if isinstance(config.merge.automerge_label, str)
+        else set(config.merge.automerge_label)
+    )
+    has_automerge_label = not labels.isdisjoint(automerge_labels)
+    update_always = config.update.always and (
+        has_automerge_label or not config.update.require_automerge_label
+    )
+    return (
+        has_automerge_label
+        or dependency_automerge
+        or not config.merge.require_automerge_label
+        or update_always
+        or config.update.autoupdate_label in labels
+    )
+
+
 async def mergeable(
     api: PRAPI,
     config: Union[config.V1, pydantic.ValidationError, toml.TomlDecodeError],
@@ -790,12 +818,11 @@ async def mergeable(
         has_automerge_label or not config.update.require_automerge_label
     )
     has_autoupdate_label = config.update.autoupdate_label in pull_request_labels
-    may_merge = (
-        has_automerge_label
-        or should_dependency_automerge
-        or not config.merge.require_automerge_label
+    needs_mergeability = merging or may_update_or_merge(
+        config,
+        labels=pull_request_labels,
+        dependency_automerge=should_dependency_automerge,
     )
-    needs_mergeability = merging or may_merge or update_always or has_autoupdate_label
 
     # we should trigger mergeability checks whenever we encounter UNKNOWN on a
     # pull request we may update or merge. Other pull requests fall through to

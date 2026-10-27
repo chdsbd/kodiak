@@ -5,13 +5,13 @@ from typing import List, Optional
 import pytest
 
 from kodiak.config import V1, AutomergeDependencies, Merge, Update
-from kodiak.push_filter import PushFilterConfig
+from kodiak.push_filter import may_act_on as push_may_act_on
 
 
 def may_act_on(
     config: V1, *, labels: List[str], author: Optional[str] = "octocat"
 ) -> bool:
-    return PushFilterConfig.from_config(config).may_act_on(labels=labels, author=author)
+    return push_may_act_on(config, labels=labels, author=author)
 
 
 def test_default_config_ignores_unlabeled_pull_requests() -> None:

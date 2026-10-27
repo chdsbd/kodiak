@@ -34,6 +34,7 @@ from kodiak.push_filter import (
     CONFIG_FILE_PATHS,
     forget_push_filter_config,
     get_push_filter_config,
+    may_act_on,
 )
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
@@ -256,7 +257,8 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
             )
         skipped = 0
         for pr in prs:
-            if push_filter is not None and not push_filter.may_act_on(
+            if push_filter is not None and not may_act_on(
+                push_filter,
                 labels=(label.name for label in pr.labels),
                 author=pr.user.login if pr.user is not None else None,
             ):
