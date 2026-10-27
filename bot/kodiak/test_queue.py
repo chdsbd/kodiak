@@ -37,6 +37,7 @@ from kodiak.tests.fixtures import requires_redis
         ("merge_queue:11256551.sbdchd/squawk", "11256551"),
         ("merge_queue:11256551.sbdchd/squawk:repo/main:test.branch", "11256551"),
         ("webhook:11256551", "11256551"),
+        ("webhook:11256551.acme/api.example.com", "11256551"),
         ("", ""),
     ),
 )
@@ -174,6 +175,17 @@ async def test_create_restarts_merge_queue_workers(
     start_repo_worker.assert_called_once_with(queue_name=queue_name)
     assert await redis_bot.smembers(MERGE_QUEUE_NAMES) >= {queue_name.encode()}
     assert not await redis_bot.sismember(MERGE_QUEUE_NAMES, empty_queue_name)
+
+
+def test_get_webhook_queue_name_per_repo() -> None:
+    """
+    Each repository gets its own webhook queue so a backlog in one repository
+    doesn't delay events for other repositories in the installation.
+    """
+    other_repo_event = webhook_event.copy(update=dict(repo_name="web"))
+
+    assert get_webhook_queue_name(webhook_event) == "webhook:9234201.acme/api"
+    assert get_webhook_queue_name(other_repo_event) == "webhook:9234201.acme/web"
 
 
 @pytest.fixture
