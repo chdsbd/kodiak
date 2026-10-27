@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import urllib
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -697,6 +699,9 @@ class TokenResponse(BaseModel):
 
 
 installation_cache: MutableMapping[str, Optional[TokenResponse]] = dict()
+# serialize token fetches per installation so concurrent workers share one token
+# request instead of each requesting a new token when the cached one expires.
+installation_token_locks: MutableMapping[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 # TODO(sbdchd): pass logging via TLS or async equivalent
 
@@ -1525,6 +1530,15 @@ async def get_token_for_install(
     """
     https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/#authenticating-as-an-installation
     """
+    async with installation_token_locks[installation_id]:
+        return await _get_token_for_install(
+            session=session, installation_id=installation_id
+        )
+
+
+async def _get_token_for_install(
+    *, session: http.AsyncClient, installation_id: str
+) -> str:
     token = installation_cache.get(installation_id)
     if token is not None and not token.expired:
         return token.token
