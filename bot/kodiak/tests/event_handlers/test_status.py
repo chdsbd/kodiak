@@ -24,8 +24,8 @@ class FakeQueue:
 
 
 class FakeClient:
-    def __init__(self, open_pull_requests: List[GetOpenPullRequestsResponseSchema]):
-        self.open_pull_requests = open_pull_requests
+    def __init__(self, commit_pull_requests: List[GetOpenPullRequestsResponseSchema]):
+        self.commit_pull_requests = commit_pull_requests
 
     async def __aenter__(self) -> FakeClient:
         return self
@@ -33,11 +33,10 @@ class FakeClient:
     async def __aexit__(self, *args: object) -> None:
         pass
 
-    async def get_open_pull_requests(
-        self, base: Optional[str] = None, head: Optional[str] = None
+    async def get_open_pull_requests_for_commit(
+        self, sha: str
     ) -> List[GetOpenPullRequestsResponseSchema]:
-        assert base is None and head is None
-        return self.open_pull_requests
+        return self.commit_pull_requests
 
 
 def open_pull_request(number: int, sha: str) -> GetOpenPullRequestsResponseSchema:
@@ -50,8 +49,8 @@ async def test_status_event_without_branches_only_queues_matching_pull_request(
     mocker: MockFixture,
 ) -> None:
     """
-    When no branch has the status commit at its head, we search the open pull
-    requests for the one at that commit instead of queueing all of them.
+    When no branch has the status commit at its head, we look up the open pull
+    requests containing that commit and only queue the one whose head is at it.
     """
     mocker.patch(
         "kodiak.queue.Client",
@@ -95,12 +94,7 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
     """
     mocker.patch(
         "kodiak.queue.Client",
-        return_value=FakeClient(
-            [
-                open_pull_request(123, sha="1d7a5c9"),
-                open_pull_request(125, sha="8c41b6a"),
-            ]
-        ),
+        return_value=FakeClient([]),
     )
     queue = FakeQueue()
     event = StatusEvent(
