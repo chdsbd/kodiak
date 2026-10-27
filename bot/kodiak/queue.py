@@ -168,11 +168,24 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             ]
             pr_results = await asyncio.gather(*pr_requests)
 
+        # a status can only change what Kodiak does for pull requests it may
+        # update or merge. Without a cached config we evaluate everything.
+        config = await get_push_filter_config(
+            installation_id=installation_id, owner=owner, repo=repo
+        )
         all_events: set[WebhookEvent] = set()
+        skipped = 0
         for prs in pr_results:
             if prs is None:
                 continue
             for pr in prs:
+                if config is not None and not may_act_on(
+                    config,
+                    labels=(label.name for label in pr.labels),
+                    author=pr.user.login if pr.user is not None else None,
+                ):
+                    skipped += 1
+                    continue
                 all_events.add(
                     WebhookEvent(
                         repo_owner=owner,
@@ -184,6 +197,8 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
                 )
         for event in all_events:
             await queue.enqueue(event=event)
+        if skipped:
+            log.info("status_pull_requests_skipped", skipped=skipped)
 
 
 async def pr_review(
