@@ -6,9 +6,10 @@ import time
 import typing
 import urllib
 from asyncio.tasks import Task
+from collections import Counter
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator, MutableMapping, NoReturn, Optional, Tuple
+from typing import Iterator, MutableMapping, Optional, Tuple
 
 import sentry_sdk
 import structlog
@@ -308,11 +309,14 @@ async def process_webhook_event(
     webhook_queue: RedisWebhookQueue,
     queue_name: str,
     log: structlog.BoundLogger,
-) -> None:
+) -> bool:
+    """
+    Returns False if no event was available.
+    """
     log.info("block for new webhook event")
     webhook_event_json = await bzpopmin_with_timeout(queue_name)
     if webhook_event_json is None:
-        return
+        return False
     log.info("parsing webhook event")
     webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
     is_active_merging = (
@@ -324,11 +328,7 @@ async def process_webhook_event(
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            nx=True,
-        )
+        await webhook_queue.enqueue(event=webhook_event)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
@@ -346,16 +346,37 @@ async def process_webhook_event(
         is_active_merging=is_active_merging,
         log=log,
     )
+    return True
+
+
+# Remove the queue name only if the queue is empty, atomically, so we can't
+# forget a queue that just received an event.
+FORGET_QUEUE_IF_EMPTY = """
+if redis.call("ZCARD", KEYS[1]) == 0 then
+    redis.call("SREM", KEYS[2], KEYS[1])
+    return 1
+end
+return 0
+"""
+
+
+async def forget_webhook_queue_if_empty(queue_name: str) -> bool:
+    forgotten = await redis_bot.eval(  # type: ignore [no-untyped-call]
+        FORGET_QUEUE_IF_EMPTY, 2, queue_name, WEBHOOK_QUEUE_NAMES
+    )
+    return bool(forgotten)
 
 
 async def webhook_event_consumer(
     *, webhook_queue: RedisWebhookQueue, queue_name: str
-) -> typing.NoReturn:
+) -> None:
     """
     Worker to process incoming webhook events from redis
 
     1. process mergeability information and update github check status for pr
     2. enqueue pr into repo queue for merging, if mergeability passed
+
+    Exits once the queue has been empty for WEBHOOK_WORKER_IDLE_TIMEOUT_SEC.
     """
 
     # We need to define a custom Hub so that we can set the scope correctly.
@@ -373,11 +394,28 @@ async def webhook_event_consumer(
             queue=queue_name, install=installation_id_from_queue(queue_name)
         )
         log.info("start webhook event consumer")
+        last_event_at = time.monotonic()
         while True:
-            await process_webhook_event(webhook_queue, queue_name, log)
+            if await process_webhook_event(webhook_queue, queue_name, log):
+                last_event_at = time.monotonic()
+                continue
+            if time.monotonic() - last_event_at < conf.WEBHOOK_WORKER_IDLE_TIMEOUT_SEC:
+                continue
+            start_requests = webhook_queue.start_requests[queue_name]
+            if not await forget_webhook_queue_if_empty(queue_name):
+                continue
+            # An event queued while we were forgetting the queue would have
+            # tried to start this worker, which is a no-op while it's running.
+            # Keep going so that event isn't stranded.
+            if webhook_queue.start_requests[queue_name] != start_requests:
+                continue
+            log.info("stop idle webhook event consumer")
+            return
 
 
-async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> None:
+async def process_repo_queue(
+    log: structlog.BoundLogger, queue_name: str, webhook_queue: RedisWebhookQueue
+) -> None:
     log.info("block for new repo event")
     result = await bzpopmin_with_timeout(queue_name)
     if result is None:
@@ -393,11 +431,7 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            nx=True,
-        )
+        await webhook_queue.enqueue(event=webhook_event)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         raise NotImplementedError
@@ -420,7 +454,9 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
     await redis_bot.delete(target_name + ":time")
 
 
-async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
+async def repo_queue_consumer(
+    *, queue_name: str, webhook_queue: RedisWebhookQueue
+) -> typing.NoReturn:
     """
     Worker for a repo given by :queue_name:
 
@@ -437,7 +473,7 @@ async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
         log = logger.bind(queue=queue_name, install=installation)
         log.info("start repo_consumer")
         while True:
-            await process_repo_queue(log, queue_name)
+            await process_repo_queue(log, queue_name, webhook_queue)
 
 
 T = typing.TypeVar("T")
@@ -462,8 +498,11 @@ class TaskMeta:
 class RedisWebhookQueue:
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
-            str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
-        ] = {}  # type: ignore [assignment]
+            str, tuple[Task[None], Literal["repo", "webhook"]]
+        ] = {}
+        # count of start requests for running workers, so an exiting worker can
+        # tell if an event arrived while it was shutting down.
+        self.start_requests: typing.Counter[str] = Counter()
 
     async def create(self) -> None:
         # restart repo workers
@@ -504,28 +543,29 @@ class RedisWebhookQueue:
         self._start_worker(
             queue_name,
             "repo",
-            repo_queue_consumer(
-                queue_name=queue_name,
-            ),
+            repo_queue_consumer(queue_name=queue_name, webhook_queue=self),
         )
 
     def _start_worker(
         self,
         key: str,
         kind: Literal["repo", "webhook"],
-        fut: typing.Coroutine[None, None, NoReturn],
+        fut: typing.Coroutine[None, None, None],
     ) -> None:
         log = logger.bind(queue_name=key, kind=kind)
         worker_task_result = self.worker_tasks.get(key)
         if worker_task_result is not None:
             worker_task, _task_kind = worker_task_result
             if not worker_task.done():
+                self.start_requests[key] += 1
+                fut.close()
                 return
-            log.info("task failed")
-            # task failed. record result and restart
             exception = worker_task.exception()
-            log.info("exception", excep=exception)
-            sentry_sdk.capture_exception(exception)
+            if exception is not None:
+                log.info("task failed")
+                # task failed. record result and restart
+                log.info("exception", excep=exception)
+                sentry_sdk.capture_exception(exception)
         log.info("creating task for queue")
         # create new task for queue
         self.worker_tasks[key] = (asyncio.create_task(fut), kind)
@@ -588,9 +628,13 @@ class RedisWebhookQueue:
         )
         return find_position((key for key, value in kvs), event.json().encode())
 
-    def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
-        for queue_name, (task, task_kind) in self.worker_tasks.items():
+    def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[None]]]:
+        for queue_name, (task, task_kind) in list(self.worker_tasks.items()):
             yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
+
+    def remove_task(self, queue_name: str) -> None:
+        del self.worker_tasks[queue_name]
+        self.start_requests.pop(queue_name, None)
 
 
 async def push_webhook_event(event: WebhookEvent) -> str:

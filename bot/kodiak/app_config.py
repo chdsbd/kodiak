@@ -58,6 +58,11 @@ INGEST_QUEUE_LENGTH = config("INGEST_QUEUE_LENGTH", cast=int, default=1_000)
 REDIS_BLOCKING_POP_TIMEOUT_SEC = config(
     "REDIS_BLOCKING_POP_TIMEOUT_SEC", cast=int, default=10
 )
+# webhook queue workers exit after this long without events to free their Redis
+# connection. They're restarted when a new event is queued.
+WEBHOOK_WORKER_IDLE_TIMEOUT_SEC = config(
+    "WEBHOOK_WORKER_IDLE_TIMEOUT_SEC", cast=int, default=300
+)
 # if we don't get a reply from Redis within a short period, we have an error because we always expect short response times from redis. We specify a timeout for blocking operations
 REDIS_SOCKET_TIMEOUT_SEC = config("REDIS_SOCKET_TIMEOUT_SEC", cast=int, default=90)
 # if we can't open a TCP connection quickly, we should raise a timeout.
