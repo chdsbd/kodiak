@@ -133,7 +133,8 @@ def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
 
 
 # How long we reuse a repository's open pull requests when matching statuses to
-# them. CI often reports dozens of statuses at once for commits no branch is at,
+# them. CI often reports dozens of statuses for commits no branch is at, like
+# commits replaced by a force push or whose branch was deleted after merging,
 # and listing every open pull request for each one backs up the ingest queue.
 OPEN_PULL_REQUESTS_CACHE_SEC = 10
 
