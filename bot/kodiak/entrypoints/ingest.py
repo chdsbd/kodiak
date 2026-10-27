@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import time
 from typing import Any
 
 import structlog
@@ -83,13 +84,21 @@ async def github_webhook_event(request: Request) -> Response:
 
     ingest_queue = get_ingest_queue(installation_id)
 
-    await redis_bot.rpush(
+    queue_length = await redis_bot.rpush(
         ingest_queue,
-        RawWebhookEvent(event_name=github_event, payload=event).json(),
+        RawWebhookEvent(
+            event_name=github_event, payload=event, received_at=time.time()
+        ).json(),
     )
 
     # workers pop from the head, so drop the oldest events when the queue is full.
     await redis_bot.ltrim(ingest_queue, -conf.INGEST_QUEUE_LENGTH, -1)
+    if queue_length > conf.INGEST_QUEUE_LENGTH:
+        logger.warning(
+            "ingest_queue_full",
+            installation_id=installation_id,
+            dropped=queue_length - conf.INGEST_QUEUE_LENGTH,
+        )
     await redis_bot.sadd(INGEST_QUEUE_NAMES, ingest_queue)
     await redis_bot.publish(
         QUEUE_PUBSUB_INGEST,

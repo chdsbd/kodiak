@@ -36,7 +36,7 @@ from kodiak.queries.commits import (
     get_commits,
 )
 from kodiak.redis_client import redis_web_api
-from kodiak.throttle import get_thottler_for_installation
+from kodiak.throttle import get_thottler_for_installation, update_rate_limit
 
 logger = structlog.get_logger()
 
@@ -961,6 +961,7 @@ class ThrottlerProtocol(Protocol):
 
 class Client:
     throttler: ThrottlerProtocol
+    graphql_throttler: ThrottlerProtocol
 
     def __init__(self, *, owner: str, repo: str, installation_id: str):
         self.owner = owner
@@ -983,6 +984,7 @@ class Client:
             self.session.headers[conf.GITHUB_API_HEADER_NAME] = (
                 conf.GITHUB_API_HEADER_VALUE
             )
+        self.session.event_hooks["response"] = [self._record_rate_limit]
         self.log = logger.bind(
             owner=self.owner, repo=self.repo, install=self.installation_id
         )
@@ -991,7 +993,28 @@ class Client:
         self.throttler = get_thottler_for_installation(
             installation_id=self.installation_id
         )
+        self.graphql_throttler = get_thottler_for_installation(
+            installation_id=self.installation_id, resource="graphql"
+        )
         return self
+
+    async def _record_rate_limit(self, res: http.Response) -> None:
+        """
+        Pace our requests to the installation's rate limit from GitHub.
+        """
+        # the token request is authenticated as our app, not the installation,
+        # so its rate limit isn't the installation's.
+        if res.request.url.path.endswith("/access_tokens"):
+            return
+        resource = res.headers.get("x-ratelimit-resource")
+        limit = res.headers.get("x-ratelimit-limit")
+        if resource is None or limit is None or not limit.isdigit():
+            return
+        update_rate_limit(
+            installation_id=self.installation_id,
+            resource=resource,
+            requests_per_hour=int(limit),
+        )
 
     async def __aexit__(
         self, exc_type: object, exc_value: object, traceback: object
@@ -1010,7 +1033,7 @@ class Client:
             session=self.session, installation_id=installation_id
         )
         self.session.headers["Authorization"] = f"Bearer {token}"
-        async with self.throttler:
+        async with self.graphql_throttler:
             res = await self.session.post(
                 conf.GITHUB_V4_API_URL, json=(dict(query=query, variables=variables))
             )
@@ -1318,6 +1341,9 @@ query {
 
             page = res.json()
             open_prs += [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in page]
+            # a short page is the last page, so we can skip requesting an empty one.
+            if len(page) < int(params["per_page"]):
+                break
 
         return open_prs
 

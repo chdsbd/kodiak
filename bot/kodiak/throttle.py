@@ -1,7 +1,7 @@
 import asyncio
 import time
 from collections import defaultdict, deque
-from typing import Deque, Mapping
+from typing import Deque, Mapping, Tuple
 
 
 class Throttler:
@@ -57,6 +57,16 @@ class Throttler:
 
         self._task_logs.append(time.time())
 
+    def set_hourly_limit(self, requests_per_hour: int) -> None:
+        """
+        Pace requests to a share of GitHub's hourly limit.
+
+        We use a one minute window so the limit isn't rounded up to a whole
+        request per second, while still allowing short bursts.
+        """
+        self.period = 60
+        self.rate_limit = requests_per_hour * RATE_LIMIT_USAGE / 60
+
     async def __aenter__(self) -> None:
         await self.acquire()
 
@@ -64,12 +74,26 @@ class Throttler:
         pass
 
 
-# installation_id => Throttler
-THROTTLER_CACHE: Mapping[str, Throttler] = defaultdict(
-    # TODO(chdsbd): Store rate limits in redis and update via http rate limit response headers
+# share of GitHub's rate limit we use. We leave headroom for other processes
+# using the same installation, like the pull request refresh job.
+RATE_LIMIT_USAGE = 0.8
+
+# (installation_id, rate limit resource) => Throttler
+#
+# GitHub limits REST ("core") and GraphQL ("graphql") requests separately. We
+# start at GitHub's minimum limit and update from response headers.
+THROTTLER_CACHE: Mapping[Tuple[str, str], Throttler] = defaultdict(
     lambda: Throttler(rate_limit=5000 / 60 / 60)
 )
 
 
-def get_thottler_for_installation(*, installation_id: str) -> Throttler:
-    return THROTTLER_CACHE[installation_id]
+def get_thottler_for_installation(
+    *, installation_id: str, resource: str = "core"
+) -> Throttler:
+    return THROTTLER_CACHE[(installation_id, resource)]
+
+
+def update_rate_limit(
+    *, installation_id: str, resource: str, requests_per_hour: int
+) -> None:
+    THROTTLER_CACHE[(installation_id, resource)].set_hourly_limit(requests_per_hour)
