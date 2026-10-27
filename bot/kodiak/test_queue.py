@@ -3,7 +3,7 @@ import contextlib
 import json
 import time
 from pathlib import Path
-from typing import AsyncIterator, Iterator, Tuple
+from typing import AsyncIterator, Iterator, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,10 +14,12 @@ from kodiak.entrypoints.worker import work_ingest_queue
 from kodiak.errors import InstallationTokenError
 from kodiak.queue import (
     MERGE_QUEUE_NAMES,
+    WEBHOOK_QUEUE_NAMES,
     RedisWebhookQueue,
     WebhookEvent,
     get_ingest_queue,
     get_merge_queue_name,
+    get_webhook_queue_name,
     installation_id_from_queue,
     process_repo_queue,
 )
@@ -170,3 +172,74 @@ async def test_create_restarts_merge_queue_workers(
     start_repo_worker.assert_called_once_with(queue_name=queue_name)
     assert await redis_bot.smembers(MERGE_QUEUE_NAMES) >= {queue_name.encode()}
     assert not await redis_bot.sismember(MERGE_QUEUE_NAMES, empty_queue_name)
+
+
+@pytest.fixture
+async def webhook_queue(mocker: MockFixture) -> AsyncIterator[RedisWebhookQueue]:
+    queue = RedisWebhookQueue()
+    mocker.patch.object(queue, "start_webhook_worker")
+    yield queue
+    queue_name = get_webhook_queue_name(webhook_event)
+    await redis_bot.srem(WEBHOOK_QUEUE_NAMES, queue_name)
+    await redis_bot.delete(queue_name)
+
+
+async def queued_pull_request_numbers() -> List[int]:
+    events = await redis_bot.zrange(get_webhook_queue_name(webhook_event), 0, -1)
+    return [WebhookEvent.parse_raw(event).pull_request_number for event in events]
+
+
+@requires_redis
+async def test_enqueue_direct_event_skips_low_priority_backlog(
+    webhook_queue: RedisWebhookQueue,
+) -> None:
+    """
+    An event for a pull request's own activity should be handled before
+    earlier fan-out events, like those from a push to the base branch.
+    """
+    for number in (1, 2):
+        await webhook_queue.enqueue(
+            event=webhook_event.copy(update=dict(pull_request_number=number)),
+            low_priority=True,
+        )
+    await webhook_queue.enqueue(
+        event=webhook_event.copy(update=dict(pull_request_number=3))
+    )
+
+    assert await queued_pull_request_numbers() == [3, 1, 2]
+
+
+@requires_redis
+async def test_enqueue_direct_event_moves_queued_low_priority_event_ahead(
+    webhook_queue: RedisWebhookQueue,
+) -> None:
+    """
+    If a pull request is already queued at low priority, an event for its own
+    activity should move it ahead instead of leaving it at the back.
+    """
+    pr_1 = webhook_event.copy(update=dict(pull_request_number=1))
+    pr_2 = webhook_event.copy(update=dict(pull_request_number=2))
+    await webhook_queue.enqueue(event=pr_1, low_priority=True)
+    await webhook_queue.enqueue(event=pr_2, low_priority=True)
+
+    await webhook_queue.enqueue(event=pr_2)
+
+    assert await queued_pull_request_numbers() == [2, 1]
+
+
+@requires_redis
+async def test_enqueue_low_priority_event_keeps_queued_position(
+    webhook_queue: RedisWebhookQueue,
+) -> None:
+    """
+    A fan-out event for a pull request that's already queued shouldn't push it
+    to the back.
+    """
+    pr_1 = webhook_event.copy(update=dict(pull_request_number=1))
+    pr_2 = webhook_event.copy(update=dict(pull_request_number=2))
+    await webhook_queue.enqueue(event=pr_1)
+    await webhook_queue.enqueue(event=pr_2)
+
+    await webhook_queue.enqueue(event=pr_1, low_priority=True)
+
+    assert await queued_pull_request_numbers() == [1, 2]
