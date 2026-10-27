@@ -19,6 +19,7 @@ from kodiak.logging import configure_logging
 from kodiak.queue import (
     INGEST_QUEUE_NAMES,
     QUEUE_PUBSUB_INGEST,
+    QUEUE_PUBSUB_WEBHOOK,
     RedisWebhookQueue,
     WebhookQueueProtocol,
     get_ingest_queue,
@@ -89,6 +90,22 @@ async def ingest_queue_starter(
             log.info("started new task")
 
 
+async def webhook_queue_starter(queue: RedisWebhookQueue) -> None:
+    """
+    Listen on Redis Pubsub and start webhook queue workers for queues filled by
+    other processes.
+    """
+    pubsub = redis_bot.pubsub()
+    await pubsub.subscribe(QUEUE_PUBSUB_WEBHOOK)
+    log = logger.bind(task="webhook_queue_starter")
+    log.info("start watch for webhook_queues")
+    while True:
+        reply = await pubsub.get_message(ignore_subscribe_messages=True, timeout=10)
+        if reply is None:
+            continue
+        queue.start_webhook_worker(queue_name=reply["data"].decode())
+
+
 async def main() -> NoReturn:
     queue = RedisWebhookQueue()
     await queue.create()
@@ -110,6 +127,9 @@ async def main() -> NoReturn:
     ingest_queue_watcher = asyncio.create_task(
         ingest_queue_starter(ingest_workers, queue)
     )
+
+    log.info("start webhook_queue_watcher")
+    webhook_queue_watcher = asyncio.create_task(webhook_queue_starter(queue))
 
     while True:
         # Health check the various tasks and recreate them if necessary.
@@ -148,6 +168,12 @@ async def main() -> NoReturn:
             ingest_queue_watcher = asyncio.create_task(
                 ingest_queue_starter(ingest_workers, queue)
             )
+        if webhook_queue_watcher.done():
+            logger.info("worker task failed", kind="webhook_queue_watcher")
+            exception = webhook_queue_watcher.exception()
+            logger.info("exception", excep=exception)
+            sentry_sdk.capture_exception(exception)
+            webhook_queue_watcher = asyncio.create_task(webhook_queue_starter(queue))
 
 
 if __name__ == "__main__":

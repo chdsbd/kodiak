@@ -10,16 +10,20 @@ import pytest
 import structlog
 from pytest_mock import MockFixture
 
-from kodiak.entrypoints.worker import work_ingest_queue
+from kodiak.entrypoints.worker import webhook_queue_starter, work_ingest_queue
 from kodiak.errors import InstallationTokenError
 from kodiak.queue import (
     MERGE_QUEUE_NAMES,
+    QUEUE_PUBSUB_WEBHOOK,
+    WEBHOOK_QUEUE_NAMES,
     RedisWebhookQueue,
     WebhookEvent,
     get_ingest_queue,
     get_merge_queue_name,
+    get_webhook_queue_name,
     installation_id_from_queue,
     process_repo_queue,
+    push_webhook_event,
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
@@ -170,3 +174,50 @@ async def test_create_restarts_merge_queue_workers(
     start_repo_worker.assert_called_once_with(queue_name=queue_name)
     assert await redis_bot.smembers(MERGE_QUEUE_NAMES) >= {queue_name.encode()}
     assert not await redis_bot.sismember(MERGE_QUEUE_NAMES, empty_queue_name)
+
+
+@pytest.fixture
+async def webhook_queue() -> AsyncIterator[str]:
+    queue_name = get_webhook_queue_name(webhook_event)
+    yield queue_name
+    await redis_bot.srem(WEBHOOK_QUEUE_NAMES, queue_name)
+    await redis_bot.delete(queue_name)
+
+
+@requires_redis
+async def test_push_webhook_event_registers_queue(webhook_queue: str) -> None:
+    """
+    Events queued outside the worker process must be recorded in
+    WEBHOOK_QUEUE_NAMES so the worker can find them.
+    """
+    assert await push_webhook_event(webhook_event) == webhook_queue
+
+    assert await redis_bot.sismember(WEBHOOK_QUEUE_NAMES, webhook_queue)
+    assert await redis_bot.zrange(webhook_queue, 0, -1) == [
+        webhook_event.json().encode()
+    ]
+
+
+@requires_redis
+async def test_webhook_queue_starter_starts_published_queue(
+    mocker: MockFixture,
+) -> None:
+    """
+    Other processes publish webhook queue names to ask the worker process to
+    start a worker for them.
+    """
+    queue = RedisWebhookQueue()
+    start_webhook_worker = mocker.patch.object(queue, "start_webhook_worker")
+    watcher = asyncio.create_task(webhook_queue_starter(queue))
+
+    async def publish_until_started() -> None:
+        while not start_webhook_worker.called:
+            await redis_bot.publish(QUEUE_PUBSUB_WEBHOOK, "webhook:9234201")
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(publish_until_started(), timeout=5)
+
+    start_webhook_worker.assert_called_with(queue_name="webhook:9234201")
+    watcher.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await watcher
