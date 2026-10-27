@@ -13,6 +13,7 @@ from typing import Iterator, MutableMapping, NoReturn, Optional, Tuple
 import sentry_sdk
 import structlog
 import zstandard as zstd
+from cachetools import TTLCache
 from pydantic import BaseModel
 from typing_extensions import Literal, Protocol
 
@@ -138,10 +139,10 @@ def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
 # and listing every open pull request for each one backs up the ingest queue.
 OPEN_PULL_REQUESTS_CACHE_SEC = 10
 
-# (installation_id, owner, repo) => (fetched_at, open pull requests)
-_open_pull_requests_cache: dict[
-    tuple[str, str, str], tuple[float, list[queries.GetOpenPullRequestsResponseSchema]]
-] = {}
+# (installation_id, owner, repo) => open pull requests
+_open_pull_requests_cache: TTLCache[
+    tuple[str, str, str], list[queries.GetOpenPullRequestsResponseSchema]
+] = TTLCache(maxsize=1024, ttl=OPEN_PULL_REQUESTS_CACHE_SEC)
 
 
 async def get_open_pull_requests_cached(
@@ -149,20 +150,11 @@ async def get_open_pull_requests_cached(
 ) -> list[queries.GetOpenPullRequestsResponseSchema] | None:
     key = (installation_id, owner, repo)
     cached = _open_pull_requests_cache.get(key)
-    if cached is not None and time.time() - cached[0] < OPEN_PULL_REQUESTS_CACHE_SEC:
-        return cached[1]
+    if cached is not None:
+        return cached
     open_prs = await api_client.get_open_pull_requests()
     if open_prs is not None:
-        now = time.time()
-        # drop expired entries so we don't keep pull requests for every
-        # repository we've seen.
-        for expired_key in [
-            cached_key
-            for cached_key, (fetched_at, _prs) in _open_pull_requests_cache.items()
-            if now - fetched_at >= OPEN_PULL_REQUESTS_CACHE_SEC
-        ]:
-            del _open_pull_requests_cache[expired_key]
-        _open_pull_requests_cache[key] = (now, open_prs)
+        _open_pull_requests_cache[key] = open_prs
     return open_prs
 
 

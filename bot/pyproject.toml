@@ -23,6 +23,7 @@ dependencies = [
     "pydantic>=1.9.1,<2",
     "starlette>=0.20.4,<0.21",
     "redis>=4.4.2,<5",
+    "cachetools>=5.5,<6",
 ]
 
 [project.scripts]
@@ -42,6 +43,7 @@ dev = [
     "types-redis>=4.4.0,<5",
     "pytest-env>=0.8.1,<0.9",
     "ruff>=0.14.6",
+    "types-cachetools>=5.5,<6",
 ]
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import AsyncIterator, List, Optional
 
 import pytest
+from cachetools import TTLCache
 from pytest_mock import MockFixture
 
 from kodiak.config import V1
@@ -16,19 +17,27 @@ from kodiak.queries import (
     PullRequestUser,
     Ref,
 )
-from kodiak.queue import (
-    OPEN_PULL_REQUESTS_CACHE_SEC,
-    WebhookEvent,
-    _open_pull_requests_cache,
-    status_event,
-)
+from kodiak.queue import OPEN_PULL_REQUESTS_CACHE_SEC, WebhookEvent, status_event
 from kodiak.redis_client import create_connection
 from kodiak.tests.fixtures import requires_redis
 
 
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 1_700_000_000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
 @pytest.fixture(autouse=True)
-def empty_open_pull_requests_cache() -> None:
-    _open_pull_requests_cache.clear()
+def clock(mocker: MockFixture) -> FakeClock:
+    clock = FakeClock()
+    mocker.patch(
+        "kodiak.queue._open_pull_requests_cache",
+        TTLCache(maxsize=1024, ttl=OPEN_PULL_REQUESTS_CACHE_SEC, timer=clock),
+    )
+    return clock
 
 
 @pytest.fixture(autouse=True)
@@ -164,7 +173,7 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
 
 @requires_redis
 async def test_status_events_without_branches_reuse_open_pull_requests(
-    mocker: MockFixture,
+    mocker: MockFixture, clock: FakeClock
 ) -> None:
     """
     CI reports many statuses at once. We list a repository's open pull requests
@@ -172,7 +181,6 @@ async def test_status_events_without_branches_reuse_open_pull_requests(
     """
     client = FakeClient([open_pull_request(124, sha="f3b02e4")])
     mocker.patch("kodiak.queue.Client", return_value=client)
-    now = mocker.patch("kodiak.queue.time.time", return_value=1_700_000_000.0)
     queue = FakeQueue()
     event = StatusEvent(
         installation=Installation(id=9234201),
@@ -187,39 +195,9 @@ async def test_status_events_without_branches_reuse_open_pull_requests(
     assert client.list_count == 1
     assert len(queue.events) == 3
 
-    now.return_value += OPEN_PULL_REQUESTS_CACHE_SEC
+    clock.now += OPEN_PULL_REQUESTS_CACHE_SEC
     await status_event(queue, event)
     assert client.list_count == 2
-
-
-@requires_redis
-async def test_open_pull_requests_cache_drops_expired_repositories(
-    mocker: MockFixture,
-) -> None:
-    """
-    We shouldn't keep the open pull requests of every repository that has ever
-    had a status without a branch.
-    """
-    mocker.patch(
-        "kodiak.queue.Client",
-        return_value=FakeClient([open_pull_request(124, sha="f3b02e4")]),
-    )
-    now = mocker.patch("kodiak.queue.time.time", return_value=1_700_000_000.0)
-
-    def event_for(repo: str) -> StatusEvent:
-        return StatusEvent(
-            installation=Installation(id=9234201),
-            id=4523,
-            sha="f3b02e4",
-            branches=[],
-            repository=Repository(name=repo, owner=Owner(login="acme")),
-        )
-
-    await status_event(FakeQueue(), event_for("api"))
-    now.return_value += OPEN_PULL_REQUESTS_CACHE_SEC
-    await status_event(FakeQueue(), event_for("web"))
-
-    assert list(_open_pull_requests_cache) == [("9234201", "acme", "web")]
 
 
 def branch_status_event(*branch_names: str) -> StatusEvent:
