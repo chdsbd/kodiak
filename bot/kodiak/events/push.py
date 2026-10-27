@@ -1,3 +1,5 @@
+from typing import List
+
 import pydantic
 
 from kodiak.events.base import GithubEvent
@@ -12,6 +14,12 @@ class Repository(pydantic.BaseModel):
     owner: Owner
 
 
+class Commit(pydantic.BaseModel):
+    added: List[str] = []
+    removed: List[str] = []
+    modified: List[str] = []
+
+
 class PushEvent(GithubEvent):
     """
     https://developer.github.com/v3/activity/events/types/#pushevent
@@ -19,3 +27,5 @@ class PushEvent(GithubEvent):
 
     ref: str
     repository: Repository
+    # GitHub includes at most 20 commits.
+    commits: List[Commit] = pydantic.Field(default_factory=list)

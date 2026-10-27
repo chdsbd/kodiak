@@ -9,6 +9,7 @@ import structlog
 from typing_extensions import Protocol
 
 import kodiak.app_config as conf
+from kodiak.config import V1
 from kodiak.errors import (
     ApiCallException,
     GitHubApiInternalServerError,
@@ -18,6 +19,7 @@ from kodiak.errors import (
 )
 from kodiak.evaluation import mergeable
 from kodiak.http import HTTPStatusError as HTTPError
+from kodiak.push_filter import save_push_filter_config
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
@@ -42,6 +44,10 @@ async def get_pr(
         if event is None:
             log.info("failed to find event")
             return None
+        if isinstance(event.config, V1):
+            await save_push_filter_config(
+                installation_id=install, owner=owner, repo=repo, config=event.config
+            )
         return PRV2(
             event,
             install=install,
