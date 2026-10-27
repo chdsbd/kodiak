@@ -19,8 +19,10 @@ from kodiak.queries import (
     CheckRun,
     Client,
     Commit,
+    CommitPullRequestSchema,
     EventInfoResponse,
     GraphQLResponse,
+    HeadRef,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -34,6 +36,7 @@ from kodiak.queries import (
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
+    Ref,
     RepoInfo,
     RepositoryRuleset,
     RepositoryRulesetBypassActor,
@@ -1007,3 +1010,41 @@ async def test_get_open_pull_requests_page_limit(
     assert res is not None
     assert len(res) == 2000
     assert patched_session_get.call_count == 20, "stop calling after 20 pages"
+
+
+async def test_get_pull_requests_for_commit(
+    api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
+) -> None:
+    request = Request(
+        "GET", "https://api.github.com/repos/foo/foo/commits/f3b02e4/pulls"
+    )
+    mocker.patch.object(
+        api_client.session,
+        "get",
+        return_value=wrap_future(
+            Response(
+                200,
+                json=[
+                    dict(
+                        number=124,
+                        state="closed",
+                        base=dict(ref="main"),
+                        head=dict(sha="f3b02e4"),
+                    )
+                ],
+                request=request,
+            )
+        ),
+    )
+
+    async with api_client:
+        pull_requests = await api_client.get_pull_requests_for_commit("f3b02e4")
+
+    assert pull_requests == [
+        CommitPullRequestSchema(
+            number=124,
+            state="closed",
+            base=Ref(ref="main"),
+            head=HeadRef(sha="f3b02e4"),
+        )
+    ]
