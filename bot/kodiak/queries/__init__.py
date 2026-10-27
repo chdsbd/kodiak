@@ -895,10 +895,20 @@ class HeadRef(pydantic.BaseModel):
     sha: str
 
 
+class PullRequestLabel(pydantic.BaseModel):
+    name: str
+
+
+class PullRequestUser(pydantic.BaseModel):
+    login: str
+
+
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
     base: Ref
     head: HeadRef
+    labels: List[PullRequestLabel] = []
+    user: Optional[PullRequestUser] = None
 
 
 class SubscriptionExpired(pydantic.BaseModel):
