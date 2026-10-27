@@ -947,7 +947,7 @@ async def test_get_open_pull_requests(
     mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
 ) -> None:
     """
-    We should stop calling the API after reaching an empty page.
+    We should stop calling the API after reaching a page that isn't full.
     """
     patched_session_get = mocker.patch(
         "kodiak.queries.http.AsyncClient.get",
@@ -955,7 +955,6 @@ async def test_get_open_pull_requests(
             wrap_future(generate_page_of_prs(range(1, 101))),
             wrap_future(generate_page_of_prs(range(101, 201))),
             wrap_future(generate_page_of_prs(range(201, 251))),
-            wrap_future(generate_page_of_prs([])),
         ],
     )
 
@@ -964,7 +963,30 @@ async def test_get_open_pull_requests(
 
     assert res is not None
     assert len(res) == 250
-    assert patched_session_get.call_count == 4
+    assert patched_session_get.call_count == 3
+
+
+async def test_get_open_pull_requests_exact_page(
+    mocker: MockFixture, api_client: Client, mock_get_token_for_install: None
+) -> None:
+    """
+    When the last page is full we can't tell it's the last, so we should keep
+    calling the API until we reach an empty page.
+    """
+    patched_session_get = mocker.patch(
+        "kodiak.queries.http.AsyncClient.get",
+        side_effect=[
+            wrap_future(generate_page_of_prs(range(1, 101))),
+            wrap_future(generate_page_of_prs([])),
+        ],
+    )
+
+    async with api_client as api_client:
+        res = await api_client.get_open_pull_requests()
+
+    assert res is not None
+    assert len(res) == 100
+    assert patched_session_get.call_count == 2
 
 
 async def test_get_open_pull_requests_page_limit(
