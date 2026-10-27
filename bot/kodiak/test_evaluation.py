@@ -1609,6 +1609,57 @@ async def test_mergeable_pull_request_need_test_commit_need_update_pr_not_open()
         assert api.queue_for_merge.called is False
 
 
+async def test_mergeable_pull_request_need_test_commit_missing_automerge_label() -> (
+    None
+):
+    """
+    If a pull request mergeable status is UNKNOWN but Kodiak won't update or
+    merge it, we shouldn't trigger a test commit. The mergeability doesn't
+    change the outcome.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.require_automerge_label = True
+    pull_request.labels = []
+    pull_request.mergeable = MergeableState.UNKNOWN
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.trigger_test_commit.call_count == 0
+    assert api.requeue.call_count == 0
+    assert api.set_status.call_count == 1
+    assert "Ignored (no automerge label:" in api.set_status.calls[0]["msg"]
+    assert api.dequeue.call_count == 1
+
+    # verify we haven't tried to update/merge the PR
+    assert api.update_branch.called is False
+    assert api.merge.called is False
+    assert api.queue_for_merge.called is False
+
+
+async def test_mergeable_pull_request_need_test_commit_autoupdate_label() -> None:
+    """
+    A pull request with `update.autoupdate_label` may be updated without an
+    automerge label, so we need its mergeability.
+    """
+    api = create_api()
+    mergeable = create_mergeable()
+    config = create_config()
+    pull_request = create_pull_request()
+
+    config.merge.require_automerge_label = True
+    config.update.autoupdate_label = "autoupdate"
+    pull_request.labels = ["autoupdate"]
+    pull_request.mergeable = MergeableState.UNKNOWN
+
+    await mergeable(api=api, config=config, pull_request=pull_request)
+    assert api.trigger_test_commit.call_count == 1
+    assert api.requeue.call_count == 1
+    assert api.set_status.call_count == 0
+
+
 async def test_mergeable_unknown_merge_blockage() -> None:
     """
     Test how kodiak behaves when we cannot figure out why a PR is blocked.
