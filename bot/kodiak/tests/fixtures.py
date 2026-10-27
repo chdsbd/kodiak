@@ -1,4 +1,6 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -51,3 +53,32 @@ def redis_running() -> bool:
 
 
 requires_redis = pytest.mark.skipif(not redis_running(), reason="redis is not running")
+
+
+class RecordingLogger:
+    """
+    Fake structlog logger that records each log call as a dict.
+    """
+
+    def __init__(
+        self,
+        records: Optional[List[Dict[str, Any]]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        self.records: List[Dict[str, Any]] = [] if records is None else records
+        self.context = context or {}
+
+    def bind(self, **kwargs: Any) -> RecordingLogger:
+        return RecordingLogger(self.records, {**self.context, **kwargs})
+
+    def _log(self, level: str, event: str, **kwargs: Any) -> None:
+        self.records.append(dict(self.context, **kwargs, event=event, level=level))
+
+    def info(self, event: str, **kwargs: Any) -> None:
+        self._log("info", event, **kwargs)
+
+    def warning(self, event: str, **kwargs: Any) -> None:
+        self._log("warning", event, **kwargs)
+
+    def events(self, event: str) -> List[Dict[str, Any]]:
+        return [record for record in self.records if record["event"] == event]

@@ -4,7 +4,7 @@ import json
 import time
 from pathlib import Path
 from typing import AsyncIterator, Iterator, Tuple
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import structlog
@@ -23,7 +23,7 @@ from kodiak.queue import (
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
-from kodiak.tests.fixtures import requires_redis
+from kodiak.tests.fixtures import RecordingLogger, requires_redis
 
 
 @pytest.mark.parametrize(
@@ -170,3 +170,43 @@ async def test_create_restarts_merge_queue_workers(
     start_repo_worker.assert_called_once_with(queue_name=queue_name)
     assert await redis_bot.smembers(MERGE_QUEUE_NAMES) >= {queue_name.encode()}
     assert not await redis_bot.sismember(MERGE_QUEUE_NAMES, empty_queue_name)
+
+
+@requires_redis
+async def test_work_ingest_queue_logs_lagging_events(
+    mocker: MockFixture, redis_queue: str
+) -> None:
+    """
+    We should log events that waited a long time in the ingest queue, so we can
+    tell when ingest falls behind, but not events handled promptly.
+    """
+    mocker.patch(
+        "kodiak.entrypoints.worker.handle_webhook_event", new_callable=AsyncMock
+    )
+    ingest_queue = get_ingest_queue(INSTALLATION_ID)
+    lagging_event = RawWebhookEvent(
+        event_name="status", payload={}, received_at=time.time() - 120
+    ).json()
+    prompt_event = RawWebhookEvent(
+        event_name="push", payload={}, received_at=time.time()
+    ).json()
+    await redis_bot.rpush(ingest_queue, lagging_event, prompt_event)
+    logger = RecordingLogger()
+    mocker.patch("kodiak.entrypoints.worker.logger", logger)
+    worker = asyncio.create_task(
+        work_ingest_queue(RedisWebhookQueue(), queue_name=ingest_queue)
+    )
+
+    async def two_events_handled() -> None:
+        while len(logger.events("ingest_event_handled")) < 2:
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(two_events_handled(), timeout=5)
+    worker.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await worker
+
+    (lagging_log,) = logger.events("ingest_event_lagging")
+    assert lagging_log["event_name"] == "status"
+    assert lagging_log["lag_sec"] >= 120
+    assert lagging_log["queue_length"] == 1
