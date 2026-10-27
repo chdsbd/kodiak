@@ -60,6 +60,11 @@ RETRY_RATE_SECONDS = 2
 # longer.
 LOW_PRIORITY_OFFSET_SEC = 300
 
+# log webhook events that start evaluation at least this long after they were
+# queued. We only log lagging events because per-event logs are too noisy to
+# keep.
+WEBHOOK_LAG_LOG_THRESHOLD_SEC = 30
+
 
 def installation_id_from_queue(queue_name: str) -> str:
     """
@@ -155,13 +160,49 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             # commits a branch has moved past. Find the open pull request at
             # this commit, if any. Statuses on any other commit can't affect
             # mergeability.
-            open_prs = await api_client.get_open_pull_requests()
-            pr_results = [
+            #
+            # Listing every open pull request takes seconds in large
+            # repositories and blocks the installation's ingest queue, so we
+            # first ask GitHub for the pull requests containing the commit.
+            # GitHub doesn't associate commits from forks or commits replaced
+            # by a force push with any pull request, so for those we still list
+            # every open pull request.
+            started_at = time.monotonic()
+            commit_prs = await api_client.get_pull_requests_for_commit(status_event.sha)
+            if commit_prs:
+                open_prs: list[queries.GetOpenPullRequestsResponseSchema] | None = [
+                    pr for pr in commit_prs if pr.state == "open"
+                ]
+            else:
+                open_prs = await api_client.get_open_pull_requests()
+            matching_prs = (
                 [pr for pr in open_prs if pr.head.sha == status_event.sha]
                 if open_prs is not None
                 else None
-            ]
-            log.info("could not find refs for status_event")
+            )
+            pr_results = [matching_prs]
+            # commit_pull_requests tells us why no branch had the commit: a
+            # closed pull request means it merged, an open one means its branch
+            # moved past the commit, and none means a fork or a force push,
+            # which is when we list every open pull request.
+            log.info(
+                "could not find refs for status_event",
+                sha=status_event.sha,
+                context=status_event.context,
+                commit_pull_requests=(
+                    [f"{pr.number}:{pr.state}" for pr in commit_prs]
+                    if commit_prs is not None
+                    else None
+                ),
+                listed_open_pull_requests=not commit_prs,
+                open_pull_requests=len(open_prs) if open_prs is not None else None,
+                matching_pull_requests=(
+                    [pr.number for pr in matching_prs]
+                    if matching_prs is not None
+                    else None
+                ),
+                duration_sec=round(time.monotonic() - started_at, 2),
+            )
         else:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
@@ -381,7 +422,20 @@ async def process_webhook_event(
     if webhook_event_json is None:
         return
     log.info("parsing webhook event")
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
+    _key, value, score = webhook_event_json
+    webhook_event = WebhookEvent.parse_raw(value)
+    # the score is when the event was queued, plus LOW_PRIORITY_OFFSET_SEC for
+    # low priority events, so this is the wait beyond what their priority allows.
+    lag = time.time() - score
+    if lag >= WEBHOOK_LAG_LOG_THRESHOLD_SEC:
+        log.info(
+            "webhook_event_lagging",
+            lag_sec=round(lag, 1),
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            queue_length=await redis_bot.zcard(queue_name),
+        )
     is_active_merging = (
         await redis_bot.get(webhook_event.get_merge_target_queue_name())
         == webhook_event.json().encode()

@@ -911,6 +911,10 @@ class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     user: Optional[PullRequestUser] = None
 
 
+class CommitPullRequestSchema(GetOpenPullRequestsResponseSchema):
+    state: str
+
+
 class SubscriptionExpired(pydantic.BaseModel):
     kind: Literal["subscription_expired"] = "subscription_expired"
 
@@ -1356,6 +1360,29 @@ query {
                 break
 
         return open_prs
+
+    async def get_pull_requests_for_commit(
+        self, sha: str
+    ) -> Optional[List[CommitPullRequestSchema]]:
+        """
+        https://docs.github.com/en/rest/commits/commits#list-pull-requests-associated-with-a-commit
+        """
+        log = self.log.bind(sha=sha)
+        headers = await get_headers(
+            session=self.session, installation_id=self.installation_id
+        )
+        async with self.throttler:
+            res = await self.session.get(
+                conf.v3_url(f"/repos/{self.owner}/{self.repo}/commits/{sha}/pulls"),
+                params=dict(per_page="100"),
+                headers=headers,
+            )
+        try:
+            res.raise_for_status()
+        except http.HTTPError:
+            log.warning("problem finding prs for commit", res=res, exc_info=True)
+            return None
+        return [CommitPullRequestSchema.parse_obj(pr) for pr in res.json()]
 
     async def delete_branch(self, branch: str) -> http.Response:
         """
