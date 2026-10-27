@@ -22,6 +22,7 @@ from kodiak.queue import (
     get_webhook_queue_name,
     installation_id_from_queue,
     process_repo_queue,
+    process_webhook_event,
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
@@ -281,5 +282,33 @@ async def test_work_ingest_queue_logs_lagging_events(
 
     (lagging_log,) = logger.events("ingest_event_lagging")
     assert lagging_log["event_name"] == "status"
+    assert lagging_log["lag_sec"] >= 120
+    assert lagging_log["queue_length"] == 1
+
+
+@requires_redis
+async def test_process_webhook_event_logs_lagging_events(
+    mocker: MockFixture, webhook_queue: RedisWebhookQueue
+) -> None:
+    """
+    We should log events that waited a long time in the webhook queue, so we can
+    measure how long pull requests wait for evaluation, but not events handled
+    promptly.
+    """
+    mocker.patch("kodiak.queue.evaluate_pr", new_callable=AsyncMock)
+    queue_name = get_webhook_queue_name(webhook_event)
+    lagging_event = webhook_event.copy(update=dict(pull_request_number=1))
+    prompt_event = webhook_event.copy(update=dict(pull_request_number=2))
+    await redis_bot.zadd(
+        queue_name,
+        {lagging_event.json(): time.time() - 120, prompt_event.json(): time.time()},
+    )
+    logger = RecordingLogger()
+
+    await process_webhook_event(webhook_queue, queue_name, logger)  # type: ignore [arg-type]
+    await process_webhook_event(webhook_queue, queue_name, logger)  # type: ignore [arg-type]
+
+    (lagging_log,) = logger.events("webhook_event_lagging")
+    assert lagging_log["number"] == 1
     assert lagging_log["lag_sec"] >= 120
     assert lagging_log["queue_length"] == 1

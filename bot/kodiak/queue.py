@@ -54,6 +54,11 @@ RETRY_RATE_SECONDS = 2
 # longer.
 LOW_PRIORITY_OFFSET_SEC = 300
 
+# log webhook events that start evaluation at least this long after they were
+# queued. We only log lagging events because per-event logs are too noisy to
+# keep.
+WEBHOOK_LAG_LOG_THRESHOLD_SEC = 30
+
 
 def installation_id_from_queue(queue_name: str) -> str:
     """
@@ -370,7 +375,20 @@ async def process_webhook_event(
     if webhook_event_json is None:
         return
     log.info("parsing webhook event")
-    webhook_event = WebhookEvent.parse_raw(webhook_event_json[1])
+    _key, value, score = webhook_event_json
+    webhook_event = WebhookEvent.parse_raw(value)
+    # the score is when the event was queued, plus LOW_PRIORITY_OFFSET_SEC for
+    # low priority events, so this is the wait beyond what their priority allows.
+    lag = time.time() - score
+    if lag >= WEBHOOK_LAG_LOG_THRESHOLD_SEC:
+        log.info(
+            "webhook_event_lagging",
+            lag_sec=round(lag, 1),
+            owner=webhook_event.repo_owner,
+            repo=webhook_event.repo_name,
+            number=webhook_event.pull_request_number,
+            queue_length=await redis_bot.zcard(queue_name),
+        )
     is_active_merging = (
         await redis_bot.get(webhook_event.get_merge_target_queue_name())
         == webhook_event.json().encode()
