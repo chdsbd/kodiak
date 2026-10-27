@@ -149,9 +149,14 @@ async def main() -> NoReturn:
         for task_meta, cur_task in queue.all_tasks():
             if not cur_task.done():
                 continue
+            exception = cur_task.exception()
+            if exception is None:
+                # idle webhook workers exit cleanly. They're restarted when a
+                # new event is queued.
+                queue.remove_task(task_meta.queue_name)
+                continue
             logger.info("worker task failed", kind=task_meta.kind)
             # task failed. record result and restart
-            exception = cur_task.exception()
             logger.info("exception", excep=exception)
             sentry_sdk.capture_exception(exception)
             if task_meta.kind == "repo":

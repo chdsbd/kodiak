@@ -4,12 +4,13 @@ import json
 import time
 from pathlib import Path
 from typing import AsyncIterator, Iterator, Tuple
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import structlog
 from pytest_mock import MockFixture
 
+from kodiak import queue as queue_module
 from kodiak.entrypoints.worker import webhook_queue_starter, work_ingest_queue
 from kodiak.errors import InstallationTokenError
 from kodiak.queue import (
@@ -102,7 +103,7 @@ async def test_process_repo_queue_token_error(
     target_name = webhook_event.get_merge_target_queue_name()
     await redis_bot.zadd(redis_queue, {webhook_event.json(): time.time()})
 
-    await process_repo_queue(structlog.get_logger(), redis_queue)
+    await process_repo_queue(structlog.get_logger(), redis_queue, RedisWebhookQueue())
 
     assert token_error.call_count == 1
     assert await redis_bot.get(target_name) is None
@@ -233,3 +234,59 @@ async def test_webhook_queue_starter_starts_published_queue(
     watcher.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await watcher
+
+
+@pytest.fixture
+def idle_immediately(mocker: MockFixture) -> None:
+    mocker.patch("kodiak.queue.conf.WEBHOOK_WORKER_IDLE_TIMEOUT_SEC", 0)
+    mocker.patch("kodiak.queue.conf.REDIS_BLOCKING_POP_TIMEOUT_SEC", 1)
+
+
+@requires_redis
+async def test_idle_webhook_worker_exits(
+    idle_immediately: None, webhook_queue: str
+) -> None:
+    """
+    A webhook worker with an empty queue should exit and forget its queue so we
+    don't hold a Redis connection for every repository we've ever seen.
+    """
+    await redis_bot.sadd(WEBHOOK_QUEUE_NAMES, webhook_queue)
+    queue = RedisWebhookQueue()
+
+    queue.start_webhook_worker(queue_name=webhook_queue)
+    worker, _kind = queue.worker_tasks[webhook_queue]
+    await asyncio.wait_for(worker, timeout=5)
+
+    assert not await redis_bot.sismember(WEBHOOK_QUEUE_NAMES, webhook_queue)
+
+
+@requires_redis
+async def test_idle_webhook_worker_handles_event_queued_while_exiting(
+    mocker: MockFixture, idle_immediately: None, webhook_queue: str
+) -> None:
+    """
+    An event queued while the worker is forgetting its queue must still be
+    processed, even though starting the still-running worker is a no-op.
+    """
+    evaluate_pr = mocker.patch("kodiak.queue.evaluate_pr", new_callable=AsyncMock)
+    queue = RedisWebhookQueue()
+    forget_webhook_queue_if_empty = queue_module.forget_webhook_queue_if_empty
+
+    async def forget_then_enqueue(queue_name: str) -> bool:
+        forgotten = await forget_webhook_queue_if_empty(queue_name)
+        if not evaluate_pr.called:
+            await queue.enqueue(event=webhook_event)
+        return forgotten
+
+    mocker.patch(
+        "kodiak.queue.forget_webhook_queue_if_empty", side_effect=forget_then_enqueue
+    )
+    await redis_bot.sadd(WEBHOOK_QUEUE_NAMES, webhook_queue)
+
+    queue.start_webhook_worker(queue_name=webhook_queue)
+    worker, _kind = queue.worker_tasks[webhook_queue]
+    await asyncio.wait_for(worker, timeout=10)
+
+    assert evaluate_pr.call_count == 1
+    assert await redis_bot.zcard(webhook_queue) == 0
+    assert not await redis_bot.sismember(WEBHOOK_QUEUE_NAMES, webhook_queue)
