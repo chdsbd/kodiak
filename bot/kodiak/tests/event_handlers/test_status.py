@@ -1,13 +1,36 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import AsyncIterator, List, Optional
 
+import pytest
 from pytest_mock import MockFixture
 
 from kodiak.events.base import Installation
 from kodiak.events.status import Owner, Repository, StatusEvent
 from kodiak.queries import GetOpenPullRequestsResponseSchema, HeadRef, Ref
-from kodiak.queue import WebhookEvent, status_event
+from kodiak.queue import (
+    WebhookEvent,
+    get_status_pull_requests_cache_key,
+    status_event,
+)
+from kodiak.redis_client import redis_bot
+from kodiak.tests.fixtures import requires_redis
+
+pytestmark = requires_redis
+
+STATUS_SHA = "f3b02e4"
+
+
+@pytest.fixture(autouse=True)
+async def clear_status_cache() -> AsyncIterator[None]:
+    cache_key = get_status_pull_requests_cache_key(
+        installation_id="9234201", owner="acme", repo="api", sha=STATUS_SHA
+    )
+    await redis_bot.delete(cache_key)
+    yield
+    await redis_bot.delete(cache_key)
+    # each test runs in its own event loop, so connections can't be reused
+    await redis_bot.connection_pool.disconnect()
 
 
 class FakeQueue:
@@ -24,8 +47,11 @@ class FakeQueue:
 
 
 class FakeClient:
-    def __init__(self, open_pull_requests: List[GetOpenPullRequestsResponseSchema]):
+    def __init__(
+        self, open_pull_requests: Optional[List[GetOpenPullRequestsResponseSchema]]
+    ):
         self.open_pull_requests = open_pull_requests
+        self.lookups = 0
 
     async def __aenter__(self) -> FakeClient:
         return self
@@ -35,8 +61,9 @@ class FakeClient:
 
     async def get_open_pull_requests(
         self, base: Optional[str] = None, head: Optional[str] = None
-    ) -> List[GetOpenPullRequestsResponseSchema]:
+    ) -> Optional[List[GetOpenPullRequestsResponseSchema]]:
         assert base is None and head is None
+        self.lookups += 1
         return self.open_pull_requests
 
 
@@ -114,3 +141,44 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
     await status_event(queue, event)
 
     assert queue.events == []
+
+
+def status(sha: str = STATUS_SHA) -> StatusEvent:
+    return StatusEvent(
+        installation=Installation(id=9234201),
+        id=4523,
+        sha=sha,
+        branches=[],
+        repository=Repository(name="api", owner=Owner(login="acme")),
+    )
+
+
+async def test_status_events_for_same_commit_share_lookup(
+    mocker: MockFixture,
+) -> None:
+    """
+    A build posts many statuses for one commit. Only the first looks up pull
+    requests, but each queues the pull request.
+    """
+    client = FakeClient([open_pull_request(124, sha=STATUS_SHA)])
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    queue = FakeQueue()
+
+    await status_event(queue, status())
+    await status_event(queue, status())
+
+    assert client.lookups == 1
+    assert [e.pull_request_number for e in queue.events] == [124, 124]
+
+
+async def test_failed_status_lookup_is_not_cached(mocker: MockFixture) -> None:
+    client = FakeClient(None)
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    queue = FakeQueue()
+
+    await status_event(queue, status())
+    client.open_pull_requests = [open_pull_request(124, sha=STATUS_SHA)]
+    await status_event(queue, status())
+
+    assert client.lookups == 2
+    assert [e.pull_request_number for e in queue.events] == [124]

@@ -126,6 +126,19 @@ def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
     return [branch.name for branch in branches if branch.commit.sha == sha]
 
 
+# A build posts a status for each of its jobs, often hundreds per commit. We
+# cache the pull requests found for a commit so those statuses share one API
+# lookup. A stale entry can only cause an extra evaluation: pull requests
+# opened, updated or closed since the lookup are evaluated by their own events.
+STATUS_PULL_REQUESTS_CACHE_SEC = 5 * 60
+
+
+def get_status_pull_requests_cache_key(
+    *, installation_id: str, owner: str, repo: str, sha: str
+) -> str:
+    return f"kodiak:status_pull_requests:{installation_id}:{owner}/{repo}:{sha}"
+
+
 async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -> None:
     """
     Trigger evaluation of all PRs associated with the status event commit SHA.
@@ -133,6 +146,48 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
     owner = status_event.repository.owner.login
     repo = status_event.repository.name
     installation_id = str(status_event.installation.id)
+
+    cache_key = get_status_pull_requests_cache_key(
+        installation_id=installation_id, owner=owner, repo=repo, sha=status_event.sha
+    )
+    cached = await redis_bot.get(cache_key)
+    if cached is not None:
+        pull_requests = [
+            (number, target_name) for number, target_name in json.loads(cached)
+        ]
+    else:
+        pull_requests, lookup_complete = await find_status_pull_requests(
+            status_event, owner=owner, repo=repo, installation_id=installation_id
+        )
+        # don't cache a partial result, or we'd miss pull requests until it expires
+        if lookup_complete:
+            await redis_bot.set(
+                cache_key,
+                json.dumps(pull_requests),
+                ex=STATUS_PULL_REQUESTS_CACHE_SEC,
+            )
+
+    for number, target_name in pull_requests:
+        await queue.enqueue(
+            event=WebhookEvent(
+                repo_owner=owner,
+                repo_name=repo,
+                pull_request_number=number,
+                target_name=target_name,
+                installation_id=installation_id,
+            )
+        )
+
+
+async def find_status_pull_requests(
+    status_event: StatusEvent, *, owner: str, repo: str, installation_id: str
+) -> tuple[list[tuple[int, str]], bool]:
+    """
+    Find the open pull requests at the status event's commit.
+
+    Returns (pull request number, base branch) pairs and whether every lookup
+    succeeded.
+    """
     log = logger.bind(owner=owner, repo=repo, install=installation_id)
 
     refs = find_branch_names_latest(
@@ -162,22 +217,11 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             ]
             pr_results = await asyncio.gather(*pr_requests)
 
-        all_events: set[WebhookEvent] = set()
-        for prs in pr_results:
-            if prs is None:
-                continue
-            for pr in prs:
-                all_events.add(
-                    WebhookEvent(
-                        repo_owner=owner,
-                        repo_name=repo,
-                        pull_request_number=pr.number,
-                        target_name=pr.base.ref,
-                        installation_id=str(installation_id),
-                    )
-                )
-        for event in all_events:
-            await queue.enqueue(event=event)
+    pull_requests = {
+        (pr.number, pr.base.ref) for prs in pr_results if prs is not None for pr in prs
+    }
+    lookup_complete = all(prs is not None for prs in pr_results)
+    return sorted(pull_requests), lookup_complete
 
 
 async def pr_review(
