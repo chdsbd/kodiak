@@ -891,9 +891,14 @@ class Ref(pydantic.BaseModel):
     ref: str
 
 
+class HeadRef(pydantic.BaseModel):
+    sha: str
+
+
 class GetOpenPullRequestsResponseSchema(pydantic.BaseModel):
     number: int
     base: Ref
+    head: HeadRef
 
 
 class SubscriptionExpired(pydantic.BaseModel):

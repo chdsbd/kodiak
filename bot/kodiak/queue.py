@@ -135,14 +135,18 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
         if len(refs) == 0:
-            # when a pull request is from a fork the status event will not have
-            # any `branches`, so to be able to trigger evaluation of the PR, we
-            # fetch all pull requests.
-            #
-            # I think we could optimize this by selecting only the fork PRs, but
-            # I worry that we might miss some events where `branches` is empty,
-            # but not because of a fork.
-            pr_results = [await api_client.get_open_pull_requests()]
+            # no branch has this commit at its head. This happens for fork pull
+            # requests, but more often for statuses from builds still running
+            # when the pull request merged and its branch was deleted, or for
+            # commits a branch has moved past. Find the open pull request at
+            # this commit, if any. Statuses on any other commit can't affect
+            # mergeability.
+            open_prs = await api_client.get_open_pull_requests()
+            pr_results = [
+                [pr for pr in open_prs if pr.head.sha == status_event.sha]
+                if open_prs is not None
+                else None
+            ]
             log.info("could not find refs for status_event")
         else:
             pr_requests = [
