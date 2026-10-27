@@ -786,7 +786,20 @@ async def mergeable(
         in config.merge.automerge_dependencies.versions
     )
 
-    # we should trigger mergeability checks whenever we encounter UNKNOWN.
+    update_always = config.update.always and (
+        has_automerge_label or not config.update.require_automerge_label
+    )
+    has_autoupdate_label = config.update.autoupdate_label in pull_request_labels
+    may_merge = (
+        has_automerge_label
+        or should_dependency_automerge
+        or not config.merge.require_automerge_label
+    )
+    needs_mergeability = merging or may_merge or update_always or has_autoupdate_label
+
+    # we should trigger mergeability checks whenever we encounter UNKNOWN on a
+    # pull request we may update or merge. Other pull requests fall through to
+    # the automerge label check below.
     #
     # I don't foresee conflicts with checking configuration errors,
     # `config.disable_bot_label`, and the paywall before this code.
@@ -795,7 +808,8 @@ async def mergeable(
     # `merge.blocking_title_regex` was checked first. Which caused
     # `update.always` to not operate.
     if (
-        pull_request.mergeable == MergeableState.UNKNOWN
+        needs_mergeability
+        and pull_request.mergeable == MergeableState.UNKNOWN
         and pull_request.state == PullRequestState.OPEN
     ):
         # we need to trigger a test commit to fix this. We do that by calling
@@ -847,10 +861,6 @@ async def mergeable(
         requires_strict_status_checks(branch_protection, ruleset_rules)
         and pull_request.mergeStateStatus == MergeStateStatus.BEHIND
     )
-    update_always = config.update.always and (
-        has_automerge_label or not config.update.require_automerge_label
-    )
-    has_autoupdate_label = config.update.autoupdate_label in pull_request_labels
     auto_update_enabled = update_always or has_autoupdate_label
 
     # Dequeue pull request if out-of-date and author in
