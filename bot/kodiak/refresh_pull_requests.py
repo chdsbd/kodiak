@@ -26,7 +26,7 @@ from kodiak import app_config as conf
 from kodiak.http import HttpClient
 from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
-from kodiak.queue import WebhookEvent
+from kodiak.queue import WebhookEvent, push_webhook_event
 from kodiak.redis_client import redis_bot
 
 sentry_sdk.init()
@@ -158,11 +158,7 @@ async def refresh_pull_requests_for_installation(*, installation_id: str) -> Non
                 )
             )
     for event in events:
-        await redis_bot.zadd(
-            event.get_webhook_queue_name(),
-            {event.json(): time.time()},
-            nx=True,
-        )
+        await push_webhook_event(event, low_priority=True)
     logger.info(
         "pull_requests_refreshed",
         installation_id=installation_id,

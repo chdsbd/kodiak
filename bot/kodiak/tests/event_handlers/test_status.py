@@ -14,7 +14,7 @@ class FakeQueue:
     def __init__(self) -> None:
         self.events: List[WebhookEvent] = []
 
-    async def enqueue(self, *, event: WebhookEvent) -> None:
+    async def enqueue(self, *, event: WebhookEvent, low_priority: bool = False) -> None:
         self.events.append(event)
 
     async def enqueue_for_repo(

@@ -48,6 +48,12 @@ def get_ingest_queue(installation_id: int) -> str:
 
 RETRY_RATE_SECONDS = 2
 
+# Low priority webhook events (fan-out from pushes, retries, refreshes) sort as
+# if they arrived this much later, so events for a pull request's own activity
+# skip ahead of a backlog of them. Low priority events wait at most this much
+# longer.
+LOW_PRIORITY_OFFSET_SEC = 300
+
 
 def installation_id_from_queue(queue_name: str) -> str:
     """
@@ -62,7 +68,9 @@ def installation_id_from_queue(queue_name: str) -> str:
 
 
 class WebhookQueueProtocol(Protocol):
-    async def enqueue(self, *, event: WebhookEvent) -> None: ...
+    async def enqueue(
+        self, *, event: WebhookEvent, low_priority: bool = False
+    ) -> None: ...
 
     async def enqueue_for_repo(
         self, *, event: WebhookEvent, first: bool
@@ -229,7 +237,8 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
                     pull_request_number=pr.number,
                     target_name=pr.base.ref,
                     installation_id=installation_id,
-                )
+                ),
+                low_priority=True,
             )
 
 
@@ -327,11 +336,7 @@ async def process_webhook_event(
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            nx=True,
-        )
+        await push_webhook_event(webhook_event, low_priority=True)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         return await webhook_queue.enqueue_for_repo(event=webhook_event, first=first)
@@ -396,11 +401,7 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
         await redis_bot.zrem(webhook_event.get_merge_queue_name(), webhook_event.json())
 
     async def requeue() -> None:
-        await redis_bot.zadd(
-            webhook_event.get_webhook_queue_name(),
-            {webhook_event.json(): time.time()},
-            nx=True,
-        )
+        await push_webhook_event(webhook_event, low_priority=True)
 
     async def queue_for_merge(*, first: bool) -> Optional[int]:
         raise NotImplementedError
@@ -533,15 +534,11 @@ class RedisWebhookQueue:
         # create new task for queue
         self.worker_tasks[key] = (asyncio.create_task(fut), kind)
 
-    async def enqueue(self, *, event: WebhookEvent) -> None:
+    async def enqueue(self, *, event: WebhookEvent, low_priority: bool = False) -> None:
         """
         add :event: to webhook queue
         """
-        queue_name = get_webhook_queue_name(event)
-        async with redis_bot.pipeline(transaction=True) as pipe:
-            pipe.sadd(WEBHOOK_QUEUE_NAMES, queue_name)
-            pipe.zadd(queue_name, {event.json(): time.time()}, nx=True)
-            await pipe.execute()
+        queue_name = await push_webhook_event(event, low_priority=low_priority)
         log = logger.bind(
             owner=event.repo_owner,
             repo=event.repo_name,
@@ -598,6 +595,33 @@ class RedisWebhookQueue:
     def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
         for queue_name, (task, task_kind) in self.worker_tasks.items():
             yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
+
+
+# Add the event, or move it earlier if it's already queued with a later score.
+# Unlike ZADD NX this lets a high priority event jump ahead of the same event
+# queued at low priority. (ZADD LT needs Redis 6.2.)
+PUSH_WEBHOOK_EVENT = """
+redis.call("SADD", KEYS[2], KEYS[1])
+local score = redis.call("ZSCORE", KEYS[1], ARGV[2])
+if not score or tonumber(ARGV[1]) < tonumber(score) then
+    redis.call("ZADD", KEYS[1], ARGV[1], ARGV[2])
+end
+"""
+
+
+async def push_webhook_event(event: WebhookEvent, *, low_priority: bool) -> str:
+    """
+    Add :event: to its webhook queue and record the queue name so a worker can
+    be started for it.
+
+    Returns the webhook queue name.
+    """
+    queue_name = get_webhook_queue_name(event)
+    score = time.time() + (LOW_PRIORITY_OFFSET_SEC if low_priority else 0)
+    await redis_bot.eval(  # type: ignore [no-untyped-call]
+        PUSH_WEBHOOK_EVENT, 2, queue_name, WEBHOOK_QUEUE_NAMES, score, event.json()
+    )
+    return queue_name
 
 
 def get_merge_queue_name(event: WebhookEvent) -> str:
