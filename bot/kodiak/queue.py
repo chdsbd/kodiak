@@ -34,6 +34,7 @@ from kodiak.push_filter import (
     CONFIG_FILE_PATHS,
     forget_push_filter_config,
     get_push_filter_config,
+    is_pull_request_ignored,
     may_act_on,
 )
 from kodiak.queries import Client
@@ -364,6 +365,16 @@ async def handle_webhook_event(
 
     if event_name == "check_run":
         for event in check_run(CheckRunEvent.parse_obj(payload)):
+            # a check run can't change anything for a pull request Kodiak won't
+            # act on, and busy repositories report hundreds of check runs for
+            # pull requests without the automerge label.
+            if await is_pull_request_ignored(
+                installation_id=event.installation_id,
+                owner=event.repo_owner,
+                repo=event.repo_name,
+                number=event.pull_request_number,
+            ):
+                continue
             await queue.enqueue(event=event)
     elif event_name == "pull_request":
         await pr_event(queue, PullRequestEvent.parse_obj(payload))
