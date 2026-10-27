@@ -30,5 +30,6 @@ class StatusEvent(GithubEvent):
 
     id: int
     sha: str
+    context: Optional[str] = None
     branches: List[Branch]
     repository: Repository

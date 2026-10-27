@@ -13,6 +13,7 @@ from kodiak.queries import (
     Ref,
 )
 from kodiak.queue import WebhookEvent, status_event
+from kodiak.tests.fixtures import RecordingLogger
 
 
 class FakeQueue:
@@ -156,3 +157,25 @@ async def test_status_event_for_fork_pull_request_lists_open_pull_requests(
     await status_event(queue, status_without_branches(sha="f3b02e4"))
 
     assert queue.events == [queued(124)]
+
+
+async def test_status_event_without_branches_logs_why(mocker: MockFixture) -> None:
+    """
+    The log says which pull requests GitHub associates with the commit, so we
+    can tell merged pull requests, moved branches and forks apart.
+    """
+    client = FakeClient(
+        commit_pull_requests=[commit_pull_request(124, sha="f3b02e4", state="closed")],
+        open_pull_requests=[],
+    )
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    log = RecordingLogger()
+    mocker.patch("kodiak.queue.logger", log)
+
+    await status_event(FakeQueue(), status_without_branches(sha="f3b02e4"))
+
+    [record] = log.events("could not find refs for status_event")
+    assert record["sha"] == "f3b02e4"
+    assert record["commit_pull_requests"] == ["124:closed"]
+    assert record["listed_open_pull_requests"] is False
+    assert record["matching_pull_requests"] == []

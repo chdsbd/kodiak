@@ -161,6 +161,7 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             # GitHub doesn't associate commits from forks or commits replaced
             # by a force push with any pull request, so for those we still list
             # every open pull request.
+            started_at = time.monotonic()
             commit_prs = await api_client.get_pull_requests_for_commit(status_event.sha)
             if commit_prs:
                 open_prs: list[queries.GetOpenPullRequestsResponseSchema] | None = [
@@ -168,12 +169,34 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
                 ]
             else:
                 open_prs = await api_client.get_open_pull_requests()
-            pr_results = [
+            matching_prs = (
                 [pr for pr in open_prs if pr.head.sha == status_event.sha]
                 if open_prs is not None
                 else None
-            ]
-            log.info("could not find refs for status_event")
+            )
+            pr_results = [matching_prs]
+            # commit_pull_requests tells us why no branch had the commit: a
+            # closed pull request means it merged, an open one means its branch
+            # moved past the commit, and none means a fork or a force push,
+            # which is when we list every open pull request.
+            log.info(
+                "could not find refs for status_event",
+                sha=status_event.sha,
+                context=status_event.context,
+                commit_pull_requests=(
+                    [f"{pr.number}:{pr.state}" for pr in commit_prs]
+                    if commit_prs is not None
+                    else None
+                ),
+                listed_open_pull_requests=not commit_prs,
+                open_pull_requests=len(open_prs) if open_prs is not None else None,
+                matching_pull_requests=(
+                    [pr.number for pr in matching_prs]
+                    if matching_prs is not None
+                    else None
+                ),
+                duration_sec=round(time.monotonic() - started_at, 2),
+            )
         else:
             pr_requests = [
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
