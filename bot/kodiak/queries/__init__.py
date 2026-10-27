@@ -1341,6 +1341,9 @@ query {
 
             page = res.json()
             open_prs += [GetOpenPullRequestsResponseSchema.parse_obj(pr) for pr in page]
+            # a short page is the last page, so we can skip requesting an empty one.
+            if len(page) < int(params["per_page"]):
+                break
 
         return open_prs
 

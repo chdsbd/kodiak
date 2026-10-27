@@ -14,6 +14,7 @@ from starlette.testclient import TestClient
 from kodiak import app_config as conf
 from kodiak.entrypoints.ingest import app
 from kodiak.test_events import MAPPING
+from kodiak.tests.fixtures import RecordingLogger
 
 
 def test_root(client: TestClient) -> None:
@@ -43,9 +44,10 @@ class FakeRedis:
         self.called_publish_cnt = 0
         self.lists: dict[str, list[str]] = {}
 
-    async def rpush(self, key: str, event: str) -> None:
+    async def rpush(self, key: str, event: str) -> int:
         self.called_rpush_cnt += 1
         self.lists.setdefault(key, []).append(event)
+        return len(self.lists[key])
 
     async def ltrim(self, key: str, start: int, end: int) -> None:
         self.called_ltrim_cnt += 1
@@ -96,6 +98,8 @@ def test_webhook_event_full_queue_drops_oldest(
     fake_redis = FakeRedis()
     mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
     mocker.patch.object(conf, "INGEST_QUEUE_LENGTH", 2)
+    logger = RecordingLogger()
+    mocker.patch("kodiak.entrypoints.ingest.logger", logger)
 
     for pr_number in (1, 2, 3):
         body, sha = get_body_and_hash(
@@ -110,6 +114,9 @@ def test_webhook_event_full_queue_drops_oldest(
 
     (queue,) = fake_redis.lists.values()
     assert [json.loads(event)["payload"]["number"] for event in queue] == [2, 3]
+    assert logger.events("ingest_queue_full") == [
+        dict(event="ingest_queue_full", level="warning", installation_id=123, dropped=1)
+    ]
 
 
 def test_webhook_event_missing_github_event(

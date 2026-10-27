@@ -5,6 +5,7 @@ Process webhook events from the Redis queues.
 from __future__ import annotations
 
 import asyncio
+import time
 from asyncio.tasks import Task
 from typing import NoReturn
 
@@ -30,6 +31,10 @@ from kodiak.schemas import RawWebhookEvent
 configure_logging()
 
 logger = structlog.get_logger()
+
+# log ingest events handled at least this long after we received them. We only
+# log lagging events because per-event ingest logs are too noisy to keep.
+INGEST_LAG_LOG_THRESHOLD_SEC = 30
 
 
 async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoReturn:
@@ -58,6 +63,15 @@ async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoR
         except InstallationTokenError as e:
             log.info("failed to get installation token, skipping event", error=str(e))
         log.info("ingest_event_handled")
+        if parsed_event.received_at is not None:
+            lag = time.time() - parsed_event.received_at
+            if lag >= INGEST_LAG_LOG_THRESHOLD_SEC:
+                log.info(
+                    "ingest_event_lagging",
+                    lag_sec=round(lag, 1),
+                    event_name=parsed_event.event_name,
+                    queue_length=await redis_bot.llen(queue_name),
+                )
 
 
 class PubsubIngestQueueSchema(pydantic.BaseModel):
