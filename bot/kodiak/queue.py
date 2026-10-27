@@ -153,12 +153,21 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
             # when the pull request merged and its branch was deleted, or for
             # commits a branch has moved past. Find the open pull request at
             # this commit, if any. Statuses on any other commit can't affect
-            # mergeability. We look up pull requests by commit because listing
-            # every open pull request takes seconds in large repositories and
-            # blocks the installation's ingest queue.
-            open_prs = await api_client.get_open_pull_requests_for_commit(
-                status_event.sha
-            )
+            # mergeability.
+            #
+            # Listing every open pull request takes seconds in large
+            # repositories and blocks the installation's ingest queue, so we
+            # first ask GitHub for the pull requests containing the commit.
+            # GitHub doesn't associate commits from forks or commits replaced
+            # by a force push with any pull request, so for those we still list
+            # every open pull request.
+            commit_prs = await api_client.get_pull_requests_for_commit(status_event.sha)
+            if commit_prs:
+                open_prs: list[queries.GetOpenPullRequestsResponseSchema] | None = [
+                    pr for pr in commit_prs if pr.state == "open"
+                ]
+            else:
+                open_prs = await api_client.get_open_pull_requests()
             pr_results = [
                 [pr for pr in open_prs if pr.head.sha == status_event.sha]
                 if open_prs is not None

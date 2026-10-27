@@ -19,8 +19,10 @@ from kodiak.queries import (
     CheckRun,
     Client,
     Commit,
+    CommitPullRequestSchema,
     EventInfoResponse,
     GraphQLResponse,
+    HeadRef,
     MergeableState,
     MergeStateStatus,
     NodeListPushAllowance,
@@ -34,6 +36,7 @@ from kodiak.queries import (
     PullRequestState,
     PushAllowance,
     PushAllowanceActor,
+    Ref,
     RepoInfo,
     RepositoryRuleset,
     RepositoryRulesetBypassActor,
@@ -1009,39 +1012,39 @@ async def test_get_open_pull_requests_page_limit(
     assert patched_session_get.call_count == 20, "stop calling after 20 pages"
 
 
-async def test_get_open_pull_requests_for_commit_skips_closed_pull_requests(
+async def test_get_pull_requests_for_commit(
     api_client: Client, mocker: MockFixture, mock_get_token_for_install: None
 ) -> None:
-    """
-    GitHub lists every pull request containing the commit, including merged and
-    closed ones. Statuses can only affect open pull requests.
-    """
     request = Request(
         "GET", "https://api.github.com/repos/foo/foo/commits/f3b02e4/pulls"
     )
-
-    def pull_request(number: int, state: str) -> Dict[str, Any]:
-        return dict(
-            number=number,
-            state=state,
-            base=dict(ref="main"),
-            head=dict(sha="f3b02e4"),
-        )
-
     mocker.patch.object(
         api_client.session,
         "get",
         return_value=wrap_future(
             Response(
                 200,
-                json=[pull_request(123, "closed"), pull_request(124, "open")],
+                json=[
+                    dict(
+                        number=124,
+                        state="closed",
+                        base=dict(ref="main"),
+                        head=dict(sha="f3b02e4"),
+                    )
+                ],
                 request=request,
             )
         ),
     )
 
     async with api_client:
-        pull_requests = await api_client.get_open_pull_requests_for_commit("f3b02e4")
+        pull_requests = await api_client.get_pull_requests_for_commit("f3b02e4")
 
-    assert pull_requests is not None
-    assert [pr.number for pr in pull_requests] == [124]
+    assert pull_requests == [
+        CommitPullRequestSchema(
+            number=124,
+            state="closed",
+            base=Ref(ref="main"),
+            head=HeadRef(sha="f3b02e4"),
+        )
+    ]
