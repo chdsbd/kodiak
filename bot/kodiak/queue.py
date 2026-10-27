@@ -153,7 +153,16 @@ async def get_open_pull_requests_cached(
         return cached[1]
     open_prs = await api_client.get_open_pull_requests()
     if open_prs is not None:
-        _open_pull_requests_cache[key] = (time.time(), open_prs)
+        now = time.time()
+        # drop expired entries so we don't keep pull requests for every
+        # repository we've seen.
+        for expired_key in [
+            cached_key
+            for cached_key, (fetched_at, _prs) in _open_pull_requests_cache.items()
+            if now - fetched_at >= OPEN_PULL_REQUESTS_CACHE_SEC
+        ]:
+            del _open_pull_requests_cache[expired_key]
+        _open_pull_requests_cache[key] = (now, open_prs)
     return open_prs
 
 

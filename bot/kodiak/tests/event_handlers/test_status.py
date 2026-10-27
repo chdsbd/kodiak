@@ -192,6 +192,36 @@ async def test_status_events_without_branches_reuse_open_pull_requests(
     assert client.list_count == 2
 
 
+@requires_redis
+async def test_open_pull_requests_cache_drops_expired_repositories(
+    mocker: MockFixture,
+) -> None:
+    """
+    We shouldn't keep the open pull requests of every repository that has ever
+    had a status without a branch.
+    """
+    mocker.patch(
+        "kodiak.queue.Client",
+        return_value=FakeClient([open_pull_request(124, sha="f3b02e4")]),
+    )
+    now = mocker.patch("kodiak.queue.time.time", return_value=1_700_000_000.0)
+
+    def event_for(repo: str) -> StatusEvent:
+        return StatusEvent(
+            installation=Installation(id=9234201),
+            id=4523,
+            sha="f3b02e4",
+            branches=[],
+            repository=Repository(name=repo, owner=Owner(login="acme")),
+        )
+
+    await status_event(FakeQueue(), event_for("api"))
+    now.return_value += OPEN_PULL_REQUESTS_CACHE_SEC
+    await status_event(FakeQueue(), event_for("web"))
+
+    assert list(_open_pull_requests_cache) == [("9234201", "acme", "web")]
+
+
 def branch_status_event(*branch_names: str) -> StatusEvent:
     """
     A status for a commit at the head of each named branch. Our fake client
