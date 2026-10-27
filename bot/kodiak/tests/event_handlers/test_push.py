@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-from typing import AsyncIterator, Iterator, List, Optional, Tuple
+from typing import AsyncIterator, List, Optional, Tuple
 
 import pytest
 from pytest_mock import MockFixture
@@ -19,22 +18,11 @@ from kodiak.queries import (
     Ref,
 )
 from kodiak.queue import WebhookEvent, push
-from kodiak.redis_client import redis_bot
+from kodiak.redis_client import create_connection
 from kodiak.test_pull_request import create_event
 from kodiak.tests.fixtures import requires_redis
 
 INSTALLATION_ID = "9234201"
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    """
-    Share a loop between tests because the redis connection pool is bound to the
-    loop it was first used on.
-    """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 class FakeQueue:
@@ -90,8 +78,10 @@ def push_event(commits: Optional[List[Commit]] = None) -> PushEvent:
 
 @pytest.fixture
 async def repo_pull_requests(mocker: MockFixture) -> AsyncIterator[None]:
-    # drop connections opened on other test modules' event loops
-    await redis_bot.connection_pool.disconnect()
+    # use our own client because the shared one may hold connections from other
+    # tests' event loops.
+    redis = create_connection()
+    mocker.patch("kodiak.push_filter.redis_bot", redis)
     mocker.patch(
         "kodiak.queue.Client",
         return_value=FakeClient(
@@ -103,7 +93,8 @@ async def repo_pull_requests(mocker: MockFixture) -> AsyncIterator[None]:
         ),
     )
     yield
-    await redis_bot.delete(f"kodiak:push_filter_config:{INSTALLATION_ID}.acme/api")
+    await redis.delete(f"kodiak:push_filter_config:{INSTALLATION_ID}.acme/api")
+    await redis.close()
 
 
 @requires_redis
