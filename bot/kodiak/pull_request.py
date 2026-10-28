@@ -19,7 +19,11 @@ from kodiak.errors import (
 )
 from kodiak.evaluation import mergeable
 from kodiak.http import HTTPStatusError as HTTPError
-from kodiak.push_filter import save_push_filter_config
+from kodiak.push_filter import (
+    may_act_on,
+    save_pull_request_ignored,
+    save_push_filter_config,
+)
 from kodiak.queries import Client, EventInfoResponse
 
 logger = structlog.get_logger()
@@ -47,6 +51,21 @@ async def get_pr(
         if isinstance(event.config, V1):
             await save_push_filter_config(
                 installation_id=install, owner=owner, repo=repo, config=event.config
+            )
+            await save_pull_request_ignored(
+                installation_id=install,
+                owner=owner,
+                repo=repo,
+                number=number,
+                ignored=not may_act_on(
+                    event.config,
+                    labels=event.pull_request.labels,
+                    author=(
+                        event.pull_request.author.login
+                        if event.pull_request.author is not None
+                        else None
+                    ),
+                ),
             )
         return PRV2(
             event,

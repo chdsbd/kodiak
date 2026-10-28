@@ -8,6 +8,10 @@ them only reaches the "Ignored" status again.
 
 We don't have the repository's config when handling a push, so we cache the
 config whenever we evaluate a pull request.
+
+Check run events don't include a pull request's labels either, so we also
+remember which pull requests Kodiak can't act on when we evaluate them. Label
+and review events aren't filtered, so they still refresh what we remember.
 """
 
 from __future__ import annotations
@@ -77,4 +81,38 @@ async def forget_push_filter_config(
 ) -> None:
     await redis_bot.delete(
         get_cache_key(installation_id=installation_id, owner=owner, repo=repo)
+    )
+
+
+def get_ignored_pull_request_key(
+    *, installation_id: str, owner: str, repo: str, number: int
+) -> str:
+    return f"kodiak:ignored_pull_request:{installation_id}.{owner}/{repo}#{number}"
+
+
+async def save_pull_request_ignored(
+    *, installation_id: str, owner: str, repo: str, number: int, ignored: bool
+) -> None:
+    key = get_ignored_pull_request_key(
+        installation_id=installation_id, owner=owner, repo=repo, number=number
+    )
+    if ignored:
+        await redis_bot.set(key, b"1", ex=CACHE_TTL)
+    else:
+        await redis_bot.delete(key)
+
+
+async def is_pull_request_ignored(
+    *, installation_id: str, owner: str, repo: str, number: int
+) -> bool:
+    """
+    Returns False if we haven't evaluated the pull request recently, in which
+    case it should be evaluated.
+    """
+    return bool(
+        await redis_bot.exists(
+            get_ignored_pull_request_key(
+                installation_id=installation_id, owner=owner, repo=repo, number=number
+            )
+        )
     )
