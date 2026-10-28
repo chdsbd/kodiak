@@ -30,6 +30,12 @@ from kodiak.events import (
 )
 from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
+from kodiak.push_filter import (
+    CONFIG_FILE_PATHS,
+    forget_push_filter_config,
+    get_push_filter_config,
+    may_act_on,
+)
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
 
@@ -248,6 +254,15 @@ def get_branch_name(raw_ref: str) -> str | None:
     return None
 
 
+def push_changes_config(push_event: PushEvent) -> bool:
+    return any(
+        not CONFIG_FILE_PATHS.isdisjoint(
+            commit.added + commit.removed + commit.modified
+        )
+        for commit in push_event.commits
+    )
+
+
 async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
     """
     Trigger evaluation of PRs that depend on the pushed branch.
@@ -270,7 +285,26 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
         if prs is None:
             log.info("api call to find pull requests failed")
             return
+        # skip pull requests Kodiak won't update or merge. If the push changes
+        # the config we evaluate everything and refresh the cached config.
+        if push_changes_config(push_event):
+            await forget_push_filter_config(
+                installation_id=installation_id, owner=owner, repo=repo
+            )
+            push_filter = None
+        else:
+            push_filter = await get_push_filter_config(
+                installation_id=installation_id, owner=owner, repo=repo
+            )
+        skipped = 0
         for pr in prs:
+            if push_filter is not None and not may_act_on(
+                push_filter,
+                labels=(label.name for label in pr.labels),
+                author=pr.user.login if pr.user is not None else None,
+            ):
+                skipped += 1
+                continue
             await queue.enqueue(
                 event=WebhookEvent(
                     repo_owner=owner,
@@ -281,6 +315,12 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
                 ),
                 low_priority=True,
             )
+        log.info(
+            "push_pull_requests_queued",
+            queued=len(prs) - skipped,
+            skipped=skipped,
+            filtered=push_filter is not None,
+        )
 
 
 def compress_payload(data: dict[str, object]) -> bytes:
