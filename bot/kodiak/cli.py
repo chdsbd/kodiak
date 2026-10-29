@@ -57,13 +57,41 @@ def list_installs() -> None:
             pass
 
 
+def read_only_token_for_install(install_id: str) -> str:
+    """
+    Request an installation token with every permission downgraded to read.
+    https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app
+    """
+    app_token = generate_jwt(
+        private_key=conf.PRIVATE_KEY, app_identifier=conf.GITHUB_APP_ID
+    )
+    headers = dict(
+        Accept="application/vnd.github+json",
+        Authorization=f"Bearer {app_token}",
+    )
+    res = requests.get(conf.v3_url(f"/app/installations/{install_id}"), headers=headers)
+    res.raise_for_status()
+    permissions = dict.fromkeys(res.json()["permissions"], "read")
+    res = requests.post(
+        conf.v3_url(f"/app/installations/{install_id}/access_tokens"),
+        headers=headers,
+        json=dict(permissions=permissions),
+    )
+    res.raise_for_status()
+    return str(res.json()["token"])
+
+
 @cli.command(help="fetches the OAuth token for a given install id")
 @click.argument("install_id")
-def token_for_install(install_id: str) -> None:
+@click.option("--read-only", is_flag=True, help="limit the token to read permissions")
+def token_for_install(install_id: str, read_only: bool) -> None:
     """
     outputs the OAuth token for a given installation id.
     This is useful to help debug installation problems
     """
+    if read_only:
+        click.echo(read_only_token_for_install(install_id))
+        return
 
     async def get_token() -> str:
         async with HttpClient() as http:
