@@ -7,7 +7,6 @@ from __future__ import annotations
 import asyncio
 import time
 from asyncio.tasks import Task
-from typing import NoReturn
 
 import pydantic
 import sentry_sdk
@@ -27,6 +26,7 @@ from kodiak.queue import (
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
+from kodiak.shutdown import install_sigterm_handler, stop_requested
 
 configure_logging()
 
@@ -37,11 +37,11 @@ logger = structlog.get_logger()
 INGEST_LAG_LOG_THRESHOLD_SEC = 30
 
 
-async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> NoReturn:
+async def work_ingest_queue(queue: WebhookQueueProtocol, queue_name: str) -> None:
     log = logger.bind(queue_name=queue_name, task="work_ingest_queue")
 
     log.info("start working ingest_queue")
-    while True:
+    while not stop_requested():
         res = await redis_bot.blpop(
             [queue_name], timeout=conf.REDIS_BLOCKING_POP_TIMEOUT_SEC
         )
@@ -79,7 +79,7 @@ class PubsubIngestQueueSchema(pydantic.BaseModel):
 
 
 async def ingest_queue_starter(
-    ingest_workers: dict[str, Task[NoReturn]], queue: RedisWebhookQueue
+    ingest_workers: dict[str, Task[None]], queue: RedisWebhookQueue
 ) -> None:
     """
     Listen on Redis Pubsub and start queue worker if we don't have one already.
@@ -103,11 +103,12 @@ async def ingest_queue_starter(
             log.info("started new task")
 
 
-async def main() -> NoReturn:
+async def main() -> None:
+    install_sigterm_handler()
     queue = RedisWebhookQueue()
     await queue.create()
 
-    ingest_workers = dict()
+    ingest_workers: dict[str, Task[None]] = dict()
 
     ingest_queue_names = await redis_bot.smembers(INGEST_QUEUE_NAMES)
     log = logger.bind(task="main_worker")
@@ -125,10 +126,12 @@ async def main() -> NoReturn:
         ingest_queue_starter(ingest_workers, queue)
     )
 
-    while True:
+    while not stop_requested():
         # Health check the various tasks and recreate them if necessary.
         # There's probably a cleaner way to do this.
         await asyncio.sleep(0.25)
+        if stop_requested():
+            break
         for queue_name, worker_task in ingest_workers.items():
             if worker_task is None or not worker_task.done():
                 continue
@@ -162,6 +165,16 @@ async def main() -> NoReturn:
             ingest_queue_watcher = asyncio.create_task(
                 ingest_queue_starter(ingest_workers, queue)
             )
+
+    # the watcher only starts workers, so it has no event in hand to finish.
+    ingest_queue_watcher.cancel()
+    log.info("waiting for workers to finish")
+    await asyncio.gather(
+        *ingest_workers.values(),
+        *(task for _, task in queue.all_tasks()),
+        return_exceptions=True,
+    )
+    log.info("shutdown_complete")
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ from kodiak.queue import (
 )
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
+from kodiak.shutdown import request_stop
 from kodiak.tests.fixtures import RecordingLogger, requires_redis
 
 
@@ -284,6 +285,32 @@ async def test_work_ingest_queue_logs_lagging_events(
     assert lagging_log["event_name"] == "status"
     assert lagging_log["lag_sec"] >= 120
     assert lagging_log["queue_length"] == 1
+
+
+@requires_redis
+async def test_work_ingest_queue_stops_after_event_in_hand(
+    mocker: MockFixture, redis_queue: str
+) -> None:
+    """
+    On SIGTERM we should finish the event we popped and leave the rest queued
+    for the next worker, instead of dropping the event mid-handling.
+    """
+    mocker.patch("kodiak.shutdown._stop_requested", False)
+    handle_webhook_event = mocker.patch(
+        "kodiak.entrypoints.worker.handle_webhook_event",
+        new_callable=AsyncMock,
+        side_effect=lambda **_: request_stop(),
+    )
+    ingest_queue = get_ingest_queue(INSTALLATION_ID)
+    event = RawWebhookEvent(event_name="push", payload={}).json()
+    await redis_bot.rpush(ingest_queue, event, event)
+
+    await asyncio.wait_for(
+        work_ingest_queue(RedisWebhookQueue(), queue_name=ingest_queue), timeout=5
+    )
+
+    assert handle_webhook_event.call_count == 1
+    assert await redis_bot.llen(ingest_queue) == 1
 
 
 @requires_redis

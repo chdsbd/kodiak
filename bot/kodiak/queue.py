@@ -8,7 +8,7 @@ import urllib
 from asyncio.tasks import Task
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator, MutableMapping, NoReturn, Optional, Tuple
+from typing import Iterator, MutableMapping, Optional, Tuple
 
 import sentry_sdk
 import structlog
@@ -39,6 +39,7 @@ from kodiak.push_filter import (
 )
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
+from kodiak.shutdown import stop_requested
 
 logger = structlog.get_logger()
 
@@ -478,7 +479,7 @@ async def process_webhook_event(
 
 async def webhook_event_consumer(
     *, webhook_queue: RedisWebhookQueue, queue_name: str
-) -> typing.NoReturn:
+) -> None:
     """
     Worker to process incoming webhook events from redis
 
@@ -501,7 +502,7 @@ async def webhook_event_consumer(
             queue=queue_name, install=installation_id_from_queue(queue_name)
         )
         log.info("start webhook event consumer")
-        while True:
+        while not stop_requested():
             await process_webhook_event(webhook_queue, queue_name, log)
 
 
@@ -544,7 +545,7 @@ async def process_repo_queue(log: structlog.BoundLogger, queue_name: str) -> Non
     await redis_bot.delete(target_name + ":time")
 
 
-async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
+async def repo_queue_consumer(*, queue_name: str) -> None:
     """
     Worker for a repo given by :queue_name:
 
@@ -560,7 +561,7 @@ async def repo_queue_consumer(*, queue_name: str) -> typing.NoReturn:
             scope.set_tag("installation", installation)
         log = logger.bind(queue=queue_name, install=installation)
         log.info("start repo_consumer")
-        while True:
+        while not stop_requested():
             await process_repo_queue(log, queue_name)
 
 
@@ -586,8 +587,8 @@ class TaskMeta:
 class RedisWebhookQueue:
     def __init__(self) -> None:
         self.worker_tasks: MutableMapping[
-            str, tuple[Task[NoReturn], Literal["repo", "webhook"]]
-        ] = {}  # type: ignore [assignment]
+            str, tuple[Task[None], Literal["repo", "webhook"]]
+        ] = {}
 
     async def create(self) -> None:
         # restart repo workers
@@ -637,9 +638,14 @@ class RedisWebhookQueue:
         self,
         key: str,
         kind: Literal["repo", "webhook"],
-        fut: typing.Coroutine[None, None, NoReturn],
+        fut: typing.Coroutine[None, None, None],
     ) -> None:
         log = logger.bind(queue_name=key, kind=kind)
+        if stop_requested():
+            # don't start workers we're about to wait on. The event is already
+            # in Redis, so a worker picks it up after the restart.
+            fut.close()
+            return
         worker_task_result = self.worker_tasks.get(key)
         if worker_task_result is not None:
             worker_task, _task_kind = worker_task_result
@@ -712,7 +718,7 @@ class RedisWebhookQueue:
         )
         return find_position((key for key, value in kvs), event.json().encode())
 
-    def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[NoReturn]]]:
+    def all_tasks(self) -> Iterator[tuple[TaskMeta, Task[None]]]:
         for queue_name, (task, task_kind) in self.worker_tasks.items():
             yield (TaskMeta(kind=task_kind, queue_name=queue_name), task)
 

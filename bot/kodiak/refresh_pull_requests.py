@@ -28,6 +28,7 @@ from kodiak.logging import SentryProcessor, add_request_info_processor
 from kodiak.queries import generate_jwt, get_token_for_install
 from kodiak.queue import WebhookEvent, push_webhook_event
 from kodiak.redis_client import redis_bot
+from kodiak.shutdown import install_sigterm_handler, stop_requested
 
 sentry_sdk.init()
 
@@ -172,7 +173,8 @@ class RefreshPullRequestsMessage(BaseModel):
 
 
 async def main_async() -> None:
-    while True:
+    install_sigterm_handler()
+    while not stop_requested():
         res = await redis_bot.blpop(
             ["kodiak:refresh_pull_requests_for_installation"], timeout=5
         )
