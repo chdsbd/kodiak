@@ -12,6 +12,9 @@ config whenever we evaluate a pull request.
 Check run events don't include a pull request's labels either, so we also
 remember which pull requests Kodiak can't act on when we evaluate them. Label
 and review events aren't filtered, so they still refresh what we remember.
+
+Statuses for a commit no open pull request is at can't affect any pull request,
+so we briefly remember those commits too.
 """
 
 from __future__ import annotations
@@ -113,6 +116,45 @@ async def is_pull_request_ignored(
         await redis_bot.exists(
             get_ignored_pull_request_key(
                 installation_id=installation_id, owner=owner, repo=repo, number=number
+            )
+        )
+    )
+
+
+# builds keep reporting statuses for a commit after its pull request merges or
+# its branch moves on, often dozens per build. We remember these commits briefly
+# so we look up their pull requests once.
+UNMATCHED_STATUS_COMMIT_TTL = timedelta(minutes=5)
+
+
+def get_unmatched_status_commit_key(
+    *, installation_id: str, owner: str, repo: str, sha: str
+) -> str:
+    return f"kodiak:unmatched_status_commit:{installation_id}.{owner}/{repo}:{sha}"
+
+
+async def save_unmatched_status_commit(
+    *, installation_id: str, owner: str, repo: str, sha: str
+) -> None:
+    await redis_bot.set(
+        get_unmatched_status_commit_key(
+            installation_id=installation_id, owner=owner, repo=repo, sha=sha
+        ),
+        b"1",
+        ex=UNMATCHED_STATUS_COMMIT_TTL,
+    )
+
+
+async def is_unmatched_status_commit(
+    *, installation_id: str, owner: str, repo: str, sha: str
+) -> bool:
+    """
+    Whether we recently found no open pull request at this commit.
+    """
+    return bool(
+        await redis_bot.exists(
+            get_unmatched_status_commit_key(
+                installation_id=installation_id, owner=owner, repo=repo, sha=sha
             )
         )
     )

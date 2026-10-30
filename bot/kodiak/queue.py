@@ -35,7 +35,9 @@ from kodiak.push_filter import (
     forget_push_filter_config,
     get_push_filter_config,
     is_pull_request_ignored,
+    is_unmatched_status_commit,
     may_act_on,
+    save_unmatched_status_commit,
 )
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
@@ -150,6 +152,15 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
     refs = find_branch_names_latest(
         sha=status_event.sha, branches=status_event.branches
     )
+    if len(refs) == 0 and await is_unmatched_status_commit(
+        installation_id=installation_id, owner=owner, repo=repo, sha=status_event.sha
+    ):
+        log.info(
+            "status_commit_skipped",
+            sha=status_event.sha,
+            context=status_event.context,
+        )
+        return
 
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
@@ -182,6 +193,13 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
                 else None
             )
             pr_results = [matching_prs]
+            if matching_prs == []:
+                await save_unmatched_status_commit(
+                    installation_id=installation_id,
+                    owner=owner,
+                    repo=repo,
+                    sha=status_event.sha,
+                )
             # commit_pull_requests tells us why no branch had the commit: a
             # closed pull request means it merged, an open one means its branch
             # moved past the commit, and none means a fork or a force push,
