@@ -30,7 +30,8 @@ async def push_filter_redis(mocker: MockFixture) -> AsyncIterator[None]:
     mocker.patch("kodiak.push_filter.redis_bot", redis)
     yield
     await redis.delete(
-        get_cache_key(installation_id="9234201", owner="acme", repo="api")
+        get_cache_key(installation_id="9234201", owner="acme", repo="api"),
+        *await redis.keys("kodiak:unmatched_status_commit:9234201.acme/api:*"),
     )
     await redis.close()
 
@@ -58,6 +59,7 @@ class FakeClient:
         self.commit_pull_requests = commit_pull_requests
         self.open_pull_requests = open_pull_requests
         self.listed_open_pull_requests = False
+        self.commit_lookups = 0
 
     async def __aenter__(self) -> FakeClient:
         return self
@@ -68,6 +70,7 @@ class FakeClient:
     async def get_pull_requests_for_commit(
         self, sha: str
     ) -> List[CommitPullRequestSchema]:
+        self.commit_lookups += 1
         return self.commit_pull_requests
 
     async def get_open_pull_requests(
@@ -165,6 +168,51 @@ async def test_status_event_for_merged_pull_request_queues_nothing(
 
     assert queue.events == []
     assert client.listed_open_pull_requests is False
+
+
+@requires_redis
+async def test_status_event_for_unmatched_commit_looks_up_once(
+    mocker: MockFixture,
+) -> None:
+    """
+    A build reports dozens of statuses for a commit after its pull request
+    merges. Once we know no open pull request is at the commit, the rest of
+    its statuses shouldn't spend API calls finding that out again.
+    """
+    client = FakeClient(
+        commit_pull_requests=[commit_pull_request(124, sha="f3b02e4", state="closed")],
+        open_pull_requests=[],
+    )
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    queue = FakeQueue()
+
+    await status_event(queue, status_without_branches(sha="f3b02e4"))
+    await status_event(queue, status_without_branches(sha="f3b02e4"))
+
+    assert client.commit_lookups == 1
+    assert queue.events == []
+
+
+@requires_redis
+async def test_status_event_for_pull_request_commit_keeps_looking_up(
+    mocker: MockFixture,
+) -> None:
+    """
+    Each status for a pull request's head commit can change its mergeability,
+    so we only skip commits no open pull request is at.
+    """
+    client = FakeClient(
+        commit_pull_requests=[commit_pull_request(124, sha="f3b02e4", state="open")],
+        open_pull_requests=[],
+    )
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    queue = FakeQueue()
+
+    await status_event(queue, status_without_branches(sha="f3b02e4"))
+    await status_event(queue, status_without_branches(sha="f3b02e4"))
+
+    assert client.commit_lookups == 2
+    assert queue.events == [queued(124), queued(124)]
 
 
 @requires_redis
