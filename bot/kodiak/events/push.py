@@ -26,6 +26,8 @@ class PushEvent(GithubEvent):
     """
 
     ref: str
+    # true when the push deleted the branch.
+    deleted: bool = False
     repository: Repository
     # GitHub includes at most 20 commits.
     commits: List[Commit] = pydantic.Field(default_factory=list)

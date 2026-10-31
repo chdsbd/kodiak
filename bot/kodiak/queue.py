@@ -309,6 +309,13 @@ async def push(queue: WebhookQueueProtocol, push_event: PushEvent) -> None:
     if branch_name is None:
         log.info("could not extract branch name from ref")
         return
+    if push_event.deleted:
+        # GitHub closes or retargets pull requests whose base branch is deleted
+        # and sends pull_request events for them, so there is nothing for us to
+        # find here. Repositories cleaning up old branches send thousands of
+        # these at once.
+        log.info("branch deleted, nothing to evaluate")
+        return
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
