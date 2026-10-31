@@ -7,8 +7,20 @@ from pytest_mock import MockFixture
 
 from kodiak.config import V1
 from kodiak.events.base import Installation
+from kodiak.events.pull_request import (
+    Commit as PullRequestCommit,
+    Owner as PullRequestOwner,
+    PullRequest,
+    PullRequestEvent,
+    Ref as PullRequestRef,
+    Repository as PullRequestRepository,
+)
 from kodiak.events.status import Branch, Commit, Owner, Repository, StatusEvent
-from kodiak.push_filter import get_cache_key, save_push_filter_config
+from kodiak.push_filter import (
+    get_cache_key,
+    save_pull_request_ignored,
+    save_push_filter_config,
+)
 from kodiak.queries import (
     CommitPullRequestSchema,
     GetOpenPullRequestsResponseSchema,
@@ -17,7 +29,7 @@ from kodiak.queries import (
     PullRequestUser,
     Ref,
 )
-from kodiak.queue import WebhookEvent, status_event
+from kodiak.queue import WebhookEvent, pr_event, status_event
 from kodiak.redis_client import create_connection
 from kodiak.tests.fixtures import RecordingLogger, requires_redis
 
@@ -31,7 +43,8 @@ async def push_filter_redis(mocker: MockFixture) -> AsyncIterator[None]:
     yield
     await redis.delete(
         get_cache_key(installation_id="9234201", owner="acme", repo="api"),
-        *await redis.keys("kodiak:unmatched_status_commit:9234201.acme/api:*"),
+        *await redis.keys("kodiak:status_commit_pull_requests:9234201.acme/api:*"),
+        *await redis.keys("kodiak:ignored_pull_request:9234201.acme/api#*"),
     )
     await redis.close()
 
@@ -60,6 +73,7 @@ class FakeClient:
         self.open_pull_requests = open_pull_requests
         self.listed_open_pull_requests = False
         self.commit_lookups = 0
+        self.open_pull_request_lookups = 0
 
     async def __aenter__(self) -> FakeClient:
         return self
@@ -77,6 +91,7 @@ class FakeClient:
         self, base: Optional[str] = None, head: Optional[str] = None
     ) -> List[GetOpenPullRequestsResponseSchema]:
         assert base is None
+        self.open_pull_request_lookups += 1
         if head is not None:
             return [
                 pr for pr in self.open_pull_requests if f"acme:{pr.head.sha}" == head
@@ -194,12 +209,12 @@ async def test_status_event_for_unmatched_commit_looks_up_once(
 
 
 @requires_redis
-async def test_status_event_for_pull_request_commit_keeps_looking_up(
+async def test_status_event_for_pull_request_commit_looks_up_once(
     mocker: MockFixture,
 ) -> None:
     """
     Each status for a pull request's head commit can change its mergeability,
-    so we only skip commits no open pull request is at.
+    so we queue the pull request for every status, but only look it up once.
     """
     client = FakeClient(
         commit_pull_requests=[commit_pull_request(124, sha="f3b02e4", state="open")],
@@ -211,8 +226,87 @@ async def test_status_event_for_pull_request_commit_keeps_looking_up(
     await status_event(queue, status_without_branches(sha="f3b02e4"))
     await status_event(queue, status_without_branches(sha="f3b02e4"))
 
-    assert client.commit_lookups == 2
+    assert client.commit_lookups == 1
     assert queue.events == [queued(124), queued(124)]
+
+
+@requires_redis
+async def test_status_event_for_branch_commit_looks_up_once(
+    mocker: MockFixture,
+) -> None:
+    """
+    A build reports dozens of statuses for a pull request's head commit. Only
+    the first should spend an API call finding its pull request.
+    """
+    client = FakeClient(
+        commit_pull_requests=[],
+        open_pull_requests=[open_pull_request(124, sha="f3b02e4")],
+    )
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    queue = FakeQueue()
+
+    await status_event(queue, branch_status_event("f3b02e4"))
+    await status_event(queue, branch_status_event("f3b02e4"))
+
+    assert client.open_pull_request_lookups == 1
+    assert queue.events == [queued(124), queued(124)]
+
+
+@requires_redis
+async def test_repeat_status_event_skips_ignored_pull_request(
+    mocker: MockFixture,
+) -> None:
+    """
+    We don't remember a pull request's labels with its commit, so repeat
+    statuses skip the pull requests evaluation found Kodiak can't act on.
+    """
+    mocker.patch(
+        "kodiak.queue.Client",
+        return_value=FakeClient(
+            commit_pull_requests=[],
+            open_pull_requests=[open_pull_request(124, sha="f3b02e4")],
+        ),
+    )
+    await status_event(FakeQueue(), branch_status_event("f3b02e4"))
+    await save_pull_request_ignored(
+        installation_id="9234201", owner="acme", repo="api", number=124, ignored=True
+    )
+    queue = FakeQueue()
+
+    await status_event(queue, branch_status_event("f3b02e4"))
+
+    assert queue.events == []
+
+
+@requires_redis
+async def test_pull_request_event_forgets_its_commit(mocker: MockFixture) -> None:
+    """
+    A pull request opened at a commit we found no pull request at should be
+    evaluated for the commit's next status.
+    """
+    client = FakeClient(commit_pull_requests=[], open_pull_requests=[])
+    mocker.patch("kodiak.queue.Client", return_value=client)
+    await status_event(FakeQueue(), branch_status_event("f3b02e4"))
+    client.open_pull_requests = [open_pull_request(124, sha="f3b02e4")]
+    await pr_event(
+        FakeQueue(),
+        PullRequestEvent(
+            installation=Installation(id=9234201),
+            number=124,
+            pull_request=PullRequest(
+                base=PullRequestRef(ref="main"),
+                head=PullRequestCommit(sha="f3b02e4"),
+            ),
+            repository=PullRequestRepository(
+                name="api", owner=PullRequestOwner(login="acme")
+            ),
+        ),
+    )
+    queue = FakeQueue()
+
+    await status_event(queue, branch_status_event("f3b02e4"))
+
+    assert queue.events == [queued(124)]
 
 
 @requires_redis

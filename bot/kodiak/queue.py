@@ -32,12 +32,14 @@ from kodiak.events.status import Branch
 from kodiak.pull_request import evaluate_pr
 from kodiak.push_filter import (
     CONFIG_FILE_PATHS,
+    StatusCommitPullRequest,
     forget_push_filter_config,
+    forget_status_commit,
     get_push_filter_config,
+    get_status_commit_pull_requests,
     is_pull_request_ignored,
-    is_unmatched_status_commit,
     may_act_on,
-    save_unmatched_status_commit,
+    save_status_commit_pull_requests,
 )
 from kodiak.queries import Client
 from kodiak.redis_client import redis_bot, redis_web_api
@@ -95,6 +97,14 @@ async def pr_event(queue: WebhookQueueProtocol, pr: PullRequestEvent) -> None:
     """
     Trigger evaluation of modified PR.
     """
+    # a pull request opened or pushed to may now be at a commit whose pull
+    # requests we remember for its statuses.
+    await forget_status_commit(
+        installation_id=str(pr.installation.id),
+        owner=pr.repository.owner.login,
+        repo=pr.repository.name,
+        sha=pr.pull_request.head.sha,
+    )
     await queue.enqueue(
         event=WebhookEvent(
             repo_owner=pr.repository.owner.login,
@@ -149,19 +159,45 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
     installation_id = str(status_event.installation.id)
     log = logger.bind(owner=owner, repo=repo, install=installation_id)
 
+    cached_prs = await get_status_commit_pull_requests(
+        installation_id=installation_id, owner=owner, repo=repo, sha=status_event.sha
+    )
+    if cached_prs is not None:
+        if not cached_prs:
+            log.info(
+                "status_commit_skipped",
+                sha=status_event.sha,
+                context=status_event.context,
+            )
+            return
+        # we don't have the pull requests' labels, so we skip the ones we found
+        # Kodiak can't act on when we last evaluated them.
+        skipped = 0
+        for cached_pr in cached_prs:
+            if await is_pull_request_ignored(
+                installation_id=installation_id,
+                owner=owner,
+                repo=repo,
+                number=cached_pr.number,
+            ):
+                skipped += 1
+                continue
+            await queue.enqueue(
+                event=WebhookEvent(
+                    repo_owner=owner,
+                    repo_name=repo,
+                    pull_request_number=cached_pr.number,
+                    target_name=cached_pr.base_ref,
+                    installation_id=installation_id,
+                )
+            )
+        if skipped:
+            log.info("status_pull_requests_skipped", skipped=skipped, cached=True)
+        return
+
     refs = find_branch_names_latest(
         sha=status_event.sha, branches=status_event.branches
     )
-    if len(refs) == 0 and await is_unmatched_status_commit(
-        installation_id=installation_id, owner=owner, repo=repo, sha=status_event.sha
-    ):
-        log.info(
-            "status_commit_skipped",
-            sha=status_event.sha,
-            context=status_event.context,
-        )
-        return
-
     async with Client(
         owner=owner, repo=repo, installation_id=installation_id
     ) as api_client:
@@ -193,13 +229,6 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
                 else None
             )
             pr_results = [matching_prs]
-            if matching_prs == []:
-                await save_unmatched_status_commit(
-                    installation_id=installation_id,
-                    owner=owner,
-                    repo=repo,
-                    sha=status_event.sha,
-                )
             # commit_pull_requests tells us why no branch had the commit: a
             # closed pull request means it merged, an open one means its branch
             # moved past the commit, and none means a fork or a force push,
@@ -227,6 +256,24 @@ async def status_event(queue: WebhookQueueProtocol, status_event: StatusEvent) -
                 api_client.get_open_pull_requests(head=f"{owner}:{ref}") for ref in refs
             ]
             pr_results = await asyncio.gather(*pr_requests)
+
+        if all(prs is not None for prs in pr_results):
+            await save_status_commit_pull_requests(
+                installation_id=installation_id,
+                owner=owner,
+                repo=repo,
+                sha=status_event.sha,
+                pull_requests=list(
+                    {
+                        pr.number: StatusCommitPullRequest(
+                            number=pr.number, base_ref=pr.base.ref
+                        )
+                        for prs in pr_results
+                        if prs is not None
+                        for pr in prs
+                    }.values()
+                ),
+            )
 
         # a status can only change what Kodiak does for pull requests it may
         # update or merge. Without a cached config we evaluate everything.
