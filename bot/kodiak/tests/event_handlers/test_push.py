@@ -67,10 +67,13 @@ def open_pull_request(
     )
 
 
-def push_event(commits: Optional[List[Commit]] = None) -> PushEvent:
+def push_event(
+    commits: Optional[List[Commit]] = None, deleted: bool = False
+) -> PushEvent:
     return PushEvent(
         installation=Installation(id=int(INSTALLATION_ID)),
         ref="refs/heads/main",
+        deleted=deleted,
         repository=Repository(name="api", owner=Owner(login="acme")),
         commits=commits or [],
     )
@@ -152,6 +155,20 @@ async def test_push_changing_config_queues_all_pull_requests(
         )
         is None
     )
+
+
+async def test_push_deleting_branch_skips_api(mocker: MockFixture) -> None:
+    """
+    No open pull request can be based on a deleted branch, so we shouldn't
+    spend a rate limited API call looking for one.
+    """
+    client = mocker.patch("kodiak.queue.Client")
+    queue = FakeQueue()
+
+    await push(queue, push_event(deleted=True))
+
+    assert queue.events == []
+    client.assert_not_called()
 
 
 class FakeEventClient:

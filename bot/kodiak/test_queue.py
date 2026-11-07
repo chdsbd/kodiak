@@ -121,6 +121,7 @@ async def test_work_ingest_queue_token_error(
     )
     payload["installation"]["id"] = INSTALLATION_ID
     payload["ref"] = "refs/heads/main"
+    payload["deleted"] = False
     ingest_queue = get_ingest_queue(INSTALLATION_ID)
     event = RawWebhookEvent(event_name="push", payload=payload).json()
     await redis_bot.rpush(ingest_queue, event, event)
