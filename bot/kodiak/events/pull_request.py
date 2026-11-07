@@ -16,8 +16,13 @@ class Ref(pydantic.BaseModel):
     ref: str
 
 
+class Commit(pydantic.BaseModel):
+    sha: str
+
+
 class PullRequest(pydantic.BaseModel):
     base: Ref
+    head: Commit
 
 
 class PullRequestEvent(GithubEvent):

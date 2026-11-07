@@ -13,14 +13,16 @@ Check run events don't include a pull request's labels either, so we also
 remember which pull requests Kodiak can't act on when we evaluate them. Label
 and review events aren't filtered, so they still refresh what we remember.
 
-Statuses for a commit no open pull request is at can't affect any pull request,
-so we briefly remember those commits too.
+Builds report dozens of statuses for each commit, so we briefly remember which
+open pull requests are at a commit too.
 """
 
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
+
+import pydantic
 
 from kodiak.config import V1
 from kodiak.evaluation import may_update_or_merge
@@ -121,40 +123,68 @@ async def is_pull_request_ignored(
     )
 
 
-# builds keep reporting statuses for a commit after its pull request merges or
-# its branch moves on, often dozens per build. We remember these commits briefly
-# so we look up their pull requests once.
-UNMATCHED_STATUS_COMMIT_TTL = timedelta(minutes=5)
+# builds report dozens of statuses for each commit, often within seconds, and
+# keep reporting them after its pull request merges or its branch moves on. We
+# remember which open pull requests are at a commit briefly so we look them up
+# once. Pull request events forget the commit, since a pull request opened at
+# it would otherwise be missed.
+STATUS_COMMIT_TTL = timedelta(minutes=5)
 
 
-def get_unmatched_status_commit_key(
+class StatusCommitPullRequest(pydantic.BaseModel):
+    number: int
+    base_ref: str
+
+
+class StatusCommitPullRequests(pydantic.BaseModel):
+    pull_requests: List[StatusCommitPullRequest]
+
+
+def get_status_commit_key(
     *, installation_id: str, owner: str, repo: str, sha: str
 ) -> str:
-    return f"kodiak:unmatched_status_commit:{installation_id}.{owner}/{repo}:{sha}"
+    return f"kodiak:status_commit_pull_requests:{installation_id}.{owner}/{repo}:{sha}"
 
 
-async def save_unmatched_status_commit(
-    *, installation_id: str, owner: str, repo: str, sha: str
+async def save_status_commit_pull_requests(
+    *,
+    installation_id: str,
+    owner: str,
+    repo: str,
+    sha: str,
+    pull_requests: List[StatusCommitPullRequest],
 ) -> None:
     await redis_bot.set(
-        get_unmatched_status_commit_key(
+        get_status_commit_key(
             installation_id=installation_id, owner=owner, repo=repo, sha=sha
         ),
-        b"1",
-        ex=UNMATCHED_STATUS_COMMIT_TTL,
+        StatusCommitPullRequests(pull_requests=pull_requests).json(),
+        ex=STATUS_COMMIT_TTL,
     )
 
 
-async def is_unmatched_status_commit(
+async def get_status_commit_pull_requests(
     *, installation_id: str, owner: str, repo: str, sha: str
-) -> bool:
+) -> Optional[List[StatusCommitPullRequest]]:
     """
-    Whether we recently found no open pull request at this commit.
+    The open pull requests we recently found at this commit, or None if we
+    haven't looked them up.
     """
-    return bool(
-        await redis_bot.exists(
-            get_unmatched_status_commit_key(
-                installation_id=installation_id, owner=owner, repo=repo, sha=sha
-            )
+    cached = await redis_bot.get(
+        get_status_commit_key(
+            installation_id=installation_id, owner=owner, repo=repo, sha=sha
+        )
+    )
+    if cached is None:
+        return None
+    return StatusCommitPullRequests.parse_raw(cached).pull_requests
+
+
+async def forget_status_commit(
+    *, installation_id: str, owner: str, repo: str, sha: str
+) -> None:
+    await redis_bot.delete(
+        get_status_commit_key(
+            installation_id=installation_id, owner=owner, repo=repo, sha=sha
         )
     )
