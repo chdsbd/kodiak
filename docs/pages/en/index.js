@@ -125,14 +125,14 @@ const Logos = {
       </svg>
     )
   },
-  Linz: function() {
+  Lines: function() {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
         xmlnsXlink="http://www.w3.org/1999/xlink"
         viewBox="0 0 424.3 98.05"
         height={LogoHeight}>
-        <title>linz.govt.nz</title>
+        <title>lines.govt.nz</title>
         <defs>
           <style>
             {
@@ -996,7 +996,7 @@ Stop waiting for CI and let Kodiak automate your GitHub workflow.
           <Logos.Target />
         </Logo>
         <Logo>
-          <Logos.Linz />
+          <Logos.Lines />
         </Logo>
         <Logo>
           <Logos.Vercel />
