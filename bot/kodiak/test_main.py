@@ -64,7 +64,10 @@ class FakeRedis:
         self.called_publish_cnt += 1
 
 
-@pytest.mark.parametrize("event_name", (event_name for event_name, _schema in MAPPING))
+@pytest.mark.parametrize(
+    "event_name",
+    (event_name for event_name, _schema in MAPPING if event_name != "check_run"),
+)
 def test_webhook_event(
     client: TestClient, event_name: str, mocker: MockFixture
 ) -> None:
@@ -90,6 +93,60 @@ def test_webhook_event(
         assert fake_redis.called_rpush_cnt == index + 1
 
     assert fake_redis.called_rpush_cnt == fake_redis.called_ltrim_cnt
+
+
+@pytest.mark.parametrize("queued", (0, 2))
+def test_webhook_event_check_run_skips_ingest_queue(
+    client: TestClient, mocker: MockFixture, queued: int
+) -> None:
+    """
+    Check runs go straight to the webhook queue, which holds each pull request
+    once, so a flood of them can't overflow the ingest queue.
+    """
+    fake_redis = FakeRedis()
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
+    ingest_check_run = mocker.patch(
+        "kodiak.entrypoints.ingest.ingest_check_run", return_value=queued
+    )
+    fixture_path = (
+        Path(__file__).parent
+        / "test"
+        / "fixtures"
+        / "events"
+        / "check_run"
+        / "check_run_completed.json"
+    )
+    data = json.loads(fixture_path.read_bytes())
+    body, sha = get_body_and_hash(data)
+
+    res = client.post(
+        "/api/github/hook",
+        data=body,
+        headers={"X-Github-Event": "check_run", "X-Hub-Signature": sha},
+    )
+
+    assert res.status_code == status.HTTP_200_OK
+    ingest_check_run.assert_called_once_with(data)
+    assert fake_redis.called_rpush_cnt == 0
+    # only wake the worker when there's something to evaluate.
+    assert fake_redis.called_publish_cnt == (1 if queued else 0)
+
+
+def test_webhook_event_invalid_check_run_uses_ingest_queue(
+    client: TestClient, mocker: MockFixture
+) -> None:
+    fake_redis = FakeRedis()
+    mocker.patch("kodiak.entrypoints.ingest.redis_bot", fake_redis)
+    body, sha = get_body_and_hash({"installation": {"id": 123}})
+
+    res = client.post(
+        "/api/github/hook",
+        data=body,
+        headers={"X-Github-Event": "check_run", "X-Hub-Signature": sha},
+    )
+
+    assert res.status_code == status.HTTP_200_OK
+    assert fake_redis.called_rpush_cnt == 1
 
 
 def test_webhook_event_full_queue_drops_oldest(

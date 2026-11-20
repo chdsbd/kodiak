@@ -136,6 +136,43 @@ def check_run(check_run_event: CheckRunEvent) -> Iterator[WebhookEvent]:
         )
 
 
+async def check_run_pull_requests(payload: dict[str, object]) -> list[WebhookEvent]:
+    """
+    Pull requests a check run event should trigger evaluation of.
+    """
+    events = []
+    for event in check_run(CheckRunEvent.parse_obj(payload)):
+        # a check run can't change anything for a pull request Kodiak won't
+        # act on, and busy repositories report hundreds of check runs for
+        # pull requests without the automerge label.
+        if await is_pull_request_ignored(
+            installation_id=event.installation_id,
+            owner=event.repo_owner,
+            repo=event.repo_name,
+            number=event.pull_request_number,
+        ):
+            continue
+        events.append(event)
+    return events
+
+
+async def ingest_check_run(payload: dict[str, object]) -> int:
+    """
+    Add the pull requests of a check run event to the webhook queue, skipping
+    the ingest queue.
+
+    Busy repositories report thousands of check runs within minutes, which
+    overflows the ingest queue. The webhook queue holds each pull request once,
+    so a pull request's check runs collapse into a single evaluation.
+
+    Returns the number of pull requests queued.
+    """
+    events = await check_run_pull_requests(payload)
+    for event in events:
+        await push_webhook_event(event, low_priority=False)
+    return len(events)
+
+
 def find_branch_names_latest(sha: str, branches: list[Branch]) -> list[str]:
     """
     from the docs:
@@ -429,17 +466,7 @@ async def handle_webhook_event(
         log = log.bind(usage_reported=True)
 
     if event_name == "check_run":
-        for event in check_run(CheckRunEvent.parse_obj(payload)):
-            # a check run can't change anything for a pull request Kodiak won't
-            # act on, and busy repositories report hundreds of check runs for
-            # pull requests without the automerge label.
-            if await is_pull_request_ignored(
-                installation_id=event.installation_id,
-                owner=event.repo_owner,
-                repo=event.repo_name,
-                number=event.pull_request_number,
-            ):
-                continue
+        for event in await check_run_pull_requests(payload):
             await queue.enqueue(event=event)
     elif event_name == "pull_request":
         await pr_event(queue, PullRequestEvent.parse_obj(payload))
@@ -815,4 +842,8 @@ def get_merge_queue_name(event: WebhookEvent) -> str:
 
 
 def get_webhook_queue_name(event: WebhookEvent) -> str:
-    return f"webhook:{event.installation_id}"
+    return get_installation_webhook_queue_name(event.installation_id)
+
+
+def get_installation_webhook_queue_name(installation_id: str | int) -> str:
+    return f"webhook:{installation_id}"
