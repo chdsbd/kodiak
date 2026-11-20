@@ -9,6 +9,7 @@ import hmac
 import time
 from typing import Any
 
+import pydantic
 import structlog
 import uvicorn
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
@@ -21,7 +22,12 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from kodiak import app_config as conf
 from kodiak.entrypoints.worker import PubsubIngestQueueSchema
 from kodiak.logging import configure_logging
-from kodiak.queue import INGEST_QUEUE_NAMES, QUEUE_PUBSUB_INGEST, get_ingest_queue
+from kodiak.queue import (
+    INGEST_QUEUE_NAMES,
+    QUEUE_PUBSUB_INGEST,
+    get_ingest_queue,
+    ingest_check_run,
+)
 from kodiak.redis_client import redis_bot
 from kodiak.schemas import RawWebhookEvent
 
@@ -82,6 +88,17 @@ async def github_webhook_event(request: Request) -> Response:
         log.warning("unexpected_event_skipped")
         return JSONResponse({"ok": True})
 
+    if github_event == "check_run":
+        try:
+            queued = await ingest_check_run(event)
+        except pydantic.ValidationError:
+            # leave events we can't parse to the worker, which reports them.
+            pass
+        else:
+            if queued:
+                await publish_ingest(installation_id)
+            return JSONResponse({"ok": True})
+
     ingest_queue = get_ingest_queue(installation_id)
 
     queue_length = await redis_bot.rpush(
@@ -100,11 +117,19 @@ async def github_webhook_event(request: Request) -> Response:
             dropped=queue_length - conf.INGEST_QUEUE_LENGTH,
         )
     await redis_bot.sadd(INGEST_QUEUE_NAMES, ingest_queue)
+    await publish_ingest(installation_id)
+    return JSONResponse({"ok": True})
+
+
+async def publish_ingest(installation_id: int) -> None:
+    """
+    Tell the worker to start the installation's ingest and webhook queue
+    workers, if they aren't running.
+    """
     await redis_bot.publish(
         QUEUE_PUBSUB_INGEST,
         PubsubIngestQueueSchema(installation_id=installation_id).json(),
     )
-    return JSONResponse({"ok": True})
 
 
 if __name__ == "__main__":

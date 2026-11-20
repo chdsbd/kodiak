@@ -23,6 +23,7 @@ from kodiak.queue import (
     RedisWebhookQueue,
     WebhookQueueProtocol,
     get_ingest_queue,
+    get_installation_webhook_queue_name,
     handle_webhook_event,
 )
 from kodiak.redis_client import redis_bot
@@ -101,6 +102,11 @@ async def ingest_queue_starter(
                 work_ingest_queue(queue, queue_name=queue_name)
             )
             log.info("started new task")
+        # ingest adds check runs straight to the webhook queue, so its worker
+        # may not be running yet.
+        queue.start_webhook_worker(
+            queue_name=get_installation_webhook_queue_name(installation_id)
+        )
 
 
 async def main() -> NoReturn:
