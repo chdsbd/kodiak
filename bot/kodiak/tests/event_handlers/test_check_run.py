@@ -18,7 +18,14 @@ from kodiak.events.check_run import (
 )
 from kodiak.pull_request import EventInfoResponse
 from kodiak.push_filter import get_ignored_pull_request_key, save_pull_request_ignored
-from kodiak.queue import WebhookEvent, check_run, handle_webhook_event
+from kodiak.queue import (
+    WEBHOOK_QUEUE_NAMES,
+    WebhookEvent,
+    check_run,
+    get_installation_webhook_queue_name,
+    handle_webhook_event,
+    ingest_check_run,
+)
 from kodiak.redis_client import create_connection
 from kodiak.test_pull_request import create_event, noop
 from kodiak.tests.fixtures import requires_redis
@@ -76,7 +83,10 @@ async def push_filter_redis(mocker: MockFixture) -> AsyncIterator[None]:
     # tests' event loops.
     redis = create_connection()
     mocker.patch("kodiak.push_filter.redis_bot", redis)
+    mocker.patch("kodiak.queue.redis_bot", redis)
     yield
+    await redis.delete(get_installation_webhook_queue_name(69039045))
+    await redis.srem(WEBHOOK_QUEUE_NAMES, get_installation_webhook_queue_name(69039045))
     for number in (123, 124):
         await redis.delete(
             get_ignored_pull_request_key(
@@ -193,3 +203,66 @@ async def test_check_run_queues_pull_request_after_automerge_label_added(
 
     assert unlabeled.events == []
     assert [event.pull_request_number for event in labeled.events] == [123]
+
+
+@requires_redis
+async def test_ingest_check_run_queues_each_pull_request_once(
+    push_filter_redis: None,
+) -> None:
+    """
+    Busy repositories report hundreds of check runs for a pull request within
+    minutes. Ingest adds them to the webhook queue, which holds each pull
+    request once.
+    """
+    await save_pull_request_ignored(
+        installation_id="69039045",
+        owner="acme-corp",
+        repo="cake-api",
+        number=123,
+        ignored=True,
+    )
+    repository_id = 554453
+    payload = CheckRunEvent(
+        installation=Installation(id=69039045),
+        check_run=CheckRun(
+            name="circleci: build",
+            pull_requests=[
+                PullRequest(
+                    number=number,
+                    base=Ref(ref="main", repo=PullRequestRepository(id=repository_id)),
+                )
+                for number in (123, 124)
+            ],
+        ),
+        repository=Repository(
+            id=repository_id, name="cake-api", owner=Owner(login="acme-corp")
+        ),
+    ).dict()
+
+    queued = [await ingest_check_run(payload) for _ in range(3)]
+
+    redis = create_connection()
+    queue_name = get_installation_webhook_queue_name(69039045)
+    events = await redis.zrange(queue_name, 0, -1)
+    assert await redis.sismember(WEBHOOK_QUEUE_NAMES, queue_name)
+    await redis.close()
+    assert queued == [1, 1, 1]
+    assert [WebhookEvent.parse_raw(event).pull_request_number for event in events] == [
+        124
+    ]
+
+
+async def test_ingest_check_run_without_pull_requests() -> None:
+    """
+    Check runs on the default branch or on forks have no pull requests, so
+    there's nothing to queue.
+    """
+    payload = CheckRunEvent(
+        installation=Installation(id=69039045),
+        check_run=CheckRun(name="circleci: build", pull_requests=[]),
+        repository=Repository(
+            id=554453, name="cake-api", owner=Owner(login="acme-corp")
+        ),
+    ).dict()
+
+    assert await ingest_check_run(payload) == 0
