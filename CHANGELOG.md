@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Ship emoji displays as ⛴ instead of ⛴️. (#970)
+- Ship emoji displays as ⛴ instead of ⛴️. (#970) Thanks @perlun!
 
 # 0.61.0 - 2026-10-22
 
