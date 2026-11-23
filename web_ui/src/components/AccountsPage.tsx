@@ -63,10 +63,10 @@ function AccountsPageInner({
       <div
         className="w-100 text-center d-flex align-items-center flex-column"
         style={{ minHeight: 300 }}>
-        <h1 className="h4 mb-4">Select an Acccount</h1>
+        <h1 className="h4 mb-4">Select an Account</h1>
         <ul className="list-unstyled">
           {accounts.data.length === 0 && (
-            <p className="text-muted">0 Acccounts Available.</p>
+            <p className="text-muted">0 Accounts Available.</p>
           )}
           {accounts.data.map(a => (
             <li key={a.id} className="d-flex align-items-center">

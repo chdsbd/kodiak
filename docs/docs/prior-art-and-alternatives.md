@@ -5,7 +5,7 @@ sidebar_label: Prior Art / Alternatives
 ---
 
 If Kodiak doesn't suit your current needs, there are plenty of
-implementations of pull request (PR) automation and efficent branch updating and merging.
+implementations of pull request (PR) automation and efficient branch updating and merging.
 
 | Name                                                                                                                                               | Auto Merging | Auto Update Branches | Update Branches Efficiently | Works With Branch Protection | Works with Forks | Simple Configuration | Open Source | Hosted SaaS | Works with GitHub | On-prem possible? | Project alive? | Free for public and personal repositories | Language   |
 | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------- | --------------------------- | ---------------------------- | ---------------- | -------------------- | ----------- | ----------- | ----------------- | ----------------- | -------------- | ----------------------------------------- | ---------- |
@@ -67,11 +67,11 @@ version = 1
 
 ### Open Source
 
-- documentation and resources necessary to self host the application are publically available.
+- documentation and resources necessary to self host the application are publicly available.
 
 ### Hosted SaaS
 
-- a publically hosted version of the application is available for users to install.
+- a publicly hosted version of the application is available for users to install.
 
 ### Free for public and personal repositories
 

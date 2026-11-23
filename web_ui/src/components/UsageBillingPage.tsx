@@ -1203,7 +1203,7 @@ function LimitBillingAccessForm({
   )
 }
 
-function Subcription({
+function Subscription({
   subscription,
   teamId,
   modifySubscription,
@@ -1529,7 +1529,7 @@ function UsageBillingPageInner(props: IUsageBillingPageInnerProps) {
               trial={data.trial}
             />
           ) : (
-            <Subcription
+            <Subscription
               subscription={data.subscription}
               teamId={teamId}
               modifySubscription={modifySubscription}

@@ -34,7 +34,7 @@ def pull_request_kodiak_merged() -> None:
 def pull_request_kodiak_approved() -> None:
     event = GitHubEvent.objects.create(
         event_name="pull_request_review",
-        # tood fixme installation wrong
+        # todo fixme installation wrong
         payload=json.load(
             (FIXTURES / "pull_request_review_kodiak_approved.json").open()
         ),
